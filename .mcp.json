@@ -2,8 +2,11 @@
   "mcpServers": {
     "codex": {
       "type": "stdio",
-      "command": "codex",
-      "args": ["mcp-server", "--model", "gpt-5.1"]
+      "command": "/opt/homebrew/bin/codex",
+      "args": ["mcp-server", "-c", "model=\"gpt-5.1-codex-mini\""],
+      "env": {
+        "PATH": "/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin"
+      }
     }
   }
 }
