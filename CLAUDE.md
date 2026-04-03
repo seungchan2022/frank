@@ -5,34 +5,9 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 ## 프로젝트 개요
 
 AI 기반 나만의 뉴스 스크랩 기반 스터디앱.
-키워드/태그 선택 → 자동 웹서치 → LLM 요약+인사이트 제공.
-
-### MVP 1 스택 (현재)
-
-- **Rust API 서버 (Axum :8080)** + **Svelte 웹 프론트 (SvelteKit :5173)** + **Supabase (DB/Auth)**
-- 수집: Tavily → Exa → Firecrawl → arXiv (폴백 체인)
-- LLM: OpenRouter + Qwen 3.5 시리즈
-- 패키지 관리: cargo(Rust), npm(Svelte)
-
-### 통신 구조
-
-```
-브라우저 → SvelteKit 서버 프록시 (:5173) → Rust API 서버 (:8080) → Supabase REST / 외부 API
-```
-
-### 배포
-
-- 로컬 개발: Docker
-- 프로덕션: Cloudflare (무료 티어)
-
-### 전체 스택 (향후)
-
-Swift(iOS) + Svelte(웹) + Rust(서버) + Python ML(서버) 기반.
-패키지 관리: cargo(Rust), uv(Python), npm(Svelte), SPM(Swift)
+상세 기획: `progress/260404_MVP1_기획.md` 참조.
 
 ## 주요 명령
-
-### MVP 1 (Rust + Svelte)
 
 ```bash
 # 서버 린트/체크
@@ -55,27 +30,12 @@ cd server && cargo run                     # :8080
 cd web && npm run dev                      # :5173
 ```
 
-### 향후 (Python ML 추가 시)
-
-```bash
-cd server/ml && uv run ruff check .        # Python 린트
-cd server/ml && uv run pytest              # Python 테스트
-```
-
 ## 테스트 커버리지 기준 (90%)
-
-### MVP 1
 
 | 영역 | 대상 | 도구 | 기준 |
 |------|------|------|------|
 | 서버(Rust) | `server/src/` | cargo-tarpaulin | **90% 이상** |
 | 웹 프론트 | `web/src/lib/` | vitest | **90% 이상** |
-
-### 향후
-
-| 영역 | 대상 | 도구 | 기준 |
-|------|------|------|------|
-| 서버(ML) | `server/ml/` | pytest-cov | **90% 이상** |
 
 - 새 기능 구현 시 반드시 테스트 먼저 작성 (TDD)
 - 커버리지 90% 미만으로 떨어뜨리는 커밋 금지
@@ -85,20 +45,10 @@ cd server/ml && uv run pytest              # Python 테스트
 
 ### 앱 구조
 
-#### MVP 1 (활성)
-
 | 앱 | 경로 | 유형 | 포트 |
 |---|---|---|---|
 | API 서버 | `server/` | Rust (Axum) | 8080 |
 | 웹 프론트 | `web/` | Svelte | 5173 |
-
-#### 향후 추가
-
-| 앱 | 경로 | 유형 | 포트 |
-|---|---|---|---|
-| ML 서비스 | `server/ml/` | Python (FastAPI) | 8081 |
-| 어드민 | `admin/` | Svelte | 5174 |
-| iOS 앱 | `ios/` | Swift | — |
 
 ### 에코 서버 + 포트/어댑터 패턴
 
@@ -109,41 +59,21 @@ cd server/ml && uv run pytest              # Python 테스트
 - 포트는 관심사별 분리, 어댑터는 통일
 - DB 접근은 Supabase REST API (sqlx 미사용)
 
-### 디렉토리 구조 (MVP 1)
+### 디렉토리 구조
 
 ```
 frank/
-├── server/                        # Rust API 서버 (에코 서버)
-│   ├── src/
-│   │   ├── api/                   # HTTP 핸들러 (얇게: 파싱→포트 호출→응답)
-│   │   ├── services/              # 유스케이스 오케스트레이션
-│   │   ├── domain/                # 비즈니스 모델 + 포트(trait) 정의
-│   │   │   ├── models.rs          # Article, Tag, User 등
-│   │   │   └── ports.rs           # AuthPort, ArticlePort, SearchPort, LlmPort
-│   │   └── infra/                 # 어댑터 구현체 (전부 reqwest HTTP)
-│   │       ├── supabase.rs        # SupabaseAdapter (Auth + DB REST)
-│   │       ├── tavily.rs          # TavilyAdapter
-│   │       ├── exa.rs             # ExaAdapter
-│   │       ├── firecrawl.rs       # FirecrawlAdapter
-│   │       ├── openrouter.rs      # OpenRouterAdapter
-│   │       └── fake.rs            # FakeAdapter (테스트용 인메모리)
-│   ├── Cargo.toml
-│   └── .env.example
-├── web/                           # Svelte 웹 프론트엔드
-│   ├── src/
-│   │   ├── lib/
-│   │   │   ├── api.ts             # API 서버 호출 클라이언트
-│   │   │   ├── components/
-│   │   │   └── types/
-│   │   └── routes/
-│   │       ├── auth/
-│   │       ├── onboarding/
-│   │       └── feed/
-│   ├── package.json
-│   └── svelte.config.js
-├── supabase/
-│   └── migrations/
-└── CLAUDE.md
+├── server/              # Rust API 서버 (에코 서버)
+│   └── src/
+│       ├── api/         # HTTP 핸들러 (얇게: 파싱→포트 호출→응답)
+│       ├── services/    # 유스케이스 오케스트레이션
+│       ├── domain/      # 비즈니스 모델 + 포트(trait) 정의
+│       └── infra/       # 어댑터 구현체 (전부 reqwest HTTP)
+├── web/                 # Svelte 웹 프론트엔드
+│   └── src/
+├── supabase/            # DB 마이그레이션
+├── progress/            # 작업 문서
+└── rules/               # 강제 규칙
 ```
 
 **의존 방향**: `api → services → domain(ports) ← infra(adapters)` (단방향, 상향 참조 금지)
