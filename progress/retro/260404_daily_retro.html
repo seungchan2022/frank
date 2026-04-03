@@ -1,0 +1,399 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>2026.04.04 개발 회고</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+    background: #FDF6F0;
+    color: #2D2926;
+    line-height: 1.75;
+    font-size: 15px;
+    padding: 20px 16px;
+    max-width: 480px;
+    margin: 0 auto;
+  }
+  h1 {
+    color: #92400E;
+    font-size: 22px;
+    border-bottom: 3px solid #D97706;
+    padding-bottom: 10px;
+    margin-bottom: 6px;
+  }
+  .subtitle {
+    color: #D97706;
+    font-size: 14px;
+    font-weight: 500;
+    margin-bottom: 28px;
+    font-style: italic;
+  }
+  h2 {
+    color: #92400E;
+    font-size: 18px;
+    margin-top: 32px;
+    margin-bottom: 14px;
+    padding-bottom: 6px;
+    border-bottom: 1.5px solid #E5D5C5;
+  }
+  h3 {
+    color: #B45309;
+    font-size: 15px;
+    margin-top: 20px;
+    margin-bottom: 8px;
+  }
+  p { margin-bottom: 12px; }
+  ul, ol { margin-bottom: 12px; padding-left: 20px; }
+  li { margin-bottom: 6px; }
+  strong { color: #92400E; }
+  .card {
+    background: #FFFFFF;
+    border: 1px solid #E5D5C5;
+    border-radius: 12px;
+    padding: 16px;
+    margin: 14px 0;
+    box-shadow: 0 2px 8px rgba(217,119,6,0.08);
+  }
+  .card h3 { margin-top: 0; color: #D97706; }
+  .label {
+    display: inline-block;
+    font-weight: 700;
+    color: #92400E;
+    min-width: 50px;
+  }
+  .insight-box {
+    background: #FEF3C7;
+    border-left: 4px solid #D97706;
+    padding: 12px 14px;
+    margin: 10px 0;
+    border-radius: 0 8px 8px 0;
+    font-size: 14px;
+  }
+  .timeline {
+    background: #FFFFFF;
+    border: 1px solid #E5D5C5;
+    border-radius: 12px;
+    padding: 16px;
+    margin: 14px 0;
+  }
+  .timeline-item {
+    display: flex;
+    align-items: flex-start;
+    margin-bottom: 12px;
+    padding-bottom: 12px;
+    border-bottom: 1px dashed #E5D5C5;
+  }
+  .timeline-item:last-child { border-bottom: none; margin-bottom: 0; padding-bottom: 0; }
+  .timeline-num {
+    background: #D97706;
+    color: white;
+    width: 26px; height: 26px;
+    border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    font-weight: 700; font-size: 13px;
+    margin-right: 12px; flex-shrink: 0;
+  }
+  .timeline-title { font-weight: 700; color: #92400E; font-size: 14px; }
+  .timeline-desc { color: #78716C; font-size: 13px; }
+  .tag {
+    display: inline-block;
+    background: #FEF3C7;
+    color: #92400E;
+    padding: 2px 8px;
+    border-radius: 10px;
+    font-size: 12px;
+    font-weight: 600;
+    margin: 2px 2px;
+  }
+  .comparison-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 14px 0;
+    font-size: 13px;
+  }
+  .comparison-table th {
+    background: #D97706;
+    color: white;
+    padding: 8px 6px;
+    text-align: left;
+    font-weight: 600;
+    font-size: 12px;
+  }
+  .comparison-table td {
+    padding: 6px;
+    border-bottom: 1px solid #E5D5C5;
+    font-size: 13px;
+  }
+  .comparison-table tr:nth-child(even) td { background: #FFF7ED; }
+  .comparison-table .winner { background: #FEF3C7 !important; font-weight: 600; }
+  .arch-img {
+    width: 100%;
+    border: 1px solid #E5D5C5;
+    border-radius: 12px;
+    box-shadow: 0 2px 8px rgba(217,119,6,0.08);
+    margin: 14px 0;
+  }
+  .quote {
+    text-align: center;
+    font-style: italic;
+    color: #B45309;
+    font-size: 14px;
+    margin: 36px 0 16px;
+    padding: 16px;
+    border-top: 2px solid #E5D5C5;
+  }
+  code {
+    background: #FFF7ED;
+    padding: 1px 6px;
+    border-radius: 4px;
+    font-size: 13px;
+  }
+</style>
+<script type="module">
+  import mermaid from 'https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.esm.min.mjs';
+  mermaid.initialize({ startOnLoad: true, theme: 'base', themeVariables: {
+    primaryColor: '#FEF3C7', primaryBorderColor: '#D97706', primaryTextColor: '#92400E',
+    secondaryColor: '#FFF7ED', secondaryBorderColor: '#E5D5C5',
+    tertiaryColor: '#FFFFFF', lineColor: '#B45309', textColor: '#2D2926',
+    fontSize: '14px'
+  }});
+</script>
+</head>
+<body>
+
+<h1>🗓️ 2026.04.04 개발 회고</h1>
+<div class="subtitle">바이브 코딩 1일차 — iOS 개발자의 풀스택 MVP 기획기</div>
+
+<h2>📋 오늘 뭘 했나</h2>
+
+<p>iOS 개발자인 내가 처음으로 "바이브 코딩"이라는 걸 해봤다. 멘토가 옆에서 봐주면서 하루 만에 AI 뉴스 스크랩 앱 <strong>"Frank"</strong>의 MVP 1 기획을 처음부터 끝까지 완성했다.</p>
+
+<p>솔직히 Rust도, Svelte도, Supabase도 전부 처음이다. 근데 신기하게도 헷갈리는 건 없었다. <strong>다 모르니까.</strong> 오히려 아는 게 없어서 편견 없이 결정할 수 있었다.</p>
+
+<div class="timeline">
+  <div class="timeline-item">
+    <div class="timeline-num">1</div>
+    <div class="timeline-content">
+      <div class="timeline-title">Claude 개발환경 초기 세팅</div>
+      <div class="timeline-desc">47개 파일, 3,457줄의 워크플로우 체계</div>
+    </div>
+  </div>
+  <div class="timeline-item">
+    <div class="timeline-num">2</div>
+    <div class="timeline-content">
+      <div class="timeline-title">MVP 1 기획 완성</div>
+      <div class="timeline-desc">기능 범위, 기술 스택, 아키텍처 확정</div>
+    </div>
+  </div>
+  <div class="timeline-item">
+    <div class="timeline-num">3</div>
+    <div class="timeline-content">
+      <div class="timeline-title">아키텍처 의사결정 4건</div>
+      <div class="timeline-desc">에코 서버, Supabase REST, 폴백 체인, 프록시</div>
+    </div>
+  </div>
+  <div class="timeline-item">
+    <div class="timeline-num">4</div>
+    <div class="timeline-content">
+      <div class="timeline-title">문서 체계화</div>
+      <div class="timeline-desc">CLAUDE.md 간결화, progress 분리</div>
+    </div>
+  </div>
+</div>
+
+<h2>🔑 핵심 의사결정과 그 이유</h2>
+
+<div class="card">
+  <h3>결정 1: "자동 큐레이션"으로 좁히기</h3>
+  <p><span class="label">상황:</span> 넓은 "AI 스터디앱"에서 MVP 핵심 가치 선택</p>
+  <p><span class="label">선택지:</span><br/>
+    <span class="tag">스크랩 중심</span>
+    <span class="tag">학습 경로</span>
+    <span class="tag">인사이트 대화</span>
+  </p>
+  <p><span class="label">결정:</span> 키워드 선택 → 자동 웹서치 → LLM 요약</p>
+  <p><span class="label">왜:</span> AI 정보 과잉이 출발점. "좋은 콘텐츠를 자동으로 모아주는 것"이 먼저.</p>
+  <div class="insight-box">
+    <strong>💡</strong> MVP는 "하나의 핵심 루프" 완성이 가장 중요. Artifact 실패 교훈 — 뉴스 소비만으로는 앱 유지 어려움.
+  </div>
+</div>
+
+<div class="card">
+  <h3>결정 2: 에코 서버 + 포트/어댑터</h3>
+  <p><span class="label">상황:</span> DB 접근 — sqlx 직접 SQL vs Supabase REST</p>
+  <p><span class="label">선택지:</span><br/>
+    <span class="tag">혼용 (Claude)</span>
+    <span class="tag">에코 서버 (내 제안)</span>
+    <span class="tag">sqlx만</span>
+    <span class="tag">자체 구축</span>
+  </p>
+  <p><span class="label">결정:</span> 에코 서버 — 모든 외부 호출을 포트로 통일</p>
+  <p><span class="label">왜:</span> Fake 어댑터 하나로 전체 TDD 가능. "모든 외부 호출 = HTTP" 단일 패턴.</p>
+</div>
+
+<table class="comparison-table">
+  <tr><th>기준</th><th>가중</th><th>혼용</th><th>에코</th></tr>
+  <tr><td>TDD 용이성</td><td>x1.5</td><td>4.5</td><td class="winner">7.5</td></tr>
+  <tr><td>아키텍처 일관성</td><td>x1.0</td><td>2</td><td class="winner">5</td></tr>
+  <tr><td>MVP 속도</td><td>x1.5</td><td>4.5</td><td class="winner">6</td></tr>
+  <tr><td>디버깅</td><td>x1.0</td><td class="winner">4</td><td>3</td></tr>
+  <tr><td>초보 친화도</td><td>x1.5</td><td>3</td><td class="winner">6</td></tr>
+  <tr><td>유지보수</td><td>x1.0</td><td>3</td><td class="winner">4</td></tr>
+  <tr style="font-weight:700"><td colspan="2">합계</td><td>25.5</td><td class="winner">34.5 ✓</td></tr>
+</table>
+
+<div class="insight-box">
+  <strong>💡</strong> AI의 첫 제안을 그대로 받지 말 것. 나만의 대안을 제시하고 비교하면 더 나은 결정이 나온다.
+</div>
+
+<div class="card">
+  <h3>결정 3: 수집 폴백 체인</h3>
+  <p><span class="label">결정:</span> Tavily → Exa → Firecrawl → arXiv</p>
+  <p><span class="label">왜:</span> 기존 서비스 중 이 4개를 하나로 연결한 곳이 없음. 무료 티어 합산 월 2,000+ 검색.</p>
+  <div class="insight-box">
+    <strong>💡</strong> 무료 티어 조합으로 MVP 비용 제로 시작 가능. "무료로 검증 → 유료 전환"이 스타트업 사고방식.
+  </div>
+</div>
+
+<div class="card">
+  <h3>결정 4: SvelteKit 서버 프록시</h3>
+  <p><span class="label">결정:</span> 브라우저 → SvelteKit → Rust API</p>
+  <p><span class="label">왜:</span> API 키를 서버에 숨기고, CORS 불필요.</p>
+  <div class="insight-box">
+    <strong>💡</strong> 보안은 설계 단계에서 결정하는 것이지, 나중에 추가하는 게 아니다.
+  </div>
+</div>
+
+<h2>🏗️ 아키텍처 최종 결과</h2>
+
+<div class="card" style="padding:8px; overflow-x:auto;">
+<pre class="mermaid">
+graph TB
+    Browser["🌐 브라우저"] --> Proxy["📦 SvelteKit :5173"]
+    Proxy --> Handler["⚙️ Rust API :8080"]
+    Handler --> Service["서비스 레이어"]
+
+    Service --> AuthPort["AuthPort"]
+    Service --> ArticlePort["ArticlePort"]
+    Service --> SearchPort["SearchPort"]
+    Service --> LlmPort["LlmPort"]
+
+    subgraph PROD["🟢 프로덕션 어댑터"]
+        SA["SupabaseAdapter"]
+        TA["TavilyAdapter"]
+        EA["ExaAdapter"]
+        FA["FirecrawlAdapter"]
+        OR["OpenRouterAdapter"]
+    end
+
+    subgraph TEST["🧪 테스트 어댑터"]
+        FAKE["FakeAdapter 인메모리"]
+    end
+
+    AuthPort -.->|impl| SA
+    ArticlePort -.->|impl| SA
+    SearchPort -.->|impl| TA & EA & FA
+    LlmPort -.->|impl| OR
+
+    AuthPort -.->|test| FAKE
+    ArticlePort -.->|test| FAKE
+    SearchPort -.->|test| FAKE
+    LlmPort -.->|test| FAKE
+
+    SA --> DB[("Supabase")]
+    TA --> T_API["Tavily API"]
+    EA --> E_API["Exa API"]
+    FA --> F_API["Firecrawl API"]
+    OR --> O_API["OpenRouter API"]
+</pre>
+</div>
+
+<h2>📐 기획/설계 과정</h2>
+
+<p>오늘은 코드를 한 줄도 안 짜고, 하루 종일 <strong>"무엇을 만들 것인가"</strong>만 논의했다.</p>
+
+<h3>인터뷰 기반 기획</h3>
+<p>멘토가 하나씩 질문을 던져줬다. "AI 기반 스터디앱"이라는 막연한 아이디어가 질문에 답하며 구체화됐다. 특히 <strong>"수동 스크랩이 아니라 자동 수집"</strong>으로 방향이 바뀐 순간이 인상 깊었다.</p>
+
+<h3>경쟁 서비스 리서치</h3>
+<p>"나만 이런 생각을 한 게 아닐 텐데"에서 시작. Artifact(실패), Feedly(유료), Readwise(수동) 등을 분석하고 포지셔닝이 명확해졌다:</p>
+<div class="insight-box">
+  <strong>💡</strong> "키워드 기반 자동 수집 + LLM 인사이트를 하나로 묶은 서비스는 아직 없다"
+</div>
+
+<h3>아키텍처 논쟁</h3>
+<p>Claude는 혼용 전략을 제안, 나는 에코 서버를 제안. "심판해달라"고 요청해서 8개 기준 채점 비교 → 내 제안이 이겼다. <strong>AI와 "토론"하는 것과 "수용"하는 것은 완전히 다른 경험.</strong></p>
+
+<h2>💡 인사이트 & 피드백</h2>
+
+<div class="card">
+  <h3>1. "다 모르면 오히려 유리하다"</h3>
+  <p>기존 지식에 얽매이지 않아서 더 깔끔한 결정. "Swift에서는 이렇게 하는데..."라는 편견이 없었다.</p>
+</div>
+
+<div class="card">
+  <h3>2. "바이브 코딩은 의사결정의 연속"</h3>
+  <p>코드 0줄이지만 오늘 결정들이 수천 줄의 방향을 결정. <strong>"올바른 방향을 빠르게 찾는 것"</strong>이 핵심.</p>
+</div>
+
+<div class="card">
+  <h3>3. "AI에게 심판을 맡기면 객관적 비교"</h3>
+  <p>"8개 기준으로 채점해달라"고 요청하니 정량적 비교와 명확한 근거가 나왔다.</p>
+</div>
+
+<div class="card">
+  <h3>4. "문서 분리의 중요성"</h3>
+  <p>CLAUDE.md(작업 가이드) vs progress/(상세 기획). 목적에 맞게 분리하니 둘 다 읽기 좋아졌다.</p>
+</div>
+
+<div class="card">
+  <h3>5. "포트/어댑터는 모든 플랫폼에 적용"</h3>
+  <p>Rust(trait), Swift(Protocol), Svelte(Interface) 전부 같은 패턴으로 통일. 진짜 아키텍처의 가치.</p>
+</div>
+
+<h2>📚 배운 것</h2>
+
+<h3>기술적으로</h3>
+<ul>
+  <li><strong>Axum</strong> — 2026년 Rust 웹 사실상 표준</li>
+  <li><strong>Supabase REST</strong> — SQL 없이 DB 접근, RLS 자동</li>
+  <li><strong>검색 API</strong> — Tavily/Exa/Firecrawl 각각의 강점</li>
+  <li><strong>OpenRouter</strong> — 다양한 LLM 하나의 API로</li>
+</ul>
+
+<h3>프로세스에서</h3>
+<ul>
+  <li>인터뷰 기반 기획 → 막연함을 구체화에 효과적</li>
+  <li>경쟁 리서치는 기획 <strong>중간에</strong> 해야 함</li>
+  <li>AI와 토론 ≠ AI 수용</li>
+</ul>
+
+<h2>💭 느낀 점</h2>
+
+<p>"iOS 개발자가 Rust 서버를?" 처음엔 그런 생각이었다. 근데 멘토와 하루 종일 기획하고 나니, 코드 전에 방향 잡는 게 얼마나 중요한지 느꼈다.</p>
+
+<p>에코 서버 패턴을 직접 제안하고 채택된 건 뿌듯했다. "모르니까 질문 → 답에서 또 질문" 사이클이 재밌었다.</p>
+
+<p>내일부터 진짜 코드를 짜야 하니까 긴장되지만, 기획이 탄탄하니 방향을 잃을 일은 없을 것 같다.</p>
+
+<h2>📌 내일 할 일</h2>
+
+<div class="card">
+  <p><strong>M0: 프로젝트 부트스트랩</strong></p>
+  <ul>
+    <li>Rust(Axum) + Svelte(SvelteKit) 초기화</li>
+    <li><code>cargo run</code> → :8080/health OK</li>
+    <li><code>npm run dev</code> → :5173 표시</li>
+    <li>Fake 어댑터로 TDD 시작</li>
+  </ul>
+</div>
+
+<div class="quote">
+  "다 모르니까 헷갈릴 게 없었다"<br>
+  — 2026.04.04, 바이브 코딩 1일차
+</div>
+
+</body>
+</html>
