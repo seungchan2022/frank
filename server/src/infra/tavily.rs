@@ -46,7 +46,7 @@ impl SearchPort for TavilyAdapter {
             let body = serde_json::json!({
                 "query": query,
                 "max_results": max_results,
-                "search_depth": "basic",
+                "search_depth": "advanced",
                 "include_answer": false,
             });
 

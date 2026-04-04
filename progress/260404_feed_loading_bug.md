@@ -1,6 +1,6 @@
 # Feed 버그 수정
 
-- 상태: 진행 전
+- 상태: 완료
 - 브랜치: feature/fix-feed-loading
 - 생성일: 2026-04-04
 
@@ -169,11 +169,11 @@ const usedTags = $derived(
 
 | # | 태스크 | 파일 | 상태 |
 |---|--------|------|------|
-| 1 | IntersectionObserver cleanup에서 sentinel 로컬 캡처 | `+page.svelte` | 미완 |
-| 2 | loadInitial 중복 호출 방지 (가드 or onMount) | `+page.svelte` | 미완 |
-| 3 | usedTags → 전체 tags 표시로 변경 | `+page.svelte` | 미완 |
-| 4 | collect_service에서 개별 기사 URL 올바르게 추출 | `collect_service.rs` | 미완 |
-| 5 | CrawlPort trait 신규 정의 + Firecrawl scrape 구현 + Article에 content 추가 | `ports.rs` / `firecrawl.rs` / 모델 / DB | 미완 |
-| 6 | LLM 모델 변경 (qwen3.5-plus) + 프롬프트 개선 + structured output | `openrouter.rs` / `config` | 미완 |
-| 7 | LLM 사용량 추적: articles 테이블에 llm_model, prompt_tokens, completion_tokens 추가 | DB 마이그레이션 / 모델 | 미완 |
-| 8 | 검증: 린트 + 타입체크 + 브라우저 확인 | — | 미완 |
+| 1 | IntersectionObserver cleanup에서 sentinel 로컬 캡처 | `+page.svelte` | 완료 |
+| 2 | loadInitial 중복 호출 방지 (가드 or onMount) | `+page.svelte` | 완료 |
+| 3 | usedTags → 전체 tags 표시로 변경 | `+page.svelte` | 완료 |
+| 4 | collect_service에서 개별 기사 URL 올바르게 추출 | `collect_service.rs` / `tavily.rs` | 완료 |
+| 5 | CrawlPort trait 신규 정의 + Firecrawl scrape 구현 + Article에 content 추가 | `ports.rs` / `firecrawl.rs` / 모델 / DB | 완료 |
+| 6 | LLM 모델 변경 (qwen3.5-plus) + 프롬프트 개선 + structured output | `openrouter.rs` / `config` | 완료 |
+| 7 | LLM 사용량 추적: articles 테이블에 llm_model, prompt_tokens, completion_tokens 추가 | DB 마이그레이션 / 모델 | 완료 |
+| 8 | 검증: 린트 + 타입체크 + 브라우저 확인 | — | 완료 |

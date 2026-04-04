@@ -7,6 +7,25 @@ use crate::domain::models::Article;
 use crate::domain::ports::{CrawlPort, DbPort};
 use crate::infra::search_chain::SearchFallbackChain;
 
+/// 홈페이지/목록 페이지 URL을 판별한다.
+/// path 세그먼트가 1개 이하면 개별 기사가 아닌 것으로 간주.
+/// 예: "https://example.com/", "https://example.com/news" → true
+/// 예: "https://example.com/news/some-article" → false
+fn is_homepage_url(raw_url: &str) -> bool {
+    // "https://domain.com/path" 에서 path 부분 추출
+    let path = raw_url
+        .find("://")
+        .and_then(|i| raw_url[i + 3..].find('/'))
+        .map(|i| {
+            let start = raw_url.find("://").unwrap() + 3 + i;
+            &raw_url[start..]
+        })
+        .unwrap_or("/");
+    let path = path.trim_end_matches('/');
+    let segments: Vec<&str> = path.split('/').filter(|s| !s.is_empty()).collect();
+    segments.len() <= 1
+}
+
 /// 사용자의 태그를 기반으로 뉴스를 검색하고 DB에 저장한다.
 pub async fn collect_for_user<D: DbPort>(
     db: &D,
@@ -46,8 +65,12 @@ pub async fn collect_for_user<D: DbPort>(
             }
         };
 
-        // 3. SearchResult → Article 변환
+        // 3. SearchResult → Article 변환 (홈페이지/목록 URL 필터링)
         for sr in results {
+            if is_homepage_url(&sr.url) {
+                tracing::debug!(url = %sr.url, "skipping homepage/listing URL");
+                continue;
+            }
             all_articles.push(Article {
                 id: Uuid::new_v4(),
                 user_id,
@@ -145,13 +168,13 @@ mod tests {
             vec![
                 SearchResult {
                     title: "Article 1".to_string(),
-                    url: "https://example.com/1".to_string(),
+                    url: "https://example.com/news/article-1".to_string(),
                     snippet: Some("snippet 1".to_string()),
                     published_at: None,
                 },
                 SearchResult {
                     title: "Article 2".to_string(),
-                    url: "https://example.com/2".to_string(),
+                    url: "https://example.com/news/article-2".to_string(),
                     snippet: None,
                     published_at: None,
                 },
@@ -219,7 +242,7 @@ mod tests {
         let chain = make_chain(
             vec![SearchResult {
                 title: "Article 1".to_string(),
-                url: "https://example.com/1".to_string(),
+                url: "https://example.com/news/article-1".to_string(),
                 snippet: Some("snippet 1".to_string()),
                 published_at: None,
             }],
@@ -231,10 +254,63 @@ mod tests {
             .unwrap();
 
         // 기사는 저장되지만 content는 None (크롤 실패)
-        assert_eq!(count, 2); // 2 tags x 1 result
+        assert_eq!(count, 2); // 2 tags x 1 result (동일 URL이므로 DB에는 1개)
         let articles = db.get_user_articles(user_id, 100).await.unwrap();
         for article in &articles {
             assert!(article.content.is_none());
         }
+    }
+
+    #[test]
+    fn test_is_homepage_url() {
+        // 홈페이지/목록 → true
+        assert!(is_homepage_url("https://www.timesofai.com/"));
+        assert!(is_homepage_url("https://www.fastcompany.com/news"));
+        assert!(is_homepage_url("https://example.com"));
+        assert!(is_homepage_url("https://example.com/"));
+        assert!(is_homepage_url("https://example.com/blog/"));
+
+        // 개별 기사 → false
+        assert!(!is_homepage_url(
+            "https://www.timesofai.com/news/google-gemma-4-launched/"
+        ));
+        assert!(!is_homepage_url("https://example.com/news/some-article"));
+        assert!(!is_homepage_url("https://example.com/2024/01/my-post"));
+    }
+
+    #[tokio::test]
+    async fn collect_skips_homepage_urls() {
+        let db = FakeDbAdapter::new();
+        let crawl = FakeCrawlAdapter::new();
+        let (user_id, tag_ids) = setup_db_with_tags(&db);
+        db.set_user_tags(user_id, vec![tag_ids[0]]).await.unwrap();
+
+        let chain = make_chain(
+            vec![
+                SearchResult {
+                    title: "Homepage".to_string(),
+                    url: "https://example.com/".to_string(),
+                    snippet: Some("homepage".to_string()),
+                    published_at: None,
+                },
+                SearchResult {
+                    title: "Real Article".to_string(),
+                    url: "https://example.com/news/real-article".to_string(),
+                    snippet: Some("real content".to_string()),
+                    published_at: None,
+                },
+            ],
+            false,
+        );
+
+        let count = collect_for_user(&db, &chain, &crawl, user_id)
+            .await
+            .unwrap();
+
+        // 홈페이지 URL은 필터링되어 1개만 저장
+        assert_eq!(count, 1);
+        let articles = db.get_user_articles(user_id, 100).await.unwrap();
+        assert_eq!(articles.len(), 1);
+        assert!(articles[0].url.contains("real-article"));
     }
 }
