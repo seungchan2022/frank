@@ -1,7 +1,13 @@
 <script lang="ts">
 	import { getAuth } from '$lib/stores/auth.svelte';
 	import { goto } from '$app/navigation';
-	import { collectArticles, fetchArticles, fetchTags, summarizeArticles } from '$lib/utils/api';
+	import {
+		collectArticles,
+		fetchArticles,
+		fetchMyTagIds,
+		fetchTags,
+		summarizeArticles
+	} from '$lib/utils/api';
 	import { formatArticleDate, extractDomain } from '$lib/utils/article';
 	import type { Article } from '$lib/types/article';
 	import type { Tag } from '$lib/types/tag';
@@ -27,10 +33,10 @@
 		}, {})
 	);
 
-	// 기사에 실제로 사용된 태그만 필터 탭에 표시
-	const usedTags = $derived(
-		tags.filter((tag) => articles.some((a) => a.tag_id === tag.id) || selectedTagId === tag.id)
-	);
+	let myTagIds = $state<string[]>([]);
+
+	// 사용자가 구독한 태그만 필터 탭에 표시
+	const filterTags = $derived(tags.filter((tag) => myTagIds.includes(tag.id)));
 
 	$effect(() => {
 		if (!auth.isAuthenticated) {
@@ -56,8 +62,9 @@
 
 		$effect(() => {
 			if (sentinel) {
-				observer.observe(sentinel);
-				return () => observer.unobserve(sentinel!);
+				const el = sentinel;
+				observer.observe(el);
+				return () => observer.unobserve(el);
 			}
 		});
 
@@ -68,12 +75,14 @@
 		loading = true;
 		error = null;
 		try {
-			const [arts, allTags] = await Promise.all([
+			const [arts, allTags, tagIds] = await Promise.all([
 				fetchArticles(0, 10, selectedTagId ?? undefined),
-				fetchTags()
+				fetchTags(),
+				fetchMyTagIds()
 			]);
 			articles = arts;
 			tags = allTags;
+			myTagIds = tagIds;
 			hasMore = arts.length >= 10;
 		} catch (e) {
 			error = e instanceof Error ? e.message : 'Failed to load articles';
@@ -183,7 +192,7 @@
 			>
 				전체
 			</button>
-			{#each usedTags as tag (tag.id)}
+			{#each filterTags as tag (tag.id)}
 				<button
 					onclick={() => selectTag(tag.id)}
 					class="rounded-full px-3 py-1 text-sm font-medium transition-colors {selectedTagId ===
