@@ -78,23 +78,39 @@ export async function fetchArticles(): Promise<Article[]> {
 }
 
 /**
- * Placeholder for article collection trigger.
- * Will be wired to Rust server POST /api/collect in the future.
+ * Trigger article collection via the SvelteKit proxy → Rust server.
  * Returns the number of articles collected.
  */
 export async function collectArticles(): Promise<number> {
-	// TODO: POST to Rust server /api/collect when ready
-	return 0;
+	const headers = await getAuthHeaders();
+	const response = await fetch('/api/collect', {
+		method: 'POST',
+		headers
+	});
+	if (!response.ok) {
+		const body = await response.json().catch(() => ({ error: 'Unknown error' }));
+		throw new Error(body.error ?? `Collect failed (${response.status})`);
+	}
+	const data: { collected: number } = await response.json();
+	return data.collected;
 }
 
 /**
- * Placeholder for LLM summarization trigger.
- * Will be wired to Rust server POST /api/summarize in the future.
+ * Trigger LLM summarization via the SvelteKit proxy → Rust server.
  * Returns the number of articles summarized.
  */
 export async function summarizeArticles(): Promise<number> {
-	// TODO: POST to Rust server /api/summarize when ready
-	return 0;
+	const headers = await getAuthHeaders();
+	const response = await fetch('/api/summarize', {
+		method: 'POST',
+		headers
+	});
+	if (!response.ok) {
+		const body = await response.json().catch(() => ({ error: 'Unknown error' }));
+		throw new Error(body.error ?? `Summarize failed (${response.status})`);
+	}
+	const data: { summarized: number } = await response.json();
+	return data.summarized;
 }
 
 /**

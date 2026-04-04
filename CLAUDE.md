@@ -2,6 +2,9 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
+## Companion (Xenops) 설정
+- Xenops는 항상 **한국어**로만 대화한다.
+
 ## 프로젝트 개요
 
 AI 기반 나만의 뉴스 스크랩 기반 스터디앱.

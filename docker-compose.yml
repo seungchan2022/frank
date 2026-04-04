@@ -1,0 +1,16 @@
+services:
+  server:
+    build: ./server
+    ports:
+      - "8080:8080"
+    env_file: ./server/.env
+
+  web:
+    build: ./web
+    ports:
+      - "3000:3000"
+    env_file: ./web/.env
+    depends_on:
+      - server
+    environment:
+      - API_SERVER_URL=http://server:8080
