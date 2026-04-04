@@ -10,7 +10,7 @@ pub async fn health_check() -> Json<HealthStatus> {
 mod tests {
     use axum::Router;
     use axum::routing::get;
-    use axum_test::TestServer;
+    use axum_test::{TestResponse, TestServer};
 
     use super::*;
 
@@ -21,7 +21,7 @@ mod tests {
     #[tokio::test]
     async fn health_returns_ok() {
         let server = TestServer::new(app());
-        let res: axum_test::TestResponse = server.get("/health").await;
+        let res: TestResponse = server.get("/health").await;
         res.assert_status_ok();
         res.assert_json_contains(&serde_json::json!({"status": "ok"}));
     }

@@ -1,3 +1,5 @@
+use server::config::AppConfig;
+use server::infra::supabase_db::SupabaseDbAdapter;
 use tokio::net::TcpListener;
 use tracing_subscriber::EnvFilter;
 
@@ -7,12 +9,16 @@ async fn main() {
         .with_env_filter(EnvFilter::try_from_default_env().unwrap_or_else(|_| "info".into()))
         .init();
 
-    let app = server::create_router();
-    let listener = TcpListener::bind("0.0.0.0:8080")
-        .await
-        .expect("failed to bind to port 8080");
+    let config = AppConfig::from_env();
+    let db = SupabaseDbAdapter::new(&config);
+    let app = server::create_router(db, config.supabase_jwt_secret.clone());
 
-    tracing::info!("server listening on http://0.0.0.0:8080");
+    let addr = format!("0.0.0.0:{}", config.port);
+    let listener = TcpListener::bind(&addr)
+        .await
+        .unwrap_or_else(|_| panic!("failed to bind to {addr}"));
+
+    tracing::info!("server listening on http://{addr}");
 
     axum::serve(listener, app).await.expect("server error");
 }
