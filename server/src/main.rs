@@ -7,6 +7,7 @@ use server::infra::openrouter::OpenRouterAdapter;
 use server::infra::search_chain::SearchFallbackChain;
 use server::infra::supabase_db::SupabaseDbAdapter;
 use server::infra::tavily::TavilyAdapter;
+use server::middleware::auth::SupabaseConfig;
 use tokio::net::TcpListener;
 use tracing_subscriber::EnvFilter;
 
@@ -32,7 +33,12 @@ async fn main() {
         &config.llm_model,
     ));
 
-    let app = server::create_router(db, config.supabase_jwt_secret.clone(), search_chain, llm);
+    let supabase_config = SupabaseConfig {
+        url: config.supabase_url.clone(),
+        anon_key: config.supabase_anon_key.clone(),
+    };
+
+    let app = server::create_router(db, supabase_config, search_chain, llm);
 
     let addr = format!("0.0.0.0:{}", config.port);
     let listener = TcpListener::bind(&addr)

@@ -14,10 +14,11 @@ use axum::{Extension, Router};
 use api::AppState;
 use domain::ports::{DbPort, LlmPort};
 use infra::search_chain::SearchFallbackChain;
+use middleware::auth::SupabaseConfig;
 
 pub fn create_router<D: DbPort + Clone + 'static>(
     db: D,
-    jwt_secret: String,
+    supabase_config: SupabaseConfig,
     search_chain: SearchFallbackChain,
     llm: Arc<dyn LlmPort>,
 ) -> Router {
@@ -39,7 +40,7 @@ pub fn create_router<D: DbPort + Clone + 'static>(
             post(api::articles::summarize_articles::<D>),
         )
         .layer(from_fn(middleware::auth::require_auth))
-        .layer(Extension(jwt_secret));
+        .layer(Extension(supabase_config));
 
     Router::new()
         .route("/health", get(api::health::health_check))

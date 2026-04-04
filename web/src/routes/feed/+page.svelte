@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { getAuth } from '$lib/stores/auth.svelte';
 	import { goto } from '$app/navigation';
-	import { fetchArticles, fetchTags, summarizeArticles } from '$lib/utils/api';
+	import { collectArticles, fetchArticles, fetchTags, summarizeArticles } from '$lib/utils/api';
 	import { formatArticleDate, extractDomain } from '$lib/utils/article';
 	import type { Article } from '$lib/types/article';
 	import type { Tag } from '$lib/types/tag';
@@ -50,7 +50,16 @@
 	}
 
 	async function handleRefresh() {
-		await loadData();
+		loading = true;
+		error = null;
+		try {
+			await collectArticles();
+			await loadData();
+		} catch (e) {
+			error = e instanceof Error ? e.message : 'Failed to collect articles';
+		} finally {
+			loading = false;
+		}
 	}
 
 	async function handleSummarize() {

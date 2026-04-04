@@ -2,7 +2,6 @@ use axum::extract::Request;
 use axum::http::header::AUTHORIZATION;
 use axum::middleware::Next;
 use axum::response::Response;
-use jsonwebtoken::{DecodingKey, Validation, decode};
 use serde::Deserialize;
 use uuid::Uuid;
 
@@ -14,11 +13,18 @@ pub struct AuthUser {
     pub token: String,
 }
 
-#[derive(Debug, Deserialize)]
-struct Claims {
-    sub: String,
+#[derive(Debug, Clone)]
+pub struct SupabaseConfig {
+    pub url: String,
+    pub anon_key: String,
 }
 
+#[derive(Debug, Deserialize)]
+struct SupabaseUser {
+    id: String,
+}
+
+/// Supabase /auth/v1/user API로 토큰 검증
 pub async fn require_auth(mut req: Request, next: Next) -> Result<Response, AppError> {
     let auth_header = req
         .headers()
@@ -32,24 +38,34 @@ pub async fn require_auth(mut req: Request, next: Next) -> Result<Response, AppE
         .ok_or_else(|| AppError::Unauthorized("Invalid Bearer token format".to_string()))?
         .to_string();
 
-    let jwt_secret = req
+    let supabase_config = req
         .extensions()
-        .get::<String>()
-        .ok_or_else(|| AppError::Internal("JWT secret not configured".to_string()))?
+        .get::<SupabaseConfig>()
+        .ok_or_else(|| AppError::Internal("Supabase config not configured".to_string()))?
         .clone();
 
-    let mut validation = Validation::default();
-    validation.set_audience(&["authenticated"]);
+    let client = reqwest::Client::new();
+    let resp = client
+        .get(format!("{}/auth/v1/user", supabase_config.url))
+        .header("apikey", &supabase_config.anon_key)
+        .header("Authorization", format!("Bearer {token}"))
+        .send()
+        .await
+        .map_err(|e| AppError::Internal(format!("Auth verification failed: {e}")))?;
 
-    let token_data = decode::<Claims>(
-        &token,
-        &DecodingKey::from_secret(jwt_secret.as_bytes()),
-        &validation,
-    )
-    .map_err(|e| AppError::Unauthorized(format!("Invalid token: {e}")))?;
+    if !resp.status().is_success() {
+        return Err(AppError::Unauthorized(
+            "Invalid or expired token".to_string(),
+        ));
+    }
 
-    let user_id = Uuid::parse_str(&token_data.claims.sub)
-        .map_err(|_| AppError::Unauthorized("Invalid user ID in token".to_string()))?;
+    let user: SupabaseUser = resp
+        .json()
+        .await
+        .map_err(|e| AppError::Internal(format!("Auth parse failed: {e}")))?;
+
+    let user_id = Uuid::parse_str(&user.id)
+        .map_err(|_| AppError::Unauthorized("Invalid user ID".to_string()))?;
 
     req.extensions_mut().insert(AuthUser { id: user_id, token });
 
