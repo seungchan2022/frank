@@ -6,14 +6,18 @@
 	import type { Article } from '$lib/types/article';
 	import type { Tag } from '$lib/types/tag';
 	import Header from '$lib/components/Header.svelte';
+	import { onMount } from 'svelte';
 
 	const auth = getAuth();
 
 	let articles = $state<Article[]>([]);
 	let tags = $state<Tag[]>([]);
 	let loading = $state(false);
+	let loadingMore = $state(false);
 	let summarizing = $state(false);
 	let error = $state<string | null>(null);
+	let hasMore = $state(true);
+	let sentinel = $state<HTMLDivElement | null>(null);
 
 	const tagMap = $derived(
 		tags.reduce<Record<string, string>>((acc, tag) => {
@@ -30,17 +34,38 @@
 
 	$effect(() => {
 		if (auth.isAuthenticated) {
-			loadData();
+			loadInitial();
 		}
 	});
 
-	async function loadData() {
+	onMount(() => {
+		const observer = new IntersectionObserver(
+			(entries) => {
+				if (entries[0].isIntersecting && hasMore && !loadingMore && !loading) {
+					loadMore();
+				}
+			},
+			{ threshold: 0.1 }
+		);
+
+		$effect(() => {
+			if (sentinel) {
+				observer.observe(sentinel);
+				return () => observer.unobserve(sentinel!);
+			}
+		});
+
+		return () => observer.disconnect();
+	});
+
+	async function loadInitial() {
 		loading = true;
 		error = null;
 		try {
-			const [arts, allTags] = await Promise.all([fetchArticles(), fetchTags()]);
+			const [arts, allTags] = await Promise.all([fetchArticles(0), fetchTags()]);
 			articles = arts;
 			tags = allTags;
+			hasMore = arts.length >= 10;
 		} catch (e) {
 			error = e instanceof Error ? e.message : 'Failed to load articles';
 			articles = [];
@@ -49,12 +74,33 @@
 		}
 	}
 
+	async function loadMore() {
+		if (loadingMore || !hasMore) return;
+		loadingMore = true;
+		try {
+			const moreArticles = await fetchArticles(articles.length);
+			if (moreArticles.length === 0) {
+				hasMore = false;
+			} else {
+				articles = [...articles, ...moreArticles];
+				hasMore = moreArticles.length >= 10;
+			}
+		} catch (e) {
+			error = e instanceof Error ? e.message : 'Failed to load more articles';
+		} finally {
+			loadingMore = false;
+		}
+	}
+
 	async function handleRefresh() {
 		loading = true;
 		error = null;
 		try {
 			await collectArticles();
-			await loadData();
+			const [arts, allTags] = await Promise.all([fetchArticles(0), fetchTags()]);
+			articles = arts;
+			tags = allTags;
+			hasMore = arts.length >= 10;
 		} catch (e) {
 			error = e instanceof Error ? e.message : 'Failed to collect articles';
 		} finally {
@@ -66,7 +112,8 @@
 		summarizing = true;
 		try {
 			await summarizeArticles();
-			await loadData();
+			const arts = await fetchArticles(0, articles.length || 10);
+			articles = arts;
 		} catch (e) {
 			error = e instanceof Error ? e.message : 'Failed to summarize articles';
 		} finally {
@@ -159,6 +206,15 @@
 						</div>
 					</article>
 				{/each}
+			</div>
+
+			<!-- 무한 스크롤 감지 영역 -->
+			<div bind:this={sentinel} class="py-8 text-center">
+				{#if loadingMore}
+					<p class="text-sm text-gray-400">Loading more...</p>
+				{:else if !hasMore}
+					<p class="text-sm text-gray-400">모든 기사를 불러왔습니다.</p>
+				{/if}
 			</div>
 		{/if}
 	</main>
