@@ -76,6 +76,7 @@ impl LlmPort for OpenRouterAdapter {
                 "temperature": 0.3,
                 "max_tokens": 800,
                 "response_format": { "type": "json_object" },
+                "reasoning": { "effort": "none" },
             });
 
             let resp = self
