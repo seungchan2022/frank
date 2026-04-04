@@ -18,12 +18,18 @@
 	let error = $state<string | null>(null);
 	let hasMore = $state(true);
 	let sentinel = $state<HTMLDivElement | null>(null);
+	let selectedTagId = $state<string | null>(null);
 
 	const tagMap = $derived(
 		tags.reduce<Record<string, string>>((acc, tag) => {
 			acc[tag.id] = tag.name;
 			return acc;
 		}, {})
+	);
+
+	// 기사에 실제로 사용된 태그만 필터 탭에 표시
+	const usedTags = $derived(
+		tags.filter((tag) => articles.some((a) => a.tag_id === tag.id) || selectedTagId === tag.id)
 	);
 
 	$effect(() => {
@@ -62,7 +68,10 @@
 		loading = true;
 		error = null;
 		try {
-			const [arts, allTags] = await Promise.all([fetchArticles(0), fetchTags()]);
+			const [arts, allTags] = await Promise.all([
+				fetchArticles(0, 10, selectedTagId ?? undefined),
+				fetchTags()
+			]);
 			articles = arts;
 			tags = allTags;
 			hasMore = arts.length >= 10;
@@ -78,7 +87,11 @@
 		if (loadingMore || !hasMore) return;
 		loadingMore = true;
 		try {
-			const moreArticles = await fetchArticles(articles.length);
+			const moreArticles = await fetchArticles(
+				articles.length,
+				10,
+				selectedTagId ?? undefined
+			);
 			if (moreArticles.length === 0) {
 				hasMore = false;
 			} else {
@@ -92,12 +105,22 @@
 		}
 	}
 
+	async function selectTag(tagId: string | null) {
+		selectedTagId = tagId;
+		articles = [];
+		hasMore = true;
+		await loadInitial();
+	}
+
 	async function handleRefresh() {
 		loading = true;
 		error = null;
 		try {
 			await collectArticles();
-			const [arts, allTags] = await Promise.all([fetchArticles(0), fetchTags()]);
+			const [arts, allTags] = await Promise.all([
+				fetchArticles(0, 10, selectedTagId ?? undefined),
+				fetchTags()
+			]);
 			articles = arts;
 			tags = allTags;
 			hasMore = arts.length >= 10;
@@ -112,7 +135,11 @@
 		summarizing = true;
 		try {
 			await summarizeArticles();
-			const arts = await fetchArticles(0, articles.length || 10);
+			const arts = await fetchArticles(
+				0,
+				articles.length || 10,
+				selectedTagId ?? undefined
+			);
 			articles = arts;
 		} catch (e) {
 			error = e instanceof Error ? e.message : 'Failed to summarize articles';
@@ -144,6 +171,29 @@
 					{loading ? 'Loading...' : 'Refresh'}
 				</button>
 			</div>
+		</div>
+
+		<!-- 태그 필터 탭 -->
+		<div class="mb-4 flex flex-wrap gap-2">
+			<button
+				onclick={() => selectTag(null)}
+				class="rounded-full px-3 py-1 text-sm font-medium transition-colors {selectedTagId === null
+					? 'bg-gray-900 text-white'
+					: 'bg-gray-100 text-gray-600 hover:bg-gray-200'}"
+			>
+				전체
+			</button>
+			{#each usedTags as tag (tag.id)}
+				<button
+					onclick={() => selectTag(tag.id)}
+					class="rounded-full px-3 py-1 text-sm font-medium transition-colors {selectedTagId ===
+					tag.id
+						? 'bg-blue-600 text-white'
+						: 'bg-gray-100 text-gray-600 hover:bg-gray-200'}"
+				>
+					{tag.name}
+				</button>
+			{/each}
 		</div>
 
 		{#if error}

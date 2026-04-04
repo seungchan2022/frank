@@ -67,14 +67,24 @@ export async function fetchProfile() {
 
 const PAGE_SIZE = 10;
 
-export async function fetchArticles(offset = 0, limit = PAGE_SIZE): Promise<Article[]> {
-	const { data, error } = await supabase
+export async function fetchArticles(
+	offset = 0,
+	limit = PAGE_SIZE,
+	tagId?: string
+): Promise<Article[]> {
+	let query = supabase
 		.from('articles')
 		.select(
 			'id, user_id, tag_id, title, url, snippet, source, search_query, published_at, created_at, summary, insight, summarized_at'
 		)
 		.order('created_at', { ascending: false })
 		.range(offset, offset + limit - 1);
+
+	if (tagId) {
+		query = query.eq('tag_id', tagId);
+	}
+
+	const { data, error } = await query;
 	if (error) throw error;
 	return data;
 }
