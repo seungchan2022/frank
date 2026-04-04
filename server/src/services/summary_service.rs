@@ -141,7 +141,7 @@ mod tests {
         let mut article = make_article(user_id, "Already Done", Some("content"));
         article.summary = Some("existing summary".to_string());
         article.insight = Some("existing insight".to_string());
-        article.summarized_at = Some("2026-01-01T00:00:00Z".to_string());
+        article.summarized_at = Some(chrono::Utc::now());
 
         insert_articles(&db, user_id, vec![article]).await;
 

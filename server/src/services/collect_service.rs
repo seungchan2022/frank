@@ -59,7 +59,7 @@ pub async fn collect_for_user<D: DbPort>(
                 summary: None,
                 insight: None,
                 summarized_at: None,
-                published_at: sr.published_at,
+                published_at: sr.published_at.and_then(|s| s.parse().ok()),
                 created_at: None,
             });
         }

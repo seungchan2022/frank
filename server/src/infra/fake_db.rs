@@ -142,7 +142,7 @@ impl DbPort for FakeDbAdapter {
             .ok_or_else(|| AppError::NotFound("Article not found".to_string()))?;
         article.summary = Some(summary.to_string());
         article.insight = Some(insight.to_string());
-        article.summarized_at = Some(Utc::now().to_rfc3339());
+        article.summarized_at = Some(Utc::now());
         Ok(())
     }
 }

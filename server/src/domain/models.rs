@@ -1,3 +1,4 @@
+use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
@@ -33,9 +34,9 @@ pub struct Article {
     pub search_query: Option<String>,
     pub summary: Option<String>,
     pub insight: Option<String>,
-    pub summarized_at: Option<String>,
-    pub published_at: Option<String>,
-    pub created_at: Option<String>,
+    pub summarized_at: Option<DateTime<Utc>>,
+    pub published_at: Option<DateTime<Utc>>,
+    pub created_at: Option<DateTime<Utc>>,
 }
 
 /// LLM 요약 결과

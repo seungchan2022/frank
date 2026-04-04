@@ -103,7 +103,7 @@ impl DbPort for PostgresDbAdapter {
         for article in &articles {
             sqlx::query(
                 "INSERT INTO articles (id, user_id, tag_id, title, url, snippet, source, search_query, published_at)
-                 VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9::timestamptz)
+                 VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
                  ON CONFLICT (user_id, url) DO NOTHING",
             )
             .bind(article.id)
@@ -114,7 +114,7 @@ impl DbPort for PostgresDbAdapter {
             .bind(&article.snippet)
             .bind(&article.source)
             .bind(&article.search_query)
-            .bind(&article.published_at)
+            .bind(article.published_at)
             .execute(&self.pool)
             .await
             .map_err(|e| AppError::Internal(format!("DB insert failed: {e}")))?;
