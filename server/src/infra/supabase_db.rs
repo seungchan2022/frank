@@ -189,7 +189,7 @@ impl DbPort for SupabaseDbAdapter {
 
         let resp = self
             .client
-            .post(format!("{}/articles", self.base_url))
+            .post(format!("{}/articles?on_conflict=user_id,url", self.base_url))
             .header("apikey", &self.anon_key)
             .header("Authorization", format!("Bearer {auth_token}"))
             .header("Content-Type", "application/json")
