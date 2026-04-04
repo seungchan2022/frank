@@ -1,0 +1,463 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>2026.04.04 개발 회고 — 구현 완주</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+    background: #FDF6F0;
+    color: #2D2926;
+    line-height: 1.7;
+    max-width: 480px;
+    margin: 0 auto;
+    padding: 24px 20px 60px;
+  }
+  h1 {
+    color: #92400E;
+    font-size: 1.5rem;
+    margin-bottom: 4px;
+    line-height: 1.3;
+  }
+  .subtitle {
+    color: #D97706;
+    font-size: 0.9rem;
+    font-weight: 600;
+    margin-bottom: 28px;
+  }
+  h2 {
+    color: #92400E;
+    font-size: 1.15rem;
+    margin-top: 36px;
+    margin-bottom: 12px;
+    padding-bottom: 6px;
+    border-bottom: 2px solid #E5D5C5;
+  }
+  h3 {
+    color: #92400E;
+    font-size: 1rem;
+    margin-top: 20px;
+    margin-bottom: 8px;
+  }
+  p { margin-bottom: 12px; }
+  .card {
+    background: #FFFFFF;
+    border: 1px solid #E5D5C5;
+    border-radius: 12px;
+    padding: 16px;
+    margin: 12px 0;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.04);
+  }
+  .highlight-card {
+    background: #FEF3C7;
+    border: 1px solid #D97706;
+    border-radius: 12px;
+    padding: 16px;
+    margin: 12px 0;
+  }
+  .stat-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+    margin: 12px 0;
+  }
+  .stat-box {
+    background: #FFFFFF;
+    border: 1px solid #E5D5C5;
+    border-radius: 10px;
+    padding: 14px;
+    text-align: center;
+  }
+  .stat-box .num {
+    font-size: 1.8rem;
+    font-weight: 700;
+    color: #D97706;
+    display: block;
+  }
+  .stat-box .label {
+    font-size: 0.75rem;
+    color: #78716C;
+    margin-top: 2px;
+  }
+  .decision {
+    background: #FFFFFF;
+    border-left: 4px solid #D97706;
+    border-radius: 0 12px 12px 0;
+    padding: 16px;
+    margin: 14px 0;
+  }
+  .decision-title {
+    font-weight: 700;
+    color: #92400E;
+    margin-bottom: 8px;
+  }
+  .decision .tag {
+    display: inline-block;
+    background: #FEF3C7;
+    color: #92400E;
+    font-size: 0.7rem;
+    font-weight: 600;
+    padding: 2px 8px;
+    border-radius: 99px;
+    margin-bottom: 8px;
+  }
+  .insight {
+    background: #FFF7ED;
+    border-radius: 8px;
+    padding: 12px;
+    margin-top: 8px;
+    font-size: 0.9rem;
+  }
+  .insight::before {
+    content: '💡';
+    margin-right: 6px;
+  }
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 12px 0;
+    font-size: 0.85rem;
+  }
+  th {
+    background: #92400E;
+    color: #FDF6F0;
+    padding: 8px 10px;
+    text-align: left;
+    font-weight: 600;
+  }
+  th:first-child { border-radius: 8px 0 0 0; }
+  th:last-child { border-radius: 0 8px 0 0; }
+  td {
+    padding: 8px 10px;
+    border-bottom: 1px solid #E5D5C5;
+  }
+  tr:nth-child(even) td { background: #FFF7ED; }
+  .timeline-item {
+    position: relative;
+    padding-left: 24px;
+    margin-bottom: 14px;
+  }
+  .timeline-item::before {
+    content: '';
+    position: absolute;
+    left: 6px;
+    top: 8px;
+    width: 10px;
+    height: 10px;
+    background: #D97706;
+    border-radius: 50%;
+  }
+  .timeline-item::after {
+    content: '';
+    position: absolute;
+    left: 10px;
+    top: 22px;
+    width: 2px;
+    height: calc(100% + 4px);
+    background: #E5D5C5;
+  }
+  .timeline-item:last-child::after { display: none; }
+  .timeline-label {
+    font-weight: 700;
+    color: #92400E;
+    font-size: 0.85rem;
+  }
+  .timeline-desc {
+    font-size: 0.85rem;
+    color: #78716C;
+  }
+  .quote {
+    background: #FEF3C7;
+    border-radius: 12px;
+    padding: 20px;
+    margin: 24px 0;
+    text-align: center;
+    font-style: italic;
+    color: #92400E;
+    font-size: 1.05rem;
+    line-height: 1.5;
+  }
+  .emoji-tag {
+    font-size: 0.85rem;
+    margin-right: 4px;
+  }
+  .section-intro {
+    font-size: 0.95rem;
+    color: #57534E;
+    margin-bottom: 16px;
+  }
+  .mermaid {
+    background: #FFFFFF;
+    border: 1px solid #E5D5C5;
+    border-radius: 12px;
+    padding: 16px;
+    margin: 16px 0;
+    text-align: center;
+  }
+  .feeling-card {
+    background: linear-gradient(135deg, #FEF3C7 0%, #FDF6F0 100%);
+    border: 1px solid #E5D5C5;
+    border-radius: 12px;
+    padding: 20px;
+    margin: 12px 0;
+    font-size: 0.95rem;
+  }
+  .badge {
+    display: inline-block;
+    background: #D97706;
+    color: white;
+    font-size: 0.7rem;
+    font-weight: 700;
+    padding: 3px 10px;
+    border-radius: 99px;
+    margin-right: 6px;
+  }
+  .badge.fix { background: #DC2626; }
+  .badge.refactor { background: #7C3AED; }
+  .badge.infra { background: #0891B2; }
+  strong { color: #92400E; }
+  a { color: #D97706; text-decoration: none; }
+  a:hover { text-decoration: underline; }
+  .footer {
+    text-align: center;
+    margin-top: 40px;
+    padding-top: 20px;
+    border-top: 1px solid #E5D5C5;
+    color: #A8A29E;
+    font-size: 0.8rem;
+  }
+  .mermaid svg { max-width: 100%; height: auto; }
+  @media print {
+    body { padding: 16px; max-width: 100%; }
+    h2 { break-before: auto; }
+    .card, .decision, .highlight-card, .feeling-card, .mermaid { break-inside: avoid; }
+  }
+</style>
+<script type="module">
+  import mermaid from 'https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.esm.min.mjs';
+  mermaid.initialize({
+    startOnLoad: true,
+    theme: 'base',
+    themeVariables: {
+      primaryColor: '#FEF3C7',
+      primaryTextColor: '#2D2926',
+      primaryBorderColor: '#D97706',
+      lineColor: '#D97706',
+      secondaryColor: '#FFF7ED',
+      tertiaryColor: '#FDF6F0',
+      fontFamily: '-apple-system, BlinkMacSystemFont, system-ui, sans-serif',
+      fontSize: '15px',
+      pieOuterStrokeWidth: '2px'
+    }
+  });
+</script>
+</head>
+<body>
+
+<h1>🗓️ 2026.04.04 개발 회고</h1>
+<div class="subtitle">바이브 코딩 1일차 — 구현 완주편</div>
+
+<!-- 핵심 수치 -->
+<div class="stat-grid">
+  <div class="stat-box">
+    <span class="num">28</span>
+    <span class="label">커밋</span>
+  </div>
+  <div class="stat-box">
+    <span class="num">108</span>
+    <span class="label">파일</span>
+  </div>
+  <div class="stat-box">
+    <span class="num">15,839</span>
+    <span class="label">줄 작성</span>
+  </div>
+  <div class="stat-box">
+    <span class="num">M0→M6</span>
+    <span class="label">전 마일스톤 완주</span>
+  </div>
+</div>
+
+<p class="section-intro">
+  iOS 개발자가 Rust + Svelte + Supabase를 처음 만지고, 하루 만에 기획부터 배포까지 전부 해냈다.
+  아침에는 아이디어밖에 없었는데, 밤에는 Docker로 배포되고 iMessage 알림까지 보내는 서비스가 돌아가고 있었다.
+</p>
+
+<!-- 타임라인 -->
+<h2>⏱️ 오늘의 타임라인</h2>
+
+<div class="card">
+  <div class="timeline-item">
+    <div class="timeline-label">M0 부트스트랩</div>
+    <div class="timeline-desc">Rust(Axum) + SvelteKit + Supabase 초기화</div>
+  </div>
+  <div class="timeline-item">
+    <div class="timeline-label">M1 인증 + 온보딩</div>
+    <div class="timeline-desc">Supabase Auth + 태그 선택 화면</div>
+  </div>
+  <div class="timeline-item">
+    <div class="timeline-label">M2 수집 파이프라인</div>
+    <div class="timeline-desc">Tavily 폴백 체인 + 피드 UI</div>
+  </div>
+  <div class="timeline-item">
+    <div class="timeline-label">M3 LLM 요약</div>
+    <div class="timeline-desc">OpenRouter 연동 + 상세 페이지</div>
+  </div>
+  <div class="timeline-item">
+    <div class="timeline-label">M4 매거진 UI</div>
+    <div class="timeline-desc">카드 그리드 + 태그 관리 + 공통 헤더</div>
+  </div>
+  <div class="timeline-item">
+    <div class="timeline-label">M5 품질 마무리</div>
+    <div class="timeline-desc">프록시 연결 + Docker 준비</div>
+  </div>
+  <div class="timeline-item">
+    <div class="timeline-label">M6 배포</div>
+    <div class="timeline-desc">Docker Compose + Cloudflare Tunnel + iMessage 알림</div>
+  </div>
+  <div class="timeline-item">
+    <div class="timeline-label">🐛 버그 수정 ×11</div>
+    <div class="timeline-desc">JWT, 중복 기사, 날짜 타입, 태그 필터, LLM 요약...</div>
+  </div>
+</div>
+
+<!-- 커밋 분포 다이어그램 -->
+<h2>📊 커밋 분포</h2>
+
+<pre class="mermaid">
+pie title 커밋 28개 — 유형별 분포
+    "기능 구현 (M0~M6)" : 7
+    "버그 수정" : 11
+    "기획/문서" : 4
+    "리팩토링" : 1
+    "인프라/테스트" : 5
+</pre>
+
+<!-- 핵심 의사결정 -->
+<h2>🔑 핵심 의사결정</h2>
+
+<div class="decision">
+  <div class="tag">SCOPE</div>
+  <div class="decision-title">결정 1: MVP 범위를 어디서 끊을까</div>
+  <p>기능 욕심이 계속 났지만, "이게 핵심 루프에 필요한가?"라는 질문으로 걸렀다. 태그 필터와 레이지 로딩은 넣었지만(기본 UX), 스터디/채팅은 MVP2로 미루었다.</p>
+  <div class="insight">MVP 범위는 한 번 정하고 끝이 아니라, 만들면서 계속 재조정하는 것이다.</div>
+</div>
+
+<div class="decision">
+  <div class="tag">ARCHITECTURE</div>
+  <div class="decision-title">결정 2: Supabase REST → sqlx 전환</div>
+  <p>아침에 "REST만 쓴다!"고 했는데, 실제로 써보니 복잡한 쿼리에서 마찰이 컸다. 포트/어댑터 패턴 덕분에 어댑터만 교체 — 서비스 레이어는 한 줄도 안 고쳤다.</p>
+  <div class="insight">좋은 아키텍처는 "결정을 바꿔도 충격이 적은 구조"를 만드는 것이다.</div>
+</div>
+
+<div class="decision">
+  <div class="tag">QUALITY</div>
+  <div class="decision-title">결정 3: 버그를 다 고치고 나서야 "완료"</div>
+  <p>기능만 만들고 "MVP 완료!"라고 할 수 있었다. 근데 작동 안 하는 소프트웨어는 MVP가 아니다. 커밋 11개를 전부 버그 수정에 썼다.</p>
+  <div class="insight">기능 구현보다 버그 수정에 시간이 더 걸렸다. 이건 소프트웨어 개발의 본질이다.</div>
+</div>
+
+<!-- 의사결정 흐름도 -->
+<h2>🗺️ REST → sqlx 전환 과정</h2>
+
+<pre class="mermaid">
+flowchart TB
+    A["아침: Supabase REST만 쓰자!"] --> B["구현 시작"]
+    B --> C{"복잡한 쿼리에서\n마찰 발생"}
+    C -->|"고집할까?"| D["REST 어댑터 보강"]
+    C -->|"바꿀까?"| E["sqlx로 전환"]
+    E --> F{"포트/어댑터\n패턴 덕분에"}
+    F --> G["어댑터만 교체"]
+    F --> H["서비스 레이어\n변경 0줄"]
+    G --> I["✅ 전환 성공"]
+    H --> I
+
+    style A fill:#FEF3C7,stroke:#D97706
+    style C fill:#FEF3C7,stroke:#D97706
+    style I fill:#D1FAE5,stroke:#059669
+    style D fill:#FEE2E2,stroke:#DC2626,stroke-dasharray: 5 5
+</pre>
+
+<!-- 삽질 영역 -->
+<h2>🔧 가장 많이 삽질한 곳</h2>
+
+<div class="highlight-card">
+  <h3>서버-클라이언트 연결 체인</h3>
+  <p>브라우저 → SvelteKit 프록시 → Rust API → Supabase DB</p>
+  <p>각각은 이해할 수 있는데, 체인으로 엮이면 디버깅이 지옥이었다. JWT, CORS, RLS 정책, 프록시 라우팅이 동시에 문제를 일으키면 어디서 터진 건지 찾기가 너무 힘들었다.</p>
+</div>
+
+<pre class="mermaid">
+flowchart TB
+    A["🌐 브라우저"] -->|"CORS?"| B["SvelteKit 프록시"]
+    B -->|"JWT 전달?"| C["Rust API 서버"]
+    C -->|"RLS 정책?"| D["Supabase DB"]
+
+    style A fill:#FEF3C7,stroke:#D97706
+    style B fill:#FEF3C7,stroke:#D97706
+    style C fill:#FEF3C7,stroke:#D97706
+    style D fill:#FEF3C7,stroke:#D97706
+</pre>
+
+<div class="card">
+  <strong>다음에는:</strong> 체인의 각 단계를 독립적으로 먼저 검증하고 나서 연결하자. 한꺼번에 연결하고 나서 디버깅하면 시간만 날린다.
+</div>
+
+<!-- 배운 것 -->
+<h2>📚 배운 것</h2>
+
+<table>
+  <tr><th>영역</th><th>배운 것</th></tr>
+  <tr><td>Rust/Axum</td><td>핸들러 구조, State 주입, trait 포트 패턴</td></tr>
+  <tr><td>SvelteKit</td><td>서버 프록시, Svelte 5 runes</td></tr>
+  <tr><td>Supabase</td><td>Auth(JWT), RLS, REST → sqlx 전환</td></tr>
+  <tr><td>OpenRouter</td><td>LLM 호출, Qwen3 thinking 모드 이슈</td></tr>
+  <tr><td>Docker</td><td>Compose, 헬스체크, Cloudflare Tunnel</td></tr>
+  <tr><td>인프라</td><td>배포 스크립트, iMessage 자동화</td></tr>
+</table>
+
+<div class="card">
+  <h3>프로세스에서 배운 3가지</h3>
+  <p>1️⃣ 기획과 구현은 선형이 아니라 <strong>반복적</strong> — 만들면서 기획이 바뀐다</p>
+  <p>2️⃣ MVP 범위는 "한 번 정하고 끝"이 아니라 <strong>계속 재조정</strong>하는 것</p>
+  <p>3️⃣ 바이브 코딩에서 내 역할은 <strong>"의사결정자"</strong> — 코드는 AI가, 방향은 내가</p>
+</div>
+
+<!-- 느낀 점 -->
+<h2>💭 느낀 점</h2>
+
+<div class="feeling-card">
+  <p>솔직히 오늘은 "만족하는 결정"보다는 <strong>"하나씩 흐름을 찾아가는"</strong> 느낌이었다.</p>
+  <p>기획할 때는 자신 있었는데, 코드가 나오기 시작하니까 모르는 게 쏟아져 나왔다. 특히 서버 연결 부분은 iOS 개발에서는 경험할 수 없었던 영역이라 많이 헤맸다.</p>
+  <p>그래도 <strong>"전부 다 어려운데 전부 다 해냈다"</strong>는 게 뿌듯하다. 커밋 28개가 그 증거다.</p>
+  <p>바이브 코딩이 "쉬운 코딩"은 아니었다. 코드를 직접 안 짜는 것뿐이지, 모든 결정은 내가 내려야 한다. 오히려 결정의 빈도가 높아서 더 집중력이 필요했다.</p>
+</div>
+
+<!-- 내일 할 일 -->
+<h2>📋 내일 할 일</h2>
+
+<div class="card">
+  <div class="timeline-item">
+    <div class="timeline-label">MVP 2 기획 or iOS 앱</div>
+    <div class="timeline-desc">스터디 기능 / AI 채팅 방향 잡기, 또는 MVP 1을 Swift로 구현</div>
+  </div>
+  <div class="timeline-item">
+    <div class="timeline-label">워크플로우 적응</div>
+    <div class="timeline-desc">옆길로 새지 않기 연습</div>
+  </div>
+</div>
+
+<!-- 마무리 인용 -->
+<div class="quote">
+  "전부 다 어려운데 전부 다 해냈다"<br>
+  <span style="font-size: 0.85rem; color: #A8A29E;">— 2026.04.04, 바이브 코딩 1일차 (구현 완주)</span>
+</div>
+
+<div class="footer">
+  <p>📝 1일차 기획 회고: <a href="260404_daily_retro.html">바이브 코딩 1일차 — 기획편</a></p>
+  <p>Frank — AI 뉴스 스크랩 스터디앱</p>
+</div>
+
+</body>
+</html>
