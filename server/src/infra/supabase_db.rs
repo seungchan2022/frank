@@ -3,7 +3,7 @@ use uuid::Uuid;
 
 use crate::config::AppConfig;
 use crate::domain::error::AppError;
-use crate::domain::models::{Profile, Tag, UserTag};
+use crate::domain::models::{Article, Profile, Tag, UserTag};
 use crate::domain::ports::DbPort;
 
 #[derive(Debug, Clone)]
@@ -158,5 +158,74 @@ impl DbPort for SupabaseDbAdapter {
         }
 
         Ok(())
+    }
+
+    async fn save_articles(
+        &self,
+        articles: Vec<Article>,
+        auth_token: &str,
+    ) -> Result<usize, AppError> {
+        if articles.is_empty() {
+            return Ok(0);
+        }
+
+        let rows: Vec<serde_json::Value> = articles
+            .iter()
+            .map(|a| {
+                serde_json::json!({
+                    "user_id": a.user_id,
+                    "tag_id": a.tag_id,
+                    "title": a.title,
+                    "url": a.url,
+                    "snippet": a.snippet,
+                    "source": a.source,
+                    "search_query": a.search_query,
+                    "published_at": a.published_at,
+                })
+            })
+            .collect();
+
+        let count = rows.len();
+
+        let resp = self
+            .client
+            .post(format!("{}/articles", self.base_url))
+            .header("apikey", &self.anon_key)
+            .header("Authorization", format!("Bearer {auth_token}"))
+            .header("Content-Type", "application/json")
+            .header("Prefer", "return=minimal,resolution=ignore-duplicates")
+            .json(&rows)
+            .send()
+            .await
+            .map_err(|e| AppError::Internal(format!("DB insert failed: {e}")))?;
+
+        if !resp.status().is_success() {
+            let body = resp.text().await.unwrap_or_default();
+            return Err(AppError::Internal(format!("DB insert failed: {body}")));
+        }
+
+        Ok(count)
+    }
+
+    async fn get_user_articles(
+        &self,
+        user_id: Uuid,
+        limit: i64,
+        auth_token: &str,
+    ) -> Result<Vec<Article>, AppError> {
+        let resp = self
+            .rest_request(
+                &format!(
+                    "/articles?user_id=eq.{user_id}&select=id,user_id,tag_id,title,url,snippet,source,search_query,published_at,created_at&order=created_at.desc&limit={limit}"
+                ),
+                auth_token,
+            )
+            .send()
+            .await
+            .map_err(|e| AppError::Internal(format!("DB request failed: {e}")))?;
+
+        resp.json()
+            .await
+            .map_err(|e| AppError::Internal(format!("DB parse failed: {e}")))
     }
 }

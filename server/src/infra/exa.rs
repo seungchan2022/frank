@@ -1,0 +1,92 @@
+use reqwest::Client;
+use serde::Deserialize;
+
+use crate::domain::error::AppError;
+use crate::domain::models::SearchResult;
+use crate::domain::ports::SearchPort;
+
+#[derive(Debug, Clone)]
+pub struct ExaAdapter {
+    client: Client,
+    api_key: String,
+}
+
+#[derive(Debug, Deserialize)]
+struct ExaResponse {
+    results: Vec<ExaResult>,
+}
+
+#[derive(Debug, Deserialize)]
+struct ExaResult {
+    title: Option<String>,
+    url: String,
+    text: Option<String>,
+    #[serde(rename = "publishedDate")]
+    published_date: Option<String>,
+}
+
+impl ExaAdapter {
+    pub fn new(api_key: &str) -> Self {
+        Self {
+            client: Client::new(),
+            api_key: api_key.to_string(),
+        }
+    }
+}
+
+impl SearchPort for ExaAdapter {
+    fn search(
+        &self,
+        query: &str,
+        max_results: usize,
+    ) -> std::pin::Pin<
+        Box<dyn std::future::Future<Output = Result<Vec<SearchResult>, AppError>> + Send + '_>,
+    > {
+        let query = query.to_string();
+        Box::pin(async move {
+            let body = serde_json::json!({
+                "query": query,
+                "numResults": max_results,
+                "contents": {
+                    "text": true
+                }
+            });
+
+            let resp = self
+                .client
+                .post("https://api.exa.ai/search")
+                .header("x-api-key", &self.api_key)
+                .header("Content-Type", "application/json")
+                .json(&body)
+                .send()
+                .await
+                .map_err(|e| AppError::Internal(format!("Exa request failed: {e}")))?;
+
+            if !resp.status().is_success() {
+                let status = resp.status();
+                let body = resp.text().await.unwrap_or_default();
+                return Err(AppError::Internal(format!("Exa returned {status}: {body}")));
+            }
+
+            let data: ExaResponse = resp
+                .json()
+                .await
+                .map_err(|e| AppError::Internal(format!("Exa parse failed: {e}")))?;
+
+            Ok(data
+                .results
+                .into_iter()
+                .map(|r| SearchResult {
+                    title: r.title.unwrap_or_default(),
+                    url: r.url,
+                    snippet: r.text,
+                    published_at: r.published_date,
+                })
+                .collect())
+        })
+    }
+
+    fn source_name(&self) -> &str {
+        "exa"
+    }
+}

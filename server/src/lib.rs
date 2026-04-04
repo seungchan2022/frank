@@ -5,21 +5,33 @@ pub mod infra;
 pub mod middleware;
 pub mod services;
 
+use std::sync::Arc;
+
 use axum::middleware::from_fn;
 use axum::routing::{get, post};
 use axum::{Extension, Router};
 
 use api::AppState;
 use domain::ports::DbPort;
+use infra::search_chain::SearchFallbackChain;
 
-pub fn create_router<D: DbPort + Clone + 'static>(db: D, jwt_secret: String) -> Router {
-    let state = AppState { db };
+pub fn create_router<D: DbPort + Clone + 'static>(
+    db: D,
+    jwt_secret: String,
+    search_chain: SearchFallbackChain,
+) -> Router {
+    let state = AppState {
+        db,
+        search_chain: Arc::new(search_chain),
+    };
 
     let auth_routes = Router::new()
         .route("/me/profile", get(api::tags::get_my_profile::<D>))
         .route("/tags", get(api::tags::list_tags::<D>))
         .route("/me/tags", get(api::tags::get_my_tags::<D>))
         .route("/me/tags", post(api::tags::save_my_tags::<D>))
+        .route("/me/collect", post(api::articles::collect_articles::<D>))
+        .route("/me/articles", get(api::articles::list_articles::<D>))
         .layer(from_fn(middleware::auth::require_auth))
         .layer(Extension(jwt_secret));
 

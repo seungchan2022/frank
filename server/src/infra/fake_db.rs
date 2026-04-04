@@ -4,7 +4,7 @@ use std::sync::{Arc, Mutex};
 use uuid::Uuid;
 
 use crate::domain::error::AppError;
-use crate::domain::models::{Profile, Tag, UserTag};
+use crate::domain::models::{Article, Profile, Tag, UserTag};
 use crate::domain::ports::DbPort;
 
 #[derive(Debug, Clone)]
@@ -12,6 +12,7 @@ pub struct FakeDbAdapter {
     profiles: Arc<Mutex<HashMap<Uuid, Profile>>>,
     tags: Arc<Mutex<Vec<Tag>>>,
     user_tags: Arc<Mutex<Vec<UserTag>>>,
+    articles: Arc<Mutex<Vec<Article>>>,
 }
 
 impl Default for FakeDbAdapter {
@@ -44,6 +45,7 @@ impl FakeDbAdapter {
             profiles: Arc::new(Mutex::new(HashMap::new())),
             tags: Arc::new(Mutex::new(tags)),
             user_tags: Arc::new(Mutex::new(Vec::new())),
+            articles: Arc::new(Mutex::new(Vec::new())),
         }
     }
 
@@ -109,6 +111,40 @@ impl DbPort for FakeDbAdapter {
             user_tags.push(UserTag { user_id, tag_id });
         }
         Ok(())
+    }
+
+    async fn save_articles(
+        &self,
+        new_articles: Vec<Article>,
+        _auth_token: &str,
+    ) -> Result<usize, AppError> {
+        let mut articles = self.articles.lock().unwrap();
+        let count = new_articles.len();
+        for article in new_articles {
+            if !articles
+                .iter()
+                .any(|a| a.url == article.url && a.user_id == article.user_id)
+            {
+                articles.push(article);
+            }
+        }
+        Ok(count)
+    }
+
+    async fn get_user_articles(
+        &self,
+        user_id: Uuid,
+        limit: i64,
+        _auth_token: &str,
+    ) -> Result<Vec<Article>, AppError> {
+        let articles = self.articles.lock().unwrap();
+        let mut user_articles: Vec<_> = articles
+            .iter()
+            .filter(|a| a.user_id == user_id)
+            .cloned()
+            .collect();
+        user_articles.truncate(limit as usize);
+        Ok(user_articles)
     }
 }
 

@@ -1,5 +1,6 @@
 import { supabase } from '$lib/supabase';
 import type { Tag } from '$lib/types/tag';
+import type { Article } from '$lib/types/article';
 
 async function getAuthHeaders(): Promise<Record<string, string>> {
 	const {
@@ -62,6 +63,26 @@ export async function fetchProfile() {
 		.single();
 	if (error) throw error;
 	return data;
+}
+
+export async function fetchArticles(): Promise<Article[]> {
+	const { data, error } = await supabase
+		.from('articles')
+		.select('*')
+		.order('created_at', { ascending: false })
+		.limit(50);
+	if (error) throw error;
+	return data;
+}
+
+/**
+ * Placeholder for article collection trigger.
+ * Will be wired to Rust server POST /api/collect in the future.
+ * Returns the number of articles collected.
+ */
+export async function collectArticles(): Promise<number> {
+	// TODO: POST to Rust server /api/collect when ready
+	return 0;
 }
 
 // getAuthHeaders는 Rust 서버 프록시용으로 예비

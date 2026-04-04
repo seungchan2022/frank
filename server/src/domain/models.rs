@@ -20,3 +20,26 @@ pub struct UserTag {
     pub user_id: Uuid,
     pub tag_id: Uuid,
 }
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct Article {
+    pub id: Uuid,
+    pub user_id: Uuid,
+    pub tag_id: Option<Uuid>,
+    pub title: String,
+    pub url: String,
+    pub snippet: Option<String>,
+    pub source: String,
+    pub search_query: Option<String>,
+    pub published_at: Option<String>,
+    pub created_at: Option<String>,
+}
+
+/// 웹서치 결과 (DB 저장 전 중간 모델)
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct SearchResult {
+    pub title: String,
+    pub url: String,
+    pub snippet: Option<String>,
+    pub published_at: Option<String>,
+}

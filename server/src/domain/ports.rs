@@ -1,7 +1,10 @@
+use std::future::Future;
+use std::pin::Pin;
+
 use uuid::Uuid;
 
 use super::error::AppError;
-use super::models::{Profile, Tag, UserTag};
+use super::models::{Article, Profile, SearchResult, Tag, UserTag};
 
 /// Supabase DB 접근 포트 (REST API)
 pub trait DbPort: Send + Sync {
@@ -35,4 +38,29 @@ pub trait DbPort: Send + Sync {
         tag_ids: Vec<Uuid>,
         auth_token: &str,
     ) -> impl std::future::Future<Output = Result<(), AppError>> + Send;
+
+    fn save_articles(
+        &self,
+        articles: Vec<Article>,
+        auth_token: &str,
+    ) -> impl std::future::Future<Output = Result<usize, AppError>> + Send;
+
+    fn get_user_articles(
+        &self,
+        user_id: Uuid,
+        limit: i64,
+        auth_token: &str,
+    ) -> impl std::future::Future<Output = Result<Vec<Article>, AppError>> + Send;
+}
+
+/// 웹서치 포트 (Tavily, Exa, Firecrawl, arXiv)
+/// dyn compatible을 위해 boxed future 사용
+pub trait SearchPort: Send + Sync {
+    fn search(
+        &self,
+        query: &str,
+        max_results: usize,
+    ) -> Pin<Box<dyn Future<Output = Result<Vec<SearchResult>, AppError>> + Send + '_>>;
+
+    fn source_name(&self) -> &str;
 }
