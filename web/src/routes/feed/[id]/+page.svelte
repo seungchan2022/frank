@@ -2,15 +2,26 @@
 	import { page } from '$app/state';
 	import { getAuth } from '$lib/stores/auth.svelte';
 	import { goto } from '$app/navigation';
-	import { fetchArticleById } from '$lib/utils/api';
+	import { fetchArticleById, fetchTags } from '$lib/utils/api';
 	import { formatArticleDate, extractDomain } from '$lib/utils/article';
 	import type { Article } from '$lib/types/article';
+	import type { Tag } from '$lib/types/tag';
+	import Header from '$lib/components/Header.svelte';
 
 	const auth = getAuth();
 
 	let article = $state<Article | null>(null);
+	let tags = $state<Tag[]>([]);
 	let loading = $state(true);
 	let error = $state<string | null>(null);
+	let snippetExpanded = $state(false);
+
+	const tagMap = $derived(
+		tags.reduce<Record<string, string>>((acc, tag) => {
+			acc[tag.id] = tag.name;
+			return acc;
+		}, {})
+	);
 
 	$effect(() => {
 		if (!auth.isAuthenticated) {
@@ -20,11 +31,11 @@
 
 	$effect(() => {
 		if (auth.isAuthenticated) {
-			loadArticle();
+			loadData();
 		}
 	});
 
-	async function loadArticle() {
+	async function loadData() {
 		loading = true;
 		error = null;
 		try {
@@ -33,7 +44,9 @@
 				error = 'Invalid article ID';
 				return;
 			}
-			article = await fetchArticleById(id);
+			const [art, allTags] = await Promise.all([fetchArticleById(id), fetchTags()]);
+			article = art;
+			tags = allTags;
 			if (!article) {
 				error = 'Article not found';
 			}
@@ -46,19 +59,13 @@
 </script>
 
 <div class="min-h-screen bg-gray-50">
-	<header class="border-b bg-white px-6 py-4">
-		<div class="mx-auto flex max-w-4xl items-center gap-4">
-			<a
-				href="/feed"
-				class="rounded-lg border border-gray-300 px-3 py-1.5 text-sm text-gray-700 hover:bg-gray-50"
-			>
-				Back
-			</a>
-			<h1 class="text-xl font-bold text-gray-900">Article Detail</h1>
-		</div>
-	</header>
+	<Header />
 
 	<main class="mx-auto max-w-4xl px-6 py-8">
+		<div class="mb-6">
+			<a href="/feed" class="text-sm text-gray-500 hover:text-gray-700">&larr; Back to Feed</a>
+		</div>
+
 		{#if loading}
 			<div class="py-12 text-center text-gray-500">
 				<p>Loading article...</p>
@@ -68,58 +75,90 @@
 				{error}
 			</div>
 		{:else if article}
-			<article class="rounded-lg border border-gray-200 bg-white p-6">
-				<h2 class="text-2xl font-bold text-gray-900">{article.title}</h2>
+			<article class="space-y-6">
+				<!-- Header section -->
+				<div class="rounded-lg border border-gray-200 bg-white p-6">
+					<div class="mb-3 flex flex-wrap items-center gap-2">
+						<span
+							class="inline-block rounded bg-gray-200 px-2 py-0.5 text-xs font-medium text-gray-600"
+						>
+							{article.source || extractDomain(article.url)}
+						</span>
+						{#if article.tag_id && tagMap[article.tag_id]}
+							<span
+								class="inline-block rounded bg-blue-100 px-2 py-0.5 text-xs font-medium text-blue-700"
+							>
+								{tagMap[article.tag_id]}
+							</span>
+						{/if}
+						{#if article.published_at}
+							<span class="text-xs text-gray-400">
+								{formatArticleDate(article.published_at)}
+							</span>
+						{/if}
+					</div>
 
-				<div class="mt-3 flex items-center gap-4 text-sm text-gray-500">
-					<span>{article.source || extractDomain(article.url)}</span>
-					{#if article.published_at}
-						<span>{formatArticleDate(article.published_at)}</span>
-					{/if}
-					<a
-						href={article.url}
-						target="_blank"
-						rel="noopener noreferrer"
-						class="text-blue-600 hover:underline"
-					>
-						원문 보기
-					</a>
+					<h1 class="text-2xl font-bold text-gray-900">{article.title}</h1>
+
+					<div class="mt-4">
+						<a
+							href={article.url}
+							target="_blank"
+							rel="noopener noreferrer"
+							class="inline-block rounded-lg border border-blue-300 bg-blue-50 px-4 py-2 text-sm font-medium text-blue-700 hover:bg-blue-100"
+						>
+							원문 보기
+						</a>
+					</div>
 				</div>
 
-				{#if article.snippet}
-					<p class="mt-4 text-gray-600">{article.snippet}</p>
-				{/if}
-
-				<div class="mt-6 space-y-4">
+				<!-- Summary section -->
+				<div class="rounded-lg border border-gray-200 bg-white p-6">
+					<h2 class="mb-2 text-sm font-semibold tracking-wide text-gray-500 uppercase">
+						요약
+					</h2>
 					{#if article.summary}
-						<div class="rounded-lg bg-gray-50 p-4">
-							<h3 class="text-sm font-semibold text-gray-500">요약</h3>
-							<p class="mt-1 text-gray-800">{article.summary}</p>
-						</div>
+						<p class="text-gray-800 leading-relaxed">{article.summary}</p>
 					{:else}
-						<div class="rounded-lg bg-gray-50 p-4">
-							<h3 class="text-sm font-semibold text-gray-500">요약</h3>
-							<p class="mt-1 text-sm text-gray-400 italic">요약 대기 중...</p>
-						</div>
+						<p class="text-sm text-gray-400 italic">요약 대기 중...</p>
 					{/if}
-
-					{#if article.insight}
-						<div class="rounded-lg bg-blue-50 p-4">
-							<h3 class="text-sm font-semibold text-blue-600">인사이트</h3>
-							<p class="mt-1 text-blue-800">{article.insight}</p>
-						</div>
-					{:else}
-						<div class="rounded-lg bg-blue-50 p-4">
-							<h3 class="text-sm font-semibold text-blue-600">인사이트</h3>
-							<p class="mt-1 text-sm text-blue-400 italic">인사이트 대기 중...</p>
-						</div>
+					{#if article.summarized_at}
+						<p class="mt-3 text-xs text-gray-400">
+							생성: {formatArticleDate(article.summarized_at)}
+						</p>
 					{/if}
 				</div>
 
-				{#if article.summarized_at}
-					<p class="mt-4 text-xs text-gray-400">
-						요약 생성: {formatArticleDate(article.summarized_at)}
-					</p>
+				<!-- Insight section -->
+				<div class="rounded-lg border border-blue-100 bg-blue-50/50 p-6">
+					<h2 class="mb-2 text-sm font-semibold tracking-wide text-blue-600 uppercase">
+						인사이트
+					</h2>
+					{#if article.insight}
+						<p class="text-blue-800 leading-relaxed">{article.insight}</p>
+					{:else}
+						<p class="text-sm text-blue-400 italic">인사이트 대기 중...</p>
+					{/if}
+				</div>
+
+				<!-- Snippet section (collapsible) -->
+				{#if article.snippet}
+					<div class="rounded-lg border border-gray-200 bg-white p-6">
+						<button
+							onclick={() => (snippetExpanded = !snippetExpanded)}
+							class="flex w-full items-center justify-between text-left"
+						>
+							<h2 class="text-sm font-semibold tracking-wide text-gray-500 uppercase">
+								원문 스니펫
+							</h2>
+							<span class="text-xs text-gray-400">
+								{snippetExpanded ? '접기' : '펼치기'}
+							</span>
+						</button>
+						{#if snippetExpanded}
+							<p class="mt-3 text-sm text-gray-600 leading-relaxed">{article.snippet}</p>
+						{/if}
+					</div>
 				{/if}
 			</article>
 		{/if}

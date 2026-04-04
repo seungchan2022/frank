@@ -1,16 +1,26 @@
 <script lang="ts">
-	import { getAuth, signOut } from '$lib/stores/auth.svelte';
+	import { getAuth } from '$lib/stores/auth.svelte';
 	import { goto } from '$app/navigation';
-	import { fetchArticles, summarizeArticles } from '$lib/utils/api';
+	import { fetchArticles, fetchTags, summarizeArticles } from '$lib/utils/api';
 	import { formatArticleDate, extractDomain } from '$lib/utils/article';
 	import type { Article } from '$lib/types/article';
+	import type { Tag } from '$lib/types/tag';
+	import Header from '$lib/components/Header.svelte';
 
 	const auth = getAuth();
 
 	let articles = $state<Article[]>([]);
+	let tags = $state<Tag[]>([]);
 	let loading = $state(false);
 	let summarizing = $state(false);
 	let error = $state<string | null>(null);
+
+	const tagMap = $derived(
+		tags.reduce<Record<string, string>>((acc, tag) => {
+			acc[tag.id] = tag.name;
+			return acc;
+		}, {})
+	);
 
 	$effect(() => {
 		if (!auth.isAuthenticated) {
@@ -20,15 +30,17 @@
 
 	$effect(() => {
 		if (auth.isAuthenticated) {
-			loadArticles();
+			loadData();
 		}
 	});
 
-	async function loadArticles() {
+	async function loadData() {
 		loading = true;
 		error = null;
 		try {
-			articles = await fetchArticles();
+			const [arts, allTags] = await Promise.all([fetchArticles(), fetchTags()]);
+			articles = arts;
+			tags = allTags;
 		} catch (e) {
 			error = e instanceof Error ? e.message : 'Failed to load articles';
 			articles = [];
@@ -38,42 +50,24 @@
 	}
 
 	async function handleRefresh() {
-		await loadArticles();
+		await loadData();
 	}
 
 	async function handleSummarize() {
 		summarizing = true;
 		try {
 			await summarizeArticles();
-			await loadArticles();
+			await loadData();
 		} catch (e) {
 			error = e instanceof Error ? e.message : 'Failed to summarize articles';
 		} finally {
 			summarizing = false;
 		}
 	}
-
-	async function handleSignOut() {
-		await signOut();
-		goto('/login');
-	}
 </script>
 
 <div class="min-h-screen bg-gray-50">
-	<header class="border-b bg-white px-6 py-4">
-		<div class="mx-auto flex max-w-4xl items-center justify-between">
-			<h1 class="text-xl font-bold text-gray-900">Frank</h1>
-			<div class="flex items-center gap-4">
-				<span class="text-sm text-gray-600">{auth.user?.email}</span>
-				<button
-					onclick={handleSignOut}
-					class="rounded-lg border border-gray-300 px-3 py-1.5 text-sm text-gray-700 hover:bg-gray-50"
-				>
-					Sign Out
-				</button>
-			</div>
-		</div>
-	</header>
+	<Header />
 
 	<main class="mx-auto max-w-4xl px-6 py-8">
 		<div class="mb-6 flex items-center justify-between">
@@ -110,46 +104,49 @@
 				<p class="mt-2 text-sm">Articles will appear here once collection runs.</p>
 			</div>
 		{:else}
-			<div class="space-y-3">
+			<div class="grid grid-cols-1 gap-4 md:grid-cols-2">
 				{#each articles as article (article.id)}
-					<article class="rounded-lg border border-gray-200 bg-white p-4">
-						<div class="flex items-start justify-between gap-3">
-							<div class="min-w-0 flex-1">
-								<a
-									href="/feed/{article.id}"
-									class="text-base font-medium text-gray-900 hover:text-blue-600 hover:underline"
+					<article class="flex flex-col rounded-lg border border-gray-200 bg-white p-4">
+						<div class="mb-2 flex items-center gap-2">
+							<span
+								class="inline-block rounded bg-gray-200 px-2 py-0.5 text-xs font-medium text-gray-600"
+							>
+								{article.source || extractDomain(article.url)}
+							</span>
+							{#if article.tag_id && tagMap[article.tag_id]}
+								<span
+									class="inline-block rounded bg-blue-100 px-2 py-0.5 text-xs font-medium text-blue-700"
 								>
-									{article.title}
-								</a>
-								{#if article.summary}
-									<div class="mt-2 rounded bg-gray-50 p-2">
-										<span class="text-xs font-semibold text-gray-500">요약</span>
-										<p class="mt-0.5 text-sm text-gray-700">{article.summary}</p>
-									</div>
-								{:else}
-									<p class="mt-2 text-xs text-gray-400 italic">요약 대기 중...</p>
-								{/if}
-								{#if article.insight}
-									<div class="mt-2 rounded bg-blue-50 p-2">
-										<span class="text-xs font-semibold text-blue-500">인사이트</span>
-										<p class="mt-0.5 text-sm text-blue-700">{article.insight}</p>
-									</div>
-								{/if}
-								<div class="mt-2 flex items-center gap-3 text-xs text-gray-400">
-									<span>{article.source || extractDomain(article.url)}</span>
-									{#if article.published_at}
-										<span>{formatArticleDate(article.published_at)}</span>
-									{/if}
-									<a
-										href={article.url}
-										target="_blank"
-										rel="noopener noreferrer"
-										class="text-blue-500 hover:underline"
-									>
-										원문 보기
-									</a>
-								</div>
-							</div>
+									{tagMap[article.tag_id]}
+								</span>
+							{/if}
+						</div>
+
+						<a
+							href="/feed/{article.id}"
+							class="text-base font-semibold text-gray-900 hover:text-blue-600"
+						>
+							{article.title}
+						</a>
+
+						{#if article.snippet}
+							<p class="mt-1 line-clamp-2 text-sm text-gray-500">
+								{article.snippet}
+							</p>
+						{/if}
+
+						{#if article.summary}
+							<p class="mt-2 line-clamp-1 text-sm text-gray-600 italic">
+								{article.summary}
+							</p>
+						{:else}
+							<p class="mt-2 text-xs text-gray-400 italic">요약 대기 중...</p>
+						{/if}
+
+						<div class="mt-auto flex items-center gap-3 pt-3 text-xs text-gray-400">
+							{#if article.published_at}
+								<span>{formatArticleDate(article.published_at)}</span>
+							{/if}
 						</div>
 					</article>
 				{/each}

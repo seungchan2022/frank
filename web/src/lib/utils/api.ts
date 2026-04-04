@@ -115,5 +115,25 @@ export async function fetchArticleById(id: string): Promise<Article | null> {
 	return data;
 }
 
+/**
+ * Update user tags without touching onboarding status.
+ * Used by the settings page.
+ */
+export async function updateMyTags(tagIds: string[]): Promise<void> {
+	const {
+		data: { user }
+	} = await supabase.auth.getUser();
+	if (!user) throw new Error('Not authenticated');
+
+	const { error: delError } = await supabase.from('user_tags').delete().eq('user_id', user.id);
+	if (delError) throw delError;
+
+	if (tagIds.length > 0) {
+		const rows = tagIds.map((tag_id) => ({ user_id: user.id, tag_id }));
+		const { error: insError } = await supabase.from('user_tags').insert(rows);
+		if (insError) throw insError;
+	}
+}
+
 // getAuthHeaders는 Rust 서버 프록시용으로 예비
 export { getAuthHeaders };
