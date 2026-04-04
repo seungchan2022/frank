@@ -4,13 +4,28 @@ services:
     ports:
       - "8080:8080"
     env_file: ./server/.env
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
 
   web:
     build: ./web
     ports:
       - "3000:3000"
     env_file: ./web/.env
+    restart: unless-stopped
     depends_on:
-      - server
+      server:
+        condition: service_healthy
     environment:
       - API_SERVER_URL=http://server:8080
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3000"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s

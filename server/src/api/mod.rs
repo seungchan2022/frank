@@ -4,7 +4,7 @@ pub mod tags;
 
 use std::sync::Arc;
 
-use crate::domain::ports::{CrawlPort, DbPort, LlmPort};
+use crate::domain::ports::{CrawlPort, DbPort, LlmPort, NotificationPort};
 use crate::infra::search_chain::SearchFallbackChain;
 
 #[derive(Clone)]
@@ -13,6 +13,7 @@ pub struct AppState<D: DbPort> {
     pub search_chain: Arc<SearchFallbackChain>,
     pub llm: Arc<dyn LlmPort>,
     pub crawl: Arc<dyn CrawlPort>,
+    pub notifier: Arc<dyn NotificationPort>,
 }
 
 impl<D: DbPort + std::fmt::Debug> std::fmt::Debug for AppState<D> {
@@ -22,6 +23,7 @@ impl<D: DbPort + std::fmt::Debug> std::fmt::Debug for AppState<D> {
             .field("search_chain", &self.search_chain)
             .field("llm", &"<dyn LlmPort>")
             .field("crawl", &"<dyn CrawlPort>")
+            .field("notifier", &"<dyn NotificationPort>")
             .finish()
     }
 }

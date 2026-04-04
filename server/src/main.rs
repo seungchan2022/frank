@@ -3,6 +3,7 @@ use std::sync::Arc;
 use server::config::AppConfig;
 use server::infra::exa::ExaAdapter;
 use server::infra::firecrawl::FirecrawlAdapter;
+use server::infra::imessage::{ImessageAdapter, LogOnlyNotificationAdapter};
 use server::infra::openrouter::OpenRouterAdapter;
 use server::infra::postgres_db::PostgresDbAdapter;
 use server::infra::search_chain::SearchFallbackChain;
@@ -51,7 +52,21 @@ async fn main() {
     let crawl: Arc<dyn server::domain::ports::CrawlPort> =
         Arc::new(FirecrawlAdapter::new(&config.firecrawl_api_key));
 
-    let app = server::create_router(db, supabase_config, search_chain, llm, crawl);
+    // iMessage 알림: IMESSAGE_RECIPIENT 환경변수가 설정된 경우만 활성화
+    // Docker 컨테이너 내부에서는 osascript 미지원이므로 LogOnly 사용
+    let notifier: Arc<dyn server::domain::ports::NotificationPort> =
+        match std::env::var("IMESSAGE_RECIPIENT") {
+            Ok(recipient) if !recipient.is_empty() => {
+                tracing::info!(recipient = %recipient, "iMessage 알림 활성화");
+                Arc::new(ImessageAdapter::new(&recipient))
+            }
+            _ => {
+                tracing::info!("iMessage 알림 비활성화 (IMESSAGE_RECIPIENT 미설정)");
+                Arc::new(LogOnlyNotificationAdapter)
+            }
+        };
+
+    let app = server::create_router(db, supabase_config, search_chain, llm, crawl, notifier);
 
     let addr = format!("0.0.0.0:{}", config.port);
     let listener = TcpListener::bind(&addr)

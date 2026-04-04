@@ -42,6 +42,12 @@ pub async fn summarize_articles<D: DbPort>(
     Extension(state): Extension<AppState<D>>,
     Extension(user): Extension<AuthUser>,
 ) -> Result<Json<serde_json::Value>, AppError> {
-    let count = summary_service::summarize_articles(&state.db, state.llm.as_ref(), user.id).await?;
+    let count = summary_service::summarize_articles(
+        &state.db,
+        state.llm.as_ref(),
+        state.notifier.as_ref(),
+        user.id,
+    )
+    .await?;
     Ok(Json(serde_json::json!({ "summarized": count })))
 }

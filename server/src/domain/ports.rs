@@ -92,3 +92,8 @@ pub trait LlmPort: Send + Sync {
         content: &str,
     ) -> Pin<Box<dyn Future<Output = Result<LlmResponse, AppError>> + Send + '_>>;
 }
+
+/// 알림 전송 포트 (iMessage 등)
+pub trait NotificationPort: Send + Sync {
+    fn send(&self, message: &str) -> Result<(), AppError>;
+}
