@@ -90,4 +90,71 @@ mod tests {
 
         assert!(result.is_err());
     }
+
+    #[tokio::test]
+    async fn fallback_chain_skips_empty_results() {
+        let empty = FakeSearchAdapter::new("empty", vec![], false);
+        let working = FakeSearchAdapter::new(
+            "working",
+            vec![SearchResult {
+                title: "Result".to_string(),
+                url: "https://example.com/result".to_string(),
+                snippet: None,
+                published_at: None,
+            }],
+            false,
+        );
+
+        let chain = SearchFallbackChain::new(vec![Box::new(empty), Box::new(working)]);
+        let (results, source) = chain.search("query", 5).await.unwrap();
+
+        assert_eq!(source, "working");
+        assert_eq!(results.len(), 1);
+    }
+
+    #[tokio::test]
+    async fn fallback_chain_all_empty_returns_error() {
+        let empty1 = FakeSearchAdapter::new("empty1", vec![], false);
+        let empty2 = FakeSearchAdapter::new("empty2", vec![], false);
+
+        let chain = SearchFallbackChain::new(vec![Box::new(empty1), Box::new(empty2)]);
+        let result = chain.search("query", 5).await;
+
+        assert!(result.is_err());
+        let err_msg = result.unwrap_err().to_string();
+        assert!(err_msg.contains("All search sources returned empty"));
+    }
+
+    #[tokio::test]
+    async fn fallback_chain_first_source_succeeds() {
+        let working = FakeSearchAdapter::new(
+            "first",
+            vec![SearchResult {
+                title: "First".to_string(),
+                url: "https://example.com/first".to_string(),
+                snippet: None,
+                published_at: None,
+            }],
+            false,
+        );
+        let second = FakeSearchAdapter::new("second", vec![], false);
+
+        let chain = SearchFallbackChain::new(vec![Box::new(working), Box::new(second)]);
+        let (results, source) = chain.search("query", 5).await.unwrap();
+
+        // tracing::info path is covered
+        assert_eq!(source, "first");
+        assert_eq!(results.len(), 1);
+    }
+
+    #[test]
+    fn debug_format_shows_source_names() {
+        let chain = SearchFallbackChain::new(vec![
+            Box::new(FakeSearchAdapter::new("tavily", vec![], false)),
+            Box::new(FakeSearchAdapter::new("exa", vec![], false)),
+        ]);
+        let debug = format!("{:?}", chain);
+        assert!(debug.contains("tavily"));
+        assert!(debug.contains("exa"));
+    }
 }

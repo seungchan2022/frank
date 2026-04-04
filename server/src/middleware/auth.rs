@@ -43,8 +43,14 @@ pub async fn require_auth(mut req: Request, next: Next) -> Result<Response, AppE
         .ok_or_else(|| AppError::Internal("Supabase config not configured".to_string()))?
         .clone();
 
-    let client = reqwest::Client::new();
-    let resp = client
+    static AUTH_CLIENT: std::sync::LazyLock<reqwest::Client> = std::sync::LazyLock::new(|| {
+        reqwest::Client::builder()
+            .timeout(std::time::Duration::from_secs(10))
+            .build()
+            .expect("Failed to build auth HTTP client")
+    });
+
+    let resp = AUTH_CLIENT
         .get(format!("{}/auth/v1/user", supabase_config.url))
         .header("apikey", &supabase_config.anon_key)
         .header("Authorization", format!("Bearer {token}"))
@@ -73,6 +79,13 @@ pub async fn require_auth(mut req: Request, next: Next) -> Result<Response, AppE
 
 #[cfg(test)]
 mod tests {
+    use super::*;
+    use axum::Router;
+    use axum::http::HeaderValue;
+    use axum::middleware::from_fn;
+    use axum::routing::get;
+    use axum_test::TestServer;
+
     #[test]
     fn parse_bearer_token() {
         let header = "Bearer abc123";
@@ -84,5 +97,63 @@ mod tests {
     fn invalid_bearer_format() {
         let header = "Basic abc123";
         assert!(header.strip_prefix("Bearer ").is_none());
+    }
+
+    #[test]
+    fn auth_user_debug() {
+        let user = AuthUser {
+            id: Uuid::parse_str("00000000-0000-0000-0000-000000000001").unwrap(),
+        };
+        let debug = format!("{:?}", user);
+        assert!(debug.contains("AuthUser"));
+    }
+
+    #[test]
+    fn supabase_config_debug() {
+        let config = SupabaseConfig {
+            url: "https://test.supabase.co".to_string(),
+            anon_key: "test-key".to_string(),
+        };
+        let debug = format!("{:?}", config);
+        assert!(debug.contains("SupabaseConfig"));
+        assert!(debug.contains("test.supabase.co"));
+    }
+
+    async fn dummy_handler() -> &'static str {
+        "ok"
+    }
+
+    fn make_auth_app() -> Router {
+        Router::new()
+            .route("/protected", get(dummy_handler))
+            .layer(from_fn(require_auth))
+            .layer(axum::Extension(SupabaseConfig {
+                url: "http://localhost:54321".to_string(),
+                anon_key: "test-anon-key".to_string(),
+            }))
+    }
+
+    #[tokio::test]
+    async fn missing_auth_header_returns_401() {
+        let app = make_auth_app();
+        let server = TestServer::new(app);
+
+        let resp = server.get("/protected").await;
+        resp.assert_status(axum::http::StatusCode::UNAUTHORIZED);
+    }
+
+    #[tokio::test]
+    async fn invalid_bearer_format_returns_401() {
+        let app = make_auth_app();
+        let server = TestServer::new(app);
+
+        let resp = server
+            .get("/protected")
+            .add_header(
+                axum::http::header::AUTHORIZATION,
+                "Basic invalid-token".parse::<HeaderValue>().unwrap(),
+            )
+            .await;
+        resp.assert_status(axum::http::StatusCode::UNAUTHORIZED);
     }
 }

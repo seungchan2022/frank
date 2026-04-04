@@ -173,6 +173,13 @@ impl DbPort for FakeDbAdapter {
 mod tests {
     use super::*;
 
+    #[test]
+    fn fake_db_default() {
+        let db = FakeDbAdapter::default();
+        let tags = db.get_tags();
+        assert_eq!(tags.len(), 3);
+    }
+
     #[tokio::test]
     async fn fake_db_crud_flow() {
         let db = FakeDbAdapter::new();

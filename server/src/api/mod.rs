@@ -27,3 +27,37 @@ impl<D: DbPort + std::fmt::Debug> std::fmt::Debug for AppState<D> {
             .finish()
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::infra::fake_crawl::FakeCrawlAdapter;
+    use crate::infra::fake_db::FakeDbAdapter;
+    use crate::infra::fake_llm::FakeLlmAdapter;
+    use crate::infra::fake_notification::FakeNotificationAdapter;
+    use crate::infra::fake_search::FakeSearchAdapter;
+    use crate::infra::search_chain::SearchFallbackChain;
+
+    #[test]
+    fn app_state_debug_format() {
+        let db = FakeDbAdapter::new();
+        let chain = SearchFallbackChain::new(vec![Box::new(FakeSearchAdapter::new(
+            "test",
+            vec![],
+            false,
+        ))]);
+        let state = AppState {
+            db,
+            search_chain: Arc::new(chain),
+            llm: Arc::new(FakeLlmAdapter::new()),
+            crawl: Arc::new(FakeCrawlAdapter::new()),
+            notifier: Arc::new(FakeNotificationAdapter::new()),
+        };
+
+        let debug_str = format!("{:?}", state);
+        assert!(debug_str.contains("AppState"));
+        assert!(debug_str.contains("<dyn LlmPort>"));
+        assert!(debug_str.contains("<dyn CrawlPort>"));
+        assert!(debug_str.contains("<dyn NotificationPort>"));
+    }
+}

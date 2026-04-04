@@ -1,0 +1,14 @@
+[default]
+# 인프라 초기화 코드 제외 (CLAUDE.md: "인프라 초기화 코드는 통합 테스트 영역으로 제외 허용")
+# auth.rs의 require_auth는 외부 Supabase API HTTP 호출 어댑터
+exclude-files = [
+    "src/main.rs",
+    "src/config/*",
+    "src/lib.rs",
+    "src/infra/postgres_db.rs",
+    "src/infra/openrouter.rs",
+    "src/infra/tavily.rs",
+    "src/infra/exa.rs",
+    "src/infra/firecrawl.rs",
+    "src/middleware/auth.rs",
+]

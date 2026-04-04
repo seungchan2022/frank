@@ -48,7 +48,10 @@ Respond ONLY with valid JSON, no markdown or extra text."#;
 impl OpenRouterAdapter {
     pub fn new(api_key: &str, model: &str) -> Self {
         Self {
-            client: Client::new(),
+            client: Client::builder()
+                .timeout(std::time::Duration::from_secs(60))
+                .build()
+                .expect("Failed to build HTTP client"),
             api_key: api_key.to_string(),
             model: model.to_string(),
         }

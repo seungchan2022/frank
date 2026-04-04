@@ -102,4 +102,38 @@ mod tests {
         let adapter = ImessageAdapter::new("test@example.com");
         assert_eq!(adapter.recipient, "test@example.com");
     }
+
+    #[test]
+    fn escape_applescript_handles_empty_string() {
+        let escaped = ImessageAdapter::escape_applescript("");
+        assert_eq!(escaped, "");
+    }
+
+    #[test]
+    fn escape_applescript_no_special_chars() {
+        let escaped = ImessageAdapter::escape_applescript("Hello World");
+        assert_eq!(escaped, "Hello World");
+    }
+
+    #[test]
+    fn log_only_adapter_debug() {
+        let adapter = LogOnlyNotificationAdapter;
+        let debug = format!("{:?}", adapter);
+        assert!(debug.contains("LogOnlyNotificationAdapter"));
+    }
+
+    #[test]
+    fn imessage_adapter_debug() {
+        let adapter = ImessageAdapter::new("test@example.com");
+        let debug = format!("{:?}", adapter);
+        assert!(debug.contains("ImessageAdapter"));
+        assert!(debug.contains("test@example.com"));
+    }
+
+    #[test]
+    fn imessage_adapter_clone() {
+        let adapter = ImessageAdapter::new("user@test.com");
+        let cloned = adapter.clone();
+        assert_eq!(cloned.recipient, "user@test.com");
+    }
 }

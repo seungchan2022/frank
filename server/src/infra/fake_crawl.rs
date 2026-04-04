@@ -61,4 +61,11 @@ mod tests {
         let result = crawl.scrape("https://example.com/article").await;
         assert!(result.is_err());
     }
+
+    #[tokio::test]
+    async fn fake_crawl_default() {
+        let crawl = FakeCrawlAdapter::default();
+        let result = crawl.scrape("https://example.com").await.unwrap();
+        assert!(result.contains("example.com"));
+    }
 }

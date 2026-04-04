@@ -36,7 +36,10 @@ struct FirecrawlScrapeData {
 impl FirecrawlAdapter {
     pub fn new(api_key: &str) -> Self {
         Self {
-            client: Client::new(),
+            client: Client::builder()
+                .timeout(std::time::Duration::from_secs(30))
+                .build()
+                .expect("Failed to build HTTP client"),
             api_key: api_key.to_string(),
         }
     }

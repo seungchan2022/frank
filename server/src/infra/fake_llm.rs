@@ -75,4 +75,11 @@ mod tests {
         let result = llm.summarize("AI News", "Some content").await;
         assert!(result.is_err());
     }
+
+    #[tokio::test]
+    async fn fake_llm_default() {
+        let llm = FakeLlmAdapter::default();
+        let result = llm.summarize("Test", "content").await.unwrap();
+        assert!(result.summary.title_ko.contains("Test"));
+    }
 }

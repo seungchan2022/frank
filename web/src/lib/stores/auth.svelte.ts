@@ -30,10 +30,14 @@ export async function initAuth() {
 	user = initialSession?.user ?? null;
 	loading = false;
 
-	supabase.auth.onAuthStateChange((_event, newSession) => {
+	const {
+		data: { subscription }
+	} = supabase.auth.onAuthStateChange((_event, newSession) => {
 		session = newSession;
 		user = newSession?.user ?? null;
 	});
+
+	return subscription;
 }
 
 export async function signInWithEmail(email: string, password: string) {

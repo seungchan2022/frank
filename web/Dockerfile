@@ -6,6 +6,13 @@ COPY package.json package-lock.json ./
 RUN npm ci
 
 COPY . .
+
+# SvelteKit $env/static/public은 빌드 시점에 필요
+ARG PUBLIC_SUPABASE_URL
+ARG PUBLIC_SUPABASE_ANON_KEY
+ENV PUBLIC_SUPABASE_URL=$PUBLIC_SUPABASE_URL
+ENV PUBLIC_SUPABASE_ANON_KEY=$PUBLIC_SUPABASE_ANON_KEY
+
 RUN npm run build
 
 # Stage 2: Runtime

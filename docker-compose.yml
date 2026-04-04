@@ -13,7 +13,11 @@ services:
       start_period: 10s
 
   web:
-    build: ./web
+    build:
+      context: ./web
+      args:
+        PUBLIC_SUPABASE_URL: ${PUBLIC_SUPABASE_URL}
+        PUBLIC_SUPABASE_ANON_KEY: ${PUBLIC_SUPABASE_ANON_KEY}
     ports:
       - "3000:3000"
     env_file: ./web/.env
