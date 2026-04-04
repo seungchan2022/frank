@@ -12,10 +12,9 @@ pub async fn collect_for_user<D: DbPort>(
     db: &D,
     search_chain: &Arc<SearchFallbackChain>,
     user_id: Uuid,
-    auth_token: &str,
 ) -> Result<usize, AppError> {
     // 1. 사용자 태그 조회
-    let user_tags = db.get_user_tags(user_id, auth_token).await?;
+    let user_tags = db.get_user_tags(user_id).await?;
     if user_tags.is_empty() {
         return Err(AppError::BadRequest(
             "No tags selected. Complete onboarding first.".to_string(),
@@ -23,7 +22,7 @@ pub async fn collect_for_user<D: DbPort>(
     }
 
     // 태그 이름을 얻기 위해 전체 태그 목록 조회
-    let all_tags = db.list_tags(auth_token).await?;
+    let all_tags = db.list_tags().await?;
 
     let mut all_articles = Vec::new();
 
@@ -69,7 +68,7 @@ pub async fn collect_for_user<D: DbPort>(
     // 4. DB에 저장
     let count = all_articles.len();
     if !all_articles.is_empty() {
-        db.save_articles(all_articles, auth_token).await?;
+        db.save_articles(all_articles).await?;
     }
 
     Ok(count)
@@ -106,7 +105,7 @@ mod tests {
         let (user_id, tag_ids) = setup_db_with_tags(&db);
 
         // 태그 설정
-        db.set_user_tags(user_id, tag_ids, "token").await.unwrap();
+        db.set_user_tags(user_id, tag_ids).await.unwrap();
 
         let chain = make_chain(
             vec![
@@ -126,15 +125,13 @@ mod tests {
             false,
         );
 
-        let count = collect_for_user(&db, &chain, user_id, "token")
-            .await
-            .unwrap();
+        let count = collect_for_user(&db, &chain, user_id).await.unwrap();
 
         // 2 tags x 2 results = 4 articles collected
         assert_eq!(count, 4);
 
         // DB에 저장 시 URL+user_id 중복 제거 → 2개 (동일 URL)
-        let articles = db.get_user_articles(user_id, 100, "token").await.unwrap();
+        let articles = db.get_user_articles(user_id, 100).await.unwrap();
         assert_eq!(articles.len(), 2);
     }
 
@@ -150,7 +147,7 @@ mod tests {
 
         let chain = make_chain(vec![], false);
 
-        let result = collect_for_user(&db, &chain, user_id, "token").await;
+        let result = collect_for_user(&db, &chain, user_id).await;
         assert!(result.is_err());
     }
 
@@ -158,14 +155,12 @@ mod tests {
     async fn collect_skips_failed_searches() {
         let db = FakeDbAdapter::new();
         let (user_id, tag_ids) = setup_db_with_tags(&db);
-        db.set_user_tags(user_id, tag_ids, "token").await.unwrap();
+        db.set_user_tags(user_id, tag_ids).await.unwrap();
 
         // 검색이 실패해도 에러가 아닌 0 반환
         let chain = make_chain(vec![], true);
 
-        let count = collect_for_user(&db, &chain, user_id, "token")
-            .await
-            .unwrap();
+        let count = collect_for_user(&db, &chain, user_id).await.unwrap();
         assert_eq!(count, 0);
     }
 }

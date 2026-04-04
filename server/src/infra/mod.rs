@@ -4,6 +4,6 @@ pub mod fake_llm;
 pub mod fake_search;
 pub mod firecrawl;
 pub mod openrouter;
+pub mod postgres_db;
 pub mod search_chain;
-pub mod supabase_db;
 pub mod tavily;

@@ -6,50 +6,41 @@ use uuid::Uuid;
 use super::error::AppError;
 use super::models::{Article, LlmSummary, Profile, SearchResult, Tag, UserTag};
 
-/// Supabase DB 접근 포트 (REST API)
+/// DB 접근 포트 (sqlx PostgreSQL 직접 연결)
 pub trait DbPort: Send + Sync {
     fn get_profile(
         &self,
         user_id: Uuid,
-        auth_token: &str,
     ) -> impl std::future::Future<Output = Result<Profile, AppError>> + Send;
 
     fn update_profile_onboarding(
         &self,
         user_id: Uuid,
         completed: bool,
-        auth_token: &str,
     ) -> impl std::future::Future<Output = Result<(), AppError>> + Send;
 
-    fn list_tags(
-        &self,
-        auth_token: &str,
-    ) -> impl std::future::Future<Output = Result<Vec<Tag>, AppError>> + Send;
+    fn list_tags(&self) -> impl std::future::Future<Output = Result<Vec<Tag>, AppError>> + Send;
 
     fn get_user_tags(
         &self,
         user_id: Uuid,
-        auth_token: &str,
     ) -> impl std::future::Future<Output = Result<Vec<UserTag>, AppError>> + Send;
 
     fn set_user_tags(
         &self,
         user_id: Uuid,
         tag_ids: Vec<Uuid>,
-        auth_token: &str,
     ) -> impl std::future::Future<Output = Result<(), AppError>> + Send;
 
     fn save_articles(
         &self,
         articles: Vec<Article>,
-        auth_token: &str,
     ) -> impl std::future::Future<Output = Result<usize, AppError>> + Send;
 
     fn get_user_articles(
         &self,
         user_id: Uuid,
         limit: i64,
-        auth_token: &str,
     ) -> impl std::future::Future<Output = Result<Vec<Article>, AppError>> + Send;
 
     fn update_article_summary(
@@ -57,7 +48,6 @@ pub trait DbPort: Send + Sync {
         article_id: Uuid,
         summary: &str,
         insight: &str,
-        auth_token: &str,
     ) -> impl Future<Output = Result<(), AppError>> + Send;
 }
 

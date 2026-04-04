@@ -60,7 +60,7 @@ impl FakeDbAdapter {
 }
 
 impl DbPort for FakeDbAdapter {
-    async fn get_profile(&self, user_id: Uuid, _auth_token: &str) -> Result<Profile, AppError> {
+    async fn get_profile(&self, user_id: Uuid) -> Result<Profile, AppError> {
         self.profiles
             .lock()
             .unwrap()
@@ -73,7 +73,6 @@ impl DbPort for FakeDbAdapter {
         &self,
         user_id: Uuid,
         completed: bool,
-        _auth_token: &str,
     ) -> Result<(), AppError> {
         let mut profiles = self.profiles.lock().unwrap();
         let profile = profiles
@@ -83,15 +82,11 @@ impl DbPort for FakeDbAdapter {
         Ok(())
     }
 
-    async fn list_tags(&self, _auth_token: &str) -> Result<Vec<Tag>, AppError> {
+    async fn list_tags(&self) -> Result<Vec<Tag>, AppError> {
         Ok(self.tags.lock().unwrap().clone())
     }
 
-    async fn get_user_tags(
-        &self,
-        user_id: Uuid,
-        _auth_token: &str,
-    ) -> Result<Vec<UserTag>, AppError> {
+    async fn get_user_tags(&self, user_id: Uuid) -> Result<Vec<UserTag>, AppError> {
         let tags = self.user_tags.lock().unwrap();
         Ok(tags
             .iter()
@@ -100,12 +95,7 @@ impl DbPort for FakeDbAdapter {
             .collect())
     }
 
-    async fn set_user_tags(
-        &self,
-        user_id: Uuid,
-        tag_ids: Vec<Uuid>,
-        _auth_token: &str,
-    ) -> Result<(), AppError> {
+    async fn set_user_tags(&self, user_id: Uuid, tag_ids: Vec<Uuid>) -> Result<(), AppError> {
         let mut user_tags = self.user_tags.lock().unwrap();
         user_tags.retain(|t| t.user_id != user_id);
         for tag_id in tag_ids {
@@ -114,11 +104,7 @@ impl DbPort for FakeDbAdapter {
         Ok(())
     }
 
-    async fn save_articles(
-        &self,
-        new_articles: Vec<Article>,
-        _auth_token: &str,
-    ) -> Result<usize, AppError> {
+    async fn save_articles(&self, new_articles: Vec<Article>) -> Result<usize, AppError> {
         let mut articles = self.articles.lock().unwrap();
         let count = new_articles.len();
         for article in new_articles {
@@ -132,12 +118,7 @@ impl DbPort for FakeDbAdapter {
         Ok(count)
     }
 
-    async fn get_user_articles(
-        &self,
-        user_id: Uuid,
-        limit: i64,
-        _auth_token: &str,
-    ) -> Result<Vec<Article>, AppError> {
+    async fn get_user_articles(&self, user_id: Uuid, limit: i64) -> Result<Vec<Article>, AppError> {
         let articles = self.articles.lock().unwrap();
         let mut user_articles: Vec<_> = articles
             .iter()
@@ -153,7 +134,6 @@ impl DbPort for FakeDbAdapter {
         article_id: Uuid,
         summary: &str,
         insight: &str,
-        _auth_token: &str,
     ) -> Result<(), AppError> {
         let mut articles = self.articles.lock().unwrap();
         let article = articles
@@ -175,7 +155,6 @@ mod tests {
     async fn fake_db_crud_flow() {
         let db = FakeDbAdapter::new();
         let user_id = Uuid::new_v4();
-        let token = "fake-token";
 
         // seed profile
         db.seed_profile(Profile {
@@ -185,28 +164,24 @@ mod tests {
         });
 
         // get profile
-        let profile = db.get_profile(user_id, token).await.unwrap();
+        let profile = db.get_profile(user_id).await.unwrap();
         assert!(!profile.onboarding_completed);
 
         // list tags
-        let tags = db.list_tags(token).await.unwrap();
+        let tags = db.list_tags().await.unwrap();
         assert_eq!(tags.len(), 3);
 
         // set user tags
         let tag_ids: Vec<Uuid> = tags.iter().take(2).map(|t| t.id).collect();
-        db.set_user_tags(user_id, tag_ids.clone(), token)
-            .await
-            .unwrap();
+        db.set_user_tags(user_id, tag_ids.clone()).await.unwrap();
 
         // get user tags
-        let user_tags = db.get_user_tags(user_id, token).await.unwrap();
+        let user_tags = db.get_user_tags(user_id).await.unwrap();
         assert_eq!(user_tags.len(), 2);
 
         // update onboarding
-        db.update_profile_onboarding(user_id, true, token)
-            .await
-            .unwrap();
-        let profile = db.get_profile(user_id, token).await.unwrap();
+        db.update_profile_onboarding(user_id, true).await.unwrap();
+        let profile = db.get_profile(user_id).await.unwrap();
         assert!(profile.onboarding_completed);
     }
 }

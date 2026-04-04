@@ -8,10 +8,9 @@ pub async fn summarize_articles<D: DbPort>(
     db: &D,
     llm: &dyn LlmPort,
     user_id: Uuid,
-    auth_token: &str,
 ) -> Result<usize, AppError> {
     // 1. 사용자 기사 전체 조회 (충분히 큰 limit)
-    let articles = db.get_user_articles(user_id, 1000, auth_token).await?;
+    let articles = db.get_user_articles(user_id, 1000).await?;
 
     let mut count = 0;
 
@@ -33,13 +32,8 @@ pub async fn summarize_articles<D: DbPort>(
         match result {
             Ok(llm_summary) => {
                 // 3. DB 저장
-                db.update_article_summary(
-                    article.id,
-                    &llm_summary.summary,
-                    &llm_summary.insight,
-                    auth_token,
-                )
-                .await?;
+                db.update_article_summary(article.id, &llm_summary.summary, &llm_summary.insight)
+                    .await?;
                 count += 1;
             }
             Err(e) => {
@@ -71,8 +65,8 @@ mod tests {
     }
 
     async fn insert_articles(db: &FakeDbAdapter, user_id: Uuid, articles: Vec<Article>) {
-        db.save_articles(articles, "token").await.unwrap();
-        let _ = db.get_user_articles(user_id, 100, "token").await;
+        db.save_articles(articles).await.unwrap();
+        let _ = db.get_user_articles(user_id, 100).await;
     }
 
     fn make_article(user_id: Uuid, title: &str, snippet: Option<&str>) -> Article {
@@ -106,14 +100,12 @@ mod tests {
         ];
         insert_articles(&db, user_id, articles).await;
 
-        let count = summarize_articles(&db, &llm, user_id, "token")
-            .await
-            .unwrap();
+        let count = summarize_articles(&db, &llm, user_id).await.unwrap();
 
         assert_eq!(count, 2);
 
         // 요약이 저장되었는지 확인
-        let saved = db.get_user_articles(user_id, 100, "token").await.unwrap();
+        let saved = db.get_user_articles(user_id, 100).await.unwrap();
         for article in &saved {
             assert!(article.summary.is_some());
             assert!(article.insight.is_some());
@@ -134,9 +126,7 @@ mod tests {
         ];
         insert_articles(&db, user_id, articles).await;
 
-        let count = summarize_articles(&db, &llm, user_id, "token")
-            .await
-            .unwrap();
+        let count = summarize_articles(&db, &llm, user_id).await.unwrap();
 
         assert_eq!(count, 1);
     }
@@ -155,9 +145,7 @@ mod tests {
 
         insert_articles(&db, user_id, vec![article]).await;
 
-        let count = summarize_articles(&db, &llm, user_id, "token")
-            .await
-            .unwrap();
+        let count = summarize_articles(&db, &llm, user_id).await.unwrap();
 
         assert_eq!(count, 0);
     }
@@ -172,9 +160,7 @@ mod tests {
         let articles = vec![make_article(user_id, "Will Fail", Some("content"))];
         insert_articles(&db, user_id, articles).await;
 
-        let count = summarize_articles(&db, &llm, user_id, "token")
-            .await
-            .unwrap();
+        let count = summarize_articles(&db, &llm, user_id).await.unwrap();
 
         // LLM 실패 시 건너뛰므로 0
         assert_eq!(count, 0);
@@ -187,9 +173,7 @@ mod tests {
         let user_id = Uuid::new_v4();
         setup_db_with_articles(&db, user_id);
 
-        let count = summarize_articles(&db, &llm, user_id, "token")
-            .await
-            .unwrap();
+        let count = summarize_articles(&db, &llm, user_id).await.unwrap();
 
         assert_eq!(count, 0);
     }

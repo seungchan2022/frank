@@ -13,9 +13,9 @@ use super::AppState;
 
 pub async fn list_tags<D: DbPort>(
     Extension(state): Extension<AppState<D>>,
-    Extension(user): Extension<AuthUser>,
+    Extension(_user): Extension<AuthUser>,
 ) -> Result<Json<Vec<Tag>>, AppError> {
-    let tags = tag_service::list_tags(&state.db, &user.token).await?;
+    let tags = tag_service::list_tags(&state.db).await?;
     Ok(Json(tags))
 }
 
@@ -23,7 +23,7 @@ pub async fn get_my_tags<D: DbPort>(
     Extension(state): Extension<AppState<D>>,
     Extension(user): Extension<AuthUser>,
 ) -> Result<Json<Vec<Uuid>>, AppError> {
-    let tag_ids = tag_service::get_user_tag_ids(&state.db, user.id, &user.token).await?;
+    let tag_ids = tag_service::get_user_tag_ids(&state.db, user.id).await?;
     Ok(Json(tag_ids))
 }
 
@@ -37,7 +37,7 @@ pub async fn save_my_tags<D: DbPort>(
     Extension(user): Extension<AuthUser>,
     Json(body): Json<SaveTagsRequest>,
 ) -> Result<Json<serde_json::Value>, AppError> {
-    tag_service::save_user_tags(&state.db, user.id, body.tag_ids, &user.token).await?;
+    tag_service::save_user_tags(&state.db, user.id, body.tag_ids).await?;
     Ok(Json(serde_json::json!({ "ok": true })))
 }
 
@@ -45,6 +45,6 @@ pub async fn get_my_profile<D: DbPort>(
     Extension(state): Extension<AppState<D>>,
     Extension(user): Extension<AuthUser>,
 ) -> Result<Json<crate::domain::models::Profile>, AppError> {
-    let profile = state.db.get_profile(user.id, &user.token).await?;
+    let profile = state.db.get_profile(user.id).await?;
     Ok(Json(profile))
 }

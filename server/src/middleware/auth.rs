@@ -10,7 +10,6 @@ use crate::domain::error::AppError;
 #[derive(Debug, Clone)]
 pub struct AuthUser {
     pub id: Uuid,
-    pub token: String,
 }
 
 #[derive(Debug, Clone)]
@@ -67,7 +66,7 @@ pub async fn require_auth(mut req: Request, next: Next) -> Result<Response, AppE
     let user_id = Uuid::parse_str(&user.id)
         .map_err(|_| AppError::Unauthorized("Invalid user ID".to_string()))?;
 
-    req.extensions_mut().insert(AuthUser { id: user_id, token });
+    req.extensions_mut().insert(AuthUser { id: user_id });
 
     Ok(next.run(req).await)
 }

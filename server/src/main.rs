@@ -4,10 +4,11 @@ use server::config::AppConfig;
 use server::infra::exa::ExaAdapter;
 use server::infra::firecrawl::FirecrawlAdapter;
 use server::infra::openrouter::OpenRouterAdapter;
+use server::infra::postgres_db::PostgresDbAdapter;
 use server::infra::search_chain::SearchFallbackChain;
-use server::infra::supabase_db::SupabaseDbAdapter;
 use server::infra::tavily::TavilyAdapter;
 use server::middleware::auth::SupabaseConfig;
+use sqlx::postgres::PgPoolOptions;
 use tokio::net::TcpListener;
 use tracing_subscriber::EnvFilter;
 
@@ -20,7 +21,16 @@ async fn main() {
         .init();
 
     let config = AppConfig::from_env();
-    let db = SupabaseDbAdapter::new(&config);
+
+    let pool = PgPoolOptions::new()
+        .max_connections(5)
+        .connect(&config.database_url)
+        .await
+        .expect("Failed to connect to PostgreSQL");
+
+    tracing::info!("connected to PostgreSQL (pool size: {})", pool.size());
+
+    let db = PostgresDbAdapter::new(pool);
 
     let search_chain = SearchFallbackChain::new(vec![
         Box::new(TavilyAdapter::new(&config.tavily_api_key)),
