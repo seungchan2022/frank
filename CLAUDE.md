@@ -103,12 +103,34 @@ tag_en: 제목(한글)
 
 스킬(`.claude/skills/`), 에이전트(`.claude/agents/`). 핵심 명령:
 
+### 마일스톤 플로우 (Discovery + 전략)
+
+- `/milestone "프로젝트 설명"` — 탐색 → 브레인스토밍 → 수렴 → 로드맵
+- `/milestone-review` — 로드맵 진행 상황 검토 + 아이템별 상태 추적 + 재조정
+
+### 워크플로우 (전술 실행)
+
 - `/workflow "태스크"` — 9단계 워크플로우 시작
 - `/step-{1~9}` — 개별 단계
 - `/next` — 다음 단계
+
+### 유틸리티
+
 - `/debate` — 3자 토론 (Claude + Codex + Serena)
 - `/deep-analysis` — 심층 코드/아키텍처 분석
 - `/init` — 프로젝트 초기화 + 세션 Resume
+
+### 계층 관계
+
+```
+/milestone (발견 + 전략)
+비전 → Discovery → 로드맵 → 마일스톤
+                              └→ 아이템 (유형별 라우팅)
+                                  ├─ feature  → /workflow (메인태스크)
+                                  ├─ research → /deep-analysis
+                                  ├─ decision → /debate
+                                  └─ chore    → 직접 실행
+```
 
 ## 브랜치 & 머지 규칙 (절대 준수)
 

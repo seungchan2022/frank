@@ -10,3 +10,4 @@
 | 6 | sub_agent_usage.md | 서브에이전트 사용 규칙 |
 | 7 | workflow.md | 개발 워크플로우 |
 | 8 | mcp_tool_design.md | MCP 도구 설계 규칙 |
+| 9 | milestone.md | 마일스톤 플로우 규칙 (Discovery-First, 아이템 유형/라우팅, 상태 전이) |

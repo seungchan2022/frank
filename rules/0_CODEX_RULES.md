@@ -162,6 +162,7 @@
 * `rules/sub/sub_agent_usage.md` -- 서브에이전트 사용 규칙
 * `rules/sub/workflow.md` -- 개발 워크플로우 사이클
 * `rules/sub/mcp_tool_design.md` -- MCP 도구 설계 규칙
+* `rules/sub/milestone.md` -- 마일스톤 플로우 규칙 (문서 형식/상태 전이/네이밍)
 
 인덱스: `rules/sub/INDEX.md`
 
