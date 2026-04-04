@@ -216,7 +216,7 @@ impl DbPort for SupabaseDbAdapter {
         let resp = self
             .rest_request(
                 &format!(
-                    "/articles?user_id=eq.{user_id}&select=id,user_id,tag_id,title,url,snippet,source,search_query,published_at,created_at&order=created_at.desc&limit={limit}"
+                    "/articles?user_id=eq.{user_id}&select=id,user_id,tag_id,title,url,snippet,source,search_query,summary,insight,summarized_at,published_at,created_at&order=created_at.desc&limit={limit}"
                 ),
                 auth_token,
             )
@@ -227,5 +227,37 @@ impl DbPort for SupabaseDbAdapter {
         resp.json()
             .await
             .map_err(|e| AppError::Internal(format!("DB parse failed: {e}")))
+    }
+
+    async fn update_article_summary(
+        &self,
+        article_id: Uuid,
+        summary: &str,
+        insight: &str,
+        auth_token: &str,
+    ) -> Result<(), AppError> {
+        let resp = self
+            .client
+            .patch(format!("{}/articles?id=eq.{article_id}", self.base_url))
+            .header("apikey", &self.anon_key)
+            .header("Authorization", format!("Bearer {auth_token}"))
+            .header("Content-Type", "application/json")
+            .header("Prefer", "return=minimal")
+            .json(&serde_json::json!({
+                "summary": summary,
+                "insight": insight,
+                "summarized_at": chrono::Utc::now().to_rfc3339(),
+            }))
+            .send()
+            .await
+            .map_err(|e| AppError::Internal(format!("DB request failed: {e}")))?;
+
+        if !resp.status().is_success() {
+            let body = resp.text().await.unwrap_or_default();
+            return Err(AppError::Internal(format!(
+                "DB update summary failed: {body}"
+            )));
+        }
+        Ok(())
     }
 }

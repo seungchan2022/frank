@@ -57,6 +57,9 @@ pub async fn collect_for_user<D: DbPort>(
                 snippet: sr.snippet,
                 source: source.clone(),
                 search_query: Some(query.clone()),
+                summary: None,
+                insight: None,
+                summarized_at: None,
                 published_at: sr.published_at,
                 created_at: None,
             });

@@ -31,8 +31,18 @@ pub struct Article {
     pub snippet: Option<String>,
     pub source: String,
     pub search_query: Option<String>,
+    pub summary: Option<String>,
+    pub insight: Option<String>,
+    pub summarized_at: Option<String>,
     pub published_at: Option<String>,
     pub created_at: Option<String>,
+}
+
+/// LLM 요약 결과
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct LlmSummary {
+    pub summary: String,
+    pub insight: String,
 }
 
 /// 웹서치 결과 (DB 저장 전 중간 모델)

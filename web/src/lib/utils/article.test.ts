@@ -14,6 +14,9 @@ function makeArticle(overrides: Partial<Article> = {}): Article {
 		search_query: null,
 		published_at: null,
 		created_at: null,
+		summary: null,
+		insight: null,
+		summarized_at: null,
 		...overrides
 	};
 }

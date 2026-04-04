@@ -8,6 +8,8 @@ pub struct AppConfig {
     pub tavily_api_key: String,
     pub exa_api_key: String,
     pub firecrawl_api_key: String,
+    pub openrouter_api_key: String,
+    pub llm_model: String,
     pub port: u16,
 }
 
@@ -21,6 +23,9 @@ impl AppConfig {
             tavily_api_key: env::var("TAVILY_API_KEY").expect("TAVILY_API_KEY required"),
             exa_api_key: env::var("EXA_API_KEY").expect("EXA_API_KEY required"),
             firecrawl_api_key: env::var("FIRECRAWL_API_KEY").expect("FIRECRAWL_API_KEY required"),
+            openrouter_api_key: env::var("OPENROUTER_API_KEY")
+                .expect("OPENROUTER_API_KEY required"),
+            llm_model: env::var("LLM_MODEL").unwrap_or_else(|_| "qwen/qwen3-235b-a22b".to_string()),
             port: env::var("PORT")
                 .unwrap_or_else(|_| "8080".to_string())
                 .parse()
@@ -39,6 +44,8 @@ impl AppConfig {
             tavily_api_key: "test-tavily-key".to_string(),
             exa_api_key: "test-exa-key".to_string(),
             firecrawl_api_key: "test-firecrawl-key".to_string(),
+            openrouter_api_key: "test-openrouter-key".to_string(),
+            llm_model: "qwen/qwen3-235b-a22b".to_string(),
             port: 0,
         }
     }

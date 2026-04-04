@@ -4,7 +4,7 @@ use std::pin::Pin;
 use uuid::Uuid;
 
 use super::error::AppError;
-use super::models::{Article, Profile, SearchResult, Tag, UserTag};
+use super::models::{Article, LlmSummary, Profile, SearchResult, Tag, UserTag};
 
 /// Supabase DB 접근 포트 (REST API)
 pub trait DbPort: Send + Sync {
@@ -51,6 +51,14 @@ pub trait DbPort: Send + Sync {
         limit: i64,
         auth_token: &str,
     ) -> impl std::future::Future<Output = Result<Vec<Article>, AppError>> + Send;
+
+    fn update_article_summary(
+        &self,
+        article_id: Uuid,
+        summary: &str,
+        insight: &str,
+        auth_token: &str,
+    ) -> impl Future<Output = Result<(), AppError>> + Send;
 }
 
 /// 웹서치 포트 (Tavily, Exa, Firecrawl, arXiv)
@@ -63,4 +71,14 @@ pub trait SearchPort: Send + Sync {
     ) -> Pin<Box<dyn Future<Output = Result<Vec<SearchResult>, AppError>> + Send + '_>>;
 
     fn source_name(&self) -> &str;
+}
+
+/// LLM 요약 포트 (OpenRouter 등)
+/// dyn compatible을 위해 boxed future 사용
+pub trait LlmPort: Send + Sync {
+    fn summarize(
+        &self,
+        title: &str,
+        snippet: &str,
+    ) -> Pin<Box<dyn Future<Output = Result<LlmSummary, AppError>> + Send + '_>>;
 }

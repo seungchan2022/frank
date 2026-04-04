@@ -12,17 +12,19 @@ use axum::routing::{get, post};
 use axum::{Extension, Router};
 
 use api::AppState;
-use domain::ports::DbPort;
+use domain::ports::{DbPort, LlmPort};
 use infra::search_chain::SearchFallbackChain;
 
 pub fn create_router<D: DbPort + Clone + 'static>(
     db: D,
     jwt_secret: String,
     search_chain: SearchFallbackChain,
+    llm: Arc<dyn LlmPort>,
 ) -> Router {
     let state = AppState {
         db,
         search_chain: Arc::new(search_chain),
+        llm,
     };
 
     let auth_routes = Router::new()
@@ -32,6 +34,10 @@ pub fn create_router<D: DbPort + Clone + 'static>(
         .route("/me/tags", post(api::tags::save_my_tags::<D>))
         .route("/me/collect", post(api::articles::collect_articles::<D>))
         .route("/me/articles", get(api::articles::list_articles::<D>))
+        .route(
+            "/me/summarize",
+            post(api::articles::summarize_articles::<D>),
+        )
         .layer(from_fn(middleware::auth::require_auth))
         .layer(Extension(jwt_secret));
 

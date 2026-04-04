@@ -68,7 +68,9 @@ export async function fetchProfile() {
 export async function fetchArticles(): Promise<Article[]> {
 	const { data, error } = await supabase
 		.from('articles')
-		.select('*')
+		.select(
+			'id, user_id, tag_id, title, url, snippet, source, search_query, published_at, created_at, summary, insight, summarized_at'
+		)
 		.order('created_at', { ascending: false })
 		.limit(50);
 	if (error) throw error;
@@ -83,6 +85,34 @@ export async function fetchArticles(): Promise<Article[]> {
 export async function collectArticles(): Promise<number> {
 	// TODO: POST to Rust server /api/collect when ready
 	return 0;
+}
+
+/**
+ * Placeholder for LLM summarization trigger.
+ * Will be wired to Rust server POST /api/summarize in the future.
+ * Returns the number of articles summarized.
+ */
+export async function summarizeArticles(): Promise<number> {
+	// TODO: POST to Rust server /api/summarize when ready
+	return 0;
+}
+
+/**
+ * Fetch a single article by ID.
+ */
+export async function fetchArticleById(id: string): Promise<Article | null> {
+	const { data, error } = await supabase
+		.from('articles')
+		.select(
+			'id, user_id, tag_id, title, url, snippet, source, search_query, published_at, created_at, summary, insight, summarized_at'
+		)
+		.eq('id', id)
+		.single();
+	if (error) {
+		if (error.code === 'PGRST116') return null; // not found
+		throw error;
+	}
+	return data;
 }
 
 // getAuthHeaders는 Rust 서버 프록시용으로 예비

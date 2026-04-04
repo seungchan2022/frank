@@ -5,7 +5,7 @@ use serde::Deserialize;
 use crate::domain::error::AppError;
 use crate::domain::ports::DbPort;
 use crate::middleware::auth::AuthUser;
-use crate::services::collect_service;
+use crate::services::{collect_service, summary_service};
 
 use super::AppState;
 
@@ -35,4 +35,14 @@ pub async fn list_articles<D: DbPort>(
         .get_user_articles(user.id, limit, &user.token)
         .await?;
     Ok(Json(articles))
+}
+
+pub async fn summarize_articles<D: DbPort>(
+    Extension(state): Extension<AppState<D>>,
+    Extension(user): Extension<AuthUser>,
+) -> Result<Json<serde_json::Value>, AppError> {
+    let count =
+        summary_service::summarize_articles(&state.db, state.llm.as_ref(), user.id, &user.token)
+            .await?;
+    Ok(Json(serde_json::json!({ "summarized": count })))
 }

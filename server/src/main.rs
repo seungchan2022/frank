@@ -1,6 +1,9 @@
+use std::sync::Arc;
+
 use server::config::AppConfig;
 use server::infra::exa::ExaAdapter;
 use server::infra::firecrawl::FirecrawlAdapter;
+use server::infra::openrouter::OpenRouterAdapter;
 use server::infra::search_chain::SearchFallbackChain;
 use server::infra::supabase_db::SupabaseDbAdapter;
 use server::infra::tavily::TavilyAdapter;
@@ -22,7 +25,12 @@ async fn main() {
         Box::new(FirecrawlAdapter::new(&config.firecrawl_api_key)),
     ]);
 
-    let app = server::create_router(db, config.supabase_jwt_secret.clone(), search_chain);
+    let llm = Arc::new(OpenRouterAdapter::new(
+        &config.openrouter_api_key,
+        &config.llm_model,
+    ));
+
+    let app = server::create_router(db, config.supabase_jwt_secret.clone(), search_chain, llm);
 
     let addr = format!("0.0.0.0:{}", config.port);
     let listener = TcpListener::bind(&addr)

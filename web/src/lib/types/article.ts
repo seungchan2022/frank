@@ -9,4 +9,7 @@ export interface Article {
 	search_query: string | null;
 	published_at: string | null;
 	created_at: string | null;
+	summary: string | null;
+	insight: string | null;
+	summarized_at: string | null;
 }

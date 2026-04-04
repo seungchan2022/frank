@@ -1,6 +1,7 @@
 use std::collections::HashMap;
 use std::sync::{Arc, Mutex};
 
+use chrono::Utc;
 use uuid::Uuid;
 
 use crate::domain::error::AppError;
@@ -145,6 +146,24 @@ impl DbPort for FakeDbAdapter {
             .collect();
         user_articles.truncate(limit as usize);
         Ok(user_articles)
+    }
+
+    async fn update_article_summary(
+        &self,
+        article_id: Uuid,
+        summary: &str,
+        insight: &str,
+        _auth_token: &str,
+    ) -> Result<(), AppError> {
+        let mut articles = self.articles.lock().unwrap();
+        let article = articles
+            .iter_mut()
+            .find(|a| a.id == article_id)
+            .ok_or_else(|| AppError::NotFound("Article not found".to_string()))?;
+        article.summary = Some(summary.to_string());
+        article.insight = Some(insight.to_string());
+        article.summarized_at = Some(Utc::now().to_rfc3339());
+        Ok(())
     }
 }
 
