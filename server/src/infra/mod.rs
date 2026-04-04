@@ -1,4 +1,5 @@
 pub mod exa;
+pub mod fake_crawl;
 pub mod fake_db;
 pub mod fake_llm;
 pub mod fake_search;

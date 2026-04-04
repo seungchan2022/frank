@@ -44,11 +44,7 @@
 		}
 	});
 
-	$effect(() => {
-		if (auth.isAuthenticated) {
-			loadInitial();
-		}
-	});
+	let initialLoaded = false;
 
 	onMount(() => {
 		const observer = new IntersectionObserver(
@@ -59,6 +55,13 @@
 			},
 			{ threshold: 0.1 }
 		);
+
+		$effect(() => {
+			if (!auth.loading && auth.isAuthenticated && !initialLoaded) {
+				initialLoaded = true;
+				loadInitial();
+			}
+		});
 
 		$effect(() => {
 			if (sentinel) {

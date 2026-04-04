@@ -4,7 +4,7 @@ use std::pin::Pin;
 use uuid::Uuid;
 
 use super::error::AppError;
-use super::models::{Article, LlmSummary, Profile, SearchResult, Tag, UserTag};
+use super::models::{Article, LlmResponse, Profile, SearchResult, Tag, UserTag};
 
 /// DB 접근 포트 (sqlx PostgreSQL 직접 연결)
 pub trait DbPort: Send + Sync {
@@ -43,11 +43,22 @@ pub trait DbPort: Send + Sync {
         limit: i64,
     ) -> impl std::future::Future<Output = Result<Vec<Article>, AppError>> + Send;
 
+    #[allow(clippy::too_many_arguments)]
     fn update_article_summary(
         &self,
         article_id: Uuid,
         summary: &str,
         insight: &str,
+        title_ko: &str,
+        llm_model: &str,
+        prompt_tokens: i32,
+        completion_tokens: i32,
+    ) -> impl Future<Output = Result<(), AppError>> + Send;
+
+    fn update_article_content(
+        &self,
+        article_id: Uuid,
+        content: &str,
     ) -> impl Future<Output = Result<(), AppError>> + Send;
 }
 
@@ -63,12 +74,21 @@ pub trait SearchPort: Send + Sync {
     fn source_name(&self) -> &str;
 }
 
+/// 웹 크롤링 포트 (Firecrawl scrape 등)
+/// dyn compatible을 위해 boxed future 사용
+pub trait CrawlPort: Send + Sync {
+    fn scrape(
+        &self,
+        url: &str,
+    ) -> Pin<Box<dyn Future<Output = Result<String, AppError>> + Send + '_>>;
+}
+
 /// LLM 요약 포트 (OpenRouter 등)
 /// dyn compatible을 위해 boxed future 사용
 pub trait LlmPort: Send + Sync {
     fn summarize(
         &self,
         title: &str,
-        snippet: &str,
-    ) -> Pin<Box<dyn Future<Output = Result<LlmSummary, AppError>> + Send + '_>>;
+        content: &str,
+    ) -> Pin<Box<dyn Future<Output = Result<LlmResponse, AppError>> + Send + '_>>;
 }

@@ -134,6 +134,10 @@ impl DbPort for FakeDbAdapter {
         article_id: Uuid,
         summary: &str,
         insight: &str,
+        title_ko: &str,
+        llm_model: &str,
+        prompt_tokens: i32,
+        completion_tokens: i32,
     ) -> Result<(), AppError> {
         let mut articles = self.articles.lock().unwrap();
         let article = articles
@@ -142,7 +146,25 @@ impl DbPort for FakeDbAdapter {
             .ok_or_else(|| AppError::NotFound("Article not found".to_string()))?;
         article.summary = Some(summary.to_string());
         article.insight = Some(insight.to_string());
+        article.title_ko = Some(title_ko.to_string());
+        article.llm_model = Some(llm_model.to_string());
+        article.prompt_tokens = Some(prompt_tokens);
+        article.completion_tokens = Some(completion_tokens);
         article.summarized_at = Some(Utc::now());
+        Ok(())
+    }
+
+    async fn update_article_content(
+        &self,
+        article_id: Uuid,
+        content: &str,
+    ) -> Result<(), AppError> {
+        let mut articles = self.articles.lock().unwrap();
+        let article = articles
+            .iter_mut()
+            .find(|a| a.id == article_id)
+            .ok_or_else(|| AppError::NotFound("Article not found".to_string()))?;
+        article.content = Some(content.to_string());
         Ok(())
     }
 }

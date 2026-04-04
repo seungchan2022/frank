@@ -13,7 +13,13 @@ pub async fn collect_articles<D: DbPort>(
     Extension(state): Extension<AppState<D>>,
     Extension(user): Extension<AuthUser>,
 ) -> Result<Json<serde_json::Value>, AppError> {
-    let count = collect_service::collect_for_user(&state.db, &state.search_chain, user.id).await?;
+    let count = collect_service::collect_for_user(
+        &state.db,
+        &state.search_chain,
+        state.crawl.as_ref(),
+        user.id,
+    )
+    .await?;
     Ok(Json(serde_json::json!({ "collected": count })))
 }
 

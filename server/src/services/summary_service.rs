@@ -20,20 +20,33 @@ pub async fn summarize_articles<D: DbPort>(
             continue;
         }
 
-        // snippet이 없으면 요약 불가
-        let snippet = match &article.snippet {
-            Some(s) if !s.is_empty() => s.as_str(),
-            _ => continue,
+        // content(본문) 또는 snippet이 없으면 요약 불가
+        let text = article
+            .content
+            .as_deref()
+            .filter(|s| !s.is_empty())
+            .or(article.snippet.as_deref().filter(|s| !s.is_empty()));
+        let text = match text {
+            Some(t) => t,
+            None => continue,
         };
 
         // 2. LLM 호출
-        let result = llm.summarize(&article.title, snippet).await;
+        let result = llm.summarize(&article.title, text).await;
 
         match result {
-            Ok(llm_summary) => {
+            Ok(llm_resp) => {
                 // 3. DB 저장
-                db.update_article_summary(article.id, &llm_summary.summary, &llm_summary.insight)
-                    .await?;
+                db.update_article_summary(
+                    article.id,
+                    &llm_resp.summary.summary,
+                    &llm_resp.summary.insight,
+                    &llm_resp.summary.title_ko,
+                    &llm_resp.model,
+                    llm_resp.prompt_tokens,
+                    llm_resp.completion_tokens,
+                )
+                .await?;
                 count += 1;
             }
             Err(e) => {
@@ -84,6 +97,11 @@ mod tests {
             summarized_at: None,
             published_at: None,
             created_at: None,
+            title_ko: None,
+            content: None,
+            llm_model: None,
+            prompt_tokens: None,
+            completion_tokens: None,
         }
     }
 

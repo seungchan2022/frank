@@ -2,7 +2,7 @@ use std::future::Future;
 use std::pin::Pin;
 
 use crate::domain::error::AppError;
-use crate::domain::models::LlmSummary;
+use crate::domain::models::{LlmResponse, LlmSummary};
 use crate::domain::ports::LlmPort;
 
 #[derive(Debug, Clone)]
@@ -30,8 +30,8 @@ impl LlmPort for FakeLlmAdapter {
     fn summarize(
         &self,
         title: &str,
-        _snippet: &str,
-    ) -> Pin<Box<dyn Future<Output = Result<LlmSummary, AppError>> + Send + '_>> {
+        _content: &str,
+    ) -> Pin<Box<dyn Future<Output = Result<LlmResponse, AppError>> + Send + '_>> {
         let title = title.to_string();
 
         Box::pin(async move {
@@ -39,9 +39,15 @@ impl LlmPort for FakeLlmAdapter {
                 return Err(AppError::Internal("Fake LLM failure".to_string()));
             }
 
-            Ok(LlmSummary {
-                summary: format!("[요약] {title}에 대한 테스트 요약입니다."),
-                insight: format!("[인사이트] {title}에 대한 테스트 분석입니다."),
+            Ok(LlmResponse {
+                summary: LlmSummary {
+                    title_ko: format!("[한국어] {title}"),
+                    summary: format!("[요약] {title}에 대한 테스트 요약입니다."),
+                    insight: format!("[인사이트] {title}에 대한 테스트 분석입니다."),
+                },
+                model: "fake-model".to_string(),
+                prompt_tokens: 100,
+                completion_tokens: 50,
             })
         })
     }
@@ -54,15 +60,19 @@ mod tests {
     #[tokio::test]
     async fn fake_llm_returns_deterministic_result() {
         let llm = FakeLlmAdapter::new();
-        let result = llm.summarize("AI News", "Some snippet").await.unwrap();
-        assert!(result.summary.contains("AI News"));
-        assert!(result.insight.contains("AI News"));
+        let result = llm.summarize("AI News", "Some content").await.unwrap();
+        assert!(result.summary.summary.contains("AI News"));
+        assert!(result.summary.insight.contains("AI News"));
+        assert!(result.summary.title_ko.contains("AI News"));
+        assert_eq!(result.model, "fake-model");
+        assert_eq!(result.prompt_tokens, 100);
+        assert_eq!(result.completion_tokens, 50);
     }
 
     #[tokio::test]
     async fn fake_llm_failing_returns_error() {
         let llm = FakeLlmAdapter::failing();
-        let result = llm.summarize("AI News", "Some snippet").await;
+        let result = llm.summarize("AI News", "Some content").await;
         assert!(result.is_err());
     }
 }

@@ -5,7 +5,7 @@ use reqwest::Client;
 use serde::Deserialize;
 
 use crate::domain::error::AppError;
-use crate::domain::models::LlmSummary;
+use crate::domain::models::{LlmResponse, LlmSummary};
 use crate::domain::ports::LlmPort;
 
 #[derive(Debug, Clone)]
@@ -18,6 +18,8 @@ pub struct OpenRouterAdapter {
 #[derive(Debug, Deserialize)]
 struct ChatResponse {
     choices: Vec<Choice>,
+    model: Option<String>,
+    usage: Option<Usage>,
 }
 
 #[derive(Debug, Deserialize)]
@@ -30,12 +32,18 @@ struct Message {
     content: String,
 }
 
-const SYSTEM_PROMPT: &str = r#"You are a news analyst. Given an article title and snippet, provide a JSON response with exactly two fields:
-1. "summary": A concise Korean summary (2-3 sentences)
-2. "insight": A unique insight or analysis in Korean (1-2 sentences)
+#[derive(Debug, Deserialize)]
+struct Usage {
+    prompt_tokens: Option<i32>,
+    completion_tokens: Option<i32>,
+}
 
-Respond ONLY with valid JSON, no markdown or extra text. Example:
-{"summary": "요약 내용", "insight": "인사이트 내용"}"#;
+const SYSTEM_PROMPT: &str = r#"You are a news analyst for a Korean-speaking audience. Given an article title and content, provide a JSON response with exactly three fields:
+1. "title_ko": 한국어로 번역한 기사 제목 (원문의 핵심을 살리되 한국 독자가 바로 이해할 수 있는 자연스러운 표현)
+2. "summary": 기사 핵심 내용을 한국어로 쉽게 풀어서 설명 (전문 용어는 괄호 안에 원문 병기, 3-5문장)
+3. "insight": 이 기사가 왜 중요한지, 독자에게 어떤 의미인지 한국어로 분석 (2-3문장)
+
+Respond ONLY with valid JSON, no markdown or extra text."#;
 
 impl OpenRouterAdapter {
     pub fn new(api_key: &str, model: &str) -> Self {
@@ -51,13 +59,13 @@ impl LlmPort for OpenRouterAdapter {
     fn summarize(
         &self,
         title: &str,
-        snippet: &str,
-    ) -> Pin<Box<dyn Future<Output = Result<LlmSummary, AppError>> + Send + '_>> {
+        content: &str,
+    ) -> Pin<Box<dyn Future<Output = Result<LlmResponse, AppError>> + Send + '_>> {
         let title = title.to_string();
-        let snippet = snippet.to_string();
+        let content = content.to_string();
 
         Box::pin(async move {
-            let user_message = format!("Title: {title}\nSnippet: {snippet}");
+            let user_message = format!("Title: {title}\nContent: {content}");
 
             let body = serde_json::json!({
                 "model": self.model,
@@ -66,7 +74,8 @@ impl LlmPort for OpenRouterAdapter {
                     { "role": "user", "content": user_message },
                 ],
                 "temperature": 0.3,
-                "max_tokens": 500,
+                "max_tokens": 800,
+                "response_format": { "type": "json_object" },
             });
 
             let resp = self
@@ -105,6 +114,13 @@ impl LlmPort for OpenRouterAdapter {
                 ))
             })?;
 
+            let title_ko = parsed["title_ko"]
+                .as_str()
+                .ok_or_else(|| {
+                    AppError::Internal("LLM response missing 'title_ko' field".to_string())
+                })?
+                .to_string();
+
             let summary = parsed["summary"]
                 .as_str()
                 .ok_or_else(|| {
@@ -119,7 +135,30 @@ impl LlmPort for OpenRouterAdapter {
                 })?
                 .to_string();
 
-            Ok(LlmSummary { summary, insight })
+            let model = chat_resp.model.unwrap_or_else(|| self.model.clone());
+
+            let prompt_tokens = chat_resp
+                .usage
+                .as_ref()
+                .and_then(|u| u.prompt_tokens)
+                .unwrap_or(0);
+
+            let completion_tokens = chat_resp
+                .usage
+                .as_ref()
+                .and_then(|u| u.completion_tokens)
+                .unwrap_or(0);
+
+            Ok(LlmResponse {
+                summary: LlmSummary {
+                    title_ko,
+                    summary,
+                    insight,
+                },
+                model,
+                prompt_tokens,
+                completion_tokens,
+            })
         })
     }
 }

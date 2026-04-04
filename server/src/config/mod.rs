@@ -27,7 +27,8 @@ impl AppConfig {
             firecrawl_api_key: env::var("FIRECRAWL_API_KEY").expect("FIRECRAWL_API_KEY required"),
             openrouter_api_key: env::var("OPENROUTER_API_KEY")
                 .expect("OPENROUTER_API_KEY required"),
-            llm_model: env::var("LLM_MODEL").unwrap_or_else(|_| "qwen/qwen3-235b-a22b".to_string()),
+            llm_model: env::var("LLM_MODEL")
+                .unwrap_or_else(|_| "qwen/qwen3.5-plus-02-15".to_string()),
             port: env::var("PORT")
                 .unwrap_or_else(|_| "8080".to_string())
                 .parse()
@@ -48,7 +49,7 @@ impl AppConfig {
             exa_api_key: "test-exa-key".to_string(),
             firecrawl_api_key: "test-firecrawl-key".to_string(),
             openrouter_api_key: "test-openrouter-key".to_string(),
-            llm_model: "qwen/qwen3-235b-a22b".to_string(),
+            llm_model: "qwen/qwen3.5-plus-02-15".to_string(),
             port: 0,
         }
     }

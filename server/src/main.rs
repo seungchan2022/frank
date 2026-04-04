@@ -48,7 +48,10 @@ async fn main() {
         anon_key: config.supabase_anon_key.clone(),
     };
 
-    let app = server::create_router(db, supabase_config, search_chain, llm);
+    let crawl: Arc<dyn server::domain::ports::CrawlPort> =
+        Arc::new(FirecrawlAdapter::new(&config.firecrawl_api_key));
+
+    let app = server::create_router(db, supabase_config, search_chain, llm, crawl);
 
     let addr = format!("0.0.0.0:{}", config.port);
     let listener = TcpListener::bind(&addr)

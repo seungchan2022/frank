@@ -3,7 +3,7 @@ use serde::Deserialize;
 
 use crate::domain::error::AppError;
 use crate::domain::models::SearchResult;
-use crate::domain::ports::SearchPort;
+use crate::domain::ports::{CrawlPort, SearchPort};
 
 #[derive(Debug, Clone)]
 pub struct FirecrawlAdapter {
@@ -21,6 +21,16 @@ struct FirecrawlResult {
     title: Option<String>,
     url: Option<String>,
     description: Option<String>,
+}
+
+#[derive(Debug, Deserialize)]
+struct FirecrawlScrapeResponse {
+    data: Option<FirecrawlScrapeData>,
+}
+
+#[derive(Debug, Deserialize)]
+struct FirecrawlScrapeData {
+    markdown: Option<String>,
 }
 
 impl FirecrawlAdapter {
@@ -87,5 +97,49 @@ impl SearchPort for FirecrawlAdapter {
 
     fn source_name(&self) -> &str {
         "firecrawl"
+    }
+}
+
+impl CrawlPort for FirecrawlAdapter {
+    fn scrape(
+        &self,
+        url: &str,
+    ) -> std::pin::Pin<Box<dyn std::future::Future<Output = Result<String, AppError>> + Send + '_>>
+    {
+        let url = url.to_string();
+        Box::pin(async move {
+            let body = serde_json::json!({
+                "url": url,
+                "formats": ["markdown"],
+                "onlyMainContent": true,
+            });
+
+            let resp = self
+                .client
+                .post("https://api.firecrawl.dev/v1/scrape")
+                .header("Authorization", format!("Bearer {}", self.api_key))
+                .header("Content-Type", "application/json")
+                .json(&body)
+                .send()
+                .await
+                .map_err(|e| AppError::Internal(format!("Firecrawl scrape request failed: {e}")))?;
+
+            if !resp.status().is_success() {
+                let status = resp.status();
+                let body = resp.text().await.unwrap_or_default();
+                return Err(AppError::Internal(format!(
+                    "Firecrawl scrape returned {status}: {body}"
+                )));
+            }
+
+            let data: FirecrawlScrapeResponse = resp
+                .json()
+                .await
+                .map_err(|e| AppError::Internal(format!("Firecrawl scrape parse failed: {e}")))?;
+
+            data.data.and_then(|d| d.markdown).ok_or_else(|| {
+                AppError::Internal("Firecrawl scrape returned no markdown".to_string())
+            })
+        })
     }
 }

@@ -125,7 +125,7 @@ impl DbPort for PostgresDbAdapter {
 
     async fn get_user_articles(&self, user_id: Uuid, limit: i64) -> Result<Vec<Article>, AppError> {
         sqlx::query_as::<_, Article>(
-            "SELECT id, user_id, tag_id, title, url, snippet, source, search_query, summary, insight, summarized_at, published_at, created_at
+            "SELECT id, user_id, tag_id, title, url, snippet, source, search_query, summary, insight, summarized_at, published_at, created_at, title_ko, content, llm_model, prompt_tokens, completion_tokens
              FROM articles
              WHERE user_id = $1
              ORDER BY created_at DESC
@@ -143,16 +143,42 @@ impl DbPort for PostgresDbAdapter {
         article_id: Uuid,
         summary: &str,
         insight: &str,
+        title_ko: &str,
+        llm_model: &str,
+        prompt_tokens: i32,
+        completion_tokens: i32,
     ) -> Result<(), AppError> {
         let result = sqlx::query(
-            "UPDATE articles SET summary = $1, insight = $2, summarized_at = now() WHERE id = $3",
+            "UPDATE articles SET summary = $1, insight = $2, title_ko = $3, llm_model = $4, prompt_tokens = $5, completion_tokens = $6, summarized_at = now() WHERE id = $7",
         )
         .bind(summary)
         .bind(insight)
+        .bind(title_ko)
+        .bind(llm_model)
+        .bind(prompt_tokens)
+        .bind(completion_tokens)
         .bind(article_id)
         .execute(&self.pool)
         .await
         .map_err(|e| AppError::Internal(format!("DB update failed: {e}")))?;
+
+        if result.rows_affected() == 0 {
+            return Err(AppError::NotFound("Article not found".to_string()));
+        }
+        Ok(())
+    }
+
+    async fn update_article_content(
+        &self,
+        article_id: Uuid,
+        content: &str,
+    ) -> Result<(), AppError> {
+        let result = sqlx::query("UPDATE articles SET content = $1 WHERE id = $2")
+            .bind(content)
+            .bind(article_id)
+            .execute(&self.pool)
+            .await
+            .map_err(|e| AppError::Internal(format!("DB update failed: {e}")))?;
 
         if result.rows_affected() == 0 {
             return Err(AppError::NotFound("Article not found".to_string()));
