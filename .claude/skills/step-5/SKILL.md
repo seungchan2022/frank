@@ -15,7 +15,6 @@ allowed-tools:
   - mcp__serena__search_for_pattern
   - mcp__context7__resolve-library-id
   - mcp__context7__query-docs
-  - mcp__morph-mcp__warpgrep_codebase_search
   - mcp__exa__web_search_exa
   - Task
 ---

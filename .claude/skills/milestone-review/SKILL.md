@@ -19,7 +19,6 @@ allowed-tools:
   - mcp__tavily__tavily_search
   - mcp__exa__web_search_exa
   - mcp__mermaid__mermaid-mcp-app
-  - mcp__d2__*
   - Task
 ---
 

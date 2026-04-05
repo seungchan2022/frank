@@ -88,17 +88,9 @@ frank/
 - **`rules/0_CODEX_RULES.md`** — 최상위 강제 규칙
 - **`rules/sub/`** — 서브 룰북 (agents, workflow, git, documentation, mcp_integration, sub_agent_usage 등)
 
-## 커밋 형식
+## 커밋/브랜치 규칙
 
-상세: `rules/sub/git.md` 참조
-
-```
-tag_en: 제목(한글)
-
-본문 3~4줄 요약(한글)
-```
-
-태그: feat, fix, docs, refactor, test, chore, style, perf
+Git hooks + settings.json deny로 기계적 강제됨. 상세: `rules/sub/git.md` 참조.
 
 ## 워크플로우
 
@@ -133,22 +125,15 @@ tag_en: 제목(한글)
                                   └─ chore    → 직접 실행
 ```
 
-## 브랜치 & 머지 규칙 (절대 준수)
-
-- **main에 직접 커밋 금지** — 반드시 로컬 feature 브랜치에서 작업
-- **main에 머지 전 반드시 최신 상태로 갱신 + rebase 머지**:
-  ```bash
-  git checkout main && git pull origin main
-  git checkout feature/작업명
-  git rebase main
-  git checkout main && git merge feature/작업명    # fast-forward
-  ```
-
 ## 금지 사항
 
-- **`git commit` 자동 실행 절대 금지** — 반드시 사용자에게 커밋 여부를 먼저 물어보고, 명시적 허락을 받은 후에만 커밋
-- **`Co-Authored-By:` 커밋 태그 절대 금지**
-- **`git push` 금지** — 사용자가 직접 수행
+Git hooks와 settings.json deny로 다음이 기계적으로 차단됨:
+- `git push`, `git add -A`, `rm -rf`, `git reset --hard`, `.env 수정` → settings.json deny
+- `main 직접 커밋`, `테스트 미통과 커밋` → pre-commit hook
+- `Co-Authored-By`, `커밋 형식 위반` → commit-msg hook
+
+추가 금지:
+- **`git commit` 자동 실행 절대 금지** — 반드시 사용자 허락 후 커밋
 - 민감정보 하드코딩/로그 노출 금지
 - 명시적 요청 없이 대규모 리팩토링 금지
 - 테스트 미통과 상태에서 작업 완료 표시 금지

@@ -1,5 +1,37 @@
 {
   "permissions": {
-    "defaultMode": "bypassPermissions"
-  }
+    "defaultMode": "bypassPermissions",
+    "deny": [
+      "Bash(git push*)",
+      "Bash(git add -A*)",
+      "Bash(git add .)",
+      "Bash(git add . *)",
+      "Bash(rm -rf*)",
+      "Bash(git reset --hard*)",
+      "Edit(.env*)"
+    ]
+  },
+  "hooks": {
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "echo '🔍 완료 전 검증 게이트 통과'"
+          }
+        ]
+      }
+    ],
+    "PreCompact": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "mkdir -p ~/.claude/backups && cp \"$CLAUDE_TRANSCRIPT_PATH\" ~/.claude/backups/$(date +%s).jsonl 2>/dev/null; echo '💾 대화 백업 완료'"
+          }
+        ]
+      }
+    ]
+  },
+  "compactPrompt": "컴팩션 시 반드시 보존할 것:\n1. CLAUDE.md의 모든 규칙 — 원문 그대로 복사\n2. 현재 태스크 진행상황 (어떤 워크플로우 단계인지, 서브태스크 목록)\n3. 수정한 파일 경로 목록\n4. 사용자가 준 피드백과 수정 지시\n5. 실패한 접근법과 그 이유\n\n요약 가능한 것:\n- 도구 호출 출력 (결론만 유지)\n- 읽은 파일 내용 (발견사항만 유지)"
 }

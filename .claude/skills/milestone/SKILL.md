@@ -25,7 +25,6 @@ allowed-tools:
   - mcp__mermaid__mermaid-mcp-app
   - mcp__mermaid__get-mermaid-draft
   - mcp__mermaid__save-mermaid-draft
-  - mcp__d2__*
   - Task
 ---
 

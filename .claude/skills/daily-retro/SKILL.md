@@ -143,11 +143,29 @@ allowed-tools:
 <pre class="mermaid">graph TB ...</pre>
 ```
 
-### Phase 6: 저장 및 보고
+### Phase 6: 설정 반영 체크 (회고 → 규칙 루프)
 
-- 마크다운: `progress/retro/{YYMMDD}_daily_retro.md`
-- HTML: `progress/retro/{YYMMDD}_daily_retro.html`
+회고에서 발견한 문제 중 **반복될 수 있는 것**을 식별하고, 설정 파일 수정을 제안한다.
+
+1. 오늘 회고에서 발견한 문제/인사이트를 수집
+2. 각 문제를 분류:
+   | 문제 유형 | 반영 대상 | 예시 |
+   |----------|----------|------|
+   | 반복적 실수 | Git hook 또는 settings.json deny | "테스트 없이 커밋" → pre-commit hook |
+   | 워크플로우 이탈 | 스킬 프롬프트 수정 | "step-7 건너뜀" → /next에서 경고 추가 |
+   | 새로운 규칙 필요 | CLAUDE.md 또는 rules/ 추가 | "에러 메시지 노출" → 보안 규칙 추가 |
+   | 도구 부족 | MCP 추가/설정 | "시각 검증 누락" → Playwright 활용 강화 |
+3. 반영 항목을 **A/B/C 선택지**로 사용자에게 제안
+4. 승인된 항목은 즉시 반영 (또는 다음 세션 TODO로 기록)
+
+**핵심 원칙**: "같은 문제가 두 번 발생하면, 문서가 아니라 기계(hook/deny/스킬)로 막는다."
+
+### Phase 7: 저장 및 보고
+
+- 마크다운: `history/{현재마일스톤}/{YYMMDD}_daily_retro.md`
+- HTML: `history/{현재마일스톤}/{YYMMDD}_daily_retro.html`
 - 사용자에게 파일 경로 안내
+- 설정 반영 항목이 있으면 함께 보고
 
 ## 출력 규칙
 

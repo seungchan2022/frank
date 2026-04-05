@@ -16,10 +16,7 @@ allowed-tools:
   - mcp__serena__find_referencing_symbols
   - mcp__serena__read_file
   - mcp__serena__list_dir
-  - mcp__morph-mcp__warpgrep_codebase_search
   - mcp__exa__web_search_exa
-  - mcp__perplexity__perplexity_search
-  - mcp__perplexity__perplexity_ask
 ---
 
 # Step 6: 구현

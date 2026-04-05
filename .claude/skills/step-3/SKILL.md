@@ -13,8 +13,6 @@ allowed-tools:
   - mcp__serena__get_symbols_overview
   - mcp__serena__list_dir
   - mcp__serena__search_for_pattern
-  - mcp__morph-mcp__warpgrep_codebase_search
-  - mcp__d2__*
   - Task
 ---
 

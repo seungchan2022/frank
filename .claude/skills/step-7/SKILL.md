@@ -16,7 +16,6 @@ allowed-tools:
   - mcp__serena__find_referencing_symbols
   - mcp__serena__read_file
   - mcp__serena__search_for_pattern
-  - mcp__morph-mcp__warpgrep_codebase_search
   - Task
 ---
 
