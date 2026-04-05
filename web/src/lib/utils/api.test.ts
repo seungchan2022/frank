@@ -127,6 +127,15 @@ describe('fetchProfile', () => {
 
 		await expect(fetchProfile()).rejects.toThrow('Not authenticated');
 	});
+
+	it('throws on DB query error', async () => {
+		mockGetUser.mockResolvedValue({ data: { user: { id: 'u1' } } });
+		mockEq.mockReturnValue({
+			single: vi.fn().mockResolvedValue({ data: null, error: { message: 'DB connection lost' } })
+		});
+
+		await expect(fetchProfile()).rejects.toEqual({ message: 'DB connection lost' });
+	});
 });
 
 describe('fetchArticles', () => {
@@ -183,6 +192,24 @@ describe('saveMyTags', () => {
 
 		await expect(saveMyTags(['t1'])).rejects.toEqual({ message: 'delete failed' });
 	});
+
+	it('throws when onboarding update fails', async () => {
+		mockGetUser.mockResolvedValue({ data: { user: { id: 'u1' } } });
+		// delete succeeds, insert succeeds, but update fails
+		let callCount = 0;
+		mockEq.mockImplementation(() => {
+			callCount++;
+			if (callCount === 1) {
+				// delete → eq('user_id', ...) succeeds
+				return { error: null };
+			}
+			// update → eq('id', ...) fails
+			return { error: { message: 'update failed' } };
+		});
+		mockInsert.mockResolvedValue({ error: null });
+
+		await expect(saveMyTags(['t1'])).rejects.toEqual({ message: 'update failed' });
+	});
 });
 
 describe('updateMyTags', () => {
@@ -207,6 +234,21 @@ describe('updateMyTags', () => {
 
 		await updateMyTags([]);
 		expect(mockInsert).not.toHaveBeenCalled();
+	});
+
+	it('throws when delete fails', async () => {
+		mockGetUser.mockResolvedValue({ data: { user: { id: 'u1' } } });
+		mockEq.mockReturnValue({ error: { message: 'delete failed' } });
+
+		await expect(updateMyTags(['t1'])).rejects.toEqual({ message: 'delete failed' });
+	});
+
+	it('throws when insert fails', async () => {
+		mockGetUser.mockResolvedValue({ data: { user: { id: 'u1' } } });
+		mockEq.mockReturnValue({ error: null }); // delete succeeds
+		mockInsert.mockResolvedValue({ error: { message: 'insert failed' } });
+
+		await expect(updateMyTags(['t1'])).rejects.toEqual({ message: 'insert failed' });
 	});
 });
 
@@ -302,6 +344,19 @@ describe('summarizeArticles', () => {
 		});
 
 		await expect(summarizeArticles()).rejects.toThrow('Unknown error');
+	});
+
+	it('throws fallback when error field is missing', async () => {
+		mockGetSession.mockResolvedValue({
+			data: { session: { access_token: 'tok' } }
+		});
+		global.fetch = vi.fn().mockResolvedValue({
+			ok: false,
+			status: 403,
+			json: () => Promise.resolve({})
+		});
+
+		await expect(summarizeArticles()).rejects.toThrow('Summarize failed (403)');
 	});
 });
 

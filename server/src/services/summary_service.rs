@@ -229,6 +229,97 @@ mod tests {
     }
 
     #[tokio::test]
+    async fn summarize_prefers_content_over_snippet() {
+        let db = FakeDbAdapter::new();
+        let llm = FakeLlmAdapter::new();
+        let notifier = FakeNotificationAdapter::new();
+        let user_id = Uuid::new_v4();
+        setup_db_with_articles(&db, user_id);
+
+        let mut article = make_article(user_id, "Both", Some("snippet text"));
+        article.content = Some("full content text".to_string());
+        insert_articles(&db, user_id, vec![article]).await;
+
+        let count = summarize_articles(&db, &llm, &notifier, user_id)
+            .await
+            .unwrap();
+
+        // content 존재 시 content가 LLM에 전달됨 (snippet 무시)
+        assert_eq!(count, 1);
+    }
+
+    #[tokio::test]
+    async fn summarize_uses_snippet_when_content_empty_string() {
+        let db = FakeDbAdapter::new();
+        let llm = FakeLlmAdapter::new();
+        let notifier = FakeNotificationAdapter::new();
+        let user_id = Uuid::new_v4();
+        setup_db_with_articles(&db, user_id);
+
+        let mut article = make_article(user_id, "EmptyContent", Some("valid snippet"));
+        article.content = Some(String::new()); // 빈 문자열
+        insert_articles(&db, user_id, vec![article]).await;
+
+        let count = summarize_articles(&db, &llm, &notifier, user_id)
+            .await
+            .unwrap();
+
+        // content가 빈 문자열이면 snippet으로 폴백
+        assert_eq!(count, 1);
+    }
+
+    #[tokio::test]
+    async fn summarize_skips_both_empty_strings() {
+        let db = FakeDbAdapter::new();
+        let llm = FakeLlmAdapter::new();
+        let notifier = FakeNotificationAdapter::new();
+        let user_id = Uuid::new_v4();
+        setup_db_with_articles(&db, user_id);
+
+        let mut article = make_article(user_id, "AllEmpty", None);
+        article.content = Some(String::new());
+        article.snippet = Some(String::new());
+        insert_articles(&db, user_id, vec![article]).await;
+
+        let count = summarize_articles(&db, &llm, &notifier, user_id)
+            .await
+            .unwrap();
+
+        // 둘 다 빈 문자열이면 건너뜀
+        assert_eq!(count, 0);
+        assert!(notifier.sent_messages().is_empty());
+    }
+
+    #[tokio::test]
+    async fn summarize_mixed_summarized_and_new() {
+        let db = FakeDbAdapter::new();
+        let llm = FakeLlmAdapter::new();
+        let notifier = FakeNotificationAdapter::new();
+        let user_id = Uuid::new_v4();
+        setup_db_with_articles(&db, user_id);
+
+        let mut already_done = make_article(user_id, "Done", Some("content"));
+        already_done.summary = Some("existing".to_string());
+        already_done.insight = Some("existing".to_string());
+        already_done.summarized_at = Some(chrono::Utc::now());
+
+        let new_article = make_article(user_id, "New", Some("new content"));
+
+        insert_articles(&db, user_id, vec![already_done, new_article]).await;
+
+        let count = summarize_articles(&db, &llm, &notifier, user_id)
+            .await
+            .unwrap();
+
+        // 이미 요약된 1건 건너뛰고, 새 1건만 요약
+        assert_eq!(count, 1);
+        // 알림은 새로 요약된 1건에 대해서만
+        let messages = notifier.sent_messages();
+        assert_eq!(messages.len(), 1);
+        assert!(messages[0].contains("1 articles"));
+    }
+
+    #[tokio::test]
     async fn summarize_no_articles_returns_zero() {
         let db = FakeDbAdapter::new();
         let llm = FakeLlmAdapter::new();

@@ -160,6 +160,54 @@ mod tests {
         assert_eq!(results.len(), 1);
     }
 
+    #[tokio::test]
+    async fn fallback_chain_returns_last_source_error() {
+        let fail1 = FakeSearchAdapter::new("source_a", vec![], true);
+        let fail2 = FakeSearchAdapter::new("source_b", vec![], true);
+
+        let chain = SearchFallbackChain::new(vec![Box::new(fail1), Box::new(fail2)]);
+        let result = chain.search("query", 5).await;
+
+        // 마지막 source의 에러 메시지가 반환되어야 함
+        let err_msg = result.unwrap_err().to_string();
+        assert!(
+            err_msg.contains("source_b"),
+            "expected error from last source, got: {err_msg}"
+        );
+    }
+
+    #[tokio::test]
+    async fn fallback_chain_empty_sources_returns_error() {
+        let chain = SearchFallbackChain::new(vec![]);
+        let result = chain.search("query", 5).await;
+
+        assert!(result.is_err());
+        let err_msg = result.unwrap_err().to_string();
+        assert!(err_msg.contains("All search sources returned empty"));
+    }
+
+    #[tokio::test]
+    async fn fallback_chain_via_trait() {
+        let working = FakeSearchAdapter::new(
+            "trait_source",
+            vec![SearchResult {
+                title: "TraitResult".to_string(),
+                url: "https://example.com/trait".to_string(),
+                snippet: None,
+                published_at: None,
+            }],
+            false,
+        );
+
+        let chain = SearchFallbackChain::new(vec![Box::new(working)]);
+        // SearchChainPort trait 경유 호출
+        let chain_port: &dyn SearchChainPort = &chain;
+        let (results, source) = chain_port.search("query", 5).await.unwrap();
+
+        assert_eq!(source, "trait_source");
+        assert_eq!(results.len(), 1);
+    }
+
     #[test]
     fn debug_format_shows_source_names() {
         let chain = SearchFallbackChain::new(vec![

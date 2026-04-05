@@ -411,6 +411,53 @@ mod tests {
         assert!(result.is_err());
     }
 
+    #[test]
+    fn retry_config_presets() {
+        let search = RetryConfig::for_search();
+        assert_eq!(search.max_retries, 3);
+        assert_eq!(search.max_response_size, 2 * 1024 * 1024);
+
+        let crawl = RetryConfig::for_crawl();
+        assert_eq!(crawl.max_retries, 2);
+        assert_eq!(crawl.max_response_size, 20 * 1024 * 1024);
+
+        let llm = RetryConfig::for_llm();
+        assert_eq!(llm.max_retries, 1);
+        assert_eq!(llm.base_delay_ms, 200);
+        assert_eq!(llm.max_response_size, 1024 * 1024);
+    }
+
+    #[tokio::test]
+    async fn retry_first_attempt_success_no_delay() {
+        let mock_server = MockServer::start().await;
+        let client = Client::new();
+
+        Mock::given(method("GET"))
+            .and(path("/test"))
+            .respond_with(ResponseTemplate::new(200).set_body_string("ok"))
+            .expect(1)
+            .mount(&mock_server)
+            .await;
+
+        let url = format!("{}/test", mock_server.uri());
+        let config = test_config(3);
+
+        let start = std::time::Instant::now();
+        let result = send_with_retry(
+            || {
+                let url = url.clone();
+                let client = client.clone();
+                async move { client.get(&url) }
+            },
+            &config,
+        )
+        .await;
+
+        assert!(result.is_ok());
+        // 첫 시도 성공 시 delay 없음
+        assert!(start.elapsed() < std::time::Duration::from_millis(100));
+    }
+
     #[tokio::test]
     async fn content_length_equals_limit_passes() {
         let mock_server = MockServer::start().await;

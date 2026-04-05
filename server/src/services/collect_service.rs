@@ -289,6 +289,111 @@ mod tests {
         assert!(!is_homepage_url("https://example.com/2024/01/my-post"));
     }
 
+    #[test]
+    fn test_is_homepage_url_with_query_and_ports() {
+        // query params — path segment count determines result
+        assert!(is_homepage_url("https://example.com/?page=1"));
+        assert!(is_homepage_url("https://example.com/news?sort=latest"));
+        assert!(!is_homepage_url(
+            "https://example.com/news/article?ref=home"
+        ));
+
+        // port numbers
+        assert!(is_homepage_url("https://example.com:8080/"));
+        assert!(is_homepage_url("https://example.com:3000/blog"));
+        assert!(!is_homepage_url("https://example.com:8080/news/article-1"));
+
+        // no scheme edge case: just returns true (path <= 1 segment)
+        assert!(is_homepage_url("example.com"));
+    }
+
+    #[tokio::test]
+    async fn collect_parses_published_at() {
+        let db = FakeDbAdapter::new();
+        let crawl = FakeCrawlAdapter::new();
+        let (user_id, tag_ids) = setup_db_with_tags(&db);
+        db.set_user_tags(user_id, vec![tag_ids[0]]).await.unwrap();
+
+        let chain = make_chain(
+            vec![SearchResult {
+                title: "Article".to_string(),
+                url: "https://example.com/news/dated-article".to_string(),
+                snippet: Some("snippet".to_string()),
+                published_at: Some("2026-04-01T00:00:00Z".to_string()),
+            }],
+            false,
+        );
+
+        collect_for_user(&db, chain.as_ref(), &crawl, user_id)
+            .await
+            .unwrap();
+
+        let articles = db.get_user_articles(user_id, 100).await.unwrap();
+        assert_eq!(articles.len(), 1);
+        assert!(articles[0].published_at.is_some());
+    }
+
+    #[tokio::test]
+    async fn collect_handles_invalid_published_at() {
+        let db = FakeDbAdapter::new();
+        let crawl = FakeCrawlAdapter::new();
+        let (user_id, tag_ids) = setup_db_with_tags(&db);
+        db.set_user_tags(user_id, vec![tag_ids[0]]).await.unwrap();
+
+        let chain = make_chain(
+            vec![SearchResult {
+                title: "Article".to_string(),
+                url: "https://example.com/news/bad-date".to_string(),
+                snippet: Some("snippet".to_string()),
+                published_at: Some("not-a-date".to_string()),
+            }],
+            false,
+        );
+
+        collect_for_user(&db, chain.as_ref(), &crawl, user_id)
+            .await
+            .unwrap();
+
+        let articles = db.get_user_articles(user_id, 100).await.unwrap();
+        assert_eq!(articles.len(), 1);
+        // invalid date string → None
+        assert!(articles[0].published_at.is_none());
+    }
+
+    #[tokio::test]
+    async fn collect_sets_tag_id_and_search_query() {
+        let db = FakeDbAdapter::new();
+        let crawl = FakeCrawlAdapter::new();
+        let (user_id, tag_ids) = setup_db_with_tags(&db);
+        db.set_user_tags(user_id, vec![tag_ids[0]]).await.unwrap();
+
+        let chain = make_chain(
+            vec![SearchResult {
+                title: "Tagged Article".to_string(),
+                url: "https://example.com/news/tagged".to_string(),
+                snippet: Some("snippet".to_string()),
+                published_at: None,
+            }],
+            false,
+        );
+
+        collect_for_user(&db, chain.as_ref(), &crawl, user_id)
+            .await
+            .unwrap();
+
+        let articles = db.get_user_articles(user_id, 100).await.unwrap();
+        assert_eq!(articles.len(), 1);
+        assert_eq!(articles[0].tag_id, Some(tag_ids[0]));
+        assert!(articles[0].search_query.is_some());
+        assert!(
+            articles[0]
+                .search_query
+                .as_ref()
+                .unwrap()
+                .contains("latest news")
+        );
+    }
+
     #[tokio::test]
     async fn collect_skips_homepage_urls() {
         let db = FakeDbAdapter::new();
