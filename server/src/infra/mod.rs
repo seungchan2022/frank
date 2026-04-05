@@ -5,6 +5,7 @@ pub mod fake_llm;
 pub mod fake_notification;
 pub mod fake_search;
 pub mod firecrawl;
+pub mod http_utils;
 pub mod imessage;
 pub mod openrouter;
 pub mod postgres_db;

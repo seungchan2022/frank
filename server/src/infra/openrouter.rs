@@ -7,12 +7,14 @@ use serde::Deserialize;
 use crate::domain::error::AppError;
 use crate::domain::models::{LlmResponse, LlmSummary};
 use crate::domain::ports::LlmPort;
+use crate::infra::http_utils::{RetryConfig, send_with_retry};
 
 #[derive(Debug, Clone)]
 pub struct OpenRouterAdapter {
     client: Client,
     api_key: String,
     model: String,
+    base_url: String,
 }
 
 #[derive(Debug, Deserialize)]
@@ -47,6 +49,10 @@ Respond ONLY with valid JSON, no markdown or extra text."#;
 
 impl OpenRouterAdapter {
     pub fn new(api_key: &str, model: &str) -> Self {
+        Self::with_base_url(api_key, model, "https://openrouter.ai")
+    }
+
+    pub fn with_base_url(api_key: &str, model: &str, base_url: &str) -> Self {
         Self {
             client: Client::builder()
                 .timeout(std::time::Duration::from_secs(60))
@@ -54,6 +60,7 @@ impl OpenRouterAdapter {
                 .expect("Failed to build HTTP client"),
             api_key: api_key.to_string(),
             model: model.to_string(),
+            base_url: base_url.to_string(),
         }
     }
 }
@@ -82,15 +89,34 @@ impl LlmPort for OpenRouterAdapter {
                 "reasoning": { "effort": "none" },
             });
 
-            let resp = self
-                .client
-                .post("https://openrouter.ai/api/v1/chat/completions")
-                .header("Authorization", format!("Bearer {}", self.api_key))
-                .header("Content-Type", "application/json")
-                .json(&body)
-                .send()
-                .await
-                .map_err(|e| AppError::Internal(format!("OpenRouter request failed: {e}")))?;
+            let config = RetryConfig {
+                max_retries: 1,
+                base_delay_ms: 200,
+                max_response_size: 1024 * 1024, // 1MB
+                ..RetryConfig::default()
+            };
+
+            let api_key = self.api_key.clone();
+            let url = format!("{}/api/v1/chat/completions", self.base_url);
+
+            let resp = send_with_retry(
+                || {
+                    let url = url.clone();
+                    let body = body.clone();
+                    let api_key = api_key.clone();
+                    let client = self.client.clone();
+                    async move {
+                        client
+                            .post(&url)
+                            .header("Authorization", format!("Bearer {}", api_key))
+                            .header("Content-Type", "application/json")
+                            .json(&body)
+                    }
+                },
+                &config,
+            )
+            .await
+            .map_err(|e| AppError::Internal(format!("OpenRouter request failed: {e}")))?;
 
             if !resp.status().is_success() {
                 let status = resp.status();
@@ -164,5 +190,239 @@ impl LlmPort for OpenRouterAdapter {
                 completion_tokens,
             })
         })
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use wiremock::matchers::{method, path};
+    use wiremock::{Mock, MockServer, ResponseTemplate};
+
+    fn valid_llm_response() -> serde_json::Value {
+        serde_json::json!({
+            "choices": [{
+                "message": {
+                    "content": "{\"title_ko\": \"테스트 제목\", \"summary\": \"요약입니다.\", \"insight\": \"인사이트입니다.\"}"
+                }
+            }],
+            "model": "test-model",
+            "usage": {"prompt_tokens": 100, "completion_tokens": 50}
+        })
+    }
+
+    #[tokio::test]
+    async fn successful_summarize() {
+        let mock_server = MockServer::start().await;
+
+        Mock::given(method("POST"))
+            .and(path("/api/v1/chat/completions"))
+            .respond_with(ResponseTemplate::new(200).set_body_json(valid_llm_response()))
+            .mount(&mock_server)
+            .await;
+
+        let adapter =
+            OpenRouterAdapter::with_base_url("test-key", "test-model", &mock_server.uri());
+        let result = adapter.summarize("Test Title", "Test Content").await;
+        assert!(result.is_ok());
+        let resp = result.unwrap();
+        assert_eq!(resp.summary.title_ko, "테스트 제목");
+        assert_eq!(resp.summary.summary, "요약입니다.");
+        assert_eq!(resp.summary.insight, "인사이트입니다.");
+        assert_eq!(resp.model, "test-model");
+        assert_eq!(resp.prompt_tokens, 100);
+        assert_eq!(resp.completion_tokens, 50);
+    }
+
+    #[tokio::test]
+    async fn retry_on_retryable_status() {
+        let mock_server = MockServer::start().await;
+
+        Mock::given(method("POST"))
+            .and(path("/api/v1/chat/completions"))
+            .respond_with(ResponseTemplate::new(500))
+            .up_to_n_times(1)
+            .mount(&mock_server)
+            .await;
+
+        Mock::given(method("POST"))
+            .and(path("/api/v1/chat/completions"))
+            .respond_with(ResponseTemplate::new(200).set_body_json(valid_llm_response()))
+            .mount(&mock_server)
+            .await;
+
+        let adapter =
+            OpenRouterAdapter::with_base_url("test-key", "test-model", &mock_server.uri());
+        let result = adapter.summarize("Title", "Content").await;
+        assert!(result.is_ok());
+    }
+
+    #[tokio::test]
+    async fn size_limit_exceeded() {
+        let mock_server = MockServer::start().await;
+
+        let large_body = "x".repeat(2 * 1024 * 1024);
+        Mock::given(method("POST"))
+            .and(path("/api/v1/chat/completions"))
+            .respond_with(ResponseTemplate::new(200).set_body_string(&large_body))
+            .mount(&mock_server)
+            .await;
+
+        let adapter =
+            OpenRouterAdapter::with_base_url("test-key", "test-model", &mock_server.uri());
+        let result = adapter.summarize("Title", "Content").await;
+        assert!(result.is_err());
+    }
+
+    #[tokio::test]
+    async fn non_2xx_error() {
+        let mock_server = MockServer::start().await;
+
+        Mock::given(method("POST"))
+            .and(path("/api/v1/chat/completions"))
+            .respond_with(ResponseTemplate::new(401).set_body_string("Unauthorized"))
+            .mount(&mock_server)
+            .await;
+
+        let adapter =
+            OpenRouterAdapter::with_base_url("test-key", "test-model", &mock_server.uri());
+        let result = adapter.summarize("Title", "Content").await;
+        assert!(result.is_err());
+        assert!(
+            result
+                .unwrap_err()
+                .to_string()
+                .contains("OpenRouter API error")
+        );
+    }
+
+    #[tokio::test]
+    async fn invalid_json_from_api() {
+        let mock_server = MockServer::start().await;
+
+        Mock::given(method("POST"))
+            .and(path("/api/v1/chat/completions"))
+            .respond_with(ResponseTemplate::new(200).set_body_string("not json"))
+            .mount(&mock_server)
+            .await;
+
+        let adapter =
+            OpenRouterAdapter::with_base_url("test-key", "test-model", &mock_server.uri());
+        let result = adapter.summarize("Title", "Content").await;
+        assert!(result.is_err());
+        assert!(result.unwrap_err().to_string().contains("parse failed"));
+    }
+
+    #[tokio::test]
+    async fn empty_choices_returns_error() {
+        let mock_server = MockServer::start().await;
+
+        Mock::given(method("POST"))
+            .and(path("/api/v1/chat/completions"))
+            .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({
+                "choices": [],
+                "model": "test-model",
+                "usage": null
+            })))
+            .mount(&mock_server)
+            .await;
+
+        let adapter =
+            OpenRouterAdapter::with_base_url("test-key", "test-model", &mock_server.uri());
+        let result = adapter.summarize("Title", "Content").await;
+        assert!(result.is_err());
+        assert!(result.unwrap_err().to_string().contains("no choices"));
+    }
+
+    #[tokio::test]
+    async fn llm_response_not_valid_json() {
+        let mock_server = MockServer::start().await;
+
+        Mock::given(method("POST"))
+            .and(path("/api/v1/chat/completions"))
+            .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({
+                "choices": [{"message": {"content": "this is not json"}}],
+                "model": "test-model",
+                "usage": null
+            })))
+            .mount(&mock_server)
+            .await;
+
+        let adapter =
+            OpenRouterAdapter::with_base_url("test-key", "test-model", &mock_server.uri());
+        let result = adapter.summarize("Title", "Content").await;
+        assert!(result.is_err());
+        assert!(result.unwrap_err().to_string().contains("not valid JSON"));
+    }
+
+    #[tokio::test]
+    async fn llm_response_missing_title_ko() {
+        let mock_server = MockServer::start().await;
+
+        Mock::given(method("POST"))
+            .and(path("/api/v1/chat/completions"))
+            .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({
+                "choices": [{"message": {"content": "{\"summary\": \"s\", \"insight\": \"i\"}"}}],
+                "model": "test-model",
+                "usage": null
+            })))
+            .mount(&mock_server)
+            .await;
+
+        let adapter =
+            OpenRouterAdapter::with_base_url("test-key", "test-model", &mock_server.uri());
+        let result = adapter.summarize("Title", "Content").await;
+        assert!(result.is_err());
+        assert!(result.unwrap_err().to_string().contains("title_ko"));
+    }
+
+    #[tokio::test]
+    async fn llm_response_missing_summary() {
+        let mock_server = MockServer::start().await;
+
+        Mock::given(method("POST"))
+            .and(path("/api/v1/chat/completions"))
+            .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({
+                "choices": [{"message": {"content": "{\"title_ko\": \"t\", \"insight\": \"i\"}"}}],
+                "model": "test-model",
+                "usage": null
+            })))
+            .mount(&mock_server)
+            .await;
+
+        let adapter =
+            OpenRouterAdapter::with_base_url("test-key", "test-model", &mock_server.uri());
+        let result = adapter.summarize("Title", "Content").await;
+        assert!(result.is_err());
+        assert!(result.unwrap_err().to_string().contains("summary"));
+    }
+
+    #[tokio::test]
+    async fn llm_response_missing_insight() {
+        let mock_server = MockServer::start().await;
+
+        Mock::given(method("POST"))
+            .and(path("/api/v1/chat/completions"))
+            .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({
+                "choices": [{"message": {"content": "{\"title_ko\": \"t\", \"summary\": \"s\"}"}}],
+                "model": "test-model",
+                "usage": null
+            })))
+            .mount(&mock_server)
+            .await;
+
+        let adapter =
+            OpenRouterAdapter::with_base_url("test-key", "test-model", &mock_server.uri());
+        let result = adapter.summarize("Title", "Content").await;
+        assert!(result.is_err());
+        assert!(result.unwrap_err().to_string().contains("insight"));
+    }
+
+    #[tokio::test]
+    async fn network_failure() {
+        let adapter =
+            OpenRouterAdapter::with_base_url("test-key", "test-model", "http://127.0.0.1:1");
+        let result = adapter.summarize("Title", "Content").await;
+        assert!(result.is_err());
     }
 }

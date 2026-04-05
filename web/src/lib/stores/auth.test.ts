@@ -5,6 +5,7 @@ const mockSignInWithPassword = vi.fn();
 const mockSignUp = vi.fn();
 const mockSignOut = vi.fn();
 const mockOnAuthStateChange = vi.fn();
+const mockUnsubscribe = vi.fn();
 
 vi.mock('$lib/supabase', () => ({
 	supabase: {
@@ -18,10 +19,13 @@ vi.mock('$lib/supabase', () => ({
 	}
 }));
 
-import { getAuth, initAuth, signInWithEmail, signUpWithEmail, signOut } from './auth.svelte';
+import { getAuth, initAuth, cleanupAuth, signInWithEmail, signUpWithEmail, signOut } from './auth.svelte';
 
 beforeEach(() => {
 	vi.clearAllMocks();
+	mockUnsubscribe.mockClear();
+	// Reset module state between tests
+	cleanupAuth();
 });
 
 describe('getAuth', () => {
@@ -38,11 +42,10 @@ describe('initAuth', () => {
 		const session = { user: { id: 'u1', email: 'test@test.com' } };
 		mockGetSession.mockResolvedValue({ data: { session } });
 		mockOnAuthStateChange.mockReturnValue({
-			data: { subscription: { unsubscribe: vi.fn() } }
+			data: { subscription: { unsubscribe: mockUnsubscribe } }
 		});
 
-		const subscription = await initAuth();
-		expect(subscription).toBeDefined();
+		await initAuth();
 
 		const auth = getAuth();
 		expect(auth.session).toEqual(session);
@@ -56,7 +59,7 @@ describe('initAuth', () => {
 		mockGetSession.mockResolvedValue({ data: { session: null } });
 		mockOnAuthStateChange.mockImplementation((cb: (event: string, session: unknown) => void) => {
 			authCallback = cb;
-			return { data: { subscription: { unsubscribe: vi.fn() } } };
+			return { data: { subscription: { unsubscribe: mockUnsubscribe } } };
 		});
 
 		await initAuth();
@@ -76,7 +79,7 @@ describe('initAuth', () => {
 		mockGetSession.mockResolvedValue({ data: { session } });
 		mockOnAuthStateChange.mockImplementation((cb: (event: string, session: unknown) => void) => {
 			authCallback = cb;
-			return { data: { subscription: { unsubscribe: vi.fn() } } };
+			return { data: { subscription: { unsubscribe: mockUnsubscribe } } };
 		});
 
 		await initAuth();
@@ -90,7 +93,7 @@ describe('initAuth', () => {
 	it('initializes with no session', async () => {
 		mockGetSession.mockResolvedValue({ data: { session: null } });
 		mockOnAuthStateChange.mockReturnValue({
-			data: { subscription: { unsubscribe: vi.fn() } }
+			data: { subscription: { unsubscribe: mockUnsubscribe } }
 		});
 
 		await initAuth();
@@ -100,6 +103,100 @@ describe('initAuth', () => {
 		expect(auth.user).toBeNull();
 		expect(auth.isAuthenticated).toBe(false);
 		expect(auth.loading).toBe(false);
+	});
+
+	it('does not call onAuthStateChange twice on duplicate initAuth', async () => {
+		mockGetSession.mockResolvedValue({ data: { session: null } });
+		mockOnAuthStateChange.mockReturnValue({
+			data: { subscription: { unsubscribe: mockUnsubscribe } }
+		});
+
+		await initAuth();
+		await initAuth(); // second call should be no-op
+
+		expect(mockOnAuthStateChange).toHaveBeenCalledTimes(1);
+	});
+
+	it('rolls back initialized on getSession failure', async () => {
+		mockGetSession.mockRejectedValue(new Error('Network error'));
+
+		await initAuth();
+		const auth = getAuth();
+		expect(auth.loading).toBe(false);
+
+		// After failure, should be able to re-init
+		mockGetSession.mockResolvedValue({ data: { session: null } });
+		mockOnAuthStateChange.mockReturnValue({
+			data: { subscription: { unsubscribe: mockUnsubscribe } }
+		});
+
+		await initAuth();
+		expect(mockOnAuthStateChange).toHaveBeenCalledTimes(1);
+	});
+});
+
+describe('cleanupAuth', () => {
+	it('calls unsubscribe once', async () => {
+		const localUnsubscribe = vi.fn();
+		mockGetSession.mockResolvedValue({ data: { session: null } });
+		mockOnAuthStateChange.mockReturnValue({
+			data: { subscription: { unsubscribe: localUnsubscribe } }
+		});
+
+		await initAuth();
+		cleanupAuth();
+
+		expect(localUnsubscribe).toHaveBeenCalledTimes(1);
+	});
+
+	it('is idempotent - no error on duplicate calls', async () => {
+		mockGetSession.mockResolvedValue({ data: { session: null } });
+		mockOnAuthStateChange.mockReturnValue({
+			data: { subscription: { unsubscribe: mockUnsubscribe } }
+		});
+
+		await initAuth();
+		cleanupAuth();
+		cleanupAuth(); // should not throw
+
+		expect(mockUnsubscribe).toHaveBeenCalledTimes(1);
+	});
+
+	it('prevents callback from updating state after cleanup', async () => {
+		let authCallback: (event: string, session: unknown) => void = () => {};
+		mockGetSession.mockResolvedValue({ data: { session: null } });
+		mockOnAuthStateChange.mockImplementation((cb: (event: string, session: unknown) => void) => {
+			authCallback = cb;
+			return { data: { subscription: { unsubscribe: mockUnsubscribe } } };
+		});
+
+		await initAuth();
+		cleanupAuth();
+
+		// Callback fires after cleanup - should not update state
+		const newSession = { user: { id: 'u3', email: 'late@test.com' } };
+		authCallback('SIGNED_IN', newSession);
+
+		const auth = getAuth();
+		expect(auth.session).toBeNull();
+		expect(auth.user).toBeNull();
+	});
+
+	it('resets all state', async () => {
+		const session = { user: { id: 'u1', email: 'test@test.com' } };
+		mockGetSession.mockResolvedValue({ data: { session } });
+		mockOnAuthStateChange.mockReturnValue({
+			data: { subscription: { unsubscribe: mockUnsubscribe } }
+		});
+
+		await initAuth();
+		const auth = getAuth();
+		expect(auth.isAuthenticated).toBe(true);
+
+		cleanupAuth();
+		expect(auth.session).toBeNull();
+		expect(auth.user).toBeNull();
+		expect(auth.loading).toBe(true);
 	});
 });
 

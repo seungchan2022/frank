@@ -119,8 +119,10 @@ mod tests {
         assert!(debug.contains("test.supabase.co"));
     }
 
-    async fn dummy_handler() -> &'static str {
-        "ok"
+    async fn dummy_handler(
+        axum::Extension(user): axum::Extension<AuthUser>,
+    ) -> axum::Json<serde_json::Value> {
+        axum::Json(serde_json::json!({ "user_id": user.id.to_string() }))
     }
 
     fn make_auth_app() -> Router {
@@ -131,6 +133,22 @@ mod tests {
                 url: "http://localhost:54321".to_string(),
                 anon_key: "test-anon-key".to_string(),
             }))
+    }
+
+    fn make_auth_app_with_url(supabase_url: &str) -> Router {
+        Router::new()
+            .route("/protected", get(dummy_handler))
+            .layer(from_fn(require_auth))
+            .layer(axum::Extension(SupabaseConfig {
+                url: supabase_url.to_string(),
+                anon_key: "test-anon-key".to_string(),
+            }))
+    }
+
+    fn make_auth_app_no_config() -> Router {
+        Router::new()
+            .route("/protected", get(dummy_handler))
+            .layer(from_fn(require_auth))
     }
 
     #[tokio::test]
@@ -152,6 +170,146 @@ mod tests {
             .add_header(
                 axum::http::header::AUTHORIZATION,
                 "Basic invalid-token".parse::<HeaderValue>().unwrap(),
+            )
+            .await;
+        resp.assert_status(axum::http::StatusCode::UNAUTHORIZED);
+    }
+
+    #[tokio::test]
+    async fn valid_token_returns_auth_user() {
+        let mock_server = wiremock::MockServer::start().await;
+        let user_id = "00000000-0000-0000-0000-000000000001";
+
+        wiremock::Mock::given(wiremock::matchers::method("GET"))
+            .and(wiremock::matchers::path("/auth/v1/user"))
+            .respond_with(
+                wiremock::ResponseTemplate::new(200)
+                    .set_body_json(serde_json::json!({"id": user_id})),
+            )
+            .mount(&mock_server)
+            .await;
+
+        let app = make_auth_app_with_url(&mock_server.uri());
+        let server = TestServer::new(app);
+
+        let resp = server
+            .get("/protected")
+            .add_header(
+                axum::http::header::AUTHORIZATION,
+                "Bearer valid-token".parse::<HeaderValue>().unwrap(),
+            )
+            .await;
+        resp.assert_status(axum::http::StatusCode::OK);
+        let body: serde_json::Value = resp.json();
+        assert_eq!(body["user_id"], user_id);
+    }
+
+    #[tokio::test]
+    async fn supabase_config_missing_returns_500() {
+        let app = make_auth_app_no_config();
+        let server = TestServer::new(app);
+
+        let resp = server
+            .get("/protected")
+            .add_header(
+                axum::http::header::AUTHORIZATION,
+                "Bearer some-token".parse::<HeaderValue>().unwrap(),
+            )
+            .await;
+        resp.assert_status(axum::http::StatusCode::INTERNAL_SERVER_ERROR);
+    }
+
+    #[tokio::test]
+    async fn upstream_401_returns_401() {
+        let mock_server = wiremock::MockServer::start().await;
+
+        wiremock::Mock::given(wiremock::matchers::method("GET"))
+            .and(wiremock::matchers::path("/auth/v1/user"))
+            .respond_with(wiremock::ResponseTemplate::new(401))
+            .mount(&mock_server)
+            .await;
+
+        let app = make_auth_app_with_url(&mock_server.uri());
+        let server = TestServer::new(app);
+
+        let resp = server
+            .get("/protected")
+            .add_header(
+                axum::http::header::AUTHORIZATION,
+                "Bearer expired-token".parse::<HeaderValue>().unwrap(),
+            )
+            .await;
+        resp.assert_status(axum::http::StatusCode::UNAUTHORIZED);
+    }
+
+    #[tokio::test]
+    async fn upstream_500_returns_401() {
+        let mock_server = wiremock::MockServer::start().await;
+
+        wiremock::Mock::given(wiremock::matchers::method("GET"))
+            .and(wiremock::matchers::path("/auth/v1/user"))
+            .respond_with(wiremock::ResponseTemplate::new(500))
+            .mount(&mock_server)
+            .await;
+
+        let app = make_auth_app_with_url(&mock_server.uri());
+        let server = TestServer::new(app);
+
+        let resp = server
+            .get("/protected")
+            .add_header(
+                axum::http::header::AUTHORIZATION,
+                "Bearer some-token".parse::<HeaderValue>().unwrap(),
+            )
+            .await;
+        // Current implementation: non-success → 401
+        resp.assert_status(axum::http::StatusCode::UNAUTHORIZED);
+    }
+
+    #[tokio::test]
+    async fn upstream_malformed_json_returns_500() {
+        let mock_server = wiremock::MockServer::start().await;
+
+        wiremock::Mock::given(wiremock::matchers::method("GET"))
+            .and(wiremock::matchers::path("/auth/v1/user"))
+            .respond_with(wiremock::ResponseTemplate::new(200).set_body_string("not json"))
+            .mount(&mock_server)
+            .await;
+
+        let app = make_auth_app_with_url(&mock_server.uri());
+        let server = TestServer::new(app);
+
+        let resp = server
+            .get("/protected")
+            .add_header(
+                axum::http::header::AUTHORIZATION,
+                "Bearer some-token".parse::<HeaderValue>().unwrap(),
+            )
+            .await;
+        resp.assert_status(axum::http::StatusCode::INTERNAL_SERVER_ERROR);
+    }
+
+    #[tokio::test]
+    async fn invalid_uuid_user_id_returns_401() {
+        let mock_server = wiremock::MockServer::start().await;
+
+        wiremock::Mock::given(wiremock::matchers::method("GET"))
+            .and(wiremock::matchers::path("/auth/v1/user"))
+            .respond_with(
+                wiremock::ResponseTemplate::new(200)
+                    .set_body_json(serde_json::json!({"id": "not-a-uuid"})),
+            )
+            .mount(&mock_server)
+            .await;
+
+        let app = make_auth_app_with_url(&mock_server.uri());
+        let server = TestServer::new(app);
+
+        let resp = server
+            .get("/protected")
+            .add_header(
+                axum::http::header::AUTHORIZATION,
+                "Bearer some-token".parse::<HeaderValue>().unwrap(),
             )
             .await;
         resp.assert_status(axum::http::StatusCode::UNAUTHORIZED);

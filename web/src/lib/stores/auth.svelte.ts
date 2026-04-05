@@ -1,9 +1,12 @@
-import type { Session, User } from '@supabase/supabase-js';
+import type { Session, Subscription, User } from '@supabase/supabase-js';
 import { supabase } from '$lib/supabase';
 
 let session = $state<Session | null>(null);
 let user = $state<User | null>(null);
 let loading = $state(true);
+
+let subscription: Subscription | null = null;
+let initialized = false;
 
 export function getAuth() {
 	return {
@@ -23,21 +26,41 @@ export function getAuth() {
 }
 
 export async function initAuth() {
-	const {
-		data: { session: initialSession }
-	} = await supabase.auth.getSession();
-	session = initialSession;
-	user = initialSession?.user ?? null;
-	loading = false;
+	if (initialized) return;
+	initialized = true;
 
-	const {
-		data: { subscription }
-	} = supabase.auth.onAuthStateChange((_event, newSession) => {
-		session = newSession;
-		user = newSession?.user ?? null;
-	});
+	try {
+		const {
+			data: { session: initialSession }
+		} = await supabase.auth.getSession();
+		session = initialSession;
+		user = initialSession?.user ?? null;
+		loading = false;
 
-	return subscription;
+		const {
+			data: { subscription: sub }
+		} = supabase.auth.onAuthStateChange((_event, newSession) => {
+			if (!initialized) return;
+			session = newSession;
+			user = newSession?.user ?? null;
+		});
+
+		subscription = sub;
+	} catch {
+		loading = false;
+		initialized = false;
+	}
+}
+
+export function cleanupAuth() {
+	if (subscription) {
+		subscription.unsubscribe();
+		subscription = null;
+	}
+	session = null;
+	user = null;
+	loading = true;
+	initialized = false;
 }
 
 export async function signInWithEmail(email: string, password: string) {

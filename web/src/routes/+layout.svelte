@@ -1,7 +1,7 @@
 <script lang="ts">
 	import '../app.css';
 	import favicon from '$lib/assets/favicon.svg';
-	import { initAuth, getAuth } from '$lib/stores/auth.svelte';
+	import { initAuth, cleanupAuth, getAuth } from '$lib/stores/auth.svelte';
 	import { onMount } from 'svelte';
 
 	let { children } = $props();
@@ -9,6 +9,9 @@
 
 	onMount(() => {
 		initAuth();
+		return () => {
+			cleanupAuth();
+		};
 	});
 </script>
 

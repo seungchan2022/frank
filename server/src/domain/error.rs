@@ -83,4 +83,39 @@ mod tests {
         let err = AppError::Internal("server error".to_string());
         assert!(err.to_string().contains("server error"));
     }
+
+    fn extract_body(err: AppError) -> serde_json::Value {
+        let resp = err.into_response();
+        let (_, body) = resp.into_parts();
+        let rt = tokio::runtime::Runtime::new().unwrap();
+        let bytes = rt.block_on(axum::body::to_bytes(body, usize::MAX)).unwrap();
+        serde_json::from_slice(&bytes).unwrap()
+    }
+
+    #[test]
+    fn unauthorized_body_contains_message() {
+        let body = extract_body(AppError::Unauthorized("no token".to_string()));
+        assert_eq!(body, serde_json::json!({"error": "no token"}));
+    }
+
+    #[test]
+    fn not_found_body_contains_message() {
+        let body = extract_body(AppError::NotFound("missing resource".to_string()));
+        assert_eq!(body, serde_json::json!({"error": "missing resource"}));
+    }
+
+    #[test]
+    fn bad_request_body_contains_message() {
+        let body = extract_body(AppError::BadRequest("invalid input".to_string()));
+        assert_eq!(body, serde_json::json!({"error": "invalid input"}));
+    }
+
+    #[test]
+    fn internal_body_hides_detail() {
+        let body = extract_body(AppError::Internal("secret db error".to_string()));
+        assert_eq!(body, serde_json::json!({"error": "Internal server error"}));
+        // Ensure the detailed message is NOT exposed
+        let error_str = body["error"].as_str().unwrap();
+        assert!(!error_str.contains("secret db error"));
+    }
 }
