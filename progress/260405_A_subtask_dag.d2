@@ -1,0 +1,109 @@
+direction: down
+
+title: {
+  label: "MVP1.5-A 안정성 확보 서브태스크 DAG"
+  near: top-center
+  shape: text
+  style.font-size: 24
+  style.bold: true
+}
+
+# Phase 1 - 선행
+S1: {
+  label: "S1: HTTP retry/size-limit\n공통 유틸리티"
+  shape: rectangle
+  style.fill: "#FFD700"
+  style.font-size: 14
+}
+
+# Phase 2 - 서버 어댑터 (S1 의존)
+S2: {
+  label: "S2: Tavily\nretry 3회 / 2MB"
+  shape: rectangle
+  style.fill: "#87CEEB"
+  style.font-size: 14
+}
+
+S3: {
+  label: "S3: Exa\nretry 3회 / 2MB"
+  shape: rectangle
+  style.fill: "#87CEEB"
+  style.font-size: 14
+}
+
+S4: {
+  label: "S4: Firecrawl\nretry 2회 / 2~20MB"
+  shape: rectangle
+  style.fill: "#87CEEB"
+  style.font-size: 14
+}
+
+S5: {
+  label: "S5: OpenRouter\nretry 1회 / 1MB"
+  shape: rectangle
+  style.fill: "#87CEEB"
+  style.font-size: 14
+}
+
+# Phase 2 - 독립 테스트
+S6: {
+  label: "S6: Auth 미들웨어\n포괄 테스트 +4건"
+  shape: rectangle
+  style.fill: "#98FB98"
+  style.font-size: 14
+}
+
+S7: {
+  label: "S7: AppError\nbody 포괄 테스트"
+  shape: rectangle
+  style.fill: "#98FB98"
+  style.font-size: 14
+}
+
+# Phase 2 - 웹
+S8: {
+  label: "S8: 웹 Auth 구독 해제\ncleanupAuth() 구현"
+  shape: rectangle
+  style.fill: "#DDA0DD"
+  style.font-size: 14
+}
+
+# 의존성 화살표
+S1 -> S2: "의존"
+S1 -> S3: "의존"
+S1 -> S4: "의존"
+S1 -> S5: "의존"
+
+# Phase 범례
+legend: {
+  label: ""
+  near: bottom-center
+  shape: rectangle
+  style.fill: "#F5F5F5"
+  style.stroke: "#CCCCCC"
+
+  p1: {
+    label: "Phase 1 (선행)"
+    shape: rectangle
+    style.fill: "#FFD700"
+    style.font-size: 12
+  }
+  p2_feat: {
+    label: "Phase 2 - feat+test"
+    shape: rectangle
+    style.fill: "#87CEEB"
+    style.font-size: 12
+  }
+  p2_test: {
+    label: "Phase 2 - test only"
+    shape: rectangle
+    style.fill: "#98FB98"
+    style.font-size: 12
+  }
+  p2_web: {
+    label: "Phase 2 - web"
+    shape: rectangle
+    style.fill: "#DDA0DD"
+    style.font-size: 12
+  }
+}
