@@ -89,12 +89,7 @@ impl LlmPort for OpenRouterAdapter {
                 "reasoning": { "effort": "none" },
             });
 
-            let config = RetryConfig {
-                max_retries: 1,
-                base_delay_ms: 200,
-                max_response_size: 1024 * 1024, // 1MB
-                ..RetryConfig::default()
-            };
+            let config = RetryConfig::for_llm();
 
             let api_key = self.api_key.clone();
             let url = format!("{}/api/v1/chat/completions", self.base_url);

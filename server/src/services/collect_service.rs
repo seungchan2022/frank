@@ -1,11 +1,11 @@
-use std::sync::Arc;
-
+use futures::stream::{self, StreamExt};
 use uuid::Uuid;
 
 use crate::domain::error::AppError;
 use crate::domain::models::Article;
-use crate::domain::ports::{CrawlPort, DbPort};
-use crate::infra::search_chain::SearchFallbackChain;
+use crate::domain::ports::{CrawlPort, DbPort, SearchChainPort};
+
+const MAX_CONCURRENT_CRAWLS: usize = 5;
 
 /// 홈페이지/목록 페이지 URL을 판별한다.
 /// path 세그먼트가 1개 이하면 개별 기사가 아닌 것으로 간주.
@@ -29,7 +29,7 @@ fn is_homepage_url(raw_url: &str) -> bool {
 /// 사용자의 태그를 기반으로 뉴스를 검색하고 DB에 저장한다.
 pub async fn collect_for_user<D: DbPort>(
     db: &D,
-    search_chain: &Arc<SearchFallbackChain>,
+    search_chain: &dyn SearchChainPort,
     crawl: &dyn CrawlPort,
     user_id: Uuid,
 ) -> Result<usize, AppError> {
@@ -103,11 +103,20 @@ pub async fn collect_for_user<D: DbPort>(
 
         db.save_articles(all_articles).await?;
 
-        // 5. 각 기사 URL에서 본문 크롤링
-        for (article_id, url) in &crawl_targets {
-            match crawl.scrape(url).await {
+        // 5. 각 기사 URL에서 본문 크롤링 (병렬, 최대 MAX_CONCURRENT_CRAWLS개 동시)
+        let crawl_results: Vec<_> = stream::iter(crawl_targets)
+            .map(|(article_id, url)| async move {
+                let result = crawl.scrape(&url).await;
+                (article_id, url, result)
+            })
+            .buffer_unordered(MAX_CONCURRENT_CRAWLS)
+            .collect()
+            .await;
+
+        for (article_id, url, result) in crawl_results {
+            match result {
                 Ok(content) => {
-                    if let Err(e) = db.update_article_content(*article_id, &content).await {
+                    if let Err(e) = db.update_article_content(article_id, &content).await {
                         tracing::warn!(
                             article_id = %article_id,
                             error = %e,
@@ -136,8 +145,10 @@ mod tests {
     use crate::infra::fake_crawl::FakeCrawlAdapter;
     use crate::infra::fake_db::FakeDbAdapter;
     use crate::infra::fake_search::FakeSearchAdapter;
+    use crate::infra::search_chain::SearchFallbackChain;
+    use std::sync::Arc;
 
-    fn make_chain(results: Vec<SearchResult>, should_fail: bool) -> Arc<SearchFallbackChain> {
+    fn make_chain(results: Vec<SearchResult>, should_fail: bool) -> Arc<dyn SearchChainPort> {
         let adapter = FakeSearchAdapter::new("fake", results, should_fail);
         Arc::new(SearchFallbackChain::new(vec![Box::new(adapter)]))
     }
@@ -182,7 +193,7 @@ mod tests {
             false,
         );
 
-        let count = collect_for_user(&db, &chain, &crawl, user_id)
+        let count = collect_for_user(&db, chain.as_ref(), &crawl, user_id)
             .await
             .unwrap();
 
@@ -212,7 +223,7 @@ mod tests {
 
         let chain = make_chain(vec![], false);
 
-        let result = collect_for_user(&db, &chain, &crawl, user_id).await;
+        let result = collect_for_user(&db, chain.as_ref(), &crawl, user_id).await;
         assert!(result.is_err());
     }
 
@@ -226,7 +237,7 @@ mod tests {
         // 검색이 실패해도 에러가 아닌 0 반환
         let chain = make_chain(vec![], true);
 
-        let count = collect_for_user(&db, &chain, &crawl, user_id)
+        let count = collect_for_user(&db, chain.as_ref(), &crawl, user_id)
             .await
             .unwrap();
         assert_eq!(count, 0);
@@ -249,7 +260,7 @@ mod tests {
             false,
         );
 
-        let count = collect_for_user(&db, &chain, &crawl, user_id)
+        let count = collect_for_user(&db, chain.as_ref(), &crawl, user_id)
             .await
             .unwrap();
 
@@ -303,7 +314,7 @@ mod tests {
             false,
         );
 
-        let count = collect_for_user(&db, &chain, &crawl, user_id)
+        let count = collect_for_user(&db, chain.as_ref(), &crawl, user_id)
             .await
             .unwrap();
 

@@ -67,12 +67,7 @@ impl SearchPort for FirecrawlAdapter {
                 "limit": max_results,
             });
 
-            let config = RetryConfig {
-                max_retries: 2,
-                base_delay_ms: 100,
-                max_response_size: 2 * 1024 * 1024, // 2MB
-                ..RetryConfig::default()
-            };
+            let config = RetryConfig::for_search();
 
             let api_key = self.api_key.clone();
             let url = format!("{}/v1/search", self.base_url);
@@ -143,12 +138,7 @@ impl CrawlPort for FirecrawlAdapter {
                 "onlyMainContent": true,
             });
 
-            let config = RetryConfig {
-                max_retries: 2,
-                base_delay_ms: 100,
-                max_response_size: 20 * 1024 * 1024, // 20MB
-                ..RetryConfig::default()
-            };
+            let config = RetryConfig::for_crawl();
 
             let api_key = self.api_key.clone();
             let scrape_url = format!("{}/v1/scrape", self.base_url);

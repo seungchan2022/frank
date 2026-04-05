@@ -1,6 +1,8 @@
+use std::pin::Pin;
+
 use crate::domain::error::AppError;
 use crate::domain::models::SearchResult;
-use crate::domain::ports::SearchPort;
+use crate::domain::ports::{SearchChainPort, SearchPort};
 
 /// 폴백 체인: 순서대로 시도, 첫 성공 결과 반환
 pub struct SearchFallbackChain {
@@ -51,6 +53,17 @@ impl SearchFallbackChain {
         Err(last_error.unwrap_or_else(|| {
             AppError::Internal("All search sources returned empty results".to_string())
         }))
+    }
+}
+
+impl SearchChainPort for SearchFallbackChain {
+    fn search<'a>(
+        &'a self,
+        query: &'a str,
+        max_results: usize,
+    ) -> Pin<Box<dyn Future<Output = Result<(Vec<SearchResult>, String), AppError>> + Send + 'a>>
+    {
+        Box::pin(self.search(query, max_results))
     }
 }
 

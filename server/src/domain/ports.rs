@@ -62,6 +62,17 @@ pub trait DbPort: Send + Sync {
     ) -> impl Future<Output = Result<(), AppError>> + Send;
 }
 
+/// 검색 폴백 체인 포트 (여러 SearchPort를 순서대로 시도)
+/// dyn compatible을 위해 boxed future 사용
+pub trait SearchChainPort: Send + Sync {
+    #[allow(clippy::type_complexity)]
+    fn search<'a>(
+        &'a self,
+        query: &'a str,
+        max_results: usize,
+    ) -> Pin<Box<dyn Future<Output = Result<(Vec<SearchResult>, String), AppError>> + Send + 'a>>;
+}
+
 /// 웹서치 포트 (Tavily, Exa, Firecrawl, arXiv)
 /// dyn compatible을 위해 boxed future 사용
 pub trait SearchPort: Send + Sync {

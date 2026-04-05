@@ -1,9 +1,110 @@
+use chrono::{DateTime, Utc};
 use sqlx::PgPool;
 use uuid::Uuid;
 
 use crate::domain::error::AppError;
 use crate::domain::models::{Article, Profile, Tag, UserTag};
 use crate::domain::ports::DbPort;
+
+// --- infra-only row structs (sqlx::FromRow는 여기서만 사용) ---
+
+#[derive(sqlx::FromRow)]
+struct ProfileRow {
+    id: Uuid,
+    display_name: Option<String>,
+    onboarding_completed: bool,
+}
+
+impl From<ProfileRow> for Profile {
+    fn from(r: ProfileRow) -> Self {
+        Self {
+            id: r.id,
+            display_name: r.display_name,
+            onboarding_completed: r.onboarding_completed,
+        }
+    }
+}
+
+#[derive(sqlx::FromRow)]
+struct TagRow {
+    id: Uuid,
+    name: String,
+    category: Option<String>,
+}
+
+impl From<TagRow> for Tag {
+    fn from(r: TagRow) -> Self {
+        Self {
+            id: r.id,
+            name: r.name,
+            category: r.category,
+        }
+    }
+}
+
+#[derive(sqlx::FromRow)]
+struct UserTagRow {
+    user_id: Uuid,
+    tag_id: Uuid,
+}
+
+impl From<UserTagRow> for UserTag {
+    fn from(r: UserTagRow) -> Self {
+        Self {
+            user_id: r.user_id,
+            tag_id: r.tag_id,
+        }
+    }
+}
+
+#[derive(sqlx::FromRow)]
+struct ArticleRow {
+    id: Uuid,
+    user_id: Uuid,
+    tag_id: Option<Uuid>,
+    title: String,
+    url: String,
+    snippet: Option<String>,
+    source: String,
+    search_query: Option<String>,
+    summary: Option<String>,
+    insight: Option<String>,
+    summarized_at: Option<DateTime<Utc>>,
+    published_at: Option<DateTime<Utc>>,
+    created_at: Option<DateTime<Utc>>,
+    title_ko: Option<String>,
+    content: Option<String>,
+    llm_model: Option<String>,
+    prompt_tokens: Option<i32>,
+    completion_tokens: Option<i32>,
+}
+
+impl From<ArticleRow> for Article {
+    fn from(r: ArticleRow) -> Self {
+        Self {
+            id: r.id,
+            user_id: r.user_id,
+            tag_id: r.tag_id,
+            title: r.title,
+            url: r.url,
+            snippet: r.snippet,
+            source: r.source,
+            search_query: r.search_query,
+            summary: r.summary,
+            insight: r.insight,
+            summarized_at: r.summarized_at,
+            published_at: r.published_at,
+            created_at: r.created_at,
+            title_ko: r.title_ko,
+            content: r.content,
+            llm_model: r.llm_model,
+            prompt_tokens: r.prompt_tokens,
+            completion_tokens: r.completion_tokens,
+        }
+    }
+}
+
+// ---
 
 #[derive(Debug, Clone)]
 pub struct PostgresDbAdapter {
@@ -18,13 +119,14 @@ impl PostgresDbAdapter {
 
 impl DbPort for PostgresDbAdapter {
     async fn get_profile(&self, user_id: Uuid) -> Result<Profile, AppError> {
-        sqlx::query_as::<_, Profile>(
+        sqlx::query_as::<_, ProfileRow>(
             "SELECT id, display_name, onboarding_completed FROM profiles WHERE id = $1",
         )
         .bind(user_id)
         .fetch_optional(&self.pool)
         .await
         .map_err(|e| AppError::Internal(format!("DB query failed: {e}")))?
+        .map(Profile::from)
         .ok_or_else(|| AppError::NotFound("Profile not found".to_string()))
     }
 
@@ -47,18 +149,24 @@ impl DbPort for PostgresDbAdapter {
     }
 
     async fn list_tags(&self) -> Result<Vec<Tag>, AppError> {
-        sqlx::query_as::<_, Tag>("SELECT id, name, category FROM tags ORDER BY category, name")
-            .fetch_all(&self.pool)
-            .await
-            .map_err(|e| AppError::Internal(format!("DB query failed: {e}")))
+        let rows = sqlx::query_as::<_, TagRow>(
+            "SELECT id, name, category FROM tags ORDER BY category, name",
+        )
+        .fetch_all(&self.pool)
+        .await
+        .map_err(|e| AppError::Internal(format!("DB query failed: {e}")))?;
+        Ok(rows.into_iter().map(Tag::from).collect())
     }
 
     async fn get_user_tags(&self, user_id: Uuid) -> Result<Vec<UserTag>, AppError> {
-        sqlx::query_as::<_, UserTag>("SELECT user_id, tag_id FROM user_tags WHERE user_id = $1")
-            .bind(user_id)
-            .fetch_all(&self.pool)
-            .await
-            .map_err(|e| AppError::Internal(format!("DB query failed: {e}")))
+        let rows = sqlx::query_as::<_, UserTagRow>(
+            "SELECT user_id, tag_id FROM user_tags WHERE user_id = $1",
+        )
+        .bind(user_id)
+        .fetch_all(&self.pool)
+        .await
+        .map_err(|e| AppError::Internal(format!("DB query failed: {e}")))?;
+        Ok(rows.into_iter().map(UserTag::from).collect())
     }
 
     async fn set_user_tags(&self, user_id: Uuid, tag_ids: Vec<Uuid>) -> Result<(), AppError> {
@@ -124,7 +232,7 @@ impl DbPort for PostgresDbAdapter {
     }
 
     async fn get_user_articles(&self, user_id: Uuid, limit: i64) -> Result<Vec<Article>, AppError> {
-        sqlx::query_as::<_, Article>(
+        let rows = sqlx::query_as::<_, ArticleRow>(
             "SELECT id, user_id, tag_id, title, url, snippet, source, search_query, summary, insight, summarized_at, published_at, created_at, title_ko, content, llm_model, prompt_tokens, completion_tokens
              FROM articles
              WHERE user_id = $1
@@ -135,7 +243,8 @@ impl DbPort for PostgresDbAdapter {
         .bind(limit)
         .fetch_all(&self.pool)
         .await
-        .map_err(|e| AppError::Internal(format!("DB query failed: {e}")))
+        .map_err(|e| AppError::Internal(format!("DB query failed: {e}")))?;
+        Ok(rows.into_iter().map(Article::from).collect())
     }
 
     async fn update_article_summary(

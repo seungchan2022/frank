@@ -12,21 +12,20 @@ use axum::routing::{get, post};
 use axum::{Extension, Router};
 
 use api::AppState;
-use domain::ports::{CrawlPort, DbPort, LlmPort, NotificationPort};
-use infra::search_chain::SearchFallbackChain;
+use domain::ports::{CrawlPort, DbPort, LlmPort, NotificationPort, SearchChainPort};
 use middleware::auth::SupabaseConfig;
 
 pub fn create_router<D: DbPort + Clone + 'static>(
     db: D,
     supabase_config: SupabaseConfig,
-    search_chain: SearchFallbackChain,
+    search_chain: Arc<dyn SearchChainPort>,
     llm: Arc<dyn LlmPort>,
     crawl: Arc<dyn CrawlPort>,
     notifier: Arc<dyn NotificationPort>,
 ) -> Router {
     let state = AppState {
         db,
-        search_chain: Arc::new(search_chain),
+        search_chain,
         llm,
         crawl,
         notifier,

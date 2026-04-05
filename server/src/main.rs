@@ -1,6 +1,7 @@
 use std::sync::Arc;
 
 use server::config::AppConfig;
+use server::domain::ports::SearchChainPort;
 use server::infra::exa::ExaAdapter;
 use server::infra::firecrawl::FirecrawlAdapter;
 use server::infra::imessage::{ImessageAdapter, LogOnlyNotificationAdapter};
@@ -33,11 +34,11 @@ async fn main() {
 
     let db = PostgresDbAdapter::new(pool);
 
-    let search_chain = SearchFallbackChain::new(vec![
+    let search_chain: Arc<dyn SearchChainPort> = Arc::new(SearchFallbackChain::new(vec![
         Box::new(TavilyAdapter::new(&config.tavily_api_key)),
         Box::new(ExaAdapter::new(&config.exa_api_key)),
         Box::new(FirecrawlAdapter::new(&config.firecrawl_api_key)),
-    ]);
+    ]));
 
     let llm = Arc::new(OpenRouterAdapter::new(
         &config.openrouter_api_key,

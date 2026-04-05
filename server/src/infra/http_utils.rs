@@ -30,6 +30,32 @@ impl Default for RetryConfig {
     }
 }
 
+impl RetryConfig {
+    /// 검색 API용 프리셋 (3회 retry, 2MB 제한)
+    pub fn for_search() -> Self {
+        Self::default()
+    }
+
+    /// 크롤링 API용 프리셋 (2회 retry, 20MB 제한)
+    pub fn for_crawl() -> Self {
+        Self {
+            max_retries: 2,
+            max_response_size: 20 * 1024 * 1024, // 20MB
+            ..Self::default()
+        }
+    }
+
+    /// LLM API용 프리셋 (1회 retry, 1MB 제한, 긴 base delay)
+    pub fn for_llm() -> Self {
+        Self {
+            max_retries: 1,
+            base_delay_ms: 200,
+            max_response_size: 1024 * 1024, // 1MB
+            ..Self::default()
+        }
+    }
+}
+
 fn is_retryable_error(err: &reqwest::Error) -> bool {
     err.is_timeout() || err.is_connect()
 }

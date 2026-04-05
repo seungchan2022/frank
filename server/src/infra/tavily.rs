@@ -60,12 +60,7 @@ impl SearchPort for TavilyAdapter {
                 "include_answer": false,
             });
 
-            let config = RetryConfig {
-                max_retries: 3,
-                base_delay_ms: 100,
-                max_response_size: 2 * 1024 * 1024, // 2MB
-                ..RetryConfig::default()
-            };
+            let config = RetryConfig::for_search();
 
             let api_key = self.api_key.clone();
             let url = format!("{}/search", self.base_url);

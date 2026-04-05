@@ -1,9 +1,12 @@
+use futures::stream::{self, StreamExt};
 use uuid::Uuid;
 
 use crate::domain::error::AppError;
 use crate::domain::models::Article;
 use crate::domain::ports::{DbPort, LlmPort, NotificationPort};
 use crate::services::notification_service;
+
+const MAX_CONCURRENT_SUMMARIES: usize = 5;
 
 /// 사용자의 미요약 기사를 LLM으로 요약한다.
 /// 요약 완료 후 새로 요약된 기사가 있으면 알림을 전송한다.
@@ -16,34 +19,38 @@ pub async fn summarize_articles<D: DbPort>(
     // 1. 사용자 기사 전체 조회 (충분히 큰 limit)
     let articles = db.get_user_articles(user_id, 1000).await?;
 
+    // 요약 대상 필터링 (소유형 문자열로 수집)
+    let targets: Vec<(Uuid, String, String)> = articles
+        .iter()
+        .filter(|a| a.summary.is_none())
+        .filter_map(|a| {
+            let text = a
+                .content
+                .as_deref()
+                .filter(|s| !s.is_empty())
+                .or(a.snippet.as_deref().filter(|s| !s.is_empty()));
+            text.map(|t| (a.id, a.title.clone(), t.to_string()))
+        })
+        .collect();
+
+    // LLM 병렬 호출 (최대 MAX_CONCURRENT_SUMMARIES개 동시)
+    let llm_results: Vec<_> = stream::iter(targets)
+        .map(|(article_id, title, text)| async move {
+            let result = llm.summarize(&title, &text).await;
+            (article_id, result)
+        })
+        .buffer_unordered(MAX_CONCURRENT_SUMMARIES)
+        .collect()
+        .await;
+
     let mut count = 0;
     let mut summarized_ids: Vec<Uuid> = Vec::new();
 
-    for article in &articles {
-        // summary가 이미 있는 기사는 건너뛴다
-        if article.summary.is_some() {
-            continue;
-        }
-
-        // content(본문) 또는 snippet이 없으면 요약 불가
-        let text = article
-            .content
-            .as_deref()
-            .filter(|s| !s.is_empty())
-            .or(article.snippet.as_deref().filter(|s| !s.is_empty()));
-        let text = match text {
-            Some(t) => t,
-            None => continue,
-        };
-
-        // 2. LLM 호출
-        let result = llm.summarize(&article.title, text).await;
-
+    for (article_id, result) in llm_results {
         match result {
             Ok(llm_resp) => {
-                // 3. DB 저장
                 db.update_article_summary(
-                    article.id,
+                    article_id,
                     &llm_resp.summary.summary,
                     &llm_resp.summary.insight,
                     &llm_resp.summary.title_ko,
@@ -52,12 +59,12 @@ pub async fn summarize_articles<D: DbPort>(
                     llm_resp.completion_tokens,
                 )
                 .await?;
-                summarized_ids.push(article.id);
+                summarized_ids.push(article_id);
                 count += 1;
             }
             Err(e) => {
                 tracing::warn!(
-                    article_id = %article.id,
+                    article_id = %article_id,
                     error = %e,
                     "LLM summarization failed, skipping"
                 );
