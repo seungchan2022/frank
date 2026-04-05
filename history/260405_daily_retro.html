@@ -1,0 +1,303 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Daily Retro — 260405</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Pretendard', sans-serif;
+            background: #0a0a0a;
+            color: #e0e0e0;
+            line-height: 1.7;
+            padding: 2rem;
+            max-width: 800px;
+            margin: 0 auto;
+        }
+        h1 {
+            font-size: 1.8rem;
+            font-weight: 700;
+            color: #fff;
+            margin-bottom: 0.3rem;
+        }
+        .date {
+            color: #888;
+            font-size: 0.9rem;
+            margin-bottom: 2rem;
+        }
+        .summary {
+            background: linear-gradient(135deg, #1a1a2e, #16213e);
+            border-left: 3px solid #4ecdc4;
+            padding: 1.2rem 1.5rem;
+            border-radius: 0 8px 8px 0;
+            margin-bottom: 2.5rem;
+            font-size: 1.05rem;
+        }
+        .stats {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 1rem;
+            margin-bottom: 2.5rem;
+        }
+        .stat {
+            background: #141414;
+            border: 1px solid #222;
+            border-radius: 8px;
+            padding: 1rem;
+            text-align: center;
+        }
+        .stat .num {
+            font-size: 1.6rem;
+            font-weight: 700;
+            color: #4ecdc4;
+        }
+        .stat .label {
+            font-size: 0.75rem;
+            color: #888;
+            margin-top: 0.2rem;
+        }
+        section {
+            margin-bottom: 2.5rem;
+        }
+        h2 {
+            font-size: 1.2rem;
+            color: #4ecdc4;
+            margin-bottom: 1rem;
+            padding-bottom: 0.4rem;
+            border-bottom: 1px solid #222;
+        }
+        .decision {
+            background: #141414;
+            border: 1px solid #222;
+            border-radius: 8px;
+            padding: 1.2rem;
+            margin-bottom: 1rem;
+        }
+        .decision .tag {
+            display: inline-block;
+            font-size: 0.7rem;
+            padding: 0.2rem 0.5rem;
+            border-radius: 4px;
+            margin-bottom: 0.5rem;
+            font-weight: 600;
+        }
+        .tag.impact { background: #4ecdc420; color: #4ecdc4; }
+        .tag.surprise { background: #f9a82520; color: #f9a825; }
+        .tag.pattern { background: #ab47bc20; color: #ce93d8; }
+        .tag.next { background: #42a5f520; color: #90caf9; }
+        .decision h3 {
+            font-size: 1rem;
+            color: #fff;
+            margin-bottom: 0.4rem;
+        }
+        .decision p {
+            font-size: 0.9rem;
+            color: #aaa;
+        }
+        .insight {
+            background: linear-gradient(135deg, #1b2a1b, #1a2e1a);
+            border-left: 3px solid #66bb6a;
+            padding: 1rem 1.2rem;
+            border-radius: 0 8px 8px 0;
+            margin-bottom: 1rem;
+            font-size: 0.9rem;
+        }
+        .insight strong { color: #66bb6a; }
+        .timeline {
+            position: relative;
+            padding-left: 1.5rem;
+        }
+        .timeline::before {
+            content: '';
+            position: absolute;
+            left: 0;
+            top: 0;
+            bottom: 0;
+            width: 2px;
+            background: #222;
+        }
+        .timeline .event {
+            position: relative;
+            margin-bottom: 1rem;
+            padding-left: 1rem;
+        }
+        .timeline .event::before {
+            content: '';
+            position: absolute;
+            left: -1.55rem;
+            top: 0.5rem;
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: #4ecdc4;
+        }
+        .timeline .time {
+            font-size: 0.75rem;
+            color: #666;
+        }
+        .timeline .desc {
+            font-size: 0.9rem;
+            color: #ccc;
+        }
+        .tomorrow {
+            background: #141414;
+            border: 1px solid #333;
+            border-radius: 8px;
+            padding: 1.2rem;
+        }
+        .tomorrow li {
+            list-style: none;
+            padding: 0.3rem 0;
+            font-size: 0.9rem;
+            color: #aaa;
+        }
+        .tomorrow li::before {
+            content: '→ ';
+            color: #4ecdc4;
+        }
+        footer {
+            margin-top: 3rem;
+            padding-top: 1rem;
+            border-top: 1px solid #222;
+            font-size: 0.75rem;
+            color: #555;
+            text-align: center;
+        }
+    </style>
+</head>
+<body>
+
+<h1>Daily Retro</h1>
+<p class="date">2026년 4월 5일 토요일 — MVP1.5 마무리 + MVP2 M1 시작</p>
+
+<div class="summary">
+    하루 전체를 관통한 키워드: <strong>"문서가 아닌 엔진이 강제한다."</strong><br>
+    43개 커밋 분석에서 문서로만 강제한 규칙의 위반율이 60~100%였다는 사실을 발견하고,
+    hook 5계층 자동화로 전환한 것이 오늘의 가장 큰 전환점이었다.
+</div>
+
+<div class="stats">
+    <div class="stat">
+        <div class="num">14</div>
+        <div class="label">커밋</div>
+    </div>
+    <div class="stat">
+        <div class="num">37</div>
+        <div class="label">iOS 파일 생성</div>
+    </div>
+    <div class="stat">
+        <div class="num">19</div>
+        <div class="label">테스트 통과</div>
+    </div>
+    <div class="stat">
+        <div class="num">1,823</div>
+        <div class="label">추가 라인</div>
+    </div>
+</div>
+
+<section>
+    <h2>핵심 의사결정과 '왜'</h2>
+
+    <div class="decision">
+        <span class="tag impact">IMPACT — 오늘의 선택</span>
+        <h3>Claude Code 설정 체계 자동화</h3>
+        <p>
+            MVP1의 43개 커밋을 분석하니, main 직접 커밋 100%, 테스트 미실행 60%였다.
+            CLAUDE.md에 "금지"라고 적어도 지켜지지 않았다.
+            해결책: settings.json deny + pre-commit hook + commit-msg hook.
+            <strong>규칙을 문서에서 엔진으로 옮기자 위반율이 0%가 됐다.</strong>
+            이게 잘 동작한다는 걸 오늘 직접 체감했다 — main에 커밋하려 했더니 hook이 차단했고,
+            그게 "예상과 달랐던 점"이자 동시에 가장 만족스러운 순간이었다.
+        </p>
+    </div>
+
+    <div class="decision">
+        <span class="tag pattern">PATTERN — 아키텍처 일관성</span>
+        <h3>서버/웹/iOS 동일 포트/어댑터 패턴</h3>
+        <p>
+            세 앱 모두 같은 패턴을 쓰니 컨텍스트 스위칭 비용이 줄어든다.
+            Mock Port 기반 TDD도 잘 맞았다. 다만 실제 어댑터 구현(M2~)을 해봐야
+            iOS에서 과한 추상화인지 판단할 수 있다. 판단 보류 — 체감 후 평가 예정.
+        </p>
+    </div>
+
+    <div class="decision">
+        <span class="tag surprise">SURPRISE</span>
+        <h3>Tuist MCP: tools가 아예 없다</h3>
+        <p>
+            MCP 연결까지 했는데 tools capability가 비어있었다.
+            resources template(Xcode 그래프 읽기)만 지원.
+            결국 CLI로 프로젝트 생성 + MCP resource로 검증하는 하이브리드 전략으로 전환.
+            "MCP = 만능"이 아니라 "MCP = 각 서버가 노출하는 만큼만"이라는 교훈.
+        </p>
+    </div>
+</section>
+
+<section>
+    <h2>인사이트</h2>
+
+    <div class="insight">
+        <strong>규칙 강제의 법칙:</strong>
+        "문서에 적힌 규칙은 강제가 아니라 권고다."
+        settings.json deny, Git hook, Claude hook — 세 층이 겹쳐야 비로소 강제.
+        이 구조는 AI 에이전트뿐 아니라 사람 팀에도 적용되는 보편적 원리다.
+    </div>
+
+    <div class="insight">
+        <strong>os.Logger의 함정:</strong>
+        info 레벨은 simctl log stream에 안 나온다. notice 이상이어야 확인 가능.
+        디버깅용 로그는 notice, 프로덕션 노이즈 줄이기는 info — 이 구분을 기억할 것.
+    </div>
+
+    <div class="insight">
+        <strong>의존성 추가 타이밍:</strong>
+        Supabase Swift SDK를 M1에서 안 넣고 M2로 미뤘다.
+        Port(protocol)만 정의하면 SDK 없이 M1은 완결된다.
+        "필요할 때 추가"가 포트/어댑터 패턴의 자연스러운 리듬.
+    </div>
+</section>
+
+<section>
+    <h2>오늘의 타임라인</h2>
+    <div class="timeline">
+        <div class="event">
+            <div class="time">오전</div>
+            <div class="desc">MVP1.5 심층분석 + 회고 문서 작성 / MVP1/1.5 아카이빙 체계 확립</div>
+        </div>
+        <div class="event">
+            <div class="time">오후 초반</div>
+            <div class="desc">Claude Code 설정 체계 리팩토링 (hook 5계층, compactPrompt, MCP 정리)</div>
+        </div>
+        <div class="event">
+            <div class="time">오후 중반</div>
+            <div class="desc">MVP2 iOS 로드맵 확정 (마일스톤 플로우 → 아키텍처 설계 → 6개 마일스톤)</div>
+        </div>
+        <div class="event">
+            <div class="time">저녁</div>
+            <div class="desc">M1 구현: Tuist 프로젝트 + 코어 레이어 + 19개 테스트 + 시뮬레이터 실행</div>
+        </div>
+        <div class="event">
+            <div class="time">마무리</div>
+            <div class="desc">os.Logger 트레이싱 추가 + 문서 업데이트 + 커밋 + 회고</div>
+        </div>
+    </div>
+</section>
+
+<section>
+    <h2>내일을 위한 메모</h2>
+    <div class="tomorrow">
+        <li>M2 인증 플로우 — 진행하면서 느끼겠다는 판단. 일단 시작하고 부딪히며 조정</li>
+        <li>Supabase Swift SDK SPM 추가가 첫 작업이 될 것</li>
+        <li>AuthFeature 상태 설계: 로딩/에러/인증됨 + 온보딩 분기</li>
+        <li>포트/어댑터가 iOS에서 과한지는 실제 어댑터 구현 후 평가</li>
+        <li>기술 부채 — 아직 체감 없음. 부채가 보이면 그때 정리</li>
+    </div>
+</section>
+
+<footer>
+    Generated by Claude Code — frank project daily retro
+</footer>
+
+</body>
+</html>

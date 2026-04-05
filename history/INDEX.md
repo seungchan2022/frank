@@ -35,6 +35,16 @@
 
 ---
 
+## MVP2 — iOS 네이티브 앱 (260405~)
+
+> iOS 26 + SwiftUI + Tuist. 에코 서버 패턴 + @Observable Feature Reducer.
+
+| 유형 | 파일 | 핵심 내용 |
+|------|------|----------|
+| 회고 | [일일 회고 260405](260405_daily_retro.html) | M1 완료, hook 강제 체감, Tuist MCP 한계, 포트/어댑터 iOS 적용 |
+
+---
+
 ## 빠른 검색 가이드
 
 | 찾고 싶은 것 | 참조 파일 |
@@ -46,3 +56,5 @@
 | 실전 버그 패턴 | `mvp1/260404_feed_loading_bug.md` |
 | 성능 분석 (DB, 병렬처리) | `mvp1/260404_perf_db_access.md`, `mvp15/260405_mvp15_completion_retro.md` |
 | MVP2 방향/잔여 부채 | `mvp1/260405_mvp1_completion_retro.md`, `mvp15/260405_mvp15_completion_retro.md` |
+| MVP2 iOS 로드맵 | `progress/260405_MVP2_iOS_로드맵.md` |
+| iOS 아키텍처/회고 | `260405_daily_retro.html` |
