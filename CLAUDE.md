@@ -75,7 +75,8 @@ frank/
 ├── web/                 # Svelte 웹 프론트엔드
 │   └── src/
 ├── supabase/            # DB 마이그레이션
-├── progress/            # 작업 문서
+├── progress/            # 작업 문서 (진행 중)
+│   └── history/         # 완료 마일스톤 아카이브
 └── rules/               # 강제 규칙
 ```
 
