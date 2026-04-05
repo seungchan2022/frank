@@ -128,6 +128,32 @@ where
     Err(last_error.unwrap_or_else(|| AppError::Internal("All retries exhausted".to_string())))
 }
 
+/// Response body를 읽으면서 size limit을 적용한다.
+/// Content-Length 헤더가 없는 chunked 응답에도 동작한다.
+pub async fn read_body_limited(resp: Response, max_size: u64) -> Result<String, AppError> {
+    // Content-Length가 있으면 미리 체크 (빠른 실패)
+    check_content_length(&resp, max_size)?;
+
+    let mut body = Vec::new();
+    let mut stream = resp;
+
+    while let Some(chunk) = stream
+        .chunk()
+        .await
+        .map_err(|e| AppError::Internal(format!("Failed to read response chunk: {e}")))?
+    {
+        body.extend_from_slice(&chunk);
+        if body.len() as u64 > max_size {
+            return Err(AppError::Internal(format!(
+                "Response body too large: exceeds limit of {max_size} bytes"
+            )));
+        }
+    }
+
+    String::from_utf8(body)
+        .map_err(|e| AppError::Internal(format!("Invalid UTF-8 in response body: {e}")))
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -489,5 +515,45 @@ mod tests {
         .await;
 
         assert!(result.is_ok());
+    }
+
+    #[tokio::test]
+    async fn read_body_limited_success() {
+        let mock_server = MockServer::start().await;
+        let client = Client::new();
+
+        Mock::given(method("GET"))
+            .and(path("/test"))
+            .respond_with(ResponseTemplate::new(200).set_body_string("hello"))
+            .expect(1)
+            .mount(&mock_server)
+            .await;
+
+        let url = format!("{}/test", mock_server.uri());
+        let resp = client.get(&url).send().await.unwrap();
+        let body = read_body_limited(resp, 1024).await.unwrap();
+
+        assert_eq!(body, "hello");
+    }
+
+    #[tokio::test]
+    async fn read_body_limited_exceeds_limit() {
+        let mock_server = MockServer::start().await;
+        let client = Client::new();
+
+        let large = "x".repeat(2048);
+        Mock::given(method("GET"))
+            .and(path("/test"))
+            .respond_with(ResponseTemplate::new(200).set_body_string(&large))
+            .expect(1)
+            .mount(&mock_server)
+            .await;
+
+        let url = format!("{}/test", mock_server.uri());
+        let resp = client.get(&url).send().await.unwrap();
+        let result = read_body_limited(resp, 1024).await;
+
+        assert!(result.is_err());
+        assert!(result.unwrap_err().to_string().contains("too large"));
     }
 }

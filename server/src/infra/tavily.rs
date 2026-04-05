@@ -4,7 +4,7 @@ use serde::Deserialize;
 use crate::domain::error::AppError;
 use crate::domain::models::SearchResult;
 use crate::domain::ports::SearchPort;
-use crate::infra::http_utils::{RetryConfig, send_with_retry};
+use crate::infra::http_utils::{RetryConfig, read_body_limited, send_with_retry};
 
 #[derive(Debug, Clone)]
 pub struct TavilyAdapter {
@@ -84,17 +84,18 @@ impl SearchPort for TavilyAdapter {
             .await
             .map_err(|e| AppError::Internal(format!("Tavily request failed: {e}")))?;
 
-            if !resp.status().is_success() {
-                let status = resp.status();
-                let body = resp.text().await.unwrap_or_default();
+            let status = resp.status();
+            let body = read_body_limited(resp, config.max_response_size)
+                .await
+                .map_err(|e| AppError::Internal(format!("Tavily read failed: {e}")))?;
+
+            if !status.is_success() {
                 return Err(AppError::Internal(format!(
                     "Tavily returned {status}: {body}"
                 )));
             }
 
-            let data: TavilyResponse = resp
-                .json()
-                .await
+            let data: TavilyResponse = serde_json::from_str(&body)
                 .map_err(|e| AppError::Internal(format!("Tavily parse failed: {e}")))?;
 
             Ok(data

@@ -4,7 +4,7 @@ use serde::Deserialize;
 use crate::domain::error::AppError;
 use crate::domain::models::SearchResult;
 use crate::domain::ports::SearchPort;
-use crate::infra::http_utils::{RetryConfig, send_with_retry};
+use crate::infra::http_utils::{RetryConfig, read_body_limited, send_with_retry};
 
 #[derive(Debug, Clone)]
 pub struct ExaAdapter {
@@ -86,15 +86,16 @@ impl SearchPort for ExaAdapter {
             .await
             .map_err(|e| AppError::Internal(format!("Exa request failed: {e}")))?;
 
-            if !resp.status().is_success() {
-                let status = resp.status();
-                let body = resp.text().await.unwrap_or_default();
+            let status = resp.status();
+            let body = read_body_limited(resp, config.max_response_size)
+                .await
+                .map_err(|e| AppError::Internal(format!("Exa read failed: {e}")))?;
+
+            if !status.is_success() {
                 return Err(AppError::Internal(format!("Exa returned {status}: {body}")));
             }
 
-            let data: ExaResponse = resp
-                .json()
-                .await
+            let data: ExaResponse = serde_json::from_str(&body)
                 .map_err(|e| AppError::Internal(format!("Exa parse failed: {e}")))?;
 
             Ok(data

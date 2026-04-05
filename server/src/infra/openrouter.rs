@@ -7,7 +7,7 @@ use serde::Deserialize;
 use crate::domain::error::AppError;
 use crate::domain::models::{LlmResponse, LlmSummary};
 use crate::domain::ports::LlmPort;
-use crate::infra::http_utils::{RetryConfig, send_with_retry};
+use crate::infra::http_utils::{RetryConfig, read_body_limited, send_with_retry};
 
 #[derive(Debug, Clone)]
 pub struct OpenRouterAdapter {
@@ -113,17 +113,18 @@ impl LlmPort for OpenRouterAdapter {
             .await
             .map_err(|e| AppError::Internal(format!("OpenRouter request failed: {e}")))?;
 
-            if !resp.status().is_success() {
-                let status = resp.status();
-                let body = resp.text().await.unwrap_or_default();
+            let status = resp.status();
+            let body = read_body_limited(resp, config.max_response_size)
+                .await
+                .map_err(|e| AppError::Internal(format!("OpenRouter read failed: {e}")))?;
+
+            if !status.is_success() {
                 return Err(AppError::Internal(format!(
                     "OpenRouter API error ({status}): {body}"
                 )));
             }
 
-            let chat_resp: ChatResponse = resp
-                .json()
-                .await
+            let chat_resp: ChatResponse = serde_json::from_str(&body)
                 .map_err(|e| AppError::Internal(format!("OpenRouter parse failed: {e}")))?;
 
             let content = chat_resp

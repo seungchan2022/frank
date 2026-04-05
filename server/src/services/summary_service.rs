@@ -43,8 +43,12 @@ pub async fn summarize_articles<D: DbPort>(
         .collect()
         .await;
 
+    // 원본 기사를 id → Article 맵으로 보관 (알림용)
+    let article_map: std::collections::HashMap<Uuid, &Article> =
+        articles.iter().map(|a| (a.id, a)).collect();
+
     let mut count = 0;
-    let mut summarized_ids: Vec<Uuid> = Vec::new();
+    let mut summarized_articles: Vec<Article> = Vec::new();
 
     for (article_id, result) in llm_results {
         match result {
@@ -59,7 +63,16 @@ pub async fn summarize_articles<D: DbPort>(
                     llm_resp.completion_tokens,
                 )
                 .await?;
-                summarized_ids.push(article_id);
+
+                // 알림용: 원본 기사에 요약 정보를 채워서 보관 (DB 재조회 불필요)
+                if let Some(&original) = article_map.get(&article_id) {
+                    let mut article = original.clone();
+                    article.summary = Some(llm_resp.summary.summary);
+                    article.insight = Some(llm_resp.summary.insight);
+                    article.title_ko = Some(llm_resp.summary.title_ko);
+                    summarized_articles.push(article);
+                }
+
                 count += 1;
             }
             Err(e) => {
@@ -72,14 +85,9 @@ pub async fn summarize_articles<D: DbPort>(
         }
     }
 
-    // 4. 새로 요약된 기사가 있으면 알림 전송
-    if !summarized_ids.is_empty() {
-        let all_articles = db.get_user_articles(user_id, 1000).await?;
-        let newly_summarized: Vec<Article> = all_articles
-            .into_iter()
-            .filter(|a| summarized_ids.contains(&a.id))
-            .collect();
-        notification_service::notify_if_any(notifier, &newly_summarized);
+    // 4. 새로 요약된 기사가 있으면 알림 전송 (DB 재조회 없이 메모리에서 직접)
+    if !summarized_articles.is_empty() {
+        notification_service::notify_if_any(notifier, &summarized_articles);
     }
 
     Ok(count)

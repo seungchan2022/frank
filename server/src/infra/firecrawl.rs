@@ -4,7 +4,7 @@ use serde::Deserialize;
 use crate::domain::error::AppError;
 use crate::domain::models::SearchResult;
 use crate::domain::ports::{CrawlPort, SearchPort};
-use crate::infra::http_utils::{RetryConfig, send_with_retry};
+use crate::infra::http_utils::{RetryConfig, read_body_limited, send_with_retry};
 
 #[derive(Debug, Clone)]
 pub struct FirecrawlAdapter {
@@ -91,17 +91,18 @@ impl SearchPort for FirecrawlAdapter {
             .await
             .map_err(|e| AppError::Internal(format!("Firecrawl request failed: {e}")))?;
 
-            if !resp.status().is_success() {
-                let status = resp.status();
-                let body = resp.text().await.unwrap_or_default();
+            let status = resp.status();
+            let body = read_body_limited(resp, config.max_response_size)
+                .await
+                .map_err(|e| AppError::Internal(format!("Firecrawl read failed: {e}")))?;
+
+            if !status.is_success() {
                 return Err(AppError::Internal(format!(
                     "Firecrawl returned {status}: {body}"
                 )));
             }
 
-            let data: FirecrawlResponse = resp
-                .json()
-                .await
+            let data: FirecrawlResponse = serde_json::from_str(&body)
                 .map_err(|e| AppError::Internal(format!("Firecrawl parse failed: {e}")))?;
 
             Ok(data
@@ -162,17 +163,19 @@ impl CrawlPort for FirecrawlAdapter {
             .await
             .map_err(|e| AppError::Internal(format!("Firecrawl scrape request failed: {e}")))?;
 
-            if !resp.status().is_success() {
-                let status = resp.status();
-                let body = resp.text().await.unwrap_or_default();
+            let status = resp.status();
+            let scrape_config = RetryConfig::for_crawl();
+            let body = read_body_limited(resp, scrape_config.max_response_size)
+                .await
+                .map_err(|e| AppError::Internal(format!("Firecrawl scrape read failed: {e}")))?;
+
+            if !status.is_success() {
                 return Err(AppError::Internal(format!(
                     "Firecrawl scrape returned {status}: {body}"
                 )));
             }
 
-            let data: FirecrawlScrapeResponse = resp
-                .json()
-                .await
+            let data: FirecrawlScrapeResponse = serde_json::from_str(&body)
                 .map_err(|e| AppError::Internal(format!("Firecrawl scrape parse failed: {e}")))?;
 
             data.data.and_then(|d| d.markdown).ok_or_else(|| {

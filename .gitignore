@@ -15,6 +15,7 @@ Thumbs.db
 
 # === Rust (server/) ===
 target/
+tarpaulin-report.*
 
 # === Python (server/ml/) ===
 __pycache__/
