@@ -20,6 +20,11 @@ cd server && cargo fmt --check
 # 웹 프론트 린트/타입체크
 cd web && npm run lint && npm run check
 
+# iOS 빌드/테스트 (Tuist)
+cd ios/Frank && tuist generate --no-open
+xcodebuild build -workspace Frank.xcworkspace -scheme Frank -destination 'platform=iOS Simulator,name=iPhone 17 Pro'
+xcodebuild test -workspace Frank.xcworkspace -scheme Frank -destination 'platform=iOS Simulator,name=iPhone 17 Pro'
+
 # 전체 테스트
 cd server && cargo test
 cd web && npm run test
@@ -31,6 +36,7 @@ cd web && npm run build
 # 로컬 실행
 cd server && cargo run                     # :8080
 cd web && npm run dev                      # :5173
+ios/Frank/scripts/run-simulator.sh         # iPhone 17 Pro 시뮬레이터
 ```
 
 ## 테스트 커버리지 기준 (90%)
@@ -39,6 +45,7 @@ cd web && npm run dev                      # :5173
 |------|------|------|------|
 | 서버(Rust) | `server/src/` | cargo-tarpaulin | **90% 이상** |
 | 웹 프론트 | `web/src/lib/` | vitest | **90% 이상** |
+| iOS | `ios/Frank/` | Swift Testing | **90% 이상** |
 
 - 새 기능 구현 시 반드시 테스트 먼저 작성 (TDD)
 - 커버리지 90% 미만으로 떨어뜨리는 커밋 금지
@@ -52,6 +59,7 @@ cd web && npm run dev                      # :5173
 |---|---|---|---|
 | API 서버 | `server/` | Rust (Axum) | 8080 |
 | 웹 프론트 | `web/` | Svelte | 5173 |
+| iOS 앱 | `ios/Frank/` | SwiftUI (Tuist) | — |
 
 ### 에코 서버 + 포트/어댑터 패턴
 
@@ -74,6 +82,11 @@ frank/
 │       └── infra/       # 어댑터 구현체 (전부 reqwest HTTP)
 ├── web/                 # Svelte 웹 프론트엔드
 │   └── src/
+├── ios/Frank/           # iOS 앱 (Tuist + SwiftUI)
+│   ├── Frank/Sources/   # 앱 소스 (App, Core, Features, Components)
+│   ├── FrankTests/      # Swift Testing 테스트
+│   ├── scripts/         # 시뮬레이터 실행 스크립트
+│   └── Project.swift    # Tuist 매니페스트
 ├── supabase/            # DB 마이그레이션
 ├── progress/            # 작업 문서 (진행 중)
 ├── history/             # 완료 마일스톤 아카이브
