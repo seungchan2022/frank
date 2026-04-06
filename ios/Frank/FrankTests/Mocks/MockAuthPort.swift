@@ -13,11 +13,15 @@ final class MockAuthPort: AuthPort, @unchecked Sendable {
     )
     var signOutError: Error?
     var currentSessionResult: Profile?
+    var updateOnboardingCompletedResult: Result<Profile, Error> = .success(
+        Profile(id: UUID(), email: "test@example.com", onboardingCompleted: true)
+    )
 
     var signInCallCount = 0
     var signUpCallCount = 0
     var signInWithAppleCallCount = 0
     var signOutCallCount = 0
+    var updateOnboardingCompletedCallCount = 0
 
     func signIn(email: String, password: String) async throws -> Profile {
         signInCallCount += 1
@@ -41,5 +45,10 @@ final class MockAuthPort: AuthPort, @unchecked Sendable {
 
     func currentSession() async throws -> Profile? {
         currentSessionResult
+    }
+
+    func updateOnboardingCompleted() async throws -> Profile {
+        updateOnboardingCompletedCallCount += 1
+        return try updateOnboardingCompletedResult.get()
     }
 }

@@ -3,23 +3,26 @@ import Supabase
 
 @main
 struct FrankApp: App {
+    @State private var dependencies: AppDependencies
     @State private var authFeature: AuthFeature
 
     init() {
         Log.app.notice("FrankApp launched")
-        let dependencies = AppDependencies.live()
-        _authFeature = State(initialValue: AuthFeature(auth: dependencies.auth))
+        let deps = AppDependencies.live()
+        _dependencies = State(initialValue: deps)
+        _authFeature = State(initialValue: AuthFeature(auth: deps.auth))
     }
 
     var body: some Scene {
         WindowGroup {
-            RootView(feature: authFeature)
+            RootView(feature: authFeature, dependencies: dependencies)
         }
     }
 }
 
 struct RootView: View {
     let feature: AuthFeature
+    let dependencies: AppDependencies
 
     var body: some View {
         switch feature.state {
@@ -28,8 +31,39 @@ struct RootView: View {
         case .unauthenticated:
             LoginView(feature: feature)
         case .authenticated(let profile):
-            // TODO: M3 온보딩, M4 피드 분기 추가
-            ContentPlaceholderView(profile: profile, feature: feature)
+            if profile.onboardingCompleted {
+                ContentPlaceholderView(profile: profile, feature: feature)
+            } else {
+                OnboardingContainerView(
+                    dependencies: dependencies,
+                    authFeature: feature
+                )
+            }
+        }
+    }
+}
+
+struct OnboardingContainerView: View {
+    let dependencies: AppDependencies
+    let authFeature: AuthFeature
+    @State private var onboardingFeature: OnboardingFeature?
+
+    var body: some View {
+        if let feature = onboardingFeature {
+            OnboardingView(feature: feature)
+        } else {
+            ProgressView()
+                .onAppear {
+                    onboardingFeature = OnboardingFeature(
+                        tag: dependencies.tag,
+                        auth: dependencies.auth,
+                        onComplete: {
+                            Task {
+                                await authFeature.send(.checkSession)
+                            }
+                        }
+                    )
+                }
         }
     }
 }

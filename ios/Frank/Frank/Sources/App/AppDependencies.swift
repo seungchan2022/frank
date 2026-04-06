@@ -26,7 +26,7 @@ final class AppDependencies {
 
         return AppDependencies(
             auth: SupabaseAuthAdapter(client: client),
-            tag: PlaceholderTagPort(),
+            tag: SupabaseTagAdapter(client: client),
             article: PlaceholderArticlePort(),
             collect: PlaceholderCollectPort()
         )

@@ -83,8 +83,17 @@ struct AuthFlowIntegrationTests {
         await feature.send(.signInWithEmail(email: "test@frank.dev", password: "Test1234!"))
         #expect(feature.state == .authenticated(profile))
 
-        // 4. onboardingCompleted 분기 확인
+        // 4. onboardingCompleted == false → OnboardingView 표시
         #expect(profile.onboardingCompleted == false)
-        // → 온보딩 미완료지만 M3 전까지 ContentPlaceholderView 표시
+
+        // 5. onboardingCompleted == true → ContentPlaceholderView 표시
+        let completedProfile = Profile(id: UUID(), email: "test@frank.dev", onboardingCompleted: true)
+        mock.signInResult = .success(completedProfile)
+        await feature.send(.signInWithEmail(email: "test@frank.dev", password: "Test1234!"))
+        if case .authenticated(let p) = feature.state {
+            #expect(p.onboardingCompleted == true)
+        } else {
+            Issue.record("Expected authenticated state")
+        }
     }
 }

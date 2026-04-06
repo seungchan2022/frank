@@ -95,14 +95,38 @@ struct PortContractTests {
         #expect(result == nil)
     }
 
+    @Test("MockAuthPort updateOnboardingCompleted 성공")
+    func authUpdateOnboardingSuccess() async throws {
+        let mock = MockAuthPort()
+        let profile = Profile(id: UUID(), email: "user@test.com", onboardingCompleted: true)
+        mock.updateOnboardingCompletedResult = .success(profile)
+
+        let result = try await mock.updateOnboardingCompleted()
+
+        #expect(result == profile)
+        #expect(result.onboardingCompleted == true)
+        #expect(mock.updateOnboardingCompletedCallCount == 1)
+    }
+
+    @Test("MockAuthPort updateOnboardingCompleted 실패")
+    func authUpdateOnboardingFailure() async {
+        let mock = MockAuthPort()
+        mock.updateOnboardingCompletedResult = .failure(URLError(.badServerResponse))
+
+        await #expect(throws: URLError.self) {
+            try await mock.updateOnboardingCompleted()
+        }
+        #expect(mock.updateOnboardingCompletedCallCount == 1)
+    }
+
     // MARK: - TagPort
 
     @Test("MockTagPort 태그 목록 반환")
     func tagFetchAll() async throws {
         let mock = MockTagPort()
         let tags = [
-            Tag(id: UUID(), name: "AI", slug: "ai"),
-            Tag(id: UUID(), name: "iOS", slug: "ios"),
+            Frank.Tag(id: UUID(), name: "AI", slug: "ai"),
+            Frank.Tag(id: UUID(), name: "iOS", slug: "ios"),
         ]
         mock.allTags = tags
 

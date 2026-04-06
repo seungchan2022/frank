@@ -53,6 +53,13 @@ struct SupabaseAuthAdapter: AuthPort {
         return mapToProfile(user: session.user)
     }
 
+    func updateOnboardingCompleted() async throws -> Profile {
+        let user = try await client.auth.update(
+            user: UserAttributes(data: ["onboarding_completed": .bool(true)])
+        )
+        return mapToProfile(user: user)
+    }
+
     // MARK: - Private
 
     private func mapToProfile(user: Auth.User) -> Profile {

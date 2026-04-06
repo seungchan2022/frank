@@ -5,6 +5,7 @@ final class MockTagPort: TagPort, @unchecked Sendable {
     var allTags: [Tag] = []
     var myTagIds: [UUID] = []
     var saveError: Error?
+    var fetchError: Error?
 
     var fetchAllTagsCallCount = 0
     var fetchMyTagIdsCallCount = 0
@@ -13,6 +14,7 @@ final class MockTagPort: TagPort, @unchecked Sendable {
 
     func fetchAllTags() async throws -> [Tag] {
         fetchAllTagsCallCount += 1
+        if let error = fetchError { throw error }
         return allTags
     }
 

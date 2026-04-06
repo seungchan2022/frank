@@ -9,7 +9,10 @@
 /* Begin PBXBuildFile section */
 		01BAB05FA005E9D3AA8697E0 /* LoginView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D4AC4EDEB8F09628412C3FFA /* LoginView.swift */; };
 		05DFE5129A9382F05AAD4A0F /* SplashView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 47AA9B157D520F495E5AA1EF /* SplashView.swift */; };
+		0C36F9ADFD4DB0B794F9C085 /* OnboardingView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5E49311320F5E610ADDDB120 /* OnboardingView.swift */; };
+		0D605153EEC2C90E4A0E6C5C /* OnboardingFeature.swift in Sources */ = {isa = PBXBuildFile; fileRef = 93F54DF7DCED80A2596E6F4E /* OnboardingFeature.swift */; };
 		219DBF917ADE0F2360F837C2 /* TuistBundle+Frank.swift in Sources */ = {isa = PBXBuildFile; fileRef = 310E064F8C1CBC4263855ED6 /* TuistBundle+Frank.swift */; };
+		27B2B6733D486AB94E6BB711 /* TagChipView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 765FF6131C6AD6128B0DA0B4 /* TagChipView.swift */; };
 		315FB330839E449D23A45881 /* Logger.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0949836956EA8C7AB729B454 /* Logger.swift */; };
 		320D44072834AB052F5FA0C2 /* swift-crypto_Crypto.bundle in Dependencies */ = {isa = PBXBuildFile; fileRef = 37670072226AC2A91EA7B29D /* swift-crypto_Crypto.bundle */; };
 		3A40536CBD27C0985CEE46E1 /* AuthPort.swift in Sources */ = {isa = PBXBuildFile; fileRef = 776D5B7E6632A447AF1F435D /* AuthPort.swift */; };
@@ -36,6 +39,7 @@
 		9391F18A5EBCADC127D57671 /* Storage.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 9CF4FFE942B3AA1EC2B85867 /* Storage.framework */; };
 		952490C317F0A61668982AA2 /* Realtime.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 11C45ECAFFD6F6A2076464B3 /* Realtime.framework */; };
 		9EF0F9E11B0DF527B80DFAAD /* EmailSignInSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = 124E2B48B7127000673DB6AC /* EmailSignInSheet.swift */; };
+		A0AB4B1A8CD1C4B0891EAB70 /* OnboardingFeatureTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0AE828DEA72FF568B1362F37 /* OnboardingFeatureTests.swift */; };
 		A79C8F356CFD54843837C696 /* Secrets.plist in Resources */ = {isa = PBXBuildFile; fileRef = 8834E578EA47B50ECB90514E /* Secrets.plist */; };
 		B8E3D39C4ED987B36A1371E3 /* IssueReportingPackageSupport.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = F9DFAAB732849E70B2B05605 /* IssueReportingPackageSupport.framework */; };
 		B9F9F2EB75367AF82A357583 /* MockTagPort.swift in Sources */ = {isa = PBXBuildFile; fileRef = EE4527C03F473DDEDFA17A0C /* MockTagPort.swift */; };
@@ -53,6 +57,7 @@
 		F177587426E214F0D1BBD747 /* AuthFeatureTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = AD78FFC05481C8B83E3B3F71 /* AuthFeatureTests.swift */; };
 		F492CB4F904D0DFEA288DCA5 /* PostgREST.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = B43318CD695224310C36B89D /* PostgREST.framework */; };
 		F61B3F00F42CE2041EECD0C9 /* Helpers.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 453555520004369FD2FDEC52 /* Helpers.framework */; };
+		FD799E9E37F4F9C529371701 /* SupabaseTagAdapter.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5275EA43ADDCAF090BC47676 /* SupabaseTagAdapter.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -101,6 +106,7 @@
 /* Begin PBXFileReference section */
 		05A15B55BAA63D4848A0355C /* AppleSignInHelper.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppleSignInHelper.swift; sourceTree = "<group>"; };
 		0949836956EA8C7AB729B454 /* Logger.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Logger.swift; sourceTree = "<group>"; };
+		0AE828DEA72FF568B1362F37 /* OnboardingFeatureTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OnboardingFeatureTests.swift; sourceTree = "<group>"; };
 		0E41A573F70F7A499D18F60A /* FrankApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FrankApp.swift; sourceTree = "<group>"; };
 		0ECBFBE799EA638B2E86BD32 /* IssueReporting.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; includeInIndex = 0; path = IssueReporting.framework; sourceTree = BUILT_PRODUCTS_DIR; };
 		11C45ECAFFD6F6A2076464B3 /* Realtime.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; includeInIndex = 0; path = Realtime.framework; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -113,15 +119,19 @@
 		453555520004369FD2FDEC52 /* Helpers.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; includeInIndex = 0; path = Helpers.framework; sourceTree = BUILT_PRODUCTS_DIR; };
 		47AA9B157D520F495E5AA1EF /* SplashView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SplashView.swift; sourceTree = "<group>"; };
 		51B78558CD59C61117F18399 /* ArticlePort.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ArticlePort.swift; sourceTree = "<group>"; };
+		5275EA43ADDCAF090BC47676 /* SupabaseTagAdapter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SupabaseTagAdapter.swift; sourceTree = "<group>"; };
+		5E49311320F5E610ADDDB120 /* OnboardingView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OnboardingView.swift; sourceTree = "<group>"; };
 		5F7283E4CAEE1ACCF50173CF /* FrankTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = FrankTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		6AB49EFA38B9EC19ACCFB0D1 /* Auth.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; includeInIndex = 0; path = Auth.framework; sourceTree = BUILT_PRODUCTS_DIR; };
 		6B1C4F1BD1C7B5D286598FBE /* Tag.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Tag.swift; sourceTree = "<group>"; };
+		765FF6131C6AD6128B0DA0B4 /* TagChipView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TagChipView.swift; sourceTree = "<group>"; };
 		776D5B7E6632A447AF1F435D /* AuthPort.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AuthPort.swift; sourceTree = "<group>"; };
 		78ACB19B20D01B71F42D1516 /* HTTPTypes.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; includeInIndex = 0; path = HTTPTypes.framework; sourceTree = BUILT_PRODUCTS_DIR; };
 		79D5C79E85E0034E9700F2DB /* RouterTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RouterTests.swift; sourceTree = "<group>"; };
 		7D6276E6E0B9671FF485B31D /* ConcurrencyExtras.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; includeInIndex = 0; path = ConcurrencyExtras.framework; sourceTree = BUILT_PRODUCTS_DIR; };
 		8834E578EA47B50ECB90514E /* Secrets.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Secrets.plist; sourceTree = "<group>"; };
 		8C3815B1863F12226990863E /* FrankTests-Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = "FrankTests-Info.plist"; sourceTree = "<group>"; };
+		93F54DF7DCED80A2596E6F4E /* OnboardingFeature.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OnboardingFeature.swift; sourceTree = "<group>"; };
 		963F9203A7A30E9F6845F72A /* Frank.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Frank.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		9CF4FFE942B3AA1EC2B85867 /* Storage.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; includeInIndex = 0; path = Storage.framework; sourceTree = BUILT_PRODUCTS_DIR; };
 		9D056DE8B30EF660F5AA41E4 /* TagPort.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TagPort.swift; sourceTree = "<group>"; };
@@ -189,6 +199,7 @@
 				43FAB80D5C15DDCF5C41F6D8 /* AppDependenciesTests.swift */,
 				AD78FFC05481C8B83E3B3F71 /* AuthFeatureTests.swift */,
 				C096BCCBE247FCB12D3140FB /* AuthFlowUITest.swift */,
+				0AE828DEA72FF568B1362F37 /* OnboardingFeatureTests.swift */,
 				EEC784286BBC209A404AB018 /* PortContractTests.swift */,
 				79D5C79E85E0034E9700F2DB /* RouterTests.swift */,
 			);
@@ -205,6 +216,15 @@
 				0949836956EA8C7AB729B454 /* Logger.swift */,
 			);
 			path = Core;
+			sourceTree = "<group>";
+		};
+		2275070C1C36E7C8B583A464 /* Onboarding */ = {
+			isa = PBXGroup;
+			children = (
+				93F54DF7DCED80A2596E6F4E /* OnboardingFeature.swift */,
+				5E49311320F5E610ADDDB120 /* OnboardingView.swift */,
+			);
+			path = Onboarding;
 			sourceTree = "<group>";
 		};
 		2DFF0E19ECD8B376C24A1D45 = {
@@ -315,10 +335,19 @@
 			path = Frank;
 			sourceTree = "<group>";
 		};
+		939A9C510981E0A03D9F4123 /* Components */ = {
+			isa = PBXGroup;
+			children = (
+				765FF6131C6AD6128B0DA0B4 /* TagChipView.swift */,
+			);
+			path = Components;
+			sourceTree = "<group>";
+		};
 		A8CCF2D2A20AF468C85885E0 /* Features */ = {
 			isa = PBXGroup;
 			children = (
 				6BA1A251E65CCC814B3316D7 /* Auth */,
+				2275070C1C36E7C8B583A464 /* Onboarding */,
 			);
 			path = Features;
 			sourceTree = "<group>";
@@ -346,6 +375,7 @@
 			isa = PBXGroup;
 			children = (
 				BAC60D4EA727E7864817E811 /* SupabaseAuthAdapter.swift */,
+				5275EA43ADDCAF090BC47676 /* SupabaseTagAdapter.swift */,
 			);
 			path = Adapters;
 			sourceTree = "<group>";
@@ -375,6 +405,7 @@
 			isa = PBXGroup;
 			children = (
 				40B1ED8E5DB4FCEBABE7029E /* App */,
+				939A9C510981E0A03D9F4123 /* Components */,
 				056BCF8DB5944C9830D09B60 /* Core */,
 				A8CCF2D2A20AF468C85885E0 /* Features */,
 			);
@@ -495,6 +526,7 @@
 				75CAD4C21FA8379DEF6686E5 /* AppDependenciesTests.swift in Sources */,
 				F177587426E214F0D1BBD747 /* AuthFeatureTests.swift in Sources */,
 				66A7F3C8964B89BB7A013073 /* AuthFlowUITest.swift in Sources */,
+				A0AB4B1A8CD1C4B0891EAB70 /* OnboardingFeatureTests.swift in Sources */,
 				D59B52177ABC739480991469 /* PortContractTests.swift in Sources */,
 				BC690A7AACBE0A5ED04A3815 /* RouterTests.swift in Sources */,
 				742297D17FE783F794113FDF /* MockArticlePort.swift in Sources */,
@@ -513,7 +545,9 @@
 				51BC6552204DAC1A94785C07 /* AppDependencies.swift in Sources */,
 				BE863DA44F1CB23713EE5649 /* FrankApp.swift in Sources */,
 				751E1260C333946B79278260 /* Router.swift in Sources */,
+				27B2B6733D486AB94E6BB711 /* TagChipView.swift in Sources */,
 				E305ED7371C5459D0FA93AE6 /* SupabaseAuthAdapter.swift in Sources */,
+				FD799E9E37F4F9C529371701 /* SupabaseTagAdapter.swift in Sources */,
 				637962145B103DCA14570A3D /* SupabaseConfig.swift in Sources */,
 				315FB330839E449D23A45881 /* Logger.swift in Sources */,
 				45B19CACED34B6C149CB4230 /* Article.swift in Sources */,
@@ -528,6 +562,8 @@
 				9EF0F9E11B0DF527B80DFAAD /* EmailSignInSheet.swift in Sources */,
 				01BAB05FA005E9D3AA8697E0 /* LoginView.swift in Sources */,
 				05DFE5129A9382F05AAD4A0F /* SplashView.swift in Sources */,
+				0D605153EEC2C90E4A0E6C5C /* OnboardingFeature.swift in Sources */,
+				0C36F9ADFD4DB0B794F9C085 /* OnboardingView.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

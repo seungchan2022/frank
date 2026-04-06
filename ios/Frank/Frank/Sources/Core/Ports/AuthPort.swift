@@ -6,4 +6,5 @@ protocol AuthPort: Sendable {
     func signInWithApple(idToken: String, rawNonce: String) async throws -> Profile
     func signOut() async throws
     func currentSession() async throws -> Profile?
+    func updateOnboardingCompleted() async throws -> Profile
 }
