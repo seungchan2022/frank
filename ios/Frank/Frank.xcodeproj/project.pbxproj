@@ -41,6 +41,7 @@
 		9EF0F9E11B0DF527B80DFAAD /* EmailSignInSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = 124E2B48B7127000673DB6AC /* EmailSignInSheet.swift */; };
 		A0AB4B1A8CD1C4B0891EAB70 /* OnboardingFeatureTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0AE828DEA72FF568B1362F37 /* OnboardingFeatureTests.swift */; };
 		A79C8F356CFD54843837C696 /* Secrets.plist in Resources */ = {isa = PBXBuildFile; fileRef = 8834E578EA47B50ECB90514E /* Secrets.plist */; };
+		B7BDA6546104C807CF303301 /* OnboardingFlowUITest.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9573D714FA626A46DDE59685 /* OnboardingFlowUITest.swift */; };
 		B8E3D39C4ED987B36A1371E3 /* IssueReportingPackageSupport.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = F9DFAAB732849E70B2B05605 /* IssueReportingPackageSupport.framework */; };
 		B9F9F2EB75367AF82A357583 /* MockTagPort.swift in Sources */ = {isa = PBXBuildFile; fileRef = EE4527C03F473DDEDFA17A0C /* MockTagPort.swift */; };
 		BC690A7AACBE0A5ED04A3815 /* RouterTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 79D5C79E85E0034E9700F2DB /* RouterTests.swift */; };
@@ -61,6 +62,13 @@
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
+		2D54E0800B52E2B6DFF385C7 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 7191C25DEDDF59720F1E3809 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 4B0F6EDC1F6566D2353D4E6F;
+			remoteInfo = Frank;
+		};
 		F7286A5E60650E5A463ABC45 /* PBXContainerItemProxy */ = {
 			isa = PBXContainerItemProxy;
 			containerPortal = 7191C25DEDDF59720F1E3809 /* Project object */;
@@ -72,6 +80,16 @@
 
 /* Begin PBXCopyFilesBuildPhase section */
 		749A4351EC2916DFCAD0308C /* Embed Frameworks */ = {
+			isa = PBXCopyFilesBuildPhase;
+			buildActionMask = 2147483647;
+			dstPath = "";
+			dstSubfolderSpec = 10;
+			files = (
+			);
+			name = "Embed Frameworks";
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		D0F0D5709E78DBE0474D9E7F /* Embed Frameworks */ = {
 			isa = PBXCopyFilesBuildPhase;
 			buildActionMask = 2147483647;
 			dstPath = "";
@@ -112,6 +130,7 @@
 		11C45ECAFFD6F6A2076464B3 /* Realtime.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; includeInIndex = 0; path = Realtime.framework; sourceTree = BUILT_PRODUCTS_DIR; };
 		124E2B48B7127000673DB6AC /* EmailSignInSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EmailSignInSheet.swift; sourceTree = "<group>"; };
 		310E064F8C1CBC4263855ED6 /* TuistBundle+Frank.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "TuistBundle+Frank.swift"; sourceTree = "<group>"; };
+		327DA28A100F924D9A073E1F /* FrankUITests-Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = "FrankUITests-Info.plist"; sourceTree = "<group>"; };
 		37670072226AC2A91EA7B29D /* swift-crypto_Crypto.bundle */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = "swift-crypto_Crypto.bundle"; sourceTree = BUILT_PRODUCTS_DIR; };
 		3FBC962A1B724B58B707DD59 /* SupabaseConfig.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SupabaseConfig.swift; sourceTree = "<group>"; };
 		4234165709AECE80445A36D4 /* AppDependencies.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppDependencies.swift; sourceTree = "<group>"; };
@@ -132,6 +151,7 @@
 		8834E578EA47B50ECB90514E /* Secrets.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Secrets.plist; sourceTree = "<group>"; };
 		8C3815B1863F12226990863E /* FrankTests-Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = "FrankTests-Info.plist"; sourceTree = "<group>"; };
 		93F54DF7DCED80A2596E6F4E /* OnboardingFeature.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OnboardingFeature.swift; sourceTree = "<group>"; };
+		9573D714FA626A46DDE59685 /* OnboardingFlowUITest.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OnboardingFlowUITest.swift; sourceTree = "<group>"; };
 		963F9203A7A30E9F6845F72A /* Frank.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Frank.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		9CF4FFE942B3AA1EC2B85867 /* Storage.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; includeInIndex = 0; path = Storage.framework; sourceTree = BUILT_PRODUCTS_DIR; };
 		9D056DE8B30EF660F5AA41E4 /* TagPort.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TagPort.swift; sourceTree = "<group>"; };
@@ -149,6 +169,7 @@
 		C4D19D7D52140EDDBD5446FB /* MockAuthPort.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MockAuthPort.swift; sourceTree = "<group>"; };
 		D4AC4EDEB8F09628412C3FFA /* LoginView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LoginView.swift; sourceTree = "<group>"; };
 		D83742F9EF70BD08019DDD1E /* Crypto.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; includeInIndex = 0; path = Crypto.framework; sourceTree = BUILT_PRODUCTS_DIR; };
+		DA9F24C8B9D930AAAAC31C39 /* FrankUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = FrankUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		E3F4D1213640C861090521BE /* Profile.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Profile.swift; sourceTree = "<group>"; };
 		E8015A7E829FCD30E0F18482 /* XCTestDynamicOverlay.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; includeInIndex = 0; path = XCTestDynamicOverlay.framework; sourceTree = BUILT_PRODUCTS_DIR; };
 		EB0DD21ECF33383D24DB0B37 /* Clocks.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; includeInIndex = 0; path = Clocks.framework; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -180,6 +201,13 @@
 				9391F18A5EBCADC127D57671 /* Storage.framework in Frameworks */,
 				460EB3F0B4244BBE4FAFED61 /* Supabase.framework in Frameworks */,
 				527F34FE6024A28DA5A75CEE /* XCTestDynamicOverlay.framework in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		3BE1323142DEC7F3DFF64305 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -216,6 +244,14 @@
 				0949836956EA8C7AB729B454 /* Logger.swift */,
 			);
 			path = Core;
+			sourceTree = "<group>";
+		};
+		0E1C22C48D4A390EC7A213E0 /* FrankUITests */ = {
+			isa = PBXGroup;
+			children = (
+				9573D714FA626A46DDE59685 /* OnboardingFlowUITest.swift */,
+			);
+			path = FrankUITests;
 			sourceTree = "<group>";
 		};
 		2275070C1C36E7C8B583A464 /* Onboarding */ = {
@@ -262,6 +298,7 @@
 				D83742F9EF70BD08019DDD1E /* Crypto.framework */,
 				963F9203A7A30E9F6845F72A /* Frank.app */,
 				5F7283E4CAEE1ACCF50173CF /* FrankTests.xctest */,
+				DA9F24C8B9D930AAAAC31C39 /* FrankUITests.xctest */,
 				B9BF2E25340D6CE132DDBBD4 /* Functions.framework */,
 				453555520004369FD2FDEC52 /* Helpers.framework */,
 				78ACB19B20D01B71F42D1516 /* HTTPTypes.framework */,
@@ -282,6 +319,7 @@
 			children = (
 				BB4B63AC00B4396E3AD93726 /* Frank-Info.plist */,
 				8C3815B1863F12226990863E /* FrankTests-Info.plist */,
+				327DA28A100F924D9A073E1F /* FrankUITests-Info.plist */,
 			);
 			path = InfoPlists;
 			sourceTree = "<group>";
@@ -418,6 +456,7 @@
 				555CF2E5EE0D318A6CC5ED3A /* Derived */,
 				8EE41D3BDC90690389516E7E /* Frank */,
 				7FBC5FEC9E6769FBE6036CEC /* FrankTests */,
+				0E1C22C48D4A390EC7A213E0 /* FrankUITests */,
 			);
 			name = Project;
 			sourceTree = "<group>";
@@ -467,6 +506,27 @@
 			productReference = 5F7283E4CAEE1ACCF50173CF /* FrankTests.xctest */;
 			productType = "com.apple.product-type.bundle.unit-test";
 		};
+		D502AAFB9584AF7ECCAFFED9 /* FrankUITests */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = DA64009790AC2E3E651C2186 /* Build configuration list for PBXNativeTarget "FrankUITests" */;
+			buildPhases = (
+				6A0CB2780317A4399CEC4E94 /* Sources */,
+				09F94D11204DC8ED3AA2E462 /* Resources */,
+				D0F0D5709E78DBE0474D9E7F /* Embed Frameworks */,
+				3BE1323142DEC7F3DFF64305 /* Frameworks */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				42B72CCFA73DEA5C95DF427C /* PBXTargetDependency */,
+			);
+			name = FrankUITests;
+			packageProductDependencies = (
+			);
+			productName = FrankUITests;
+			productReference = DA9F24C8B9D930AAAAC31C39 /* FrankUITests.xctest */;
+			productType = "com.apple.product-type.bundle.ui-testing";
+		};
 /* End PBXNativeTarget section */
 
 /* Begin PBXProject section */
@@ -476,6 +536,9 @@
 				BuildIndependentTargetsInParallel = YES;
 				TargetAttributes = {
 					A029C78E8EAC2BFF9DDA8836 = {
+						TestTargetID = 4B0F6EDC1F6566D2353D4E6F;
+					};
+					D502AAFB9584AF7ECCAFFED9 = {
 						TestTargetID = 4B0F6EDC1F6566D2353D4E6F;
 					};
 				};
@@ -495,11 +558,19 @@
 			targets = (
 				4B0F6EDC1F6566D2353D4E6F /* Frank */,
 				A029C78E8EAC2BFF9DDA8836 /* FrankTests */,
+				D502AAFB9584AF7ECCAFFED9 /* FrankUITests */,
 			);
 		};
 /* End PBXProject section */
 
 /* Begin PBXResourcesBuildPhase section */
+		09F94D11204DC8ED3AA2E462 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 		611250BFD4F96873F819F7A8 /* Resources */ = {
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
@@ -519,6 +590,14 @@
 /* End PBXResourcesBuildPhase section */
 
 /* Begin PBXSourcesBuildPhase section */
+		6A0CB2780317A4399CEC4E94 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				B7BDA6546104C807CF303301 /* OnboardingFlowUITest.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 		CB8286869882E28DAFD36CED /* Sources */ = {
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
@@ -570,6 +649,12 @@
 /* End PBXSourcesBuildPhase section */
 
 /* Begin PBXTargetDependency section */
+		42B72CCFA73DEA5C95DF427C /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			name = Frank;
+			target = 4B0F6EDC1F6566D2353D4E6F /* Frank */;
+			targetProxy = 2D54E0800B52E2B6DFF385C7 /* PBXContainerItemProxy */;
+		};
 		AD51F13B3518244C765C8193 /* PBXTargetDependency */ = {
 			isa = PBXTargetDependency;
 			name = Frank;
@@ -689,6 +774,35 @@
 			};
 			name = Release;
 		};
+		A61A3F20A418B4DF5E8BF866 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_IDENTITY = "iPhone Developer";
+				INFOPLIST_FILE = "Derived/InfoPlists/FrankUITests-Info.plist";
+				IPHONEOS_DEPLOYMENT_TARGET = 26.0;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@loader_path/Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = dev.frank.app.uitests;
+				PRODUCT_NAME = FrankUITests;
+				SDKROOT = iphoneos;
+				SUPPORTS_MACCATALYST = NO;
+				SUPPORTS_MAC_DESIGNED_FOR_IPHONE_IPAD = YES;
+				SUPPORTS_XR_DESIGNED_FOR_IPHONE_IPAD = NO;
+				SWIFT_ACTIVE_COMPILATION_CONDITIONS = (
+					"$(inherited)",
+					DEBUG,
+				);
+				SWIFT_COMPILATION_MODE = singlefile;
+				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				TEST_TARGET_NAME = Frank;
+			};
+			name = Debug;
+		};
 		BCB279556E62F413DE31458F /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
@@ -805,6 +919,31 @@
 			};
 			name = Debug;
 		};
+		EA64E179541F77959DB07D5B /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_IDENTITY = "iPhone Developer";
+				INFOPLIST_FILE = "Derived/InfoPlists/FrankUITests-Info.plist";
+				IPHONEOS_DEPLOYMENT_TARGET = 26.0;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@loader_path/Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = dev.frank.app.uitests;
+				PRODUCT_NAME = FrankUITests;
+				SDKROOT = iphoneos;
+				SUPPORTS_MACCATALYST = NO;
+				SUPPORTS_MAC_DESIGNED_FOR_IPHONE_IPAD = YES;
+				SUPPORTS_XR_DESIGNED_FOR_IPHONE_IPAD = NO;
+				SWIFT_COMPILATION_MODE = wholemodule;
+				SWIFT_OPTIMIZATION_LEVEL = "-Owholemodule";
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				TEST_TARGET_NAME = Frank;
+			};
+			name = Release;
+		};
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
@@ -831,6 +970,15 @@
 			buildConfigurations = (
 				BCB279556E62F413DE31458F /* Debug */,
 				0E2F411CC91D00D8DEDBED78 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		DA64009790AC2E3E651C2186 /* Build configuration list for PBXNativeTarget "FrankUITests" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				A61A3F20A418B4DF5E8BF866 /* Debug */,
+				EA64E179541F77959DB07D5B /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;

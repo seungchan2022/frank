@@ -98,6 +98,20 @@
             buildForAnalyzing = "YES">
             <BuildableReference
                BuildableIdentifier = "primary"
+               BlueprintIdentifier = "D502AAFB9584AF7ECCAFFED9"
+               BuildableName = "FrankUITests.xctest"
+               BlueprintName = "FrankUITests"
+               ReferencedContainer = "container:Frank.xcodeproj">
+            </BuildableReference>
+         </BuildActionEntry>
+         <BuildActionEntry
+            buildForTesting = "YES"
+            buildForRunning = "YES"
+            buildForProfiling = "YES"
+            buildForArchiving = "YES"
+            buildForAnalyzing = "YES">
+            <BuildableReference
+               BuildableIdentifier = "primary"
                BlueprintIdentifier = "66537B1437625BC59ED5CDB0"
                BuildableName = "Functions.framework"
                BlueprintName = "Functions"
@@ -259,6 +273,16 @@
                BlueprintIdentifier = "A029C78E8EAC2BFF9DDA8836"
                BuildableName = "FrankTests.xctest"
                BlueprintName = "FrankTests"
+               ReferencedContainer = "container:Frank.xcodeproj">
+            </BuildableReference>
+         </TestableReference>
+         <TestableReference
+            skipped = "NO">
+            <BuildableReference
+               BuildableIdentifier = "primary"
+               BlueprintIdentifier = "D502AAFB9584AF7ECCAFFED9"
+               BuildableName = "FrankUITests.xctest"
+               BlueprintName = "FrankUITests"
                ReferencedContainer = "container:Frank.xcodeproj">
             </BuildableReference>
          </TestableReference>

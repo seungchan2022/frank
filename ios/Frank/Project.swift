@@ -37,5 +37,16 @@ let project = Project(
             resources: [],
             dependencies: [.target(name: "Frank")]
         ),
+        .target(
+            name: "FrankUITests",
+            destinations: .iOS,
+            product: .uiTests,
+            bundleId: "dev.frank.app.uitests",
+            deploymentTargets: .iOS("26.0"),
+            infoPlist: .default,
+            sources: ["FrankUITests/**"],
+            resources: [],
+            dependencies: [.target(name: "Frank")]
+        ),
     ]
 )
