@@ -119,6 +119,28 @@ struct PortContractTests {
         #expect(mock.updateOnboardingCompletedCallCount == 1)
     }
 
+    @Test("MockAuthPort getAccessToken 성공")
+    func authGetAccessTokenSuccess() async throws {
+        let mock = MockAuthPort()
+        mock.accessToken = "test-jwt-token"
+
+        let token = try await mock.getAccessToken()
+
+        #expect(token == "test-jwt-token")
+        #expect(mock.getAccessTokenCallCount == 1)
+    }
+
+    @Test("MockAuthPort getAccessToken 실패")
+    func authGetAccessTokenFailure() async {
+        let mock = MockAuthPort()
+        mock.getAccessTokenError = URLError(.userAuthenticationRequired)
+
+        await #expect(throws: URLError.self) {
+            try await mock.getAccessToken()
+        }
+        #expect(mock.getAccessTokenCallCount == 1)
+    }
+
     // MARK: - TagPort
 
     @Test("MockTagPort 태그 목록 반환")
@@ -160,8 +182,8 @@ struct PortContractTests {
 
     // MARK: - ArticlePort
 
-    @Test("MockArticlePort 기사 목록 limit 적용")
-    func articleFetchWithLimit() async throws {
+    @Test("MockArticlePort 기사 목록 filter 적용")
+    func articleFetchWithFilter() async throws {
         let mock = MockArticlePort()
         let tagId = UUID()
         mock.articles = (0..<5).map { i in
@@ -172,14 +194,20 @@ struct PortContractTests {
                 source: "Test",
                 publishedAt: Date(),
                 summary: nil,
-                tagId: tagId
+                tagId: tagId,
+                titleKo: nil,
+                insight: nil,
+                snippet: nil,
+                summarizedAt: nil
             )
         }
 
-        let result = try await mock.fetchArticles(limit: 3)
+        let filter = ArticleFilter(tagId: tagId, limit: 3, offset: 0)
+        let result = try await mock.fetchArticles(filter: filter)
 
         #expect(result.count == 3)
         #expect(mock.fetchArticlesCallCount == 1)
+        #expect(mock.lastFilter == filter)
     }
 
     @Test("MockArticlePort 기사 상세 조회")
@@ -193,7 +221,11 @@ struct PortContractTests {
             source: "Test",
             publishedAt: Date(),
             summary: "요약",
-            tagId: UUID()
+            tagId: UUID(),
+            titleKo: "테스트",
+            insight: "인사이트",
+            snippet: "미리보기",
+            summarizedAt: Date()
         )
         mock.articles = [article]
 
@@ -208,19 +240,32 @@ struct PortContractTests {
         mock.fetchError = URLError(.timedOut)
 
         await #expect(throws: URLError.self) {
-            try await mock.fetchArticles(limit: 10)
+            try await mock.fetchArticles(filter: ArticleFilter())
         }
     }
 
     // MARK: - CollectPort
 
-    @Test("MockCollectPort collect 호출 추적")
+    @Test("MockCollectPort collect 호출 추적 및 반환값")
     func collectTrigger() async throws {
         let mock = MockCollectPort()
+        mock.collectResult = 5
 
-        try await mock.triggerCollect()
+        let count = try await mock.triggerCollect()
 
+        #expect(count == 5)
         #expect(mock.triggerCollectCallCount == 1)
+    }
+
+    @Test("MockCollectPort summarize 반환값")
+    func summarizeTrigger() async throws {
+        let mock = MockCollectPort()
+        mock.summarizeResult = 3
+
+        let count = try await mock.triggerSummarize()
+
+        #expect(count == 3)
+        #expect(mock.triggerSummarizeCallCount == 1)
     }
 
     @Test("MockCollectPort summarize 에러 전파")

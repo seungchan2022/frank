@@ -60,6 +60,11 @@ struct SupabaseAuthAdapter: AuthPort {
         return mapToProfile(user: user)
     }
 
+    func getAccessToken() async throws -> String {
+        let session = try await client.auth.session
+        return session.accessToken
+    }
+
     // MARK: - Private
 
     private func mapToProfile(user: Auth.User) -> Profile {

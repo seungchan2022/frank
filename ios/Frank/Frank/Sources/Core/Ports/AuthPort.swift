@@ -7,4 +7,5 @@ protocol AuthPort: Sendable {
     func signOut() async throws
     func currentSession() async throws -> Profile?
     func updateOnboardingCompleted() async throws -> Profile
+    func getAccessToken() async throws -> String
 }

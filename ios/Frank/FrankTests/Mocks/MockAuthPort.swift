@@ -17,11 +17,15 @@ final class MockAuthPort: AuthPort, @unchecked Sendable {
         Profile(id: UUID(), email: "test@example.com", onboardingCompleted: true)
     )
 
+    var accessToken: String = "mock-token"
+    var getAccessTokenError: Error?
+
     var signInCallCount = 0
     var signUpCallCount = 0
     var signInWithAppleCallCount = 0
     var signOutCallCount = 0
     var updateOnboardingCompletedCallCount = 0
+    var getAccessTokenCallCount = 0
 
     func signIn(email: String, password: String) async throws -> Profile {
         signInCallCount += 1
@@ -50,5 +54,11 @@ final class MockAuthPort: AuthPort, @unchecked Sendable {
     func updateOnboardingCompleted() async throws -> Profile {
         updateOnboardingCompletedCallCount += 1
         return try updateOnboardingCompletedResult.get()
+    }
+
+    func getAccessToken() async throws -> String {
+        getAccessTokenCallCount += 1
+        if let error = getAccessTokenError { throw error }
+        return accessToken
     }
 }

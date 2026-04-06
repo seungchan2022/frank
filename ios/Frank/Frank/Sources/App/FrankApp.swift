@@ -32,7 +32,10 @@ struct RootView: View {
             LoginView(feature: feature)
         case .authenticated(let profile):
             if profile.onboardingCompleted {
-                ContentPlaceholderView(profile: profile, feature: feature)
+                FeedContainerView(
+                    dependencies: dependencies,
+                    authFeature: feature
+                )
             } else {
                 OnboardingContainerView(
                     dependencies: dependencies,
@@ -68,27 +71,51 @@ struct OnboardingContainerView: View {
     }
 }
 
-// 임시 피드 플레이스홀더 (M4에서 교체)
-struct ContentPlaceholderView: View {
-    let profile: Profile
-    let feature: AuthFeature
+struct FeedContainerView: View {
+    let authFeature: AuthFeature
+    @State private var feedFeature: FeedFeature
+    @State private var showSettings = false
+
+    init(dependencies: AppDependencies, authFeature: AuthFeature) {
+        self.authFeature = authFeature
+        self._feedFeature = State(initialValue: FeedFeature(
+            article: dependencies.article,
+            collect: dependencies.collect,
+            tag: dependencies.tag
+        ))
+    }
 
     var body: some View {
-        VStack(spacing: 16) {
-            Image(systemName: "checkmark.circle.fill")
-                .font(.system(size: 48))
-                .foregroundStyle(.green)
-            Text("로그인 완료")
-                .font(.title2)
-                .fontWeight(.semibold)
-            Text(profile.email)
-                .foregroundStyle(.secondary)
-            Button("로그아웃") {
-                Task {
-                    await feature.send(.signOut)
+        FeedView(feature: feedFeature, onSettingsTapped: { showSettings = true })
+            .sheet(isPresented: $showSettings) {
+                SettingsPlaceholderView(authFeature: authFeature)
+            }
+    }
+}
+
+// 설정 placeholder (M6에서 확장)
+struct SettingsPlaceholderView: View {
+    let authFeature: AuthFeature
+    @Environment(\.dismiss) private var dismiss
+
+    var body: some View {
+        NavigationStack {
+            List {
+                Button(role: .destructive) {
+                    Task {
+                        await authFeature.send(.signOut)
+                        dismiss()
+                    }
+                } label: {
+                    Label("로그아웃", systemImage: "rectangle.portrait.and.arrow.right")
                 }
             }
-            .buttonStyle(.bordered)
+            .navigationTitle("설정")
+            .toolbar {
+                ToolbarItem(placement: .topBarTrailing) {
+                    Button("닫기") { dismiss() }
+                }
+            }
         }
     }
 }

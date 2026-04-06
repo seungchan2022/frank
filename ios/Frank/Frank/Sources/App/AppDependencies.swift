@@ -23,12 +23,16 @@ final class AppDependencies {
     static func live() -> AppDependencies {
         let config = SupabaseConfig.live
         let client = SupabaseClient(supabaseURL: config.url, supabaseKey: config.anonKey)
+        let authAdapter = SupabaseAuthAdapter(client: client)
 
         return AppDependencies(
-            auth: SupabaseAuthAdapter(client: client),
+            auth: authAdapter,
             tag: SupabaseTagAdapter(client: client),
-            article: PlaceholderArticlePort(),
-            collect: PlaceholderCollectPort()
+            article: SupabaseArticleAdapter(client: client),
+            collect: APICollectAdapter(
+                auth: authAdapter,
+                serverConfig: ServerConfig.live
+            )
         )
     }
 }
@@ -42,13 +46,13 @@ private struct PlaceholderTagPort: TagPort {
 }
 
 private struct PlaceholderArticlePort: ArticlePort {
-    func fetchArticles(limit: Int) async throws -> [Article] { [] }
+    func fetchArticles(filter: ArticleFilter) async throws -> [Article] { [] }
     func fetchArticle(id: UUID) async throws -> Article {
         throw URLError(.resourceUnavailable)
     }
 }
 
 private struct PlaceholderCollectPort: CollectPort {
-    func triggerCollect() async throws {}
-    func triggerSummarize() async throws {}
+    func triggerCollect() async throws -> Int { 0 }
+    func triggerSummarize() async throws -> Int { 0 }
 }

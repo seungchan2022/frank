@@ -1,0 +1,227 @@
+import Foundation
+import Observation
+
+enum FeedAction {
+    case loadInitial
+    case selectTag(UUID?)
+    case loadMore
+    case refresh
+    case collectAndSummarize
+}
+
+@Observable
+@MainActor
+final class FeedFeature {
+
+    // MARK: - Data
+
+    private(set) var tags: [Tag] = []
+    private(set) var selectedTagId: UUID? = nil
+    private(set) var articles: [Article] = []
+
+    // MARK: - Loading State
+
+    private(set) var isLoading = false
+    private(set) var isLoadingMore = false
+    private(set) var hasMore = true
+
+    // MARK: - Collect/Summarize State
+
+    private(set) var isCollecting = false
+    private(set) var isSummarizing = false
+
+    // MARK: - Error
+
+    private(set) var errorMessage: String? = nil
+
+    // MARK: - Cache
+
+    private var cache: [UUID?: [Article]] = [:]
+    private var offsetCache: [UUID?: Int] = [:]
+    private var hasMoreCache: [UUID?: Bool] = [:]
+
+    // MARK: - Constants
+
+    private let pageSize = 20
+
+    // MARK: - Dependencies
+
+    private let article: any ArticlePort
+    private let collect: any CollectPort
+    private let tag: any TagPort
+
+    // MARK: - Init
+
+    init(article: any ArticlePort, collect: any CollectPort, tag: any TagPort) {
+        self.article = article
+        self.collect = collect
+        self.tag = tag
+    }
+
+    // MARK: - Send
+
+    func send(_ action: FeedAction) async {
+        switch action {
+        case .loadInitial:
+            await loadInitial()
+        case .selectTag(let tagId):
+            await selectTag(tagId)
+        case .loadMore:
+            await loadMore()
+        case .refresh:
+            await refresh()
+        case .collectAndSummarize:
+            await collectAndSummarize()
+        }
+    }
+
+    // MARK: - State Transition Helpers
+
+    private func beginLoading() {
+        isLoading = true
+        errorMessage = nil
+    }
+
+    private func failLoading(_ message: String) {
+        isLoading = false
+        errorMessage = message
+    }
+
+    private func beginCollect() {
+        isCollecting = true
+        errorMessage = nil
+    }
+
+    private func moveToSummarize() {
+        isCollecting = false
+        isSummarizing = true
+    }
+
+    private func finishCollect() {
+        isSummarizing = false
+    }
+
+    private func failCollect(_ message: String) {
+        isCollecting = false
+        isSummarizing = false
+        errorMessage = message
+    }
+
+    // MARK: - Fetch + Cache Helper
+
+    /// 지정된 tagId로 첫 페이지를 fetch하고, articles를 교체, 캐시를 갱신한다.
+    @discardableResult
+    private func fetchAndCache(tagId: UUID?) async throws -> [Article] {
+        let fetched = try await article.fetchArticles(
+            filter: ArticleFilter(tagId: tagId, limit: pageSize, offset: 0)
+        )
+        articles = fetched
+        cache[tagId] = fetched
+        offsetCache[tagId] = fetched.count
+        hasMore = fetched.count >= pageSize
+        hasMoreCache[tagId] = hasMore
+        return fetched
+    }
+
+    /// 캐시 전체 무효화
+    private func invalidateCache() {
+        cache.removeAll()
+        offsetCache.removeAll()
+        hasMoreCache.removeAll()
+    }
+
+    // MARK: - Core Logic
+
+    private func loadInitial() async {
+        beginLoading()
+        do {
+            let allTags = try await tag.fetchAllTags()
+            let myTagIds = try await tag.fetchMyTagIds()
+            tags = allTags.filter { myTagIds.contains($0.id) }
+
+            let fetched = try await fetchAndCache(tagId: selectedTagId)
+            isLoading = false
+
+            // 기사 0건이면 자동 수집
+            if fetched.isEmpty {
+                await collectAndSummarize()
+            }
+        } catch {
+            failLoading("피드를 불러오지 못했습니다. 다시 시도해주세요.")
+        }
+    }
+
+    private func selectTag(_ tagId: UUID?) async {
+        selectedTagId = tagId
+
+        // 캐시 히트
+        if let cached = cache[tagId] {
+            articles = cached
+            hasMore = hasMoreCache[tagId] ?? true
+            return
+        }
+
+        // 캐시 미스 → fetch
+        do {
+            try await fetchAndCache(tagId: tagId)
+        } catch {
+            errorMessage = "기사를 불러오지 못했습니다."
+        }
+    }
+
+    private func loadMore() async {
+        guard !isLoadingMore, hasMore else { return }
+
+        isLoadingMore = true
+        let offset = offsetCache[selectedTagId] ?? 0
+
+        do {
+            let fetched = try await article.fetchArticles(
+                filter: ArticleFilter(tagId: selectedTagId, limit: pageSize, offset: offset)
+            )
+            articles += fetched
+            cache[selectedTagId] = articles
+            offsetCache[selectedTagId] = offset + fetched.count
+            hasMore = fetched.count >= pageSize
+            hasMoreCache[selectedTagId] = hasMore
+            isLoadingMore = false
+        } catch {
+            isLoadingMore = false
+            errorMessage = "추가 기사를 불러오지 못했습니다."
+        }
+    }
+
+    private func collectAndSummarize() async {
+        guard !isCollecting else { return }
+
+        beginCollect()
+        do {
+            // Step 1: 수집
+            _ = try await collect.triggerCollect()
+
+            // Step 2: 수집 후 기사 fetch (summary=nil 가능)
+            try await fetchAndCache(tagId: selectedTagId)
+
+            // Step 3: 요약
+            moveToSummarize()
+            _ = try await collect.triggerSummarize()
+
+            // Step 4: 요약 후 기사 재fetch (summary 채워짐)
+            invalidateCache()
+            try await fetchAndCache(tagId: selectedTagId)
+
+            finishCollect()
+        } catch {
+            failCollect("수집/요약에 실패했습니다. 다시 시도해주세요.")
+        }
+    }
+
+    private func refresh() async {
+        invalidateCache()
+        do {
+            try await fetchAndCache(tagId: selectedTagId)
+        } catch {
+            errorMessage = "새로고침에 실패했습니다."
+        }
+    }
+}

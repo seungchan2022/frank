@@ -1,5 +1,41 @@
 import SwiftUI
 
+// MARK: - Chip Style Modifier
+
+private struct ChipStyle: ViewModifier {
+    let isSelected: Bool
+
+    func body(content: Content) -> some View {
+        content
+            .font(.subheadline)
+            .fontWeight(.medium)
+            .padding(.horizontal, 16)
+            .padding(.vertical, 8)
+            .foregroundStyle(isSelected ? .white : .secondary)
+            .background(
+                isSelected
+                    ? AnyShapeStyle(Color.accentColor)
+                    : AnyShapeStyle(Color.clear)
+            )
+            .overlay(
+                RoundedRectangle(cornerRadius: 20)
+                    .stroke(
+                        isSelected ? Color.accentColor : Color.secondary.opacity(0.3),
+                        lineWidth: 1
+                    )
+            )
+            .clipShape(RoundedRectangle(cornerRadius: 20))
+    }
+}
+
+extension View {
+    func tagChipStyle(isSelected: Bool) -> some View {
+        modifier(ChipStyle(isSelected: isSelected))
+    }
+}
+
+// MARK: - TagChipView
+
 struct TagChipView: View {
     let tag: Tag
     let isSelected: Bool
@@ -8,21 +44,7 @@ struct TagChipView: View {
     var body: some View {
         Button(action: onTap) {
             Text(tag.name)
-                .font(.subheadline)
-                .fontWeight(.medium)
-                .padding(.horizontal, 16)
-                .padding(.vertical, 8)
-                .foregroundStyle(isSelected ? .white : .secondary)
-                .background(
-                    isSelected
-                        ? AnyShapeStyle(Color.accentColor)
-                        : AnyShapeStyle(Color.clear)
-                )
-                .overlay(
-                    RoundedRectangle(cornerRadius: 20)
-                        .stroke(isSelected ? Color.accentColor : Color.secondary.opacity(0.3), lineWidth: 1)
-                )
-                .clipShape(RoundedRectangle(cornerRadius: 20))
+                .tagChipStyle(isSelected: isSelected)
         }
         .buttonStyle(.plain)
         .accessibilityAddTraits(isSelected ? .isSelected : [])
