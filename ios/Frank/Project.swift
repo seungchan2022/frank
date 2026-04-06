@@ -15,11 +15,16 @@ let project = Project(
                         "UIColorName": "",
                         "UIImageName": "",
                     ],
+                    "SUPABASE_URL": "$(SUPABASE_URL)",
+                    "SUPABASE_ANON_KEY": "$(SUPABASE_ANON_KEY)",
                 ]
             ),
             sources: ["Frank/Sources/**"],
             resources: ["Frank/Resources/**"],
-            dependencies: []
+            entitlements: "Frank/Frank.entitlements",
+            dependencies: [
+                .external(name: "Supabase"),
+            ]
         ),
         .target(
             name: "FrankTests",
