@@ -46,8 +46,8 @@ struct OnboardingFeatureTests {
     @Test("loadTags 성공 시 loaded 상태로 전환")
     func loadTagsSuccess() async {
         let tags = [
-            Frank.Tag(id: UUID(), name: "AI", slug: "ai"),
-            Frank.Tag(id: UUID(), name: "iOS", slug: "ios"),
+            Frank.Tag(id: UUID(), name: "AI", category: "ai"),
+            Frank.Tag(id: UUID(), name: "iOS", category: "ios"),
         ]
         let (sut, tagPort, _, _) = makeSUT(tags: tags)
 
@@ -67,8 +67,8 @@ struct OnboardingFeatureTests {
         let tagId1 = UUID()
         let tagId2 = UUID()
         let tags = [
-            Frank.Tag(id: tagId1, name: "AI", slug: "ai"),
-            Frank.Tag(id: tagId2, name: "iOS", slug: "ios"),
+            Frank.Tag(id: tagId1, name: "AI", category: "ai"),
+            Frank.Tag(id: tagId2, name: "iOS", category: "ios"),
         ]
         let (sut, _, _, _) = makeSUT(tags: tags, myTagIds: [tagId1])
 
@@ -100,7 +100,7 @@ struct OnboardingFeatureTests {
     @Test("태그 선택 토글 — 선택/해제")
     func toggleTag() async {
         let tagId = UUID()
-        let tags = [Frank.Tag(id: tagId, name: "AI", slug: "ai")]
+        let tags = [Frank.Tag(id: tagId, name: "AI", category: "ai")]
         let (sut, _, _, _) = makeSUT(tags: tags)
 
         await sut.send(.loadTags)
@@ -125,7 +125,7 @@ struct OnboardingFeatureTests {
 
     @Test("선택 없으면 complete 불가")
     func cannotCompleteWithNoSelection() async {
-        let tags = [Frank.Tag(id: UUID(), name: "AI", slug: "ai")]
+        let tags = [Frank.Tag(id: UUID(), name: "AI", category: "ai")]
         let (sut, _, _, _) = makeSUT(tags: tags)
 
         await sut.send(.loadTags)
@@ -136,7 +136,7 @@ struct OnboardingFeatureTests {
     @Test("1개 이상 선택 시 complete 가능")
     func canCompleteWithSelection() async {
         let tagId = UUID()
-        let tags = [Frank.Tag(id: tagId, name: "AI", slug: "ai")]
+        let tags = [Frank.Tag(id: tagId, name: "AI", category: "ai")]
         let (sut, _, _, _) = makeSUT(tags: tags)
 
         await sut.send(.loadTags)
@@ -150,7 +150,7 @@ struct OnboardingFeatureTests {
     @Test("complete 성공 시 saveMyTags + updateOnboarding + onComplete 호출")
     func completeSuccess() async {
         let tagId = UUID()
-        let tags = [Frank.Tag(id: tagId, name: "AI", slug: "ai")]
+        let tags = [Frank.Tag(id: tagId, name: "AI", category: "ai")]
         let updatedProfile = Profile(id: UUID(), email: "test@example.com", onboardingCompleted: true)
         let (sut, tagPort, authPort, tracker) = makeSUT(
             tags: tags,
@@ -171,7 +171,7 @@ struct OnboardingFeatureTests {
     @Test("saveMyTags 실패 시 errorMessage + 태그 선택 유지")
     func completeSaveFailure() async {
         let tagId = UUID()
-        let tags = [Frank.Tag(id: tagId, name: "AI", slug: "ai")]
+        let tags = [Frank.Tag(id: tagId, name: "AI", category: "ai")]
         let (sut, _, _, tracker) = makeSUT(tags: tags, saveError: URLError(.timedOut))
 
         await sut.send(.loadTags)
@@ -194,7 +194,7 @@ struct OnboardingFeatureTests {
     @Test("updateOnboardingCompleted 실패 시 errorMessage + 태그 선택 유지")
     func completeUpdateProfileFailure() async {
         let tagId = UUID()
-        let tags = [Frank.Tag(id: tagId, name: "AI", slug: "ai")]
+        let tags = [Frank.Tag(id: tagId, name: "AI", category: "ai")]
         let (sut, _, _, tracker) = makeSUT(
             tags: tags,
             updateOnboardingResult: .failure(URLError(.badServerResponse))
@@ -216,7 +216,7 @@ struct OnboardingFeatureTests {
 
     @Test("선택 없이 complete 호출 시 무시")
     func completeWithNoSelectionIgnored() async {
-        let tags = [Frank.Tag(id: UUID(), name: "AI", slug: "ai")]
+        let tags = [Frank.Tag(id: UUID(), name: "AI", category: "ai")]
         let (sut, tagPort, authPort, _) = makeSUT(tags: tags)
 
         await sut.send(.loadTags)
@@ -243,7 +243,7 @@ struct OnboardingFeatureTests {
 
     @Test("에러 후 retry 시 다시 loadTags 성공")
     func retryAfterError() async {
-        let tags = [Frank.Tag(id: UUID(), name: "AI", slug: "ai")]
+        let tags = [Frank.Tag(id: UUID(), name: "AI", category: "ai")]
         let tagPort = MockTagPort()
         tagPort.fetchError = URLError(.notConnectedToInternet)
         let authPort = MockAuthPort()

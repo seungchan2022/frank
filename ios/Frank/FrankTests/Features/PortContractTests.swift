@@ -125,8 +125,8 @@ struct PortContractTests {
     func tagFetchAll() async throws {
         let mock = MockTagPort()
         let tags = [
-            Frank.Tag(id: UUID(), name: "AI", slug: "ai"),
-            Frank.Tag(id: UUID(), name: "iOS", slug: "ios"),
+            Frank.Tag(id: UUID(), name: "AI", category: "ai"),
+            Frank.Tag(id: UUID(), name: "iOS", category: "ios"),
         ]
         mock.allTags = tags
 
