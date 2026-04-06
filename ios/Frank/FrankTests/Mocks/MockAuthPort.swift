@@ -5,14 +5,18 @@ final class MockAuthPort: AuthPort, @unchecked Sendable {
     var signInResult: Result<Profile, Error> = .success(
         Profile(id: UUID(), email: "test@example.com", onboardingCompleted: false)
     )
-    var signUpResult: Result<Profile, Error> = .success(
+    var signUpResult: Result<Profile?, Error> = .success(
         Profile(id: UUID(), email: "test@example.com", onboardingCompleted: false)
+    )
+    var signInWithAppleResult: Result<Profile, Error> = .success(
+        Profile(id: UUID(), email: "apple@example.com", onboardingCompleted: false)
     )
     var signOutError: Error?
     var currentSessionResult: Profile?
 
     var signInCallCount = 0
     var signUpCallCount = 0
+    var signInWithAppleCallCount = 0
     var signOutCallCount = 0
 
     func signIn(email: String, password: String) async throws -> Profile {
@@ -20,9 +24,14 @@ final class MockAuthPort: AuthPort, @unchecked Sendable {
         return try signInResult.get()
     }
 
-    func signUp(email: String, password: String) async throws -> Profile {
+    func signUp(email: String, password: String) async throws -> Profile? {
         signUpCallCount += 1
         return try signUpResult.get()
+    }
+
+    func signInWithApple(idToken: String, rawNonce: String) async throws -> Profile {
+        signInWithAppleCallCount += 1
+        return try signInWithAppleResult.get()
     }
 
     func signOut() async throws {

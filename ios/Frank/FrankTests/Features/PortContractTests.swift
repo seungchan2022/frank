@@ -29,12 +29,49 @@ struct PortContractTests {
         }
     }
 
-    @Test("MockAuthPort signUp 호출 추적")
-    func authSignUpTracking() async throws {
+    @Test("MockAuthPort signUp 성공 (Profile 반환)")
+    func authSignUpSuccess() async throws {
         let mock = MockAuthPort()
-        _ = try await mock.signUp(email: "new@test.com", password: "pass")
+        let profile = Profile(id: UUID(), email: "new@test.com", onboardingCompleted: false)
+        mock.signUpResult = .success(profile)
 
+        let result = try await mock.signUp(email: "new@test.com", password: "pass")
+
+        #expect(result == profile)
         #expect(mock.signUpCallCount == 1)
+    }
+
+    @Test("MockAuthPort signUp 이메일 확인 대기 (nil 반환)")
+    func authSignUpPendingConfirmation() async throws {
+        let mock = MockAuthPort()
+        mock.signUpResult = .success(nil)
+
+        let result = try await mock.signUp(email: "new@test.com", password: "pass")
+
+        #expect(result == nil)
+        #expect(mock.signUpCallCount == 1)
+    }
+
+    @Test("MockAuthPort signInWithApple 성공")
+    func authSignInWithAppleSuccess() async throws {
+        let mock = MockAuthPort()
+        let profile = Profile(id: UUID(), email: "apple@test.com", onboardingCompleted: false)
+        mock.signInWithAppleResult = .success(profile)
+
+        let result = try await mock.signInWithApple(idToken: "token", rawNonce: "nonce")
+
+        #expect(result == profile)
+        #expect(mock.signInWithAppleCallCount == 1)
+    }
+
+    @Test("MockAuthPort signInWithApple 실패")
+    func authSignInWithAppleFailure() async {
+        let mock = MockAuthPort()
+        mock.signInWithAppleResult = .failure(URLError(.userAuthenticationRequired))
+
+        await #expect(throws: URLError.self) {
+            try await mock.signInWithApple(idToken: "bad", rawNonce: "bad")
+        }
     }
 
     @Test("MockAuthPort signOut 에러 전파")
