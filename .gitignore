@@ -44,6 +44,9 @@ DerivedData/
 *.ipa
 *.dSYM.zip
 *.dSYM
+**/Secrets.plist
+**/Tuist/.build/
+**/Derived/
 
 # === ML 모델 ===
 *.pt
