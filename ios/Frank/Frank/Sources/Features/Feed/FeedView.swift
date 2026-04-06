@@ -2,6 +2,7 @@ import SwiftUI
 
 struct FeedView: View {
     let feature: FeedFeature
+    let articlePort: any ArticlePort
     var onSettingsTapped: (() -> Void)?
 
     var body: some View {
@@ -40,6 +41,14 @@ struct FeedView: View {
                         Image(systemName: "gearshape")
                     }
                 }
+            }
+            .navigationDestination(for: UUID.self) { articleId in
+                ArticleDetailView(
+                    feature: ArticleDetailFeature(
+                        articleId: articleId,
+                        articlePort: articlePort
+                    )
+                )
             }
             .task {
                 await feature.send(.loadInitial)
@@ -110,12 +119,15 @@ struct FeedView: View {
     private var articleList: some View {
         List {
             ForEach(feature.articles) { article in
-                ArticleCardView(article: article)
-                    .onAppear {
-                        if article.id == feature.articles.last?.id {
-                            Task { await feature.send(.loadMore) }
-                        }
+                NavigationLink(value: article.id) {
+                    ArticleCardView(article: article)
+                }
+                .buttonStyle(.plain)
+                .onAppear {
+                    if article.id == feature.articles.last?.id {
+                        Task { await feature.send(.loadMore) }
                     }
+                }
             }
 
             if feature.isLoadingMore {

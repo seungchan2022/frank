@@ -3,54 +3,47 @@ import SwiftUI
 struct ArticleCardView: View {
     let article: Article
 
-    @Environment(\.openURL) private var openURL
-
     var displayTitle: String {
         article.titleKo ?? article.title
     }
 
     var body: some View {
-        Button {
-            openURL(article.url)
-        } label: {
-            VStack(alignment: .leading, spacing: 8) {
-                Text(displayTitle)
-                    .font(.headline)
-                    .fontWeight(.bold)
-                    .foregroundStyle(.primary)
-                    .multilineTextAlignment(.leading)
+        VStack(alignment: .leading, spacing: 8) {
+            Text(displayTitle)
+                .font(.headline)
+                .fontWeight(.bold)
+                .foregroundStyle(.primary)
+                .multilineTextAlignment(.leading)
 
-                HStack(spacing: 4) {
-                    Text(article.source)
-                    Text("\u{00B7}")
-                    Text(Self.relativeTimeText(article.publishedAt))
-                }
-                .font(.caption)
-                .foregroundStyle(.secondary)
-
-                if let summary = article.summary {
-                    Text(summary)
-                        .font(.subheadline)
-                        .foregroundStyle(.primary)
-                        .lineLimit(2)
-                } else {
-                    Text("요약 중...")
-                        .font(.subheadline)
-                        .italic()
-                        .foregroundStyle(.secondary)
-                }
-
-                if let insight = article.insight {
-                    Text(insight)
-                        .font(.caption)
-                        .foregroundStyle(.tint)
-                        .lineLimit(1)
-                }
+            HStack(spacing: 4) {
+                Text(article.source)
+                Text("\u{00B7}")
+                Text(Self.relativeTimeText(article.publishedAt))
             }
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .padding(.vertical, 12)
+            .font(.caption)
+            .foregroundStyle(.secondary)
+
+            if let summary = article.summary {
+                Text(summary)
+                    .font(.subheadline)
+                    .foregroundStyle(.primary)
+                    .lineLimit(2)
+            } else {
+                Text("요약 중...")
+                    .font(.subheadline)
+                    .italic()
+                    .foregroundStyle(.secondary)
+            }
+
+            if let insight = article.insight {
+                Text(insight)
+                    .font(.caption)
+                    .foregroundStyle(.tint)
+                    .lineLimit(1)
+            }
         }
-        .buttonStyle(.plain)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(.vertical, 12)
         .accessibilityElement(children: .combine)
         .accessibilityLabel(displayTitle)
     }

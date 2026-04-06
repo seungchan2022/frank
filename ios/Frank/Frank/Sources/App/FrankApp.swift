@@ -73,11 +73,13 @@ struct OnboardingContainerView: View {
 
 struct FeedContainerView: View {
     let authFeature: AuthFeature
+    let articlePort: any ArticlePort
     @State private var feedFeature: FeedFeature
     @State private var showSettings = false
 
     init(dependencies: AppDependencies, authFeature: AuthFeature) {
         self.authFeature = authFeature
+        self.articlePort = dependencies.article
         self._feedFeature = State(initialValue: FeedFeature(
             article: dependencies.article,
             collect: dependencies.collect,
@@ -86,7 +88,7 @@ struct FeedContainerView: View {
     }
 
     var body: some View {
-        FeedView(feature: feedFeature, onSettingsTapped: { showSettings = true })
+        FeedView(feature: feedFeature, articlePort: articlePort, onSettingsTapped: { showSettings = true })
             .sheet(isPresented: $showSettings) {
                 SettingsPlaceholderView(authFeature: authFeature)
             }
