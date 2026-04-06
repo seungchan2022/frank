@@ -1,7 +1,7 @@
 # Claude Code 설정 리팩토링
 
 > 생성일: 260405
-> 상태: 진행중
+> 상태: ✅ 완료 (17건 중 16건 완료, #14 취소 — 사용자 결정)
 
 ## 배경
 
@@ -57,7 +57,7 @@ MVP1~1.5 세션 분석을 통해 Claude Code 설정 파일(CLAUDE.md, rules/, ag
 |---|------|------|------|
 | 12 | mcp_integration.md 슬림화 (213줄 → ~60줄: 안전/비용 제한 + 핵심 체인 3개) | 수정 | 완료 |
 | 13 | 미설치 MCP 5개(D2, Perplexity, Morph, Magic, Paper Search) 스킬 allowed-tools에서 제거 | 수정 | 완료 |
-| 14 | GitHub MCP 설치 + Tavily/Exa/arXiv 활성화 안내 | 설정 | 대기 (토큰 필요) |
+| 14 | ~~GitHub MCP 설치~~ | 설정 | 취소 (사용자 결정: 연결 안함) |
 
 ### D. 스킬 정리
 

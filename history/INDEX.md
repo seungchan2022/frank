@@ -35,12 +35,20 @@
 
 ---
 
-## MVP2 — iOS 네이티브 앱 (260405~)
+## MVP2 — iOS 네이티브 앱 (260405~260406)
 
-> iOS 26 + SwiftUI + Tuist. 에코 서버 패턴 + @Observable Feature Reducer.
+> 기간 2일. iOS 26 + SwiftUI + Tuist. 에코 서버 패턴 + @Observable Feature Reducer. 117 테스트. 2,433줄.
 
 | 유형 | 파일 | 핵심 내용 |
 |------|------|----------|
+| 기획 | [MVP2 iOS 로드맵](mvp2/260405_MVP2_iOS_로드맵.md) | 6개 마일스톤 정의, Feature-Driven Unidirectional Flow, 디렉토리 구조 |
+| 기능 | [M2 인증플로우](mvp2/260406_M2_인증플로우.md) | Apple/Email 로그인, 세션 복원, signUp 계약 위험 발견 |
+| 기능 | [M3 온보딩](mvp2/260406_M3_온보딩.md) | 태그 선택 FlowLayout, slug→category 스키마 수정 |
+| 기능 | [M4 피드](mvp2/260406_M4_피드.md) | 탭 필터 + 카드 + 수집/요약 + 페이지네이션 + per-tag 캐시 |
+| 기능 | [M5 기사상세](mvp2/260406_M5_기사상세.md) | DetailFeature + NavigationStack 연결 |
+| 기능 | [M6 설정](mvp2/260406_M6_설정.md) | 태그 관리 + 로그아웃 + 피드 동기화, sheet 타이밍 버그 3건 |
+| 다이어그램 | [M4 피드 DAG](mvp2/260406_M4_피드_dag.svg) | 수집/요약 파이프라인 의존관계 시각화 |
+| 회고 | [MVP2 완료 회고](mvp2/260406_mvp2_completion_retro.md) | Keep/Problem/Surprise, 아키텍처 스코어 8.9/10, MVP2.5 부채 10건 |
 | 회고 | [일일 회고 260405](260405_daily_retro.html) | M1 완료, hook 강제 체감, Tuist MCP 한계, 포트/어댑터 iOS 적용 |
 
 ---
@@ -55,6 +63,7 @@
 | 기술 부채 현황 + 해결 상태 | `mvp15/260405_MVP1.5_기획.md` |
 | 실전 버그 패턴 | `mvp1/260404_feed_loading_bug.md` |
 | 성능 분석 (DB, 병렬처리) | `mvp1/260404_perf_db_access.md`, `mvp15/260405_mvp15_completion_retro.md` |
-| MVP2 방향/잔여 부채 | `mvp1/260405_mvp1_completion_retro.md`, `mvp15/260405_mvp15_completion_retro.md` |
-| MVP2 iOS 로드맵 | `progress/260405_MVP2_iOS_로드맵.md` |
-| iOS 아키텍처/회고 | `260405_daily_retro.html` |
+| MVP2 iOS 아키텍처/패턴 | `mvp2/260405_MVP2_iOS_로드맵.md`, `mvp2/260406_mvp2_completion_retro.md` |
+| MVP2.5 기술 부채 목록 | `mvp2/260406_mvp2_completion_retro.md` |
+| 3개 플랫폼 규모 비교 | `mvp2/260406_mvp2_completion_retro.md` (9,999줄, 333테스트) |
+| Claude Code 설정 자동화 | `progress/260405_claude_code_refactoring.md` |
