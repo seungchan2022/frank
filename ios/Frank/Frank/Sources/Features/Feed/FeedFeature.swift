@@ -7,6 +7,7 @@ enum FeedAction {
     case loadMore
     case refresh
     case collectAndSummarize
+    case reloadAfterTagChange
 }
 
 @Observable
@@ -72,6 +73,8 @@ final class FeedFeature {
             await refresh()
         case .collectAndSummarize:
             await collectAndSummarize()
+        case .reloadAfterTagChange:
+            await reloadAfterTagChange()
         }
     }
 
@@ -115,12 +118,20 @@ final class FeedFeature {
         let fetched = try await article.fetchArticles(
             filter: ArticleFilter(tagId: tagId, limit: pageSize, offset: 0)
         )
-        articles = fetched
-        cache[tagId] = fetched
+        // 전체 탭(tagId=nil)일 때 현재 구독 태그로 필터링
+        let myTagIds = Set(tags.map(\.id))
+        let filtered = tagId == nil && !myTagIds.isEmpty
+            ? fetched.filter { item in
+                guard let itemTagId = item.tagId else { return true }
+                return myTagIds.contains(itemTagId)
+            }
+            : fetched
+        articles = filtered
+        cache[tagId] = filtered
         offsetCache[tagId] = fetched.count
         hasMore = fetched.count >= pageSize
         hasMoreCache[tagId] = hasMore
-        return fetched
+        return filtered
     }
 
     /// 캐시 전체 무효화
@@ -179,7 +190,15 @@ final class FeedFeature {
             let fetched = try await article.fetchArticles(
                 filter: ArticleFilter(tagId: selectedTagId, limit: pageSize, offset: offset)
             )
-            articles += fetched
+            // 전체 탭(tagId=nil)일 때 현재 구독 태그로 필터링
+            let myTagIds = Set(tags.map(\.id))
+            let filtered = selectedTagId == nil && !myTagIds.isEmpty
+                ? fetched.filter { item in
+                    guard let itemTagId = item.tagId else { return true }
+                    return myTagIds.contains(itemTagId)
+                }
+                : fetched
+            articles += filtered
             cache[selectedTagId] = articles
             offsetCache[selectedTagId] = offset + fetched.count
             hasMore = fetched.count >= pageSize
@@ -223,5 +242,11 @@ final class FeedFeature {
         } catch {
             errorMessage = "새로고침에 실패했습니다."
         }
+    }
+
+    private func reloadAfterTagChange() async {
+        invalidateCache()
+        selectedTagId = nil
+        await loadInitial()
     }
 }
