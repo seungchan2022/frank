@@ -38,8 +38,8 @@ coverage/
 !.env.example
 
 # === Swift (ios/) ===
-*.xcodeproj/xcuserdata/
-*.xcworkspace/xcuserdata/
+**/*.xcodeproj/xcuserdata/
+**/*.xcworkspace/xcuserdata/
 DerivedData/
 *.ipa
 *.dSYM.zip
