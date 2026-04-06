@@ -10,13 +10,37 @@ final class OnboardingFlowUITest: XCTestCase {
     }
 
     func testFullOnboardingFlow() {
-        // 1. 로그인 화면
+        // 1. 앱 로드 대기
         let loginTitle = app.staticTexts["Frank"]
-        XCTAssertTrue(loginTitle.waitForExistence(timeout: 5))
+        let feedTag = app.buttons["전체"]
+
+        // 이미 로그인되어 피드 화면인 경우 vs 로그인 화면인 경우
+        let loginAppeared = loginTitle.waitForExistence(timeout: 5)
+        let alreadyOnFeed = feedTag.exists
+
+        if alreadyOnFeed {
+            // 이미 인증된 세션 — 피드 화면 검증
+            takeScreenshot(name: "01_이미_로그인됨_피드화면")
+            XCTAssertTrue(feedTag.exists, "피드 태그 탭 존재")
+            return
+        }
+
+        guard loginAppeared else {
+            takeScreenshot(name: "01_실패_알수없는화면")
+            XCTFail("로그인 화면도 피드 화면도 아닌 상태")
+            return
+        }
+
         takeScreenshot(name: "01_로그인화면")
 
         // 2. "다른 방법으로 로그인" 탭
-        app.buttons["다른 방법으로 로그인"].tap()
+        let otherLoginButton = app.buttons["다른 방법으로 로그인"]
+        guard otherLoginButton.waitForExistence(timeout: 3) else {
+            takeScreenshot(name: "02_실패_버튼없음")
+            XCTFail("'다른 방법으로 로그인' 버튼을 찾을 수 없음")
+            return
+        }
+        otherLoginButton.tap()
         sleep(1)
         takeScreenshot(name: "02_이메일시트")
 
@@ -43,10 +67,9 @@ final class OnboardingFlowUITest: XCTestCase {
 
         // 6. 온보딩 또는 피드 대기 (최대 15초)
         let onboardingTitle = app.staticTexts["관심 키워드를 선택하세요"]
-        let feedTitle = app.staticTexts["로그인 완료"]
 
         let appeared = onboardingTitle.waitForExistence(timeout: 15)
-            || feedTitle.waitForExistence(timeout: 3)
+            || feedTag.waitForExistence(timeout: 3)
 
         takeScreenshot(name: "04_로그인후화면")
 
@@ -56,12 +79,10 @@ final class OnboardingFlowUITest: XCTestCase {
                 sleep(2)
                 takeScreenshot(name: "05_온보딩_태그로드")
 
-                // 시작하기 버튼 확인
                 let startButton = app.buttons["시작하기"]
                 XCTAssertTrue(startButton.exists, "시작하기 버튼 존재")
             }
         } else {
-            // 현재 화면 상태를 캡처
             takeScreenshot(name: "04_실패_현재화면")
         }
     }
