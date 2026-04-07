@@ -3,6 +3,7 @@ export interface Article {
 	user_id: string;
 	tag_id: string | null;
 	title: string;
+	title_ko: string | null;
 	url: string;
 	snippet: string | null;
 	source: string;

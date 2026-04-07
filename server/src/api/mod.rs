@@ -1,5 +1,6 @@
 pub mod articles;
 pub mod health;
+pub mod profile;
 pub mod tags;
 
 use std::sync::Arc;

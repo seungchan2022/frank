@@ -8,7 +8,7 @@ pub mod services;
 use std::sync::Arc;
 
 use axum::middleware::from_fn;
-use axum::routing::{get, post};
+use axum::routing::{get, post, put};
 use axum::{Extension, Router};
 
 use api::AppState;
@@ -33,11 +33,13 @@ pub fn create_router<D: DbPort + Clone + 'static>(
 
     let auth_routes = Router::new()
         .route("/me/profile", get(api::tags::get_my_profile::<D>))
+        .route("/me/profile", put(api::profile::update_profile::<D>))
         .route("/tags", get(api::tags::list_tags::<D>))
         .route("/me/tags", get(api::tags::get_my_tags::<D>))
         .route("/me/tags", post(api::tags::save_my_tags::<D>))
         .route("/me/collect", post(api::articles::collect_articles::<D>))
         .route("/me/articles", get(api::articles::list_articles::<D>))
+        .route("/me/articles/{id}", get(api::articles::get_article::<D>))
         .route(
             "/me/summarize",
             post(api::articles::summarize_articles::<D>),
@@ -49,4 +51,70 @@ pub fn create_router<D: DbPort + Clone + 'static>(
         .route("/health", get(api::health::health_check))
         .nest("/api", auth_routes)
         .layer(Extension(state))
+}
+
+#[cfg(test)]
+mod tests {
+    //! M1 신규/확장 엔드포인트의 인증 보호 회귀 테스트.
+    //! `auth_routes` 전체에 `require_auth` 미들웨어가 걸려 있음을 보장한다.
+
+    use std::sync::Arc;
+
+    use axum_test::TestServer;
+    use uuid::Uuid;
+
+    use crate::create_router;
+    use crate::infra::fake_crawl::FakeCrawlAdapter;
+    use crate::infra::fake_db::FakeDbAdapter;
+    use crate::infra::fake_llm::FakeLlmAdapter;
+    use crate::infra::fake_notification::FakeNotificationAdapter;
+    use crate::infra::fake_search::FakeSearchAdapter;
+    use crate::infra::search_chain::SearchFallbackChain;
+    use crate::middleware::auth::SupabaseConfig;
+
+    fn make_full_app() -> TestServer {
+        let chain = SearchFallbackChain::new(vec![Box::new(FakeSearchAdapter::new(
+            "test",
+            vec![],
+            false,
+        ))]);
+        let router = create_router(
+            FakeDbAdapter::new(),
+            SupabaseConfig {
+                url: "http://localhost:54321".to_string(),
+                anon_key: "test-anon-key".to_string(),
+            },
+            Arc::new(chain),
+            Arc::new(FakeLlmAdapter::new()),
+            Arc::new(FakeCrawlAdapter::new()),
+            Arc::new(FakeNotificationAdapter::new()),
+        );
+        TestServer::new(router)
+    }
+
+    #[tokio::test]
+    async fn list_articles_without_auth_returns_401() {
+        let server = make_full_app();
+        let resp = server.get("/api/me/articles").await;
+        resp.assert_status_unauthorized();
+    }
+
+    #[tokio::test]
+    async fn get_article_by_id_without_auth_returns_401() {
+        let server = make_full_app();
+        let resp = server
+            .get(&format!("/api/me/articles/{}", Uuid::new_v4()))
+            .await;
+        resp.assert_status_unauthorized();
+    }
+
+    #[tokio::test]
+    async fn put_profile_without_auth_returns_401() {
+        let server = make_full_app();
+        let resp = server
+            .put("/api/me/profile")
+            .json(&serde_json::json!({"onboarding_completed": true}))
+            .await;
+        resp.assert_status_unauthorized();
+    }
 }

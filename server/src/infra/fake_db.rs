@@ -54,6 +54,10 @@ impl FakeDbAdapter {
         self.profiles.lock().unwrap().insert(profile.id, profile);
     }
 
+    pub fn seed_article(&self, article: Article) {
+        self.articles.lock().unwrap().push(article);
+    }
+
     pub fn get_tags(&self) -> Vec<Tag> {
         self.tags.lock().unwrap().clone()
     }
@@ -80,6 +84,25 @@ impl DbPort for FakeDbAdapter {
             .ok_or_else(|| AppError::NotFound("Profile not found".to_string()))?;
         profile.onboarding_completed = completed;
         Ok(())
+    }
+
+    async fn update_profile(
+        &self,
+        user_id: Uuid,
+        onboarding_completed: Option<bool>,
+        display_name: Option<String>,
+    ) -> Result<Profile, AppError> {
+        let mut profiles = self.profiles.lock().unwrap();
+        let profile = profiles
+            .get_mut(&user_id)
+            .ok_or_else(|| AppError::NotFound("Profile not found".to_string()))?;
+        if let Some(oc) = onboarding_completed {
+            profile.onboarding_completed = oc;
+        }
+        if let Some(dn) = display_name {
+            profile.display_name = Some(dn);
+        }
+        Ok(profile.clone())
     }
 
     async fn list_tags(&self) -> Result<Vec<Tag>, AppError> {
@@ -118,15 +141,38 @@ impl DbPort for FakeDbAdapter {
         Ok(count)
     }
 
-    async fn get_user_articles(&self, user_id: Uuid, limit: i64) -> Result<Vec<Article>, AppError> {
+    async fn get_user_articles(
+        &self,
+        user_id: Uuid,
+        limit: i64,
+        offset: i64,
+        tag_id: Option<Uuid>,
+    ) -> Result<Vec<Article>, AppError> {
         let articles = self.articles.lock().unwrap();
-        let mut user_articles: Vec<_> = articles
+        let user_articles: Vec<_> = articles
             .iter()
             .filter(|a| a.user_id == user_id)
+            .filter(|a| match tag_id {
+                Some(tid) => a.tag_id == Some(tid),
+                None => true,
+            })
+            .skip(offset.max(0) as usize)
+            .take(limit.max(0) as usize)
             .cloned()
             .collect();
-        user_articles.truncate(limit as usize);
         Ok(user_articles)
+    }
+
+    async fn get_user_article_by_id(
+        &self,
+        user_id: Uuid,
+        article_id: Uuid,
+    ) -> Result<Option<Article>, AppError> {
+        let articles = self.articles.lock().unwrap();
+        Ok(articles
+            .iter()
+            .find(|a| a.id == article_id && a.user_id == user_id)
+            .cloned())
     }
 
     async fn update_article_summary(

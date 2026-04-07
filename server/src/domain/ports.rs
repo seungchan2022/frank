@@ -19,6 +19,14 @@ pub trait DbPort: Send + Sync {
         completed: bool,
     ) -> impl std::future::Future<Output = Result<(), AppError>> + Send;
 
+    /// 프로필 부분 수정. 두 필드 모두 None이면 no-op으로 현재 프로필 반환.
+    fn update_profile(
+        &self,
+        user_id: Uuid,
+        onboarding_completed: Option<bool>,
+        display_name: Option<String>,
+    ) -> impl std::future::Future<Output = Result<Profile, AppError>> + Send;
+
     fn list_tags(&self) -> impl std::future::Future<Output = Result<Vec<Tag>, AppError>> + Send;
 
     fn get_user_tags(
@@ -41,7 +49,16 @@ pub trait DbPort: Send + Sync {
         &self,
         user_id: Uuid,
         limit: i64,
+        offset: i64,
+        tag_id: Option<Uuid>,
     ) -> impl std::future::Future<Output = Result<Vec<Article>, AppError>> + Send;
+
+    /// 본인 기사 단건 조회. 타인 기사 또는 없는 기사면 Ok(None) 반환 (호출부에서 404 처리).
+    fn get_user_article_by_id(
+        &self,
+        user_id: Uuid,
+        article_id: Uuid,
+    ) -> impl std::future::Future<Output = Result<Option<Article>, AppError>> + Send;
 
     #[allow(clippy::too_many_arguments)]
     fn update_article_summary(

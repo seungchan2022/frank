@@ -201,7 +201,7 @@ mod tests {
         assert_eq!(count, 4);
 
         // DB에 저장 시 URL+user_id 중복 제거 → 2개 (동일 URL)
-        let articles = db.get_user_articles(user_id, 100).await.unwrap();
+        let articles = db.get_user_articles(user_id, 100, 0, None).await.unwrap();
         assert_eq!(articles.len(), 2);
 
         // 크롤링된 콘텐츠가 저장되었는지 확인
@@ -266,7 +266,7 @@ mod tests {
 
         // 기사는 저장되지만 content는 None (크롤 실패)
         assert_eq!(count, 2); // 2 tags x 1 result (동일 URL이므로 DB에는 1개)
-        let articles = db.get_user_articles(user_id, 100).await.unwrap();
+        let articles = db.get_user_articles(user_id, 100, 0, None).await.unwrap();
         for article in &articles {
             assert!(article.content.is_none());
         }
@@ -328,7 +328,7 @@ mod tests {
             .await
             .unwrap();
 
-        let articles = db.get_user_articles(user_id, 100).await.unwrap();
+        let articles = db.get_user_articles(user_id, 100, 0, None).await.unwrap();
         assert_eq!(articles.len(), 1);
         assert!(articles[0].published_at.is_some());
     }
@@ -354,7 +354,7 @@ mod tests {
             .await
             .unwrap();
 
-        let articles = db.get_user_articles(user_id, 100).await.unwrap();
+        let articles = db.get_user_articles(user_id, 100, 0, None).await.unwrap();
         assert_eq!(articles.len(), 1);
         // invalid date string → None
         assert!(articles[0].published_at.is_none());
@@ -381,7 +381,7 @@ mod tests {
             .await
             .unwrap();
 
-        let articles = db.get_user_articles(user_id, 100).await.unwrap();
+        let articles = db.get_user_articles(user_id, 100, 0, None).await.unwrap();
         assert_eq!(articles.len(), 1);
         assert_eq!(articles[0].tag_id, Some(tag_ids[0]));
         assert!(articles[0].search_query.is_some());
@@ -425,7 +425,7 @@ mod tests {
 
         // 홈페이지 URL은 필터링되어 1개만 저장
         assert_eq!(count, 1);
-        let articles = db.get_user_articles(user_id, 100).await.unwrap();
+        let articles = db.get_user_articles(user_id, 100, 0, None).await.unwrap();
         assert_eq!(articles.len(), 1);
         assert!(articles[0].url.contains("real-article"));
     }

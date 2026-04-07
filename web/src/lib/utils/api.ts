@@ -75,7 +75,7 @@ export async function fetchArticles(
 	let query = supabase
 		.from('articles')
 		.select(
-			'id, user_id, tag_id, title, url, snippet, source, search_query, published_at, created_at, summary, insight, summarized_at'
+			'id, user_id, tag_id, title, title_ko, url, snippet, source, search_query, published_at, created_at, summary, insight, summarized_at'
 		)
 		.order('created_at', { ascending: false })
 		.range(offset, offset + limit - 1);
@@ -132,7 +132,7 @@ export async function fetchArticleById(id: string): Promise<Article | null> {
 	const { data, error } = await supabase
 		.from('articles')
 		.select(
-			'id, user_id, tag_id, title, url, snippet, source, search_query, published_at, created_at, summary, insight, summarized_at'
+			'id, user_id, tag_id, title, title_ko, url, snippet, source, search_query, published_at, created_at, summary, insight, summarized_at'
 		)
 		.eq('id', id)
 		.single();

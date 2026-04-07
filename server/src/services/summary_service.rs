@@ -17,7 +17,7 @@ pub async fn summarize_articles<D: DbPort>(
     user_id: Uuid,
 ) -> Result<usize, AppError> {
     // 1. 사용자 기사 전체 조회 (충분히 큰 limit)
-    let articles = db.get_user_articles(user_id, 1000).await?;
+    let articles = db.get_user_articles(user_id, 1000, 0, None).await?;
 
     // 요약 대상 필터링 (소유형 문자열로 수집)
     let targets: Vec<(Uuid, String, String)> = articles
@@ -111,7 +111,7 @@ mod tests {
 
     async fn insert_articles(db: &FakeDbAdapter, user_id: Uuid, articles: Vec<Article>) {
         db.save_articles(articles).await.unwrap();
-        let _ = db.get_user_articles(user_id, 100).await;
+        let _ = db.get_user_articles(user_id, 100, 0, None).await;
     }
 
     fn make_article(user_id: Uuid, title: &str, snippet: Option<&str>) -> Article {
@@ -158,7 +158,7 @@ mod tests {
         assert_eq!(count, 2);
 
         // 요약이 저장되었는지 확인
-        let saved = db.get_user_articles(user_id, 100).await.unwrap();
+        let saved = db.get_user_articles(user_id, 100, 0, None).await.unwrap();
         for article in &saved {
             assert!(article.summary.is_some());
             assert!(article.insight.is_some());
