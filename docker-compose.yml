@@ -20,7 +20,6 @@ services:
         PUBLIC_SUPABASE_ANON_KEY: ${PUBLIC_SUPABASE_ANON_KEY}
     ports:
       - "3000:3000"
-    env_file: ./web/.env
     restart: unless-stopped
     depends_on:
       server:

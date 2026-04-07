@@ -19,6 +19,7 @@
 		1A1EBB485B73C20C6DD305A7 /* ShimmerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 78B31361B967638E0B7D4C1D /* ShimmerView.swift */; };
 		1B108E65BFCC8A4CACA11AA5 /* ArticleDetailFeatureTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = C00B77130ECC94BD04814CE9 /* ArticleDetailFeatureTests.swift */; };
 		21184645644ECAACBC0CEF51 /* EmptyStateView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 52D74E95DE3C41637A4E23BA /* EmptyStateView.swift */; };
+		219DBF917ADE0F2360F837C2 /* TuistBundle+Frank.swift in Sources */ = {isa = PBXBuildFile; fileRef = 310E064F8C1CBC4263855ED6 /* TuistBundle+Frank.swift */; };
 		27B2B6733D486AB94E6BB711 /* TagChipView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 765FF6131C6AD6128B0DA0B4 /* TagChipView.swift */; };
 		315FB330839E449D23A45881 /* Logger.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0949836956EA8C7AB729B454 /* Logger.swift */; };
 		320D44072834AB052F5FA0C2 /* swift-crypto_Crypto.bundle in Dependencies */ = {isa = PBXBuildFile; fileRef = 37670072226AC2A91EA7B29D /* swift-crypto_Crypto.bundle */; };
@@ -41,6 +42,7 @@
 		66A7F3C8964B89BB7A013073 /* AuthFlowUITest.swift in Sources */ = {isa = PBXBuildFile; fileRef = C096BCCBE247FCB12D3140FB /* AuthFlowUITest.swift */; };
 		674C8F17C8D9E39E53A426BE /* SettingsFeature.swift in Sources */ = {isa = PBXBuildFile; fileRef = 732D2C2F99540B8095CC304E /* SettingsFeature.swift */; };
 		692906C80B86515B6CF2960B /* ArticleCardView.swift in Sources */ = {isa = PBXBuildFile; fileRef = DAA4C61DF400FCC984E0E407 /* ArticleCardView.swift */; };
+		694E4F5066CFEE7116E2F379 /* TuistPlists+Frank.swift in Sources */ = {isa = PBXBuildFile; fileRef = AAFFFD722BFE1D8068F82CBA /* TuistPlists+Frank.swift */; };
 		6B7AC349A30C98AC28576721 /* HTTPTypes.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 78ACB19B20D01B71F42D1516 /* HTTPTypes.framework */; };
 		7314065C4F6F2EF7ACAB6CA8 /* MockArticleAdapter.swift in Sources */ = {isa = PBXBuildFile; fileRef = 446040A4F0FA3C5A5500E67C /* MockArticleAdapter.swift */; };
 		742297D17FE783F794113FDF /* MockArticlePort.swift in Sources */ = {isa = PBXBuildFile; fileRef = FF2F2E636DB425812FD112C1 /* MockArticlePort.swift */; };
@@ -61,6 +63,7 @@
 		A0AB4B1A8CD1C4B0891EAB70 /* OnboardingFeatureTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0AE828DEA72FF568B1362F37 /* OnboardingFeatureTests.swift */; };
 		A2BCDABAB4CAFFDF7FB3903C /* MockAuthAdapter.swift in Sources */ = {isa = PBXBuildFile; fileRef = E2C4689C15CA8A3617A3DECF /* MockAuthAdapter.swift */; };
 		A64392E4FB9F436A5F025192 /* APIArticleAdapterTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 68C8BDCCAAAFEFCDBC52F7E7 /* APIArticleAdapterTests.swift */; };
+		A79C8F356CFD54843837C696 /* Secrets.plist in Resources */ = {isa = PBXBuildFile; fileRef = 8834E578EA47B50ECB90514E /* Secrets.plist */; };
 		A83783A57E0EA161B735611B /* ArticleFilter.swift in Sources */ = {isa = PBXBuildFile; fileRef = E910979DCC81EFEA39CBEAFD /* ArticleFilter.swift */; };
 		B0F8289F3E132CE277D4E8AC /* ProfileAPITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B705CC844472B4768A163478 /* ProfileAPITests.swift */; };
 		B2C86CAE052B78BCFAB822E9 /* ServerConfig.swift in Sources */ = {isa = PBXBuildFile; fileRef = CEE154518AA51FED7C3CB72B /* ServerConfig.swift */; };
@@ -167,6 +170,7 @@
 		2869495357228CE0C0D76A58 /* SettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsView.swift; sourceTree = "<group>"; };
 		2D9C2BEE2748078EA4D9C314 /* FeedFeature.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FeedFeature.swift; sourceTree = "<group>"; };
 		2E263E898F6D5800C26DF0E6 /* APIArticleAdapter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = APIArticleAdapter.swift; sourceTree = "<group>"; };
+		310E064F8C1CBC4263855ED6 /* TuistBundle+Frank.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "TuistBundle+Frank.swift"; sourceTree = "<group>"; };
 		327DA28A100F924D9A073E1F /* FrankUITests-Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = "FrankUITests-Info.plist"; sourceTree = "<group>"; };
 		37670072226AC2A91EA7B29D /* swift-crypto_Crypto.bundle */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = "swift-crypto_Crypto.bundle"; sourceTree = BUILT_PRODUCTS_DIR; };
 		3C41D90528F43223915F446B /* MockURLProtocol.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MockURLProtocol.swift; sourceTree = "<group>"; };
@@ -200,6 +204,7 @@
 		7D6276E6E0B9671FF485B31D /* ConcurrencyExtras.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; includeInIndex = 0; path = ConcurrencyExtras.framework; sourceTree = BUILT_PRODUCTS_DIR; };
 		7D9496C483F9E9D113A3A134 /* TagChipBarView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TagChipBarView.swift; sourceTree = "<group>"; };
 		8429B953E1AB5732169EDA8D /* EmptyStateViewTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EmptyStateViewTests.swift; sourceTree = "<group>"; };
+		8834E578EA47B50ECB90514E /* Secrets.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Secrets.plist; sourceTree = "<group>"; };
 		8B8C9188EF336D34BB89EE36 /* SupabaseArticleAdapter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SupabaseArticleAdapter.swift; sourceTree = "<group>"; };
 		8C3815B1863F12226990863E /* FrankTests-Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = "FrankTests-Info.plist"; sourceTree = "<group>"; };
 		9158BB4C3B5D449AF950B9CA /* TagChipBarViewTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TagChipBarViewTests.swift; sourceTree = "<group>"; };
@@ -209,6 +214,7 @@
 		9CF4FFE942B3AA1EC2B85867 /* Storage.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; includeInIndex = 0; path = Storage.framework; sourceTree = BUILT_PRODUCTS_DIR; };
 		9D056DE8B30EF660F5AA41E4 /* TagPort.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TagPort.swift; sourceTree = "<group>"; };
 		A9683C6B43DA974DCE5DD999 /* APITagAdapter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = APITagAdapter.swift; sourceTree = "<group>"; };
+		AAFFFD722BFE1D8068F82CBA /* TuistPlists+Frank.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "TuistPlists+Frank.swift"; sourceTree = "<group>"; };
 		AB571C1F1F7E8867D4716BAA /* Article.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Article.swift; sourceTree = "<group>"; };
 		AD78FFC05481C8B83E3B3F71 /* AuthFeatureTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AuthFeatureTests.swift; sourceTree = "<group>"; };
 		B43318CD695224310C36B89D /* PostgREST.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; includeInIndex = 0; path = PostgREST.framework; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -423,6 +429,7 @@
 			isa = PBXGroup;
 			children = (
 				4F5D05AE37FCCE0C71454F18 /* InfoPlists */,
+				688058C2368340CDBD0AA3E5 /* Sources */,
 			);
 			path = Derived;
 			sourceTree = "<group>";
@@ -434,6 +441,15 @@
 				63A97D01A3235A7A6B855EFD /* FeedView.swift */,
 			);
 			path = Feed;
+			sourceTree = "<group>";
+		};
+		688058C2368340CDBD0AA3E5 /* Sources */ = {
+			isa = PBXGroup;
+			children = (
+				310E064F8C1CBC4263855ED6 /* TuistBundle+Frank.swift */,
+				AAFFFD722BFE1D8068F82CBA /* TuistPlists+Frank.swift */,
+			);
+			path = Sources;
 			sourceTree = "<group>";
 		};
 		6BA1A251E65CCC814B3316D7 /* Auth */ = {
@@ -463,6 +479,7 @@
 		8EE41D3BDC90690389516E7E /* Frank */ = {
 			isa = PBXGroup;
 			children = (
+				A9FD9B789EEBB52A722538DB /* Resources */,
 				D985DD6C8BA03321A290C9AA /* Sources */,
 				BFB4CA6BB64EDA69BA80B05B /* Frank.entitlements */,
 			);
@@ -509,6 +526,14 @@
 				B0D09EA854EEE905DD852A02 /* Settings */,
 			);
 			path = Features;
+			sourceTree = "<group>";
+		};
+		A9FD9B789EEBB52A722538DB /* Resources */ = {
+			isa = PBXGroup;
+			children = (
+				8834E578EA47B50ECB90514E /* Secrets.plist */,
+			);
+			path = Resources;
 			sourceTree = "<group>";
 		};
 		AC6DD78C81256C2531BD5958 /* Ports */ = {
@@ -742,6 +767,7 @@
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				A79C8F356CFD54843837C696 /* Secrets.plist in Resources */,
 				E7FC87E933151795ACF4ACF4 /* swift-crypto_Crypto.bundle in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -790,6 +816,8 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				219DBF917ADE0F2360F837C2 /* TuistBundle+Frank.swift in Sources */,
+				694E4F5066CFEE7116E2F379 /* TuistPlists+Frank.swift in Sources */,
 				51BC6552204DAC1A94785C07 /* AppDependencies.swift in Sources */,
 				BE863DA44F1CB23713EE5649 /* FrankApp.swift in Sources */,
 				751E1260C333946B79278260 /* Router.swift in Sources */,

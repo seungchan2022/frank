@@ -36,7 +36,12 @@ cd web && npm run build
 # 로컬 실행
 cd server && cargo run                     # :8080
 cd web && npm run dev                      # :5173
-ios/Frank/scripts/run-simulator.sh         # iPhone 17 Pro 시뮬레이터
+
+# 통합 배포 (iOS + API + 웹 프론트)
+scripts/deploy.sh                          # 전체 실행
+scripts/deploy.sh --target=ios            # iOS 시뮬레이터만
+scripts/deploy.sh --target=api,front      # API + 웹 프론트만
+scripts/deploy.sh --target=api --tunnel   # API + Cloudflare 터널
 ```
 
 ## 테스트 커버리지 기준 (90%)
@@ -85,8 +90,8 @@ frank/
 ├── ios/Frank/           # iOS 앱 (Tuist + SwiftUI)
 │   ├── Frank/Sources/   # 앱 소스 (App, Core, Features, Components)
 │   ├── FrankTests/      # Swift Testing 테스트
-│   ├── scripts/         # 시뮬레이터 실행 스크립트
 │   └── Project.swift    # Tuist 매니페스트
+├── scripts/             # 통합 배포 스크립트 (deploy.sh)
 ├── supabase/            # DB 마이그레이션
 ├── progress/            # 작업 문서 (진행 중)
 ├── history/             # 완료 마일스톤 아카이브

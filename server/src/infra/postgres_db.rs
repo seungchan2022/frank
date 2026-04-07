@@ -138,16 +138,17 @@ impl DbPort for PostgresDbAdapter {
         user_id: Uuid,
         completed: bool,
     ) -> Result<(), AppError> {
-        let result = sqlx::query("UPDATE profiles SET onboarding_completed = $1 WHERE id = $2")
-            .bind(completed)
-            .bind(user_id)
-            .execute(&self.pool)
-            .await
-            .map_err(|e| AppError::Internal(format!("DB update failed: {e}")))?;
-
-        if result.rows_affected() == 0 {
-            return Err(AppError::NotFound("Profile not found".to_string()));
-        }
+        // profiles row가 없는 경우(트리거 누락 등)를 대비해 UPSERT 처리
+        sqlx::query(
+            "INSERT INTO profiles (id, onboarding_completed)
+             VALUES ($1, $2)
+             ON CONFLICT (id) DO UPDATE SET onboarding_completed = EXCLUDED.onboarding_completed",
+        )
+        .bind(user_id)
+        .bind(completed)
+        .execute(&self.pool)
+        .await
+        .map_err(|e| AppError::Internal(format!("DB upsert failed: {e}")))?;
         Ok(())
     }
 

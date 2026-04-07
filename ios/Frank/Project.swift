@@ -18,6 +18,10 @@ let project = Project(
                     "SUPABASE_URL": "$(SUPABASE_URL)",
                     "SUPABASE_ANON_KEY": "$(SUPABASE_ANON_KEY)",
                     "SERVER_URL": "$(SERVER_URL)",
+                    // HTTP 로컬 서버 허용 (ATS localhost 예외)
+                    "NSAppTransportSecurity": [
+                        "NSAllowsLocalNetworking": true,
+                    ],
                 ]
             ),
             sources: ["Frank/Sources/**"],
