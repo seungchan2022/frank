@@ -7,13 +7,39 @@ pub mod services;
 
 use std::sync::Arc;
 
+use axum::http::{HeaderValue, Method, header};
 use axum::middleware::from_fn;
 use axum::routing::{get, post, put};
 use axum::{Extension, Router};
+use tower_http::cors::CorsLayer;
 
 use api::AppState;
 use domain::ports::{CrawlPort, DbPort, LlmPort, NotificationPort, SearchChainPort};
 use middleware::auth::SupabaseConfig;
+
+/// 웹/iOS 클라이언트용 CORS 레이어.
+/// 환경변수 ALLOWED_ORIGINS (콤마 구분) 또는 기본값(localhost dev) 사용.
+fn build_cors_layer() -> CorsLayer {
+    let origins_env = std::env::var("ALLOWED_ORIGINS").unwrap_or_else(|_| {
+        "http://localhost:5173,http://localhost:4173,http://127.0.0.1:5173".to_string()
+    });
+    let origins: Vec<HeaderValue> = origins_env
+        .split(',')
+        .filter_map(|s| s.trim().parse::<HeaderValue>().ok())
+        .collect();
+
+    CorsLayer::new()
+        .allow_origin(origins)
+        .allow_methods([
+            Method::GET,
+            Method::POST,
+            Method::PUT,
+            Method::DELETE,
+            Method::OPTIONS,
+        ])
+        .allow_headers([header::AUTHORIZATION, header::CONTENT_TYPE, header::ACCEPT])
+        .allow_credentials(true)
+}
 
 pub fn create_router<D: DbPort + Clone + 'static>(
     db: D,
@@ -51,6 +77,7 @@ pub fn create_router<D: DbPort + Clone + 'static>(
         .route("/health", get(api::health::health_check))
         .nest("/api", auth_routes)
         .layer(Extension(state))
+        .layer(build_cors_layer())
 }
 
 #[cfg(test)]
