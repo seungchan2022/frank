@@ -1,12 +1,21 @@
-import type { Session, Subscription, User } from '@supabase/supabase-js';
-import { supabase } from '$lib/supabase';
+// Server-driven auth store.
+//
+// M2 ST-4 (옵션 B): client-side supabase 호출 제거.
+// session/user는 +layout.server.ts → +layout.svelte → setAuth(...)로 hydration.
+// signIn/signOut은 server form actions(routes/login, routes/logout)으로 처리.
+// 페이지 컴포넌트는 getAuth().isAuthenticated/user/session으로 접근한다.
+
+import type { Session, User } from '@supabase/supabase-js';
 
 let session = $state<Session | null>(null);
 let user = $state<User | null>(null);
-let loading = $state(true);
+let loading = $state(false);
 
-let subscription: Subscription | null = null;
-let initialized = false;
+export function setAuth(data: { session: Session | null; user: User | null }): void {
+	session = data.session;
+	user = data.user;
+	loading = false;
+}
 
 export function getAuth() {
 	return {
@@ -23,57 +32,4 @@ export function getAuth() {
 			return !!session;
 		}
 	};
-}
-
-export async function initAuth() {
-	if (initialized) return;
-	initialized = true;
-
-	try {
-		const {
-			data: { session: initialSession }
-		} = await supabase.auth.getSession();
-		session = initialSession;
-		user = initialSession?.user ?? null;
-		loading = false;
-
-		const {
-			data: { subscription: sub }
-		} = supabase.auth.onAuthStateChange((_event, newSession) => {
-			if (!initialized) return;
-			session = newSession;
-			user = newSession?.user ?? null;
-		});
-
-		subscription = sub;
-	} catch {
-		loading = false;
-		initialized = false;
-	}
-}
-
-export function cleanupAuth() {
-	if (subscription) {
-		subscription.unsubscribe();
-		subscription = null;
-	}
-	session = null;
-	user = null;
-	loading = true;
-	initialized = false;
-}
-
-export async function signInWithEmail(email: string, password: string) {
-	const { error } = await supabase.auth.signInWithPassword({ email, password });
-	if (error) throw error;
-}
-
-export async function signUpWithEmail(email: string, password: string) {
-	const { error } = await supabase.auth.signUp({ email, password });
-	if (error) throw error;
-}
-
-export async function signOut() {
-	const { error } = await supabase.auth.signOut();
-	if (error) throw error;
 }

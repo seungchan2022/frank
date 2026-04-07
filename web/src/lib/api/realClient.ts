@@ -1,7 +1,12 @@
-// RealApiClient — 현재 동작 그대로 (Supabase 직접 호출 + Rust 프록시).
-// M2에서 Supabase 직접 호출 부분이 fetch(Rust API)로 교체된다.
+// RealApiClient — Rust API HTTP 클라이언트.
+//
+// 모든 데이터 호출은 fetch(VITE_RUST_API_URL/...) + Bearer 토큰.
+// 토큰은 +layout.svelte의 setRealClientToken(...)로 주입된다.
+// 진실의 원천: progress/260407_API_SPEC.md
+//
+// M2 ST-4 (옵션 B): cookie httpOnly 보장 → client-side supabase.auth.getSession 사용 불가.
+// page.data.session.access_token을 +layout.svelte가 주입해야 한다.
 
-import { supabase } from '$lib/supabase';
 import type { ApiClient } from './client';
 import type {
 	Article,
@@ -11,166 +16,116 @@ import type {
 	Tag
 } from './types';
 
-const PAGE_SIZE = 10;
-const ARTICLE_SELECT =
-	'id, user_id, tag_id, title, title_ko, url, snippet, source, search_query, published_at, created_at, summary, insight, summarized_at';
+const API_BASE = (import.meta.env.VITE_RUST_API_URL ?? 'http://localhost:8080').replace(/\/$/, '');
 
-async function getAuthHeaders(): Promise<Record<string, string>> {
-	const {
-		data: { session }
-	} = await supabase.auth.getSession();
-	if (!session) throw new Error('Not authenticated');
+let currentAccessToken: string | null = null;
+
+/**
+ * +layout.svelte의 $effect에서 page.data.session 변경 시 호출.
+ * realClient 호출 시점에 최신 access_token을 사용한다.
+ */
+export function setRealClientToken(token: string | null): void {
+	currentAccessToken = token;
+}
+
+function authHeaders(): Record<string, string> {
+	if (!currentAccessToken) throw new Error('Not authenticated');
 	return {
-		Authorization: `Bearer ${session.access_token}`,
+		Authorization: `Bearer ${currentAccessToken}`,
 		'Content-Type': 'application/json'
 	};
 }
 
-async function currentUserId(): Promise<string> {
-	const {
-		data: { user }
-	} = await supabase.auth.getUser();
-	if (!user) throw new Error('Not authenticated');
-	return user.id;
+class ApiError extends Error {
+	constructor(
+		message: string,
+		readonly status: number
+	) {
+		super(message);
+		this.name = 'ApiError';
+	}
+}
+
+async function request<T>(path: string, init: RequestInit = {}): Promise<T> {
+	const headers = authHeaders();
+	const response = await fetch(`${API_BASE}${path}`, {
+		...init,
+		headers: { ...headers, ...(init.headers ?? {}) }
+	});
+	if (!response.ok) {
+		const body = (await response.json().catch(() => null)) as { error?: string } | null;
+		throw new ApiError(
+			body?.error ?? `Request failed (${response.status})`,
+			response.status
+		);
+	}
+	// 204 No Content 가능성 대비
+	const text = await response.text();
+	return (text ? JSON.parse(text) : (undefined as unknown)) as T;
 }
 
 export const realApiClient: ApiClient = {
 	async fetchTags(): Promise<Tag[]> {
-		const { data, error } = await supabase
-			.from('tags')
-			.select('id, name, category')
-			.order('category')
-			.order('name');
-		if (error) throw error;
-		return data as Tag[];
+		return request<Tag[]>('/api/tags');
 	},
 
 	async fetchMyTagIds(): Promise<string[]> {
-		const { data, error } = await supabase.from('user_tags').select('tag_id');
-		if (error) throw error;
-		return data.map((row: { tag_id: string }) => row.tag_id);
+		return request<string[]>('/api/me/tags');
 	},
 
 	async saveMyTags(tagIds: string[]): Promise<void> {
-		const userId = await currentUserId();
-
-		// 기존 태그 삭제
-		const { error: delError } = await supabase.from('user_tags').delete().eq('user_id', userId);
-		if (delError) throw delError;
-
-		// 새 태그 삽입
-		if (tagIds.length > 0) {
-			const rows = tagIds.map((tag_id) => ({ user_id: userId, tag_id }));
-			const { error: insError } = await supabase.from('user_tags').insert(rows);
-			if (insError) throw insError;
-		}
-
-		// 온보딩 완료 처리
-		const { error: updError } = await supabase
-			.from('profiles')
-			.update({ onboarding_completed: true })
-			.eq('id', userId);
-		if (updError) throw updError;
+		// POST /api/me/tags — 부수효과로 onboarding_completed = true
+		await request<{ ok: boolean }>('/api/me/tags', {
+			method: 'POST',
+			body: JSON.stringify({ tag_ids: tagIds })
+		});
 	},
 
 	async updateMyTags(tagIds: string[]): Promise<void> {
-		const userId = await currentUserId();
-
-		const { error: delError } = await supabase.from('user_tags').delete().eq('user_id', userId);
-		if (delError) throw delError;
-
-		if (tagIds.length > 0) {
-			const rows = tagIds.map((tag_id) => ({ user_id: userId, tag_id }));
-			const { error: insError } = await supabase.from('user_tags').insert(rows);
-			if (insError) throw insError;
-		}
+		// 동일 엔드포인트. 설정 페이지에서는 onboarding_completed가 이미 true이므로 무해.
+		await request<{ ok: boolean }>('/api/me/tags', {
+			method: 'POST',
+			body: JSON.stringify({ tag_ids: tagIds })
+		});
 	},
 
 	async fetchProfile(): Promise<Profile> {
-		const userId = await currentUserId();
-		const { data, error } = await supabase
-			.from('profiles')
-			.select('id, display_name, onboarding_completed')
-			.eq('id', userId)
-			.single();
-		if (error) throw error;
-		return data as Profile;
+		return request<Profile>('/api/me/profile');
 	},
 
 	async updateProfile(patch: ProfilePatch): Promise<Profile> {
-		const userId = await currentUserId();
-		const update: Record<string, unknown> = {};
-		if (patch.display_name !== undefined) update.display_name = patch.display_name;
-		if (patch.onboarding_completed !== undefined)
-			update.onboarding_completed = patch.onboarding_completed;
-
-		// 빈 패치는 현재 프로필 그대로 반환
-		if (Object.keys(update).length === 0) {
-			return this.fetchProfile();
-		}
-
-		const { data, error } = await supabase
-			.from('profiles')
-			.update(update)
-			.eq('id', userId)
-			.select('id, display_name, onboarding_completed')
-			.single();
-		if (error) throw error;
-		return data as Profile;
+		return request<Profile>('/api/me/profile', {
+			method: 'PUT',
+			body: JSON.stringify(patch)
+		});
 	},
 
 	async fetchArticles(opts: FetchArticlesOptions = {}): Promise<Article[]> {
-		const offset = opts.offset ?? 0;
-		const limit = opts.limit ?? PAGE_SIZE;
-		const tagId = opts.tagId;
-
-		let query = supabase
-			.from('articles')
-			.select(ARTICLE_SELECT)
-			.order('created_at', { ascending: false })
-			.range(offset, offset + limit - 1);
-
-		if (tagId) {
-			query = query.eq('tag_id', tagId);
-		}
-
-		const { data, error } = await query;
-		if (error) throw error;
-		return data as Article[];
+		const params = new URLSearchParams();
+		if (opts.offset !== undefined) params.set('offset', String(opts.offset));
+		if (opts.limit !== undefined) params.set('limit', String(opts.limit));
+		if (opts.tagId) params.set('tag_id', opts.tagId);
+		const qs = params.toString();
+		return request<Article[]>(`/api/me/articles${qs ? `?${qs}` : ''}`);
 	},
 
 	async fetchArticleById(id: string): Promise<Article | null> {
-		const { data, error } = await supabase
-			.from('articles')
-			.select(ARTICLE_SELECT)
-			.eq('id', id)
-			.single();
-		if (error) {
-			if (error.code === 'PGRST116') return null; // not found
-			throw error;
+		try {
+			return await request<Article>(`/api/me/articles/${encodeURIComponent(id)}`);
+		} catch (e) {
+			// 404는 null 반환 (SPEC: 본인 외 기사 또는 없는 기사 통일)
+			if (e instanceof ApiError && e.status === 404) return null;
+			throw e;
 		}
-		return data as Article;
 	},
 
 	async collectArticles(): Promise<number> {
-		const headers = await getAuthHeaders();
-		const response = await fetch('/api/collect', { method: 'POST', headers });
-		if (!response.ok) {
-			const body = await response.json().catch(() => ({ error: 'Unknown error' }));
-			throw new Error(body.error ?? `Collect failed (${response.status})`);
-		}
-		const data: { collected: number } = await response.json();
+		const data = await request<{ collected: number }>('/api/me/collect', { method: 'POST' });
 		return data.collected;
 	},
 
 	async summarizeArticles(): Promise<number> {
-		const headers = await getAuthHeaders();
-		const response = await fetch('/api/summarize', { method: 'POST', headers });
-		if (!response.ok) {
-			const body = await response.json().catch(() => ({ error: 'Unknown error' }));
-			throw new Error(body.error ?? `Summarize failed (${response.status})`);
-		}
-		const data: { summarized: number } = await response.json();
+		const data = await request<{ summarized: number }>('/api/me/summarize', { method: 'POST' });
 		return data.summarized;
 	}
 };

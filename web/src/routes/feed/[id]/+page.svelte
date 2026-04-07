@@ -2,7 +2,7 @@
 	import { page } from '$app/state';
 	import { getAuth } from '$lib/stores/auth.svelte';
 	import { goto } from '$app/navigation';
-	import { fetchArticleById, fetchTags } from '$lib/utils/api';
+	import { apiClient } from '$lib/api';
 	import { formatArticleDate, extractDomain } from '$lib/utils/article';
 	import type { Article } from '$lib/types/article';
 	import type { Tag } from '$lib/types/tag';
@@ -44,7 +44,10 @@
 				error = 'Invalid article ID';
 				return;
 			}
-			const [art, allTags] = await Promise.all([fetchArticleById(id), fetchTags()]);
+			const [art, allTags] = await Promise.all([
+				apiClient.fetchArticleById(id),
+				apiClient.fetchTags()
+			]);
 			article = art;
 			tags = allTags;
 			if (!article) {

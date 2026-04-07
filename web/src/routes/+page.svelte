@@ -2,7 +2,7 @@
 	import { getAuth } from '$lib/stores/auth.svelte';
 	import { goto } from '$app/navigation';
 	import { onMount } from 'svelte';
-	import { fetchProfile } from '$lib/utils/api';
+	import { apiClient } from '$lib/api';
 
 	const auth = getAuth();
 
@@ -13,7 +13,7 @@
 		}
 
 		try {
-			const profile = await fetchProfile();
+			const profile = await apiClient.fetchProfile();
 			if (!profile.onboarding_completed) {
 				goto('/onboarding');
 			} else {

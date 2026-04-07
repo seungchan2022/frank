@@ -1,18 +1,14 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { render, screen, fireEvent, cleanup } from '@testing-library/svelte';
-
-const mockSignOut = vi.fn();
-const mockGoto = vi.fn();
+import { render, screen, cleanup } from '@testing-library/svelte';
 
 vi.mock('$lib/stores/auth.svelte', () => ({
 	getAuth: () => ({
 		user: { email: 'test@example.com' }
-	}),
-	signOut: () => mockSignOut()
+	})
 }));
 
-vi.mock('$app/navigation', () => ({
-	goto: (...args: unknown[]) => mockGoto(...args)
+vi.mock('$app/forms', () => ({
+	enhance: () => ({ destroy: () => undefined })
 }));
 
 vi.mock('$app/state', () => ({
@@ -25,7 +21,6 @@ import Header from '../Header.svelte';
 
 beforeEach(() => {
 	vi.clearAllMocks();
-	mockSignOut.mockResolvedValue(undefined);
 });
 
 afterEach(() => {
@@ -57,19 +52,15 @@ describe('Header', () => {
 		expect(screen.getByText('test@example.com')).toBeInTheDocument();
 	});
 
-	it('renders Sign Out button', () => {
+	it('renders Sign Out button inside form posting to /logout', () => {
 		render(Header);
 
-		expect(screen.getByText('Sign Out')).toBeInTheDocument();
-	});
-
-	it('calls signOut and navigates to /login on Sign Out click', async () => {
-		render(Header);
-
-		await fireEvent.click(screen.getByText('Sign Out'));
-
-		expect(mockSignOut).toHaveBeenCalledOnce();
-		expect(mockGoto).toHaveBeenCalledWith('/login');
+		const signOutBtn = screen.getByRole('button', { name: 'Sign Out' });
+		expect(signOutBtn).toBeInTheDocument();
+		const form = signOutBtn.closest('form');
+		expect(form).not.toBeNull();
+		expect(form).toHaveAttribute('method', 'POST');
+		expect(form).toHaveAttribute('action', '/logout');
 	});
 
 	it('applies active style to Feed link when on /feed', () => {

@@ -1,252 +1,68 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+// Server-driven auth store 단위 테스트.
+//
+// M2 ST-4 (옵션 B): client-side supabase 호출 제거.
+// store는 +layout.svelte의 setAuth(...) 호출로만 hydration된다.
 
-const mockGetSession = vi.fn();
-const mockSignInWithPassword = vi.fn();
-const mockSignUp = vi.fn();
-const mockSignOut = vi.fn();
-const mockOnAuthStateChange = vi.fn();
-const mockUnsubscribe = vi.fn();
+import { describe, it, expect, beforeEach, vi } from 'vitest';
 
-vi.mock('$lib/supabase', () => ({
-	supabase: {
-		auth: {
-			getSession: () => mockGetSession(),
-			signInWithPassword: (...args: unknown[]) => mockSignInWithPassword(...args),
-			signUp: (...args: unknown[]) => mockSignUp(...args),
-			signOut: () => mockSignOut(),
-			onAuthStateChange: (...args: unknown[]) => mockOnAuthStateChange(...args)
-		}
-	}
-}));
+let getAuth: typeof import('./auth.svelte').getAuth;
+let setAuth: typeof import('./auth.svelte').setAuth;
 
-import { getAuth, initAuth, cleanupAuth, signInWithEmail, signUpWithEmail, signOut } from './auth.svelte';
-
-beforeEach(() => {
-	vi.clearAllMocks();
-	mockUnsubscribe.mockClear();
-	// Reset module state between tests
-	cleanupAuth();
+beforeEach(async () => {
+	vi.resetModules();
+	const mod = await import('./auth.svelte');
+	getAuth = mod.getAuth;
+	setAuth = mod.setAuth;
 });
 
-describe('getAuth', () => {
-	it('returns initial state', () => {
+describe('getAuth (initial)', () => {
+	it('returns null session/user, isAuthenticated false', () => {
 		const auth = getAuth();
 		expect(auth.session).toBeNull();
 		expect(auth.user).toBeNull();
 		expect(auth.isAuthenticated).toBe(false);
+		expect(auth.loading).toBe(false);
 	});
 });
 
-describe('initAuth', () => {
-	it('initializes with existing session', async () => {
-		const session = { user: { id: 'u1', email: 'test@test.com' } };
-		mockGetSession.mockResolvedValue({ data: { session } });
-		mockOnAuthStateChange.mockReturnValue({
-			data: { subscription: { unsubscribe: mockUnsubscribe } }
-		});
+describe('setAuth', () => {
+	it('hydrates session + user → isAuthenticated true', () => {
+		const session = { access_token: 'tok', user: { id: 'u1', email: 'test@test.com' } };
+		const user = { id: 'u1', email: 'test@test.com' };
 
-		await initAuth();
+		// @ts-expect-error - 테스트에서 최소 Session/User 형태만 제공
+		setAuth({ session, user });
 
 		const auth = getAuth();
 		expect(auth.session).toEqual(session);
-		expect(auth.user).toEqual(session.user);
+		expect(auth.user).toEqual(user);
 		expect(auth.isAuthenticated).toBe(true);
 		expect(auth.loading).toBe(false);
 	});
 
-	it('updates state on auth state change callback', async () => {
-		let authCallback: (event: string, session: unknown) => void = () => {};
-		mockGetSession.mockResolvedValue({ data: { session: null } });
-		mockOnAuthStateChange.mockImplementation((cb: (event: string, session: unknown) => void) => {
-			authCallback = cb;
-			return { data: { subscription: { unsubscribe: mockUnsubscribe } } };
-		});
+	it('null session 전달 시 isAuthenticated false로 복귀', () => {
+		// 먼저 인증 상태로
+		// @ts-expect-error
+		setAuth({ session: { access_token: 't' }, user: { id: 'u' } });
+		expect(getAuth().isAuthenticated).toBe(true);
 
-		await initAuth();
-
-		// Simulate auth state change
-		const newSession = { user: { id: 'u2', email: 'new@test.com' } };
-		authCallback('SIGNED_IN', newSession);
-
-		const auth = getAuth();
-		expect(auth.session).toEqual(newSession);
-		expect(auth.user).toEqual(newSession.user);
-	});
-
-	it('clears state on sign out callback', async () => {
-		const session = { user: { id: 'u1', email: 'test@test.com' } };
-		let authCallback: (event: string, session: unknown) => void = () => {};
-		mockGetSession.mockResolvedValue({ data: { session } });
-		mockOnAuthStateChange.mockImplementation((cb: (event: string, session: unknown) => void) => {
-			authCallback = cb;
-			return { data: { subscription: { unsubscribe: mockUnsubscribe } } };
-		});
-
-		await initAuth();
-		authCallback('SIGNED_OUT', null);
-
-		const auth = getAuth();
-		expect(auth.session).toBeNull();
-		expect(auth.user).toBeNull();
-	});
-
-	it('initializes with no session', async () => {
-		mockGetSession.mockResolvedValue({ data: { session: null } });
-		mockOnAuthStateChange.mockReturnValue({
-			data: { subscription: { unsubscribe: mockUnsubscribe } }
-		});
-
-		await initAuth();
-
+		// null로 reset
+		setAuth({ session: null, user: null });
 		const auth = getAuth();
 		expect(auth.session).toBeNull();
 		expect(auth.user).toBeNull();
 		expect(auth.isAuthenticated).toBe(false);
-		expect(auth.loading).toBe(false);
 	});
 
-	it('does not call onAuthStateChange twice on duplicate initAuth', async () => {
-		mockGetSession.mockResolvedValue({ data: { session: null } });
-		mockOnAuthStateChange.mockReturnValue({
-			data: { subscription: { unsubscribe: mockUnsubscribe } }
-		});
+	it('isAuthenticated는 session 존재 여부로만 판정', () => {
+		// session 있고 user null인 경우 (이상하지만 가능)
+		// @ts-expect-error
+		setAuth({ session: { access_token: 't' }, user: null });
+		expect(getAuth().isAuthenticated).toBe(true);
 
-		await initAuth();
-		await initAuth(); // second call should be no-op
-
-		expect(mockOnAuthStateChange).toHaveBeenCalledTimes(1);
-	});
-
-	it('rolls back initialized on getSession failure', async () => {
-		mockGetSession.mockRejectedValue(new Error('Network error'));
-
-		await initAuth();
-		const auth = getAuth();
-		expect(auth.loading).toBe(false);
-
-		// After failure, should be able to re-init
-		mockGetSession.mockResolvedValue({ data: { session: null } });
-		mockOnAuthStateChange.mockReturnValue({
-			data: { subscription: { unsubscribe: mockUnsubscribe } }
-		});
-
-		await initAuth();
-		expect(mockOnAuthStateChange).toHaveBeenCalledTimes(1);
-	});
-});
-
-describe('cleanupAuth', () => {
-	it('calls unsubscribe once', async () => {
-		const localUnsubscribe = vi.fn();
-		mockGetSession.mockResolvedValue({ data: { session: null } });
-		mockOnAuthStateChange.mockReturnValue({
-			data: { subscription: { unsubscribe: localUnsubscribe } }
-		});
-
-		await initAuth();
-		cleanupAuth();
-
-		expect(localUnsubscribe).toHaveBeenCalledTimes(1);
-	});
-
-	it('is idempotent - no error on duplicate calls', async () => {
-		mockGetSession.mockResolvedValue({ data: { session: null } });
-		mockOnAuthStateChange.mockReturnValue({
-			data: { subscription: { unsubscribe: mockUnsubscribe } }
-		});
-
-		await initAuth();
-		cleanupAuth();
-		cleanupAuth(); // should not throw
-
-		expect(mockUnsubscribe).toHaveBeenCalledTimes(1);
-	});
-
-	it('prevents callback from updating state after cleanup', async () => {
-		let authCallback: (event: string, session: unknown) => void = () => {};
-		mockGetSession.mockResolvedValue({ data: { session: null } });
-		mockOnAuthStateChange.mockImplementation((cb: (event: string, session: unknown) => void) => {
-			authCallback = cb;
-			return { data: { subscription: { unsubscribe: mockUnsubscribe } } };
-		});
-
-		await initAuth();
-		cleanupAuth();
-
-		// Callback fires after cleanup - should not update state
-		const newSession = { user: { id: 'u3', email: 'late@test.com' } };
-		authCallback('SIGNED_IN', newSession);
-
-		const auth = getAuth();
-		expect(auth.session).toBeNull();
-		expect(auth.user).toBeNull();
-	});
-
-	it('resets all state', async () => {
-		const session = { user: { id: 'u1', email: 'test@test.com' } };
-		mockGetSession.mockResolvedValue({ data: { session } });
-		mockOnAuthStateChange.mockReturnValue({
-			data: { subscription: { unsubscribe: mockUnsubscribe } }
-		});
-
-		await initAuth();
-		const auth = getAuth();
-		expect(auth.isAuthenticated).toBe(true);
-
-		cleanupAuth();
-		expect(auth.session).toBeNull();
-		expect(auth.user).toBeNull();
-		expect(auth.loading).toBe(true);
-	});
-});
-
-describe('signInWithEmail', () => {
-	it('signs in successfully', async () => {
-		mockSignInWithPassword.mockResolvedValue({ error: null });
-
-		await signInWithEmail('test@test.com', 'password');
-		expect(mockSignInWithPassword).toHaveBeenCalledWith({
-			email: 'test@test.com',
-			password: 'password'
-		});
-	});
-
-	it('throws on error', async () => {
-		mockSignInWithPassword.mockResolvedValue({ error: new Error('Invalid credentials') });
-
-		await expect(signInWithEmail('bad@test.com', 'wrong')).rejects.toThrow('Invalid credentials');
-	});
-});
-
-describe('signUpWithEmail', () => {
-	it('signs up successfully', async () => {
-		mockSignUp.mockResolvedValue({ error: null });
-
-		await signUpWithEmail('new@test.com', 'password');
-		expect(mockSignUp).toHaveBeenCalledWith({
-			email: 'new@test.com',
-			password: 'password'
-		});
-	});
-
-	it('throws on error', async () => {
-		mockSignUp.mockResolvedValue({ error: new Error('Already exists') });
-
-		await expect(signUpWithEmail('dup@test.com', 'pass')).rejects.toThrow('Already exists');
-	});
-});
-
-describe('signOut', () => {
-	it('signs out successfully', async () => {
-		mockSignOut.mockResolvedValue({ error: null });
-
-		await signOut();
-		expect(mockSignOut).toHaveBeenCalled();
-	});
-
-	it('throws on error', async () => {
-		mockSignOut.mockResolvedValue({ error: new Error('Network error') });
-
-		await expect(signOut()).rejects.toThrow('Network error');
+		// session null이면 user 있어도 false
+		// @ts-expect-error
+		setAuth({ session: null, user: { id: 'u' } });
+		expect(getAuth().isAuthenticated).toBe(false);
 	});
 });

@@ -1,41 +1,13 @@
 <script lang="ts">
-	import { getAuth, signInWithEmail, signUpWithEmail } from '$lib/stores/auth.svelte';
-	import { goto } from '$app/navigation';
+	import { enhance } from '$app/forms';
+	import type { ActionData } from './$types';
 
-	const auth = getAuth();
+	let { form }: { form: ActionData } = $props();
 
-	let email = $state('');
-	let password = $state('');
 	let isSignUp = $state(false);
-	let error = $state('');
 	let loading = $state(false);
-	let signUpSuccess = $state(false);
 
-	$effect(() => {
-		if (auth.isAuthenticated) {
-			goto('/');
-		}
-	});
-
-	async function handleSubmit(e: Event) {
-		e.preventDefault();
-		error = '';
-		loading = true;
-
-		try {
-			if (isSignUp) {
-				await signUpWithEmail(email, password);
-				signUpSuccess = true;
-			} else {
-				await signInWithEmail(email, password);
-				goto('/');
-			}
-		} catch (err) {
-			error = err instanceof Error ? err.message : 'An error occurred';
-		} finally {
-			loading = false;
-		}
-	}
+	const signUpSuccess = $derived(form?.signUpSuccess === true);
 </script>
 
 <div class="flex min-h-screen items-center justify-center bg-gray-50 px-4">
@@ -50,17 +22,29 @@
 				<p class="font-medium">Check your email to confirm your account.</p>
 			</div>
 		{:else}
-			<form class="space-y-4" onsubmit={handleSubmit}>
-				{#if error}
-					<div class="rounded-lg bg-red-50 p-3 text-sm text-red-700">{error}</div>
+			<form
+				method="POST"
+				action={isSignUp ? '?/signup' : '?/signin'}
+				class="space-y-4"
+				use:enhance={() => {
+					loading = true;
+					return async ({ update }) => {
+						await update();
+						loading = false;
+					};
+				}}
+			>
+				{#if form?.error}
+					<div class="rounded-lg bg-red-50 p-3 text-sm text-red-700">{form.error}</div>
 				{/if}
 
 				<div>
 					<label for="email" class="block text-sm font-medium text-gray-700">Email</label>
 					<input
 						id="email"
+						name="email"
 						type="email"
-						bind:value={email}
+						value={form?.email ?? ''}
 						required
 						class="mt-1 block w-full rounded-lg border border-gray-300 px-3 py-2 shadow-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500 focus:outline-none"
 						placeholder="you@example.com"
@@ -71,8 +55,8 @@
 					<label for="password" class="block text-sm font-medium text-gray-700">Password</label>
 					<input
 						id="password"
+						name="password"
 						type="password"
-						bind:value={password}
 						required
 						minlength="6"
 						class="mt-1 block w-full rounded-lg border border-gray-300 px-3 py-2 shadow-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500 focus:outline-none"
@@ -92,10 +76,10 @@
 			<p class="text-center text-sm text-gray-600">
 				{isSignUp ? 'Already have an account?' : "Don't have an account?"}
 				<button
+					type="button"
 					class="ml-1 font-medium text-blue-600 hover:text-blue-500"
 					onclick={() => {
 						isSignUp = !isSignUp;
-						error = '';
 					}}
 				>
 					{isSignUp ? 'Sign In' : 'Sign Up'}

@@ -2,7 +2,7 @@
 	import { getAuth } from '$lib/stores/auth.svelte';
 	import { goto } from '$app/navigation';
 	import { onMount } from 'svelte';
-	import { fetchTags, fetchMyTagIds, updateMyTags } from '$lib/utils/api';
+	import { apiClient } from '$lib/api';
 	import type { Tag } from '$lib/types/tag';
 	import Header from '$lib/components/Header.svelte';
 
@@ -29,7 +29,10 @@
 
 	onMount(async () => {
 		try {
-			const [allTags, myTagIds] = await Promise.all([fetchTags(), fetchMyTagIds()]);
+			const [allTags, myTagIds] = await Promise.all([
+				apiClient.fetchTags(),
+				apiClient.fetchMyTagIds()
+			]);
 			tags = allTags;
 			selectedIds = new Set(myTagIds);
 			savedIds = new Set(myTagIds);
@@ -61,7 +64,7 @@
 		success = '';
 
 		try {
-			await updateMyTags([...selectedIds]);
+			await apiClient.updateMyTags([...selectedIds]);
 			savedIds = new Set(selectedIds);
 			success = 'Tags saved successfully.';
 		} catch (err) {

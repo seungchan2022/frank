@@ -2,7 +2,7 @@
 	import { getAuth } from '$lib/stores/auth.svelte';
 	import { goto } from '$app/navigation';
 	import { onMount } from 'svelte';
-	import { fetchTags, fetchMyTagIds, saveMyTags } from '$lib/utils/api';
+	import { apiClient } from '$lib/api';
 	import type { Tag } from '$lib/types/tag';
 
 	const auth = getAuth();
@@ -21,7 +21,10 @@
 
 	onMount(async () => {
 		try {
-			const [allTags, myTagIds] = await Promise.all([fetchTags(), fetchMyTagIds()]);
+			const [allTags, myTagIds] = await Promise.all([
+				apiClient.fetchTags(),
+				apiClient.fetchMyTagIds()
+			]);
 			tags = allTags;
 			selectedIds = new Set(myTagIds);
 		} catch (err) {
@@ -51,7 +54,7 @@
 		error = '';
 
 		try {
-			await saveMyTags([...selectedIds]);
+			await apiClient.saveMyTags([...selectedIds]);
 			goto('/feed');
 		} catch (err) {
 			error = err instanceof Error ? err.message : 'Failed to save tags';

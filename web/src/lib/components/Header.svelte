@@ -1,16 +1,11 @@
 <script lang="ts">
-	import { getAuth, signOut } from '$lib/stores/auth.svelte';
-	import { goto } from '$app/navigation';
+	import { getAuth } from '$lib/stores/auth.svelte';
 	import { page } from '$app/state';
+	import { enhance } from '$app/forms';
 
 	const auth = getAuth();
 
 	const currentPath = $derived(page.url.pathname);
-
-	async function handleSignOut() {
-		await signOut();
-		goto('/login');
-	}
 
 	function isActive(path: string): boolean {
 		if (path === '/feed') {
@@ -45,12 +40,14 @@
 		</div>
 		<div class="flex items-center gap-4">
 			<span class="text-sm text-gray-600">{auth.user?.email}</span>
-			<button
-				onclick={handleSignOut}
-				class="rounded-lg border border-gray-300 px-3 py-1.5 text-sm text-gray-700 hover:bg-gray-50"
-			>
-				Sign Out
-			</button>
+			<form method="POST" action="/logout" use:enhance>
+				<button
+					type="submit"
+					class="rounded-lg border border-gray-300 px-3 py-1.5 text-sm text-gray-700 hover:bg-gray-50"
+				>
+					Sign Out
+				</button>
+			</form>
 		</div>
 	</div>
 </header>

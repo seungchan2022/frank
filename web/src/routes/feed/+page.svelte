@@ -1,13 +1,7 @@
 <script lang="ts">
 	import { getAuth } from '$lib/stores/auth.svelte';
 	import { goto } from '$app/navigation';
-	import {
-		collectArticles,
-		fetchArticles,
-		fetchMyTagIds,
-		fetchTags,
-		summarizeArticles
-	} from '$lib/utils/api';
+	import { apiClient } from '$lib/api';
 	import { formatArticleDate, extractDomain } from '$lib/utils/article';
 	import type { Article } from '$lib/types/article';
 	import type { Tag } from '$lib/types/tag';
@@ -79,9 +73,9 @@
 		error = null;
 		try {
 			const [arts, allTags, tagIds] = await Promise.all([
-				fetchArticles(0, 10, selectedTagId ?? undefined),
-				fetchTags(),
-				fetchMyTagIds()
+				apiClient.fetchArticles({ offset: 0, limit: 10, tagId: selectedTagId ?? undefined }),
+				apiClient.fetchTags(),
+				apiClient.fetchMyTagIds()
 			]);
 			articles = arts;
 			tags = allTags;
@@ -99,11 +93,11 @@
 		if (loadingMore || !hasMore) return;
 		loadingMore = true;
 		try {
-			const moreArticles = await fetchArticles(
-				articles.length,
-				10,
-				selectedTagId ?? undefined
-			);
+			const moreArticles = await apiClient.fetchArticles({
+				offset: articles.length,
+				limit: 10,
+				tagId: selectedTagId ?? undefined
+			});
 			if (moreArticles.length === 0) {
 				hasMore = false;
 			} else {
@@ -128,10 +122,10 @@
 		loading = true;
 		error = null;
 		try {
-			await collectArticles();
+			await apiClient.collectArticles();
 			const [arts, allTags] = await Promise.all([
-				fetchArticles(0, 10, selectedTagId ?? undefined),
-				fetchTags()
+				apiClient.fetchArticles({ offset: 0, limit: 10, tagId: selectedTagId ?? undefined }),
+				apiClient.fetchTags()
 			]);
 			articles = arts;
 			tags = allTags;
@@ -146,12 +140,12 @@
 	async function handleSummarize() {
 		summarizing = true;
 		try {
-			await summarizeArticles();
-			const arts = await fetchArticles(
-				0,
-				articles.length || 10,
-				selectedTagId ?? undefined
-			);
+			await apiClient.summarizeArticles();
+			const arts = await apiClient.fetchArticles({
+				offset: 0,
+				limit: articles.length || 10,
+				tagId: selectedTagId ?? undefined
+			});
 			articles = arts;
 		} catch (e) {
 			error = e instanceof Error ? e.message : 'Failed to summarize articles';
