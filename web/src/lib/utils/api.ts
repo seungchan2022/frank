@@ -1,8 +1,25 @@
-import { supabase } from '$lib/supabase';
-import type { Tag } from '$lib/types/tag';
-import type { Article } from '$lib/types/article';
+// DEPRECATED: 이 파일은 backwards-compat shim이다.
+// 새 코드는 `$lib/api`에서 `apiClient`를 import할 것.
+//
+// M1.5에서 ApiClient 인터페이스로 추상화 + Mock/Real 분리됐다.
+// M2(웹 전환) 완료 후 콜사이트들이 모두 `apiClient.foo()` 형태로 마이그레이션되면 본 파일 제거.
 
-async function getAuthHeaders(): Promise<Record<string, string>> {
+import { apiClient } from '$lib/api';
+import { supabase } from '$lib/supabase';
+
+export const fetchTags = () => apiClient.fetchTags();
+export const fetchMyTagIds = () => apiClient.fetchMyTagIds();
+export const saveMyTags = (tagIds: string[]) => apiClient.saveMyTags(tagIds);
+export const updateMyTags = (tagIds: string[]) => apiClient.updateMyTags(tagIds);
+export const fetchProfile = () => apiClient.fetchProfile();
+export const fetchArticles = (offset = 0, limit = 10, tagId?: string) =>
+	apiClient.fetchArticles({ offset, limit, tagId });
+export const fetchArticleById = (id: string) => apiClient.fetchArticleById(id);
+export const collectArticles = () => apiClient.collectArticles();
+export const summarizeArticles = () => apiClient.summarizeArticles();
+
+// getAuthHeaders는 Rust 서버 프록시용으로 일부 라우트에서 직접 사용 중
+export async function getAuthHeaders(): Promise<Record<string, string>> {
 	const {
 		data: { session }
 	} = await supabase.auth.getSession();
@@ -12,156 +29,3 @@ async function getAuthHeaders(): Promise<Record<string, string>> {
 		'Content-Type': 'application/json'
 	};
 }
-
-export async function fetchTags(): Promise<Tag[]> {
-	const { data, error } = await supabase.from('tags').select('id, name, category').order('category').order('name');
-	if (error) throw error;
-	return data;
-}
-
-export async function fetchMyTagIds(): Promise<string[]> {
-	const { data, error } = await supabase.from('user_tags').select('tag_id');
-	if (error) throw error;
-	return data.map((row: { tag_id: string }) => row.tag_id);
-}
-
-export async function saveMyTags(tagIds: string[]): Promise<void> {
-	const {
-		data: { user }
-	} = await supabase.auth.getUser();
-	if (!user) throw new Error('Not authenticated');
-
-	// 기존 태그 삭제
-	const { error: delError } = await supabase.from('user_tags').delete().eq('user_id', user.id);
-	if (delError) throw delError;
-
-	// 새 태그 삽입
-	if (tagIds.length > 0) {
-		const rows = tagIds.map((tag_id) => ({ user_id: user.id, tag_id }));
-		const { error: insError } = await supabase.from('user_tags').insert(rows);
-		if (insError) throw insError;
-	}
-
-	// 온보딩 완료 처리
-	const { error: updError } = await supabase
-		.from('profiles')
-		.update({ onboarding_completed: true })
-		.eq('id', user.id);
-	if (updError) throw updError;
-}
-
-export async function fetchProfile() {
-	const {
-		data: { user }
-	} = await supabase.auth.getUser();
-	if (!user) throw new Error('Not authenticated');
-
-	const { data, error } = await supabase
-		.from('profiles')
-		.select('id, display_name, onboarding_completed')
-		.eq('id', user.id)
-		.single();
-	if (error) throw error;
-	return data;
-}
-
-const PAGE_SIZE = 10;
-
-export async function fetchArticles(
-	offset = 0,
-	limit = PAGE_SIZE,
-	tagId?: string
-): Promise<Article[]> {
-	let query = supabase
-		.from('articles')
-		.select(
-			'id, user_id, tag_id, title, title_ko, url, snippet, source, search_query, published_at, created_at, summary, insight, summarized_at'
-		)
-		.order('created_at', { ascending: false })
-		.range(offset, offset + limit - 1);
-
-	if (tagId) {
-		query = query.eq('tag_id', tagId);
-	}
-
-	const { data, error } = await query;
-	if (error) throw error;
-	return data;
-}
-
-/**
- * Trigger article collection via the SvelteKit proxy → Rust server.
- * Returns the number of articles collected.
- */
-export async function collectArticles(): Promise<number> {
-	const headers = await getAuthHeaders();
-	const response = await fetch('/api/collect', {
-		method: 'POST',
-		headers
-	});
-	if (!response.ok) {
-		const body = await response.json().catch(() => ({ error: 'Unknown error' }));
-		throw new Error(body.error ?? `Collect failed (${response.status})`);
-	}
-	const data: { collected: number } = await response.json();
-	return data.collected;
-}
-
-/**
- * Trigger LLM summarization via the SvelteKit proxy → Rust server.
- * Returns the number of articles summarized.
- */
-export async function summarizeArticles(): Promise<number> {
-	const headers = await getAuthHeaders();
-	const response = await fetch('/api/summarize', {
-		method: 'POST',
-		headers
-	});
-	if (!response.ok) {
-		const body = await response.json().catch(() => ({ error: 'Unknown error' }));
-		throw new Error(body.error ?? `Summarize failed (${response.status})`);
-	}
-	const data: { summarized: number } = await response.json();
-	return data.summarized;
-}
-
-/**
- * Fetch a single article by ID.
- */
-export async function fetchArticleById(id: string): Promise<Article | null> {
-	const { data, error } = await supabase
-		.from('articles')
-		.select(
-			'id, user_id, tag_id, title, title_ko, url, snippet, source, search_query, published_at, created_at, summary, insight, summarized_at'
-		)
-		.eq('id', id)
-		.single();
-	if (error) {
-		if (error.code === 'PGRST116') return null; // not found
-		throw error;
-	}
-	return data;
-}
-
-/**
- * Update user tags without touching onboarding status.
- * Used by the settings page.
- */
-export async function updateMyTags(tagIds: string[]): Promise<void> {
-	const {
-		data: { user }
-	} = await supabase.auth.getUser();
-	if (!user) throw new Error('Not authenticated');
-
-	const { error: delError } = await supabase.from('user_tags').delete().eq('user_id', user.id);
-	if (delError) throw delError;
-
-	if (tagIds.length > 0) {
-		const rows = tagIds.map((tag_id) => ({ user_id: user.id, tag_id }));
-		const { error: insError } = await supabase.from('user_tags').insert(rows);
-		if (insError) throw insError;
-	}
-}
-
-// getAuthHeaders는 Rust 서버 프록시용으로 예비
-export { getAuthHeaders };

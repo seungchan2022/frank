@@ -21,6 +21,12 @@ final class AppDependencies {
     }
 
     static func live() -> AppDependencies {
+        // FRANK_USE_MOCK=1 환경변수 설정 시 Mock 어댑터 사용 (병렬 개발/UI 테스트 격리)
+        // Xcode scheme: Edit Scheme → Run → Arguments → Environment Variables
+        if ProcessInfo.processInfo.environment["FRANK_USE_MOCK"] == "1" {
+            return mock()
+        }
+
         let config = SupabaseConfig.live
         let client = SupabaseClient(supabaseURL: config.url, supabaseKey: config.anonKey)
         let authAdapter = SupabaseAuthAdapter(client: client)
@@ -33,6 +39,17 @@ final class AppDependencies {
                 auth: authAdapter,
                 serverConfig: ServerConfig.live
             )
+        )
+    }
+
+    /// Mock 의존성 — fixture 기반, 외부 호출 0.
+    /// M1.5 병렬 개발 시 양쪽 탭이 외부 자원을 공유하지 않도록 격리.
+    static func mock() -> AppDependencies {
+        AppDependencies(
+            auth: MockAuthAdapter(),
+            tag: MockTagAdapter(),
+            article: MockArticleAdapter(),
+            collect: MockCollectAdapter()
         )
     }
 }
