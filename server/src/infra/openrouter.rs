@@ -86,7 +86,10 @@ impl LlmPort for OpenRouterAdapter {
                 "temperature": 0.3,
                 "max_tokens": 800,
                 "response_format": { "type": "json_object" },
-                "reasoning": { "effort": "none" },
+                // 일부 reasoning 모델(MiniMax M2.5 등)은 reasoning을 강제한다.
+                // effort:"none"은 400("Reasoning is mandatory")을 유발하므로
+                // exclude:true로 모델은 추론하되 응답에서 trace만 제외한다.
+                "reasoning": { "exclude": true },
             });
 
             let config = RetryConfig::for_llm();
@@ -192,7 +195,7 @@ impl LlmPort for OpenRouterAdapter {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use wiremock::matchers::{method, path};
+    use wiremock::matchers::{body_partial_json, method, path};
     use wiremock::{Mock, MockServer, ResponseTemplate};
 
     fn valid_llm_response() -> serde_json::Value {
@@ -412,6 +415,31 @@ mod tests {
         let result = adapter.summarize("Title", "Content").await;
         assert!(result.is_err());
         assert!(result.unwrap_err().to_string().contains("insight"));
+    }
+
+    /// 회귀: MiniMax M2.5 등 reasoning 강제 모델에서
+    /// `effort: "none"`은 400("Reasoning is mandatory")을 유발한다.
+    /// 응답 trace만 빼는 `exclude: true`로 요청해야 한다.
+    #[tokio::test]
+    async fn request_uses_reasoning_exclude() {
+        let mock_server = MockServer::start().await;
+
+        Mock::given(method("POST"))
+            .and(path("/api/v1/chat/completions"))
+            .and(body_partial_json(serde_json::json!({
+                "reasoning": { "exclude": true }
+            })))
+            .respond_with(ResponseTemplate::new(200).set_body_json(valid_llm_response()))
+            .mount(&mock_server)
+            .await;
+
+        let adapter =
+            OpenRouterAdapter::with_base_url("test-key", "test-model", &mock_server.uri());
+        let result = adapter.summarize("Title", "Content").await;
+        assert!(
+            result.is_ok(),
+            "request body must include reasoning.exclude=true: {result:?}"
+        );
     }
 
     #[tokio::test]
