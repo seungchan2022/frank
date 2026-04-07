@@ -40,6 +40,8 @@ struct FeedView: View {
                     } label: {
                         Image(systemName: "gearshape")
                     }
+                    .accessibilityIdentifier("settings_button")
+                    .accessibilityLabel("설정")
                 }
             }
             .navigationDestination(for: UUID.self) { articleId in
@@ -145,4 +147,3 @@ struct FeedView: View {
         }
     }
 }
-

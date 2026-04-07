@@ -3,18 +3,18 @@ import Foundation
 
 final class MockAuthPort: AuthPort, @unchecked Sendable {
     var signInResult: Result<Profile, Error> = .success(
-        Profile(id: UUID(), email: "test@example.com", onboardingCompleted: false)
+        Profile(id: UUID(), displayName: "test", onboardingCompleted: false)
     )
     var signUpResult: Result<Profile?, Error> = .success(
-        Profile(id: UUID(), email: "test@example.com", onboardingCompleted: false)
+        Profile(id: UUID(), displayName: "test", onboardingCompleted: false)
     )
     var signInWithAppleResult: Result<Profile, Error> = .success(
-        Profile(id: UUID(), email: "apple@example.com", onboardingCompleted: false)
+        Profile(id: UUID(), displayName: "apple", onboardingCompleted: false)
     )
     var signOutError: Error?
     var currentSessionResult: Profile?
     var updateOnboardingCompletedResult: Result<Profile, Error> = .success(
-        Profile(id: UUID(), email: "test@example.com", onboardingCompleted: true)
+        Profile(id: UUID(), displayName: "test", onboardingCompleted: true)
     )
 
     var accessToken: String = "mock-token"

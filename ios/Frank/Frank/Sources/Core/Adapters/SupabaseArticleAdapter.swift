@@ -47,6 +47,7 @@ private enum ArticleDTOConstants {
 
 private struct ArticleDTO: Decodable {
     let id: UUID
+    let userId: UUID
     let title: String
     let url: String
     let source: String
@@ -58,29 +59,35 @@ private struct ArticleDTO: Decodable {
     let snippet: String?
     let summarizedAt: Date?
     let createdAt: Date?
+    let searchQuery: String?
 
     enum CodingKeys: String, CodingKey {
         case id, title, url, source, summary, insight, snippet
+        case userId = "user_id"
         case publishedAt = "published_at"
         case tagId = "tag_id"
         case titleKo = "title_ko"
         case summarizedAt = "summarized_at"
         case createdAt = "created_at"
+        case searchQuery = "search_query"
     }
 
     func toDomain() -> Article {
         Article(
             id: id,
+            userId: userId,
             title: title,
             url: URL(string: url) ?? ArticleDTOConstants.fallbackURL,
             source: source,
-            publishedAt: publishedAt ?? createdAt ?? Date(),
+            publishedAt: publishedAt,
             summary: summary,
             tagId: tagId,
             titleKo: titleKo,
             insight: insight,
             snippet: snippet,
-            summarizedAt: summarizedAt
+            summarizedAt: summarizedAt,
+            searchQuery: searchQuery,
+            createdAt: createdAt
         )
     }
 }

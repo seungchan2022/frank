@@ -55,7 +55,7 @@ struct SupabaseTagAdapter: TagPort {
 private struct TagDTO: Decodable {
     let id: UUID
     let name: String
-    let category: String
+    let category: String?
 
     func toDomain() -> Tag {
         Tag(id: id, name: name, category: category)

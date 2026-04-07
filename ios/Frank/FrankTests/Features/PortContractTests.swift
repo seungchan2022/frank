@@ -10,7 +10,7 @@ struct PortContractTests {
     @Test("MockAuthPort signIn 성공")
     func authSignInSuccess() async throws {
         let mock = MockAuthPort()
-        let profile = Profile(id: UUID(), email: "user@test.com", onboardingCompleted: true)
+        let profile = Profile(id: UUID(), displayName: "user", onboardingCompleted: true)
         mock.signInResult = .success(profile)
 
         let result = try await mock.signIn(email: "user@test.com", password: "pass")
@@ -32,7 +32,7 @@ struct PortContractTests {
     @Test("MockAuthPort signUp 성공 (Profile 반환)")
     func authSignUpSuccess() async throws {
         let mock = MockAuthPort()
-        let profile = Profile(id: UUID(), email: "new@test.com", onboardingCompleted: false)
+        let profile = Profile(id: UUID(), displayName: "new", onboardingCompleted: false)
         mock.signUpResult = .success(profile)
 
         let result = try await mock.signUp(email: "new@test.com", password: "pass")
@@ -55,7 +55,7 @@ struct PortContractTests {
     @Test("MockAuthPort signInWithApple 성공")
     func authSignInWithAppleSuccess() async throws {
         let mock = MockAuthPort()
-        let profile = Profile(id: UUID(), email: "apple@test.com", onboardingCompleted: false)
+        let profile = Profile(id: UUID(), displayName: "apple", onboardingCompleted: false)
         mock.signInWithAppleResult = .success(profile)
 
         let result = try await mock.signInWithApple(idToken: "token", rawNonce: "nonce")
@@ -98,7 +98,7 @@ struct PortContractTests {
     @Test("MockAuthPort updateOnboardingCompleted 성공")
     func authUpdateOnboardingSuccess() async throws {
         let mock = MockAuthPort()
-        let profile = Profile(id: UUID(), email: "user@test.com", onboardingCompleted: true)
+        let profile = Profile(id: UUID(), displayName: "user", onboardingCompleted: true)
         mock.updateOnboardingCompletedResult = .success(profile)
 
         let result = try await mock.updateOnboardingCompleted()

@@ -29,16 +29,15 @@ enum MockFixtures {
         Tag(id: tagWeb, name: "웹 개발", category: "기술"),
         Tag(id: tagIOS, name: "iOS 개발", category: "기술"),
         Tag(id: tagStartup, name: "스타트업", category: "비즈니스"),
-        // category nullable이지만 iOS 현재 모델은 non-optional → "" 사용
-        // (M3에서 모델 정정 예정)
-        Tag(id: tagDesign, name: "디자인", category: "")
+        // category는 nullable — 카테고리 미지정 케이스 표현
+        Tag(id: tagDesign, name: "디자인", category: nil)
     ]
 
     // MARK: - Profile fixture
 
     static let profile = Profile(
         id: mockUserId,
-        email: "mock@frank.dev",
+        displayName: "Mock User",
         onboardingCompleted: true
     )
 

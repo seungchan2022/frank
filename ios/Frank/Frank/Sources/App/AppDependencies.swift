@@ -27,18 +27,24 @@ final class AppDependencies {
             return mock()
         }
 
+        // M3: 인증은 Supabase SDK, 데이터는 모두 Rust API 어댑터로 통합
+        // - Auth: SupabaseAuthAdapter (signIn/signUp/session) + ProfileAPI(PUT /api/me/profile)
+        // - Tag/Article/Collect: Rust API 어댑터
+        //
+        // Supabase{Tag,Article}Adapter 파일은 보존되며 사용되지 않음 (Rollback/참고용)
         let config = SupabaseConfig.live
+        let serverConfig = ServerConfig.live
         let client = SupabaseClient(supabaseURL: config.url, supabaseKey: config.anonKey)
-        let authAdapter = SupabaseAuthAdapter(client: client)
+        let authAdapter = SupabaseAuthAdapter(
+            client: client,
+            serverConfig: serverConfig
+        )
 
         return AppDependencies(
             auth: authAdapter,
-            tag: SupabaseTagAdapter(client: client),
-            article: SupabaseArticleAdapter(client: client),
-            collect: APICollectAdapter(
-                auth: authAdapter,
-                serverConfig: ServerConfig.live
-            )
+            tag: APITagAdapter(auth: authAdapter, serverConfig: serverConfig),
+            article: APIArticleAdapter(auth: authAdapter, serverConfig: serverConfig),
+            collect: APICollectAdapter(auth: authAdapter, serverConfig: serverConfig)
         )
     }
 

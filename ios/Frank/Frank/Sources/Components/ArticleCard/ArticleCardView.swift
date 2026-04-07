@@ -18,7 +18,7 @@ struct ArticleCardView: View {
             HStack(spacing: 4) {
                 Text(article.source)
                 Text("\u{00B7}")
-                Text(Self.relativeTimeText(article.publishedAt))
+                Text(Self.relativeTimeText(article.publishedAt ?? article.createdAt))
             }
             .font(.caption)
             .foregroundStyle(.secondary)
@@ -59,8 +59,9 @@ extension ArticleCardView {
         return formatter
     }()
 
-    static func relativeTimeText(_ date: Date) -> String {
-        relativeFormatter.localizedString(for: date, relativeTo: Date())
+    static func relativeTimeText(_ date: Date?) -> String {
+        guard let date else { return "" }
+        return relativeFormatter.localizedString(for: date, relativeTo: Date())
     }
 }
 

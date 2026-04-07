@@ -10,6 +10,17 @@ enum FeedAction {
     case reloadAfterTagChange
 }
 
+/// Feed의 주(主) 로딩 phase. 동시에 한 가지 phase만 가질 수 있다.
+///
+/// `isLoadingMore`는 phase와 직교(병행 가능)하므로 별도 변수로 둔다.
+enum LoadingPhase: Equatable, Sendable {
+    case idle
+    case initialLoading
+    case collecting
+    case summarizing
+    case refreshing
+}
+
 @Observable
 @MainActor
 final class FeedFeature {
@@ -17,23 +28,27 @@ final class FeedFeature {
     // MARK: - Data
 
     private(set) var tags: [Tag] = []
-    private(set) var selectedTagId: UUID? = nil
+    private(set) var selectedTagId: UUID?
     private(set) var articles: [Article] = []
 
     // MARK: - Loading State
 
-    private(set) var isLoading = false
+    /// 주(主) phase — `idle / initialLoading / collecting / summarizing / refreshing` 중 하나
+    private(set) var phase: LoadingPhase = .idle
+    /// 페이지네이션 추가 로딩 — phase와 직교(병행 가능)
     private(set) var isLoadingMore = false
     private(set) var hasMore = true
 
-    // MARK: - Collect/Summarize State
+    // MARK: - Derived (편의 — 뷰/테스트에서 phase 비교 단축)
 
-    private(set) var isCollecting = false
-    private(set) var isSummarizing = false
+    var isLoading: Bool { phase == .initialLoading }
+    var isCollecting: Bool { phase == .collecting }
+    var isSummarizing: Bool { phase == .summarizing }
+    var isRefreshing: Bool { phase == .refreshing }
 
     // MARK: - Error
 
-    private(set) var errorMessage: String? = nil
+    private(set) var errorMessage: String?
 
     // MARK: - Cache
 
@@ -81,32 +96,44 @@ final class FeedFeature {
     // MARK: - State Transition Helpers
 
     private func beginLoading() {
-        isLoading = true
+        phase = .initialLoading
         errorMessage = nil
     }
 
     private func failLoading(_ message: String) {
-        isLoading = false
+        phase = .idle
         errorMessage = message
     }
 
     private func beginCollect() {
-        isCollecting = true
+        phase = .collecting
         errorMessage = nil
     }
 
     private func moveToSummarize() {
-        isCollecting = false
-        isSummarizing = true
+        phase = .summarizing
     }
 
     private func finishCollect() {
-        isSummarizing = false
+        phase = .idle
     }
 
     private func failCollect(_ message: String) {
-        isCollecting = false
-        isSummarizing = false
+        phase = .idle
+        errorMessage = message
+    }
+
+    private func beginRefresh() {
+        phase = .refreshing
+        errorMessage = nil
+    }
+
+    private func finishRefresh() {
+        phase = .idle
+    }
+
+    private func failRefresh(_ message: String) {
+        phase = .idle
         errorMessage = message
     }
 
@@ -151,7 +178,7 @@ final class FeedFeature {
             tags = allTags.filter { myTagIds.contains($0.id) }
 
             let fetched = try await fetchAndCache(tagId: selectedTagId)
-            isLoading = false
+            phase = .idle
 
             // 기사 0건이면 자동 수집
             if fetched.isEmpty {
@@ -181,7 +208,8 @@ final class FeedFeature {
     }
 
     private func loadMore() async {
-        guard !isLoadingMore, hasMore else { return }
+        // 다른 phase 진행 중이면 무시 — race 방지 (캐시/articles 덮어쓰기 차단)
+        guard !isLoadingMore, hasMore, phase == .idle else { return }
 
         isLoadingMore = true
         let offset = offsetCache[selectedTagId] ?? 0
@@ -211,7 +239,7 @@ final class FeedFeature {
     }
 
     private func collectAndSummarize() async {
-        guard !isCollecting else { return }
+        guard phase != .collecting, phase != .summarizing else { return }
 
         beginCollect()
         do {
@@ -236,11 +264,15 @@ final class FeedFeature {
     }
 
     private func refresh() async {
+        // 다른 phase 진행 중이면 무시 — refresh가 collect/summarize 진행을 덮어쓰는 것 차단
+        guard phase == .idle else { return }
+        beginRefresh()
         invalidateCache()
         do {
             try await fetchAndCache(tagId: selectedTagId)
+            finishRefresh()
         } catch {
-            errorMessage = "새로고침에 실패했습니다."
+            failRefresh("새로고침에 실패했습니다.")
         }
     }
 

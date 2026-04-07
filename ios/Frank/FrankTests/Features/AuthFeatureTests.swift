@@ -22,7 +22,7 @@ struct AuthFeatureTests {
     @Test("checkSession 성공 시 authenticated")
     func checkSessionSuccess() async {
         let mock = MockAuthPort()
-        let profile = Profile(id: UUID(), email: "user@test.com", onboardingCompleted: true)
+        let profile = Profile(id: UUID(), displayName: "user", onboardingCompleted: true)
         mock.currentSessionResult = profile
         let feature = AuthFeature(auth: mock)
 
@@ -49,7 +49,7 @@ struct AuthFeatureTests {
     @Test("이메일 로그인 성공")
     func signInWithEmailSuccess() async {
         let mock = MockAuthPort()
-        let profile = Profile(id: UUID(), email: "user@test.com", onboardingCompleted: false)
+        let profile = Profile(id: UUID(), displayName: "user", onboardingCompleted: false)
         mock.signInResult = .success(profile)
         let feature = AuthFeature(auth: mock)
 
@@ -93,7 +93,7 @@ struct AuthFeatureTests {
     @Test("회원가입 성공 (세션 즉시 반환)")
     func signUpSuccessWithSession() async {
         let mock = MockAuthPort()
-        let profile = Profile(id: UUID(), email: "new@test.com", onboardingCompleted: false)
+        let profile = Profile(id: UUID(), displayName: "new", onboardingCompleted: false)
         mock.signUpResult = .success(profile)
         let feature = AuthFeature(auth: mock)
 
@@ -132,7 +132,7 @@ struct AuthFeatureTests {
     @Test("Apple 로그인 성공")
     func signInWithAppleSuccess() async {
         let mock = MockAuthPort()
-        let profile = Profile(id: UUID(), email: "apple@test.com", onboardingCompleted: false)
+        let profile = Profile(id: UUID(), displayName: "apple", onboardingCompleted: false)
         mock.signInWithAppleResult = .success(profile)
         let feature = AuthFeature(auth: mock)
 
@@ -159,7 +159,7 @@ struct AuthFeatureTests {
     @Test("로그아웃 성공")
     func signOutSuccess() async {
         let mock = MockAuthPort()
-        let profile = Profile(id: UUID(), email: "user@test.com", onboardingCompleted: true)
+        let profile = Profile(id: UUID(), displayName: "user", onboardingCompleted: true)
         mock.signInResult = .success(profile)
         let feature = AuthFeature(auth: mock)
 
@@ -177,7 +177,7 @@ struct AuthFeatureTests {
     @Test("로그아웃 실패 시에도 unauthenticated")
     func signOutFailure() async {
         let mock = MockAuthPort()
-        let profile = Profile(id: UUID(), email: "user@test.com", onboardingCompleted: true)
+        let profile = Profile(id: UUID(), displayName: "user", onboardingCompleted: true)
         mock.signInResult = .success(profile)
         mock.signOutError = URLError(.networkConnectionLost)
         let feature = AuthFeature(auth: mock)

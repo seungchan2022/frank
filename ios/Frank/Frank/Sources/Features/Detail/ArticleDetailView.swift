@@ -26,6 +26,8 @@ struct ArticleDetailView: View {
 // MARK: - Article Content
 
 extension ArticleDetailView {
+    // MVP2 부채: 본문 길이 54 lines (limit 50). M3 ST-7 범위 외 — 회고에 기록.
+    // swiftlint:disable function_body_length
     @ViewBuilder
     private func articleContent(_ article: Article) -> some View {
         ScrollView {
@@ -39,7 +41,7 @@ extension ArticleDetailView {
                 HStack(spacing: 4) {
                     Text(article.source)
                     Text("\u{00B7}")
-                    Text(ArticleCardView.relativeTimeText(article.publishedAt))
+                    Text(ArticleCardView.relativeTimeText(article.publishedAt ?? article.createdAt))
                 }
                 .font(.caption)
                 .foregroundStyle(.secondary)
@@ -96,6 +98,7 @@ extension ArticleDetailView {
             .padding(.vertical, 16)
         }
     }
+    // swiftlint:enable function_body_length
 }
 
 // MARK: - Error View

@@ -55,9 +55,7 @@ final class OnboardingFeature {
         state = .loading
         errorMessage = nil
         do {
-            async let allTags = tag.fetchAllTags()
-            async let myIds = tag.fetchMyTagIds()
-            let (tags, ids) = try await (allTags, myIds)
+            let (tags, ids) = try await tag.fetchAllAndMyTagIds()
             state = .loaded(tags: tags, selectedIds: Set(ids))
         } catch {
             state = .loaded(tags: [], selectedIds: Set())

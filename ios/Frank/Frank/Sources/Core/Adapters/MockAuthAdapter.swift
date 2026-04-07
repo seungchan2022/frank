@@ -30,7 +30,7 @@ actor MockAuthAdapter: AuthPort {
     func updateOnboardingCompleted() async throws -> Profile {
         profile = Profile(
             id: profile.id,
-            email: profile.email,
+            displayName: profile.displayName,
             onboardingCompleted: true
         )
         return profile

@@ -14,8 +14,8 @@ actor MockArticleAdapter: ArticlePort {
         if let tagId = filter.tagId {
             filtered = filtered.filter { $0.tagId == tagId }
         }
-        // publishedAt desc 정렬
-        filtered.sort { $0.publishedAt > $1.publishedAt }
+        // publishedAt desc 정렬 (nil은 가장 오래된 것으로 취급)
+        filtered.sort { ($0.publishedAt ?? .distantPast) > ($1.publishedAt ?? .distantPast) }
         let start = max(0, filter.offset)
         let end = min(filtered.count, start + filter.limit)
         guard start < end else { return [] }

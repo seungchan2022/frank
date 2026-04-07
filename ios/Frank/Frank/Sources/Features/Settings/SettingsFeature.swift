@@ -51,9 +51,7 @@ final class SettingsFeature: Identifiable {
         isLoading = true
         errorMessage = nil
         do {
-            async let allTags = tag.fetchAllTags()
-            async let myIds = tag.fetchMyTagIds()
-            let (fetchedTags, fetchedIds) = try await (allTags, myIds)
+            let (fetchedTags, fetchedIds) = try await tag.fetchAllAndMyTagIds()
             tags = fetchedTags
             selectedIds = Set(fetchedIds)
             originalIds = Set(fetchedIds)

@@ -2,31 +2,38 @@ import Foundation
 
 struct Article: Identifiable, Equatable, Sendable {
     let id: UUID
-    let title: String
-    let url: URL
-    let source: String
-    let publishedAt: Date
-    let summary: String?
+    let userId: UUID
     let tagId: UUID?
+    let title: String
     let titleKo: String?
-    let insight: String?
+    let url: URL
     let snippet: String?
+    let source: String
+    let searchQuery: String?
+    let summary: String?
+    let insight: String?
     let summarizedAt: Date?
+    let publishedAt: Date?
+    let createdAt: Date?
 
     init(
         id: UUID,
+        userId: UUID = UUID(),
         title: String,
         url: URL,
         source: String,
-        publishedAt: Date,
+        publishedAt: Date? = nil,
         summary: String? = nil,
         tagId: UUID? = nil,
         titleKo: String? = nil,
         insight: String? = nil,
         snippet: String? = nil,
-        summarizedAt: Date? = nil
+        summarizedAt: Date? = nil,
+        searchQuery: String? = nil,
+        createdAt: Date? = nil
     ) {
         self.id = id
+        self.userId = userId
         self.title = title
         self.url = url
         self.source = source
@@ -37,5 +44,7 @@ struct Article: Identifiable, Equatable, Sendable {
         self.insight = insight
         self.snippet = snippet
         self.summarizedAt = summarizedAt
+        self.searchQuery = searchQuery
+        self.createdAt = createdAt
     }
 }

@@ -17,6 +17,7 @@ let project = Project(
                     ],
                     "SUPABASE_URL": "$(SUPABASE_URL)",
                     "SUPABASE_ANON_KEY": "$(SUPABASE_ANON_KEY)",
+                    "SERVER_URL": "$(SERVER_URL)",
                 ]
             ),
             sources: ["Frank/Sources/**"],
