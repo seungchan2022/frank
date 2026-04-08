@@ -147,4 +147,11 @@ describe('MockApiClient: articles', () => {
 		const unsummarizedAfter = after.filter((a) => a.summary === null);
 		expect(unsummarizedAfter).toHaveLength(0);
 	});
+
+	it('summarizeArticles - signal 파라미터를 받아도 정상 동작', async () => {
+		const controller = new AbortController();
+		const count = await mockApiClient.summarizeArticles(controller.signal);
+		expect(typeof count).toBe('number');
+		expect(count).toBeGreaterThanOrEqual(0);
+	});
 });

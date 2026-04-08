@@ -226,6 +226,28 @@ describe('RealApiClient: pipeline', () => {
 		expect(url).toBe('http://localhost:8081/api/me/summarize');
 		expect(init.method).toBe('POST');
 	});
+
+	it('summarizeArticles - signal이 fetch에 전달됨', async () => {
+		(globalThis.fetch as unknown as ReturnType<typeof vi.fn>).mockResolvedValue(
+			jsonResponse({ summarized: 5 })
+		);
+		const controller = new AbortController();
+
+		const result = await realApiClient.summarizeArticles(controller.signal);
+		expect(result).toBe(5);
+
+		const { init } = lastFetchCall();
+		expect(init.signal).toBe(controller.signal);
+	});
+
+	it('summarizeArticles - signal 없이 호출해도 정상 동작 (backwards compat)', async () => {
+		(globalThis.fetch as unknown as ReturnType<typeof vi.fn>).mockResolvedValue(
+			jsonResponse({ summarized: 0 })
+		);
+
+		const result = await realApiClient.summarizeArticles(undefined);
+		expect(result).toBe(0);
+	});
 });
 
 describe('RealApiClient: 에러 처리', () => {
