@@ -44,6 +44,15 @@ struct EmailSignInSheet: View {
                     .disabled(!isFormValid || feature.state == .authenticating)
                 }
 
+                if let error = feature.error {
+                    Section {
+                        Text(error.localizedDescription)
+                            .font(.caption)
+                            .foregroundStyle(.red)
+                            .accessibilityAddTraits(.isStaticText)
+                    }
+                }
+
                 if let message = feature.confirmationMessage {
                     Section {
                         Label(message, systemImage: "envelope.badge")
@@ -73,16 +82,6 @@ struct EmailSignInSheet: View {
             }
         }
         .presentationDetents([.medium])
-        .alert("오류", isPresented: .init(
-            get: { feature.error != nil },
-            set: { if !$0 { feature.clearError() } }
-        )) {
-            Button("확인") { feature.clearError() }
-        } message: {
-            if let error = feature.error {
-                Text(error.localizedDescription)
-            }
-        }
     }
 
     private func submit() {

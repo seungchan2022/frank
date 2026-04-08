@@ -47,22 +47,21 @@ struct LoginView: View {
                         .font(.footnote)
                         .foregroundStyle(.secondary)
                 }
+
+                // 에러 메시지 (버튼 하단 인라인)
+                if let error = feature.error {
+                    Text(error.localizedDescription)
+                        .font(.caption)
+                        .foregroundStyle(.red)
+                        .multilineTextAlignment(.center)
+                        .accessibilityAddTraits(.isStaticText)
+                }
             }
             .padding(.horizontal, 32)
             .padding(.bottom, 48)
         }
         .sheet(isPresented: $showEmailSheet) {
             EmailSignInSheet(feature: feature)
-        }
-        .alert("오류", isPresented: .init(
-            get: { feature.error != nil },
-            set: { if !$0 { feature.clearError() } }
-        )) {
-            Button("확인") { feature.clearError() }
-        } message: {
-            if let error = feature.error {
-                Text(error.localizedDescription)
-            }
         }
     }
 

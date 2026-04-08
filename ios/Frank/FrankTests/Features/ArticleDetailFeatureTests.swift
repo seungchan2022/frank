@@ -164,4 +164,60 @@ struct ArticleDetailFeatureTests {
         #expect(sut.isLoading == false)
         #expect(sut.errorMessage == nil)
     }
+
+    // MARK: - 8. 요약 타임아웃
+
+    @Test("summaryTimedOut 초기값은 false")
+    func summaryTimedOutInitialValue() {
+        let (sut, _) = makeSUT()
+        #expect(sut.summaryTimedOut == false)
+    }
+
+    @Test("summary가 있는 기사 로드 시 summaryTimedOut은 false 유지")
+    func loadArticleWithSummaryNoTimeout() async {
+        let articleId = UUID()
+        let article = makeArticle(id: articleId, summary: "요약 있음")
+        let port = MockArticlePort()
+        port.articleDetail = article
+        let sut = ArticleDetailFeature(articleId: articleId, articlePort: port, summaryTimeoutSeconds: 0.05)
+
+        await sut.send(.loadArticle)
+        try? await Task.sleep(for: .milliseconds(100))
+
+        #expect(sut.summaryTimedOut == false)
+    }
+
+    @Test("summary nil 기사 로드 후 타임아웃 경과 시 summaryTimedOut = true")
+    func summaryTimerFiresAfterTimeout() async {
+        let articleId = UUID()
+        let article = makeArticle(id: articleId, summary: nil, insight: nil)
+        let port = MockArticlePort()
+        port.articleDetail = article
+        let sut = ArticleDetailFeature(articleId: articleId, articlePort: port, summaryTimeoutSeconds: 0.05)
+
+        await sut.send(.loadArticle)
+        try? await Task.sleep(for: .milliseconds(150))
+
+        #expect(sut.summaryTimedOut == true)
+    }
+
+    @Test("retrySummary: summaryTimedOut 초기화 + loadArticle 재호출")
+    func retrySummaryResetsAndReloads() async {
+        let articleId = UUID()
+        let article = makeArticle(id: articleId, summary: nil, insight: nil)
+        let port = MockArticlePort()
+        port.articleDetail = article
+        let sut = ArticleDetailFeature(articleId: articleId, articlePort: port, summaryTimeoutSeconds: 0.05)
+
+        // 타임아웃 발생
+        await sut.send(.loadArticle)
+        try? await Task.sleep(for: .milliseconds(150))
+        #expect(sut.summaryTimedOut == true)
+        #expect(port.fetchArticleCallCount == 1)
+
+        // 재시도: summaryTimedOut 초기화 + loadArticle 재호출
+        await sut.send(.retrySummary)
+        #expect(sut.summaryTimedOut == false)
+        #expect(port.fetchArticleCallCount == 2)
+    }
 }

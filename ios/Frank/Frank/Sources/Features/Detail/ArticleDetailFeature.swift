@@ -3,6 +3,7 @@ import Observation
 
 enum ArticleDetailAction {
     case loadArticle
+    case retrySummary
 }
 
 @Observable
@@ -21,6 +22,12 @@ final class ArticleDetailFeature {
 
     private(set) var errorMessage: String? = nil
 
+    // MARK: - Summary Timeout
+    // 전체 요약 기준 (단일 요약 전환 시 10~15s로 줄일 것)
+    private let summaryTimeoutSeconds: Double
+    private(set) var summaryTimedOut: Bool = false
+    private var summaryTimerTask: Task<Void, Never>?
+
     // MARK: - Dependencies
 
     private let articleId: UUID
@@ -28,9 +35,10 @@ final class ArticleDetailFeature {
 
     // MARK: - Init
 
-    init(articleId: UUID, articlePort: any ArticlePort) {
+    init(articleId: UUID, articlePort: any ArticlePort, summaryTimeoutSeconds: Double = 30) {
         self.articleId = articleId
         self.articlePort = articlePort
+        self.summaryTimeoutSeconds = summaryTimeoutSeconds
     }
 
     // MARK: - Send
@@ -38,6 +46,11 @@ final class ArticleDetailFeature {
     func send(_ action: ArticleDetailAction) async {
         switch action {
         case .loadArticle:
+            await loadArticle()
+        case .retrySummary:
+            summaryTimerTask?.cancel()
+            summaryTimerTask = nil
+            summaryTimedOut = false
             await loadArticle()
         }
     }
@@ -47,6 +60,9 @@ final class ArticleDetailFeature {
     private func beginLoading() {
         isLoading = true
         errorMessage = nil
+        summaryTimedOut = false
+        summaryTimerTask?.cancel()
+        summaryTimerTask = nil
     }
 
     private func failLoading(_ message: String) {
@@ -61,8 +77,24 @@ final class ArticleDetailFeature {
         do {
             article = try await articlePort.fetchArticle(id: articleId)
             isLoading = false
+            if article?.summary == nil {
+                startSummaryTimer()
+            }
         } catch {
             failLoading("기사를 불러오지 못했습니다.")
         }
     }
+
+    private func startSummaryTimer() {
+        summaryTimerTask = Task { [weak self] in
+            guard let self else { return }
+            do {
+                try await Task.sleep(for: .seconds(summaryTimeoutSeconds))
+                summaryTimedOut = true
+            } catch {
+                // Task 취소됨 — no-op
+            }
+        }
+    }
+
 }
