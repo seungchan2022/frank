@@ -28,6 +28,16 @@ IOS_SIMULATOR_NAME="${IOS_SIMULATOR:-iPhone 17 Pro}"
 API_PORT=8080
 FRONT_PORT=3000
 
+# ─── CORS / CSRF 허용 오리진 ──────────────────────────────────────────────────
+# 새 오리진 추가 시 이 배열에만 추가하면 됩니다.
+# ALLOWED_ORIGINS(API CORS) + ORIGIN(웹 CSRF) 모두 여기서 관리합니다.
+LOCAL_ORIGINS=(
+    "http://localhost:${FRONT_PORT}"   # 웹 프론트 (Docker)
+    "http://localhost:5173"            # 웹 프론트 (dev)
+    "http://localhost:4173"            # 웹 프론트 (preview)
+    "http://127.0.0.1:5173"            # 웹 프론트 (dev, IP)
+)
+
 # ─── 색상 출력 ────────────────────────────────────────────────────────────────
 GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
@@ -139,6 +149,10 @@ run_docker_service() {
     . "$PROJECT_ROOT/server/.env"
     export PUBLIC_SUPABASE_URL="${SUPABASE_URL:-}"
     export PUBLIC_SUPABASE_ANON_KEY="${SUPABASE_ANON_KEY:-}"
+    # CORS / CSRF 오리진 조립
+    export ALLOWED_ORIGINS
+    ALLOWED_ORIGINS="$(IFS=','; echo "${LOCAL_ORIGINS[*]}")"
+    export ORIGIN="http://localhost:${FRONT_PORT}"
     set +a
     docker compose build "$service"
 
