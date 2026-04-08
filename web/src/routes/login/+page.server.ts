@@ -3,7 +3,7 @@
 // 모든 인증은 server에서 supabase로 처리 → cookie httpOnly: true 강제 (hooks.server.ts).
 
 import { fail, redirect } from '@sveltejs/kit';
-import type { Actions, PageServerLoad } from './$types';
+import type { Actions, PageServerLoad, RequestEvent } from './$types';
 
 export const load: PageServerLoad = async ({ locals: { session } }) => {
 	if (session) {
@@ -46,5 +46,23 @@ export const actions: Actions = {
 		}
 
 		return { signUpSuccess: true, email };
+	},
+
+	appleOAuth: async ({ url, locals: { supabase } }: RequestEvent) => {
+		const origin = url.origin;
+
+		const { data, error } = await supabase.auth.signInWithOAuth({
+			provider: 'apple',
+			options: {
+				redirectTo: `${origin}/auth/callback`,
+				scopes: 'email name'
+			}
+		});
+
+		if (error || !data.url) {
+			throw redirect(302, '/login');
+		}
+
+		throw redirect(302, data.url);
 	}
 };

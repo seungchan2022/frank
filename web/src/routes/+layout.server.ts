@@ -6,7 +6,7 @@
 import { redirect } from '@sveltejs/kit';
 import type { LayoutServerLoad } from './$types';
 
-const PUBLIC_PATHS = new Set(['/login']);
+const PUBLIC_PATHS = new Set(['/login', '/auth/callback']);
 
 export const load: LayoutServerLoad = async ({ locals: { safeGetSession }, cookies, url }) => {
 	const { session, user } = await safeGetSession();
