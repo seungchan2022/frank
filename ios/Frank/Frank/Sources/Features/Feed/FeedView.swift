@@ -65,8 +65,31 @@ struct FeedView: View {
         if feature.isCollecting {
             bannerRow(text: "뉴스를 수집하고 있어요...")
         } else if feature.isSummarizing {
-            bannerRow(text: "AI가 요약하고 있어요...")
+            if feature.isSummarizingTimeout {
+                timeoutBanner
+            } else {
+                bannerRow(text: "AI가 요약하고 있어요...")
+            }
         }
+    }
+
+    private var timeoutBanner: some View {
+        HStack(spacing: 12) {
+            Image(systemName: "clock.badge.exclamationmark")
+                .foregroundStyle(.orange)
+            Text("요약이 오래 걸리고 있어요")
+                .font(.subheadline)
+                .foregroundStyle(.secondary)
+            Spacer()
+            Button("다시 시도") {
+                Task { await feature.send(.retrySummarize) }
+            }
+            .font(.subheadline)
+            .buttonStyle(.bordered)
+        }
+        .padding(.horizontal, 16)
+        .padding(.vertical, 10)
+        .background(Color.orange.opacity(0.1))
     }
 
     private func bannerRow(text: String) -> some View {

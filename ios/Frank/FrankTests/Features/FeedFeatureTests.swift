@@ -520,4 +520,74 @@ struct FeedFeatureTests {
         #expect(sut.isLoading == false)
         #expect(sut.tags.isEmpty)
     }
+
+    // MARK: - 요약 타임아웃
+
+    @Test("isSummarizingTimeout 초기값은 false")
+    func summarizingTimeoutInitialValue() {
+        let (sut, _, _, _) = makeSUT()
+        #expect(sut.isSummarizingTimeout == false)
+    }
+
+    @Test("요약이 타임아웃 이내에 완료되면 isSummarizingTimeout은 false 유지")
+    func summarizingCompletesBeforeTimeout() async {
+        let articlePort = MockArticlePort()
+        let collectPort = MockCollectPort()
+        collectPort.summarizeDelay = 0
+        let tagPort = MockTagPort()
+        let sut = FeedFeature(
+            article: articlePort,
+            collect: collectPort,
+            tag: tagPort,
+            summarizeTimeoutSeconds: 0.5
+        )
+
+        await sut.send(.collectAndSummarize)
+
+        #expect(sut.isSummarizingTimeout == false)
+        #expect(sut.phase == .idle)
+    }
+
+    @Test("요약이 타임아웃을 초과하면 isSummarizingTimeout = true")
+    func summarizingTimesOut() async {
+        let articlePort = MockArticlePort()
+        let collectPort = MockCollectPort()
+        collectPort.summarizeDelay = 0.3
+        let tagPort = MockTagPort()
+        let sut = FeedFeature(
+            article: articlePort,
+            collect: collectPort,
+            tag: tagPort,
+            summarizeTimeoutSeconds: 0.1
+        )
+
+        await sut.send(.collectAndSummarize)
+
+        #expect(sut.isSummarizingTimeout == true)
+    }
+
+    @Test("retrySummarize: isSummarizingTimeout 초기화 + collectAndSummarize 재시도")
+    func retrySummarizeResetsTimeout() async {
+        let articlePort = MockArticlePort()
+        let collectPort = MockCollectPort()
+        collectPort.summarizeDelay = 0.3
+        let tagPort = MockTagPort()
+        let sut = FeedFeature(
+            article: articlePort,
+            collect: collectPort,
+            tag: tagPort,
+            summarizeTimeoutSeconds: 0.1
+        )
+
+        // 타임아웃 발생
+        await sut.send(.collectAndSummarize)
+        #expect(sut.isSummarizingTimeout == true)
+
+        // 재시도: delay 제거 → 정상 완료
+        collectPort.summarizeDelay = 0
+        await sut.send(.retrySummarize)
+
+        #expect(sut.isSummarizingTimeout == false)
+        #expect(sut.phase == .idle)
+    }
 }

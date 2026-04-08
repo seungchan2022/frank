@@ -58,19 +58,6 @@ extension ArticleDetailView {
                     if let summary = article.summary {
                         Text(summary)
                             .font(.body)
-                    } else if feature.summaryTimedOut {
-                        VStack(alignment: .leading, spacing: 12) {
-                            Text("요약이 오래 걸리고 있어요")
-                                .font(.body)
-                                .foregroundStyle(.secondary)
-                                .accessibilityAddTraits(.updatesFrequently)
-                            Button("다시 시도") {
-                                Task { @MainActor in
-                                    await feature.send(.retrySummary)
-                                }
-                            }
-                            .buttonStyle(.bordered)
-                        }
                     } else {
                         Text("요약 중...")
                             .font(.body)

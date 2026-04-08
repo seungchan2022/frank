@@ -6,6 +6,7 @@ final class MockCollectPort: CollectPort, @unchecked Sendable {
     var summarizeError: Error?
     var collectResult: Int = 0
     var summarizeResult: Int = 0
+    var summarizeDelay: TimeInterval = 0
 
     var triggerCollectCallCount = 0
     var triggerSummarizeCallCount = 0
@@ -18,6 +19,9 @@ final class MockCollectPort: CollectPort, @unchecked Sendable {
 
     func triggerSummarize() async throws -> Int {
         triggerSummarizeCallCount += 1
+        if summarizeDelay > 0 {
+            try await Task.sleep(for: .seconds(summarizeDelay))
+        }
         if let error = summarizeError { throw error }
         return summarizeResult
     }
