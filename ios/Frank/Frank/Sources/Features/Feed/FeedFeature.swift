@@ -262,10 +262,18 @@ final class FeedFeature {
             // Step 2: 수집 후 기사 fetch (summary=nil 가능)
             try await fetchAndCache(tagId: selectedTagId)
 
-            // Step 3: 요약 (타임아웃 타이머 병행)
+            // Step 3: 요약 (타임아웃 타이머 병행 — 60s transport timeout 별도 처리)
             moveToSummarize()
             startSummarizeTimer()
-            _ = try await collect.triggerSummarize()
+            do {
+                _ = try await collect.triggerSummarize()
+            } catch let urlError as URLError where urlError.code == .timedOut {
+                summarizeTimerTask?.cancel()
+                summarizeTimerTask = nil
+                isSummarizingTimeout = true
+                phase = .idle
+                return
+            }
             summarizeTimerTask?.cancel()
             summarizeTimerTask = nil
 

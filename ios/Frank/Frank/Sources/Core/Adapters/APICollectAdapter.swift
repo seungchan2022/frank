@@ -19,13 +19,14 @@ struct APICollectAdapter: CollectPort {
     func triggerSummarize() async throws -> Int {
         try await postAndExtractCount(
             path: "/api/me/summarize",
-            key: "summarized"
+            key: "summarized",
+            timeoutInterval: 60
         )
     }
 
     // MARK: - Private
 
-    private func postAndExtractCount(path: String, key: String) async throws -> Int {
+    private func postAndExtractCount(path: String, key: String, timeoutInterval: TimeInterval = 30) async throws -> Int {
         let token = try await auth.getAccessToken()
 
         guard let url = URL(string: path, relativeTo: serverURL) else {
@@ -36,6 +37,7 @@ struct APICollectAdapter: CollectPort {
         request.httpMethod = "POST"
         request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        request.timeoutInterval = timeoutInterval
 
         let (data, response) = try await URLSession.shared.data(for: request)
 

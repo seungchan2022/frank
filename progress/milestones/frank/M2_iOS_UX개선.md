@@ -20,7 +20,7 @@ iOS 앱의 두 가지 UX 결함을 해소한다.
 
 | # | 서브태스크 | 유형 | 영향 범위 |
 |---|-----------|------|---------|
-| 1 | 요약 timeout UX — 타임아웃 감지 + 재시도 버튼 | feature | `ArticleDetailFeature`, `ArticleDetailView` |
+| 1 | 요약 timeout UX — 타임아웃 감지 + 재시도 버튼 | feature | `FeedFeature`, `FeedView`, `APICollectAdapter` |
 | 2 | 로그인 에러 인라인 표시 — alert → 폼 하단 텍스트 | feature | `LoginView`, `EmailSignInSheet` |
 
 ---
@@ -31,7 +31,7 @@ iOS 앱의 두 가지 UX 결함을 해소한다.
 - [x] 재시도 버튼 탭 시 요약 재요청 동작
 - [x] 로그인 실패 시 `.alert()` 대신 버튼 하단 인라인 에러 메시지 표시
 - [x] 기존 iOS 테스트 155개 전체 통과
-- [x] 신규 테스트 4개 추가 (summaryTimedOut 초기값, 타임아웃 발생, summary 있을 때 타임아웃 없음, retrySummary)
+- [x] 신규 테스트 5개 추가 (isSummarizingTimeout 초기값, 소프트 타이머 발화, 타임아웃 이내 완료, retrySummarize, transport timedOut 분기)
 - [x] UITest 2개 통과 (CrossFeatureFlow, OnboardingFlow)
 
 ---
@@ -40,24 +40,19 @@ iOS 앱의 두 가지 UX 결함을 해소한다.
 
 ### ST-1: 요약 timeout UX
 
-**현황**: 요약 60s+ 소요 시 "요약 중..." 상태가 무한 유지됨.
+**현황**: 요약 60s+ 소요 시 "AI가 요약하고 있어요..." 상태가 무한 유지됨.
 
-**구현 방향 (Step-5 리뷰 반영):**
+**구현 결과:**
 
-1. `APICollectAdapter.postAndExtractCount()` — `triggerSummarize` 경로에만 `timeoutInterval = 60` 명시
-2. `FeedFeature.collectAndSummarize()` — catch 블록에서 `URLError.timedOut` 분기 추가
-3. `FeedFeature` — `isSummarizingTimeout: Bool` 상태 변수 추가 (LoadingPhase 변경 없이 Bool 별도)
-4. `FeedView` — `.isSummarizingTimeout == true`일 때 "요약이 오래 걸리고 있어요. 재시도할까요?" + 재시도 버튼 렌더
-5. 재시도 액션: `FeedAction.retrySummarize` 추가 → `collectAndSummarize()` 재호출
+1. `APICollectAdapter.triggerSummarize()` — `timeoutInterval = 60` 명시 (transport 하드 timeout)
+2. `FeedFeature` — `isSummarizingTimeout: Bool` + `summarizeTimeoutSeconds: Double = 30` 추가
+3. `FeedFeature.collectAndSummarize()` — triggerSummarize 호출 시 30s 소프트 타이머 병행, `URLError.timedOut` 별도 분기
+4. `FeedView` — `isSummarizingTimeout == true`일 때 타임아웃 배너 + 재시도 버튼 표시
+5. `FeedAction.retrySummarize` 추가 → `isSummarizingTimeout` 초기화 + `collectAndSummarize()` 재호출
 
-**UX 임계값**: 30s 소프트 threshold(상태 전환) + 60s 하드 transport timeout 분리
-- 30s: "오래 걸리고 있어요" UI 전환 (타이머 기반)
-- 60s: URLSession transport timeout (URLError.timedOut throw)
-
-**테스트 계획**:
-- `MockCollectPort`에 `summarizeDelay: TimeInterval` 추가
-- `FeedFeatureTests`: timeout 분기 → `isSummarizingTimeout == true` 확인
-- `FeedFeatureTests`: 재시도 액션 → summarizeCallCount 2 확인
+**UX 임계값**: 30s 소프트(타이머 기반 UI 전환) + 60s 하드(URLSession transport timeout)
+- 30s: "요약이 오래 걸리고 있어요" 배너 + [다시 시도] 버튼 표시
+- 60s: URLError.timedOut → isSummarizingTimeout = true, errorMessage 없음 (배너가 이미 표시 중)
 
 ---
 

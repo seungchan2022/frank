@@ -340,7 +340,7 @@ struct FeedFeatureTests {
             tags: [Frank.Tag(id: UUID(), name: "AI", category: "ai")],
             myTagIds: [UUID()],
             articles: [makeArticle()],
-            collectError: URLError(.timedOut)
+            collectError: URLError(.notConnectedToInternet)
         )
 
         await sut.send(.loadInitial)
@@ -357,7 +357,7 @@ struct FeedFeatureTests {
             tags: [Frank.Tag(id: UUID(), name: "AI", category: "ai")],
             myTagIds: [UUID()],
             articles: [makeArticle()],
-            summarizeError: URLError(.timedOut)
+            summarizeError: URLError(.notConnectedToInternet)
         )
 
         await sut.send(.loadInitial)
@@ -365,6 +365,19 @@ struct FeedFeatureTests {
 
         #expect(sut.errorMessage != nil)
         #expect(sut.isCollecting == false)
+        #expect(sut.isSummarizing == false)
+    }
+
+    @Test("collectAndSummarize summarize URLError.timedOut: isSummarizingTimeout = true, errorMessage 없음")
+    func collectAndSummarizeSummarizeTransportTimeout() async {
+        let (sut, _, _, _) = makeSUT(
+            summarizeError: URLError(.timedOut)
+        )
+
+        await sut.send(.collectAndSummarize)
+
+        #expect(sut.isSummarizingTimeout == true)
+        #expect(sut.errorMessage == nil)
         #expect(sut.isSummarizing == false)
     }
 
