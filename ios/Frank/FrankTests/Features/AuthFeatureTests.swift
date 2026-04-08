@@ -204,4 +204,34 @@ struct AuthFeatureTests {
         feature.clearError()
         #expect(feature.error == nil)
     }
+
+    // MARK: - send(_ error:)
+
+    @Test("send(error:) — feature.error 설정 + unauthenticated 전환")
+    func sendError() {
+        let mock = MockAuthPort()
+        let feature = AuthFeature(auth: mock)
+        let testError = URLError(.badURL)
+
+        feature.send(testError)
+
+        #expect(feature.state == .unauthenticated)
+        #expect(feature.error != nil)
+    }
+
+    @Test("send(error:) — 이미 authenticated 상태에서 호출해도 unauthenticated로 전환")
+    func sendErrorFromAuthenticated() async {
+        let mock = MockAuthPort()
+        let profile = Profile(id: UUID(), displayName: "user", onboardingCompleted: true)
+        mock.currentSessionResult = profile
+        let feature = AuthFeature(auth: mock)
+
+        await feature.send(.checkSession)
+        #expect(feature.state == .authenticated(profile))
+
+        feature.send(URLError(.networkConnectionLost))
+
+        #expect(feature.state == .unauthenticated)
+        #expect(feature.error != nil)
+    }
 }
