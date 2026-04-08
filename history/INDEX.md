@@ -55,6 +55,30 @@
 
 ---
 
+## MVP3 — 웹+iOS API 통합 (260406~260408)
+
+> 기간 3일. 웹+iOS가 Rust API 직통 호출. httpOnly 쿠키 세션 전환. Apple 로그인 3개 플랫폼. 테스트 89(웹)+155(iOS).
+
+| 유형 | 파일 | 핵심 내용 |
+|------|------|----------|
+| 로드맵 | [MVP3 통합 로드맵](mvp3/260406_MVP3_통합_로드맵.md) | M1~M4 마일스톤, 병렬 개발 전략, Mock-First 흐름 |
+| 기획 | [M1 API Contract](mvp3/260406_MVP3_M1_API_Contract.md) | Rust 서버 엔드포인트 보완 (fetchArticle, updateProfile) |
+| 기획 | [M1.5 병렬 준비](mvp3/260407_MVP3_M1.5_병렬준비.md) | API SPEC 문서화, fixture JSON, 웹/iOS Mock 어댑터 |
+| 기획 | [M2 웹 전환](mvp3/260406_MVP3_M2_웹전환.md) | @supabase/ssr, httpOnly 쿠키, Rust API 직통 |
+| 기획 | [M3 iOS 전환](mvp3/260406_MVP3_M3_iOS전환.md) | APIArticleAdapter, APITagAdapter, MVP2 부채 흡수 |
+| 기획 | [M4 Apple 로그인](mvp3/260406_MVP3_M4_Apple로그인.md) | OAuth PKCE(웹) + ASAuthorizationController(iOS) |
+| 참조 | [API SPEC](mvp3/260407_API_SPEC.md) | 전체 엔드포인트 명세 (요청/응답 타입 포함) |
+| 참조 | [배포 스크립트](mvp3/260407_deploy_script.md) | scripts/deploy.sh 설계 문서 |
+| 분석 | [hotfix 요약 태그필터](mvp3/260408_hotfix_요약_태그필터.md) | OpenRouter reasoning mandatory 400 fix |
+| 회고 | [M2 회고](mvp3/260408_M2_회고.md) | 웹 전환 Keep/Problem, 태그 stale 해결 |
+| 회고 | [M3 회고](mvp3/260408_M3_회고.md) | iOS 전환 Keep/Problem, MVP2 부채 흡수 현황 |
+| 회고 | [M4 회고](mvp3/260408_M4_회고.md) | Apple 로그인 트러블슈팅, 크로스 플랫폼 계정 연동 |
+| 회고 | [MVP3 완료 회고](mvp3/260408_mvp3_completion_retro.md) | 병렬 worktree 첫 실전, Mock-First 증명, 크로스 플랫폼 계정 연동, 부채 목록 |
+| 회고 | [일일 회고 260408](260408_daily_retro.html) | M3 완료 + 병렬 워크트리 회고 |
+| fixtures | [fixtures/](mvp3/fixtures/) | articles.json, profile.json, tags.json (Mock 기준 데이터) |
+
+---
+
 ## MVP 버전 체계 (260406 확정)
 
 > .5 버전 폐지. 부채 해소는 다음 MVP에 흡수.
@@ -63,7 +87,7 @@
 |-----|-----------|------|
 | MVP1 | 웹으로 뉴스 읽기 | ✅ 완료 |
 | MVP2 | 앱으로 뉴스 읽기 | ✅ 완료 |
-| MVP3 | 웹+앱 API 통합 + 동일 경험 | ⏳ 다음 |
+| MVP3 | 웹+앱 API 통합 + Apple 로그인 | ✅ 완료 |
 | MVP4 | 학습 기능 (스크랩, 퀴즈 등) | 📋 계획 |
 
 - MVP1.5, MVP2.5는 역사적 기록으로 유지. 이후 .5 버전 신규 생성 안 함.
@@ -85,4 +109,8 @@
 | MVP2 iOS 아키텍처/패턴 | `mvp2/260405_MVP2_iOS_로드맵.md`, `mvp2/260406_mvp2_completion_retro.md` |
 | MVP2.5 기술 부채 목록 | `mvp2/260406_mvp2_completion_retro.md` |
 | 3개 플랫폼 규모 비교 | `mvp2/260406_mvp2_completion_retro.md` (9,999줄, 333테스트) |
-| Claude Code 설정 자동화 | `progress/260405_claude_code_refactoring.md` |
+| Claude Code 설정 자동화 | `mvp15/260405_claude_code_refactoring.md` |
+| MVP3 전체 아키텍처 흐름 | `mvp3/260406_MVP3_통합_로드맵.md` |
+| Rust API 엔드포인트 명세 | `mvp3/260407_API_SPEC.md` |
+| Apple 로그인 트러블슈팅 | `mvp3/260408_M4_회고.md` |
+| Mock fixture 기준 데이터 | `mvp3/fixtures/` |
