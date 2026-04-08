@@ -221,4 +221,17 @@ MVP3는 "만든 것들을 하나로 묶는" 프로젝트였다. MVP1의 웹, MVP
 
 다음은 MVP4다. "읽는 앱"에서 "배우는 앱"으로의 전환.
 
+---
+
+## 흐름 변경 요약
+
+- 웹/iOS Supabase 직통 → Rust API 서버 단일화
+- Apple 로그인 추가 (웹: OAuth PKCE / iOS: ID Token)
+- httpOnly 쿠키 세션 전환 (웹 인증 보안 강화)
+- git worktree 병렬 개발 첫 실전 검증
+
+→ [MVP3 흐름도 전체 보기](260408_흐름도.md)
+
+---
+
 > *"Mock-First 병렬 개발이 통합 비용을 낮춘다" — 2026.04.08, MVP3 완료*

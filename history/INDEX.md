@@ -115,3 +115,5 @@
 | Rust API 엔드포인트 명세 | `mvp3/260407_API_SPEC.md` |
 | Apple 로그인 트러블슈팅 | `mvp3/260408_M4_회고.md` |
 | Mock fixture 기준 데이터 | `mvp3/fixtures/` |
+| 전체 흐름도 + 개념 정리 (최신) | `260408_개념정리.md` |
+| MVP3 마일스톤별 흐름 스냅샷 | `mvp3/260408_흐름도.md` |
