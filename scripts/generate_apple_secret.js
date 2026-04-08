@@ -85,13 +85,31 @@ const jwt = generateAppleClientSecret({
 });
 
 const exp = Math.floor(Date.now() / 1000) + 15777000;
-const expDate = new Date(exp * 1000).toLocaleDateString('ko-KR');
+const expDateObj = new Date(exp * 1000);
+const expDateISO = expDateObj.toISOString().split('T')[0]; // YYYY-MM-DD (UTC 기준, 서버 비교 기준과 동일)
 
 console.log('');
 console.log('✅ Apple OAuth Client Secret 생성 완료');
-console.log(`   만료일: ${expDate} (6개월)`);
+console.log(`   만료일: ${expDateISO} (UTC)`);
 console.log('');
-console.log('── Supabase Apple Provider > Secret Key (for OAuth) 에 붙여넣기 ──');
+console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+console.log('[Step 1] Supabase Apple Provider 설정');
+console.log('  Supabase 대시보드 > Authentication > Providers > Apple');
+console.log('  > Secret Key (for OAuth) 에 아래 JWT 붙여넣기:');
 console.log('');
 console.log(jwt);
+console.log('');
+console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+console.log('[Step 2] 배포 환경변수 설정');
+console.log('  아래 환경변수를 Railway / Fly.io 대시보드에서 수동 설정:');
+console.log('');
+console.log(`  APPLE_CLIENT_SECRET_EXPIRES_AT=${expDateISO}`);
+console.log('');
+console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+console.log('[Step 3] 서버 재시작 후 로그 확인');
+console.log('  배포 후 서버 로그에서 만료일 관련 메시지 확인:');
+console.log('  - D-60 이상: 로그 없음 (정상)');
+console.log('  - D-60 ~ D-31: INFO 레벨');
+console.log('  - D-30 ~ D-8: WARN 레벨');
+console.log('  - D-7 이하: ERROR 레벨');
 console.log('');

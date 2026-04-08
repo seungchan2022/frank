@@ -24,6 +24,8 @@ async fn main() {
 
     let config = AppConfig::from_env();
 
+    check_apple_client_secret_expiry();
+
     let pool = PgPoolOptions::new()
         .max_connections(5)
         .connect(&config.database_url)
@@ -77,4 +79,49 @@ async fn main() {
     tracing::info!("server listening on http://{addr}");
 
     axum::serve(listener, app).await.expect("server error");
+}
+
+fn check_apple_client_secret_expiry() {
+    let Ok(expires_str) = std::env::var("APPLE_CLIENT_SECRET_EXPIRES_AT") else {
+        return;
+    };
+
+    match chrono::NaiveDate::parse_from_str(&expires_str, "%Y-%m-%d") {
+        Ok(expires_date) => {
+            let today = chrono::Utc::now().date_naive();
+            let days = (expires_date - today).num_days();
+
+            if days < 0 {
+                tracing::error!(
+                    expires_at = %expires_str,
+                    days_remaining = days,
+                    "Apple Client Secret EXPIRED — Apple login is broken. Renew immediately."
+                );
+            } else if days <= 7 {
+                tracing::error!(
+                    expires_at = %expires_str,
+                    days_remaining = days,
+                    "Apple Client Secret renewal CRITICAL — renew immediately."
+                );
+            } else if days <= 30 {
+                tracing::warn!(
+                    expires_at = %expires_str,
+                    days_remaining = days,
+                    "Apple Client Secret renewal window — plan renewal now."
+                );
+            } else if days <= 60 {
+                tracing::info!(
+                    expires_at = %expires_str,
+                    days_remaining = days,
+                    "Apple Client Secret D-60 notice — prepare for renewal."
+                );
+            }
+        }
+        Err(_) => {
+            tracing::warn!(
+                value = %expires_str,
+                "APPLE_CLIENT_SECRET_EXPIRES_AT has invalid format. Expected YYYY-MM-DD"
+            );
+        }
+    }
 }
