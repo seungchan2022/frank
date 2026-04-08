@@ -1,0 +1,373 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>회고 — 2026-04-09</title>
+  <style>
+    :root {
+      --bg: #0f1117;
+      --surface: #1a1d27;
+      --card: #21242f;
+      --border: #2e3245;
+      --accent: #7c6af7;
+      --accent-soft: #3d3566;
+      --green: #4ade80;
+      --yellow: #facc15;
+      --red: #f87171;
+      --text: #e2e4ed;
+      --muted: #7a7f99;
+      --tag: #2a2d3e;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: 'Pretendard', 'Apple SD Gothic Neo', system-ui, sans-serif;
+      font-size: 15px;
+      line-height: 1.7;
+      padding: 40px 20px 80px;
+    }
+    .wrap { max-width: 720px; margin: 0 auto; }
+
+    .header { margin-bottom: 48px; }
+    .date-label {
+      font-size: 12px;
+      color: var(--muted);
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      margin-bottom: 8px;
+    }
+    h1 {
+      font-size: 28px;
+      font-weight: 700;
+      line-height: 1.3;
+      background: linear-gradient(135deg, #a78bfa, #60a5fa);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+    .subtitle {
+      margin-top: 10px;
+      color: var(--muted);
+      font-size: 14px;
+    }
+
+    .tldr {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-left: 3px solid var(--accent);
+      border-radius: 10px;
+      padding: 20px 24px;
+      margin-bottom: 40px;
+      font-size: 14px;
+      color: #c0c4d8;
+      line-height: 1.8;
+    }
+
+    .section-label {
+      font-size: 11px;
+      color: var(--accent);
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      font-weight: 600;
+      margin-bottom: 20px;
+    }
+
+    .decision {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 24px;
+      margin-bottom: 20px;
+      position: relative;
+      overflow: hidden;
+    }
+    .decision::before {
+      content: '';
+      position: absolute;
+      top: 0; left: 0; right: 0;
+      height: 2px;
+      background: linear-gradient(90deg, var(--accent), transparent);
+    }
+    .decision-num {
+      font-size: 11px;
+      color: var(--muted);
+      font-weight: 600;
+      letter-spacing: 0.08em;
+      margin-bottom: 6px;
+    }
+    .decision h2 {
+      font-size: 16px;
+      font-weight: 700;
+      color: var(--text);
+      margin-bottom: 16px;
+    }
+    .block { margin-bottom: 14px; }
+    .block-label {
+      font-size: 11px;
+      font-weight: 700;
+      color: var(--muted);
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      margin-bottom: 5px;
+    }
+    .block p {
+      font-size: 14px;
+      color: #bcc0d8;
+      line-height: 1.75;
+    }
+
+    .insight {
+      background: var(--accent-soft);
+      border: 1px solid #4d3fa0;
+      border-radius: 8px;
+      padding: 12px 16px;
+      margin-top: 12px;
+      font-size: 13px;
+      color: #c4b8ff;
+      line-height: 1.7;
+    }
+    .insight::before { content: '💡 '; }
+
+    .honest {
+      background: #1e2535;
+      border: 1px solid #2a3350;
+      border-radius: 8px;
+      padding: 12px 16px;
+      margin-top: 12px;
+      font-size: 13px;
+      color: #9ba8c4;
+      line-height: 1.7;
+    }
+
+    .mentor {
+      background: #1a2d1e;
+      border: 1px solid #2a4a2e;
+      border-radius: 8px;
+      padding: 12px 16px;
+      margin-top: 12px;
+      font-size: 13px;
+      color: #86c98a;
+      line-height: 1.7;
+    }
+    .mentor::before { content: '🎯 멘토 조언: '; font-weight: 700; }
+
+    .stats {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 24px;
+      margin-bottom: 40px;
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+      gap: 16px;
+    }
+    .stat { text-align: center; }
+    .stat-val {
+      font-size: 24px;
+      font-weight: 800;
+      color: var(--accent);
+      display: block;
+      line-height: 1.2;
+    }
+    .stat-label {
+      font-size: 11px;
+      color: var(--muted);
+      margin-top: 4px;
+      line-height: 1.4;
+    }
+
+    .next {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 24px;
+    }
+    .next h3 {
+      font-size: 14px;
+      font-weight: 700;
+      color: var(--text);
+      margin-bottom: 14px;
+    }
+    .next ul {
+      list-style: none;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+    .next li {
+      font-size: 13px;
+      color: #9ba8c4;
+      padding-left: 20px;
+      position: relative;
+    }
+    .next li::before {
+      content: '→';
+      position: absolute;
+      left: 0;
+      color: var(--accent);
+    }
+
+    .divider {
+      border: none;
+      border-top: 1px solid var(--border);
+      margin: 40px 0;
+    }
+  </style>
+</head>
+<body>
+<div class="wrap">
+
+  <div class="header">
+    <div class="date-label">Daily Retro · 2026-04-09</div>
+    <h1>흐름은 알았는데,<br>왜인지를 몰랐던 날</h1>
+    <p class="subtitle">MVP4 M3 웹 timeout 완료 + 로드맵 재편 + 멘토 발표</p>
+  </div>
+
+  <div class="tldr">
+    MVP4 5개 마일스톤을 정의하고, 웹 요약 timeout을 구현했다. 그런데 멘토에게 발표하면서
+    드러난 건 흐름만 알고 "왜"를 모른다는 것이었다. 쿠키가 뭔지, PKCE를 왜 쓰는지,
+    JWT와 idToken의 차이가 뭔지 — 말로 설명하려니 막혔다.
+    개념과 구현을 동시에 빠르게 하려다 둘 다 어중간해진 패턴을 오늘 직면했다.
+  </div>
+
+  <div class="section-label">오늘의 결정 · 인사이트</div>
+
+  <!-- Decision 01 -->
+  <div class="decision">
+    <div class="decision-num">DECISION 01</div>
+    <h2>MVP4 로드맵을 5개 마일스톤으로 재편 — 기획은 "무엇을 만들지" 이지 "어떻게 만들지"가 아니다</h2>
+
+    <div class="block">
+      <div class="block-label">결정</div>
+      <p>
+        MVP4 작업 목록을 M1~M5로 재편했다. 각 마일스톤은 구현 범위(무엇을 만들지)를 정의하는 것이고,
+        코드 구현 방법은 여기 담지 않는다. 9단계 workflow 적합성을 기준으로 아이템을 분류했다.
+      </p>
+    </div>
+
+    <div class="block">
+      <div class="block-label">왜 이게 중요한가</div>
+      <p>
+        마일스톤 정의를 하면서 "구현 방법"까지 같이 생각하려 했는데, 그러면 기획이 아니라
+        설계가 돼버린다. 마일스톤은 범위를 잡는 것. 어떻게 만들지는 workflow 안에서 결정한다.
+        이 구분이 명확해지면 기획 단계에서 헤매는 시간이 줄어든다.
+      </p>
+    </div>
+
+    <div class="insight">
+      마일스톤 = "무엇을" / workflow = "어떻게". 이 구분이 흐리면 기획이 설계가 되고,
+      설계가 구현이 되면서 범위가 계속 커진다. M3 범위 축소가 좋은 사례 —
+      ErrorBanner 공통화는 "어떻게"의 문제였고, 새 화면 추가 시점(MVP5)에 같이 하는 게 맞다.
+    </div>
+  </div>
+
+  <!-- Decision 02 -->
+  <div class="decision">
+    <div class="decision-num">DECISION 02</div>
+    <h2>웹 요약 timeout — iOS M2와 같은 패턴으로 동기화</h2>
+
+    <div class="block">
+      <div class="block-label">결정</div>
+      <p>
+        웹 요약 API 호출에 30초 timeout + 재시도 버튼을 구현했다.
+        iOS M2에서 쓴 AbortController 패턴을 웹에 그대로 적용해 크로스 플랫폼 UX를 맞췄다.
+      </p>
+    </div>
+
+    <div class="block">
+      <div class="block-label">왜</div>
+      <p>
+        iOS에서 요약이 느릴 때 사용자가 무한 로딩에 갇히는 문제를 M2에서 해결했고,
+        웹도 같은 상황이 발생한다. 패턴을 재사용하면 UX 일관성도 확보하고 구현도 빠르다.
+      </p>
+    </div>
+
+    <div class="insight">
+      같은 문제를 두 플랫폼에서 같은 방식으로 풀 수 있다면, 첫 번째 구현이 레퍼런스가 된다.
+      iOS M2 → 웹 M3 순서가 그래서 맞았다.
+    </div>
+  </div>
+
+  <!-- Decision 03 -->
+  <div class="decision">
+    <div class="decision-num">DECISION 03</div>
+    <h2>멘토 발표에서 드러난 것 — 흐름은 알지만 "왜"를 모른다</h2>
+
+    <div class="block">
+      <div class="block-label">어떤 상황이었나</div>
+      <p>
+        지금까지 구현한 것의 흐름·용어·개념을 정리해 Reveal.js 프레젠테이션으로 만들었고,
+        멘토에게 발표했다. 흐름은 대충 알고 있었는데, 설명하려니 계속 막혔다.
+        쿠키를 왜 쓰는지, 도식의 인증 흐름이 실제와 다르다는 것, PKCE가 뭔지 —
+        공부 목록은 따로 정리했다. (<code>progress/notes.md</code>)
+      </p>
+    </div>
+
+    <div class="block">
+      <div class="block-label">도식화 문제</div>
+      <p>
+        인증과 서비스를 하나의 도식으로 묶어 표현했는데, 실제로는 인증은 Supabase SDK를 타고
+        우리 서버를 거치지 않는다. 하나로 합쳐놓으니 잘못된 정보가 도식에 나왔고 보기도 복잡했다.
+        인증 흐름 / 서비스 흐름을 두 개로 분리해야 한다.
+      </p>
+    </div>
+
+    <div class="block">
+      <div class="block-label">근본 원인</div>
+      <p>
+        개념 공부와 구현을 동시에 빠르게 하려다 둘 다 어중간해졌다.
+        하나에 너무 깊게 파려는 성향 때문에 오히려 넘어가버렸고,
+        그 결과 지금 뭘 만들고 있는지, 어떻게 동작하는지를 말로 설명하지 못하는 상태가 쌓였다.
+      </p>
+    </div>
+
+    <div class="honest">
+      이건 기술 문제가 아니라 학습 방식의 문제다. 완전히 이해하고 넘어가려는 욕심이
+      오히려 아무것도 제대로 모르는 상태를 만들었다. 발표에서 드러난 게 오히려 다행이다.
+    </div>
+
+    <div class="mentor">
+      개념은 "설명할 수 있을 정도"로만 이해하고 구현을 진행해라.
+      나중에 같은 개념을 다시 마주칠 때 그때 더 깊게 파면 된다.
+      빠르게 자주 보는 나선형 방식으로. 처음부터 완벽하게 이해하려 하지 마라.
+    </div>
+  </div>
+
+  <hr class="divider" />
+
+  <div class="section-label">오늘의 숫자</div>
+  <div class="stats">
+    <div class="stat">
+      <span class="stat-val">5</span>
+      <span class="stat-label">MVP4 마일스톤<br>재편 완료</span>
+    </div>
+    <div class="stat">
+      <span class="stat-val">4</span>
+      <span class="stat-val" style="font-size:14px; color: var(--green);">✅</span>
+      <span class="stat-label">M1~M4 완료<br>M5만 남음</span>
+    </div>
+    <div class="stat">
+      <span class="stat-val">18</span>
+      <span class="stat-label">프레젠테이션<br>슬라이드 수</span>
+    </div>
+    <div class="stat">
+      <span class="stat-val">∞</span>
+      <span class="stat-label">나선형 학습<br>사이클 시작</span>
+    </div>
+  </div>
+
+  <div class="section-label">다음에 할 것</div>
+  <div class="next">
+    <ul>
+      <li>MVP4 M5 시작 — 데이터 품질 (태그 stale 해소 + Supabase Manual Linking 조사)</li>
+      <li>프레젠테이션 개선 — 인증/서비스 도식 분리, 각 용어에 "왜 썼는지 + 장단점" 추가</li>
+      <li>MVP4 M5 시작 — 데이터 품질 (태그 stale 해소 + Supabase Manual Linking 조사)</li>
+      <li>인증 흐름 도식 재작성 — Supabase SDK 경로 / 우리 서버 경로 분리</li>
+      <li>공부할 개념 목록 정리 — <code>progress/notes.md</code> 참고, 나선형으로 하나씩</li>
+    </ul>
+  </div>
+
+</div>
+</body>
+</html>
