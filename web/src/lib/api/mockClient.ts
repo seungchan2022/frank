@@ -112,7 +112,8 @@ export const mockApiClient: ApiClient = {
 		return delay(1, 200);
 	},
 
-	async summarizeArticles(): Promise<number> {
+	async summarizeArticles(_signal?: AbortSignal): Promise<number> {
+		// mock은 즉시 완료되므로 AbortSignal 무시 (실서버 지연 없음)
 		// 시뮬레이션: 미요약 기사들에 가짜 요약 채우기
 		let count = 0;
 		articles = articles.map((a) => {

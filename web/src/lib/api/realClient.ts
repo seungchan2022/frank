@@ -124,8 +124,11 @@ export const realApiClient: ApiClient = {
 		return data.collected;
 	},
 
-	async summarizeArticles(): Promise<number> {
-		const data = await request<{ summarized: number }>('/api/me/summarize', { method: 'POST' });
+	async summarizeArticles(signal?: AbortSignal): Promise<number> {
+		const data = await request<{ summarized: number }>('/api/me/summarize', {
+			method: 'POST',
+			signal
+		});
 		return data.summarized;
 	}
 };

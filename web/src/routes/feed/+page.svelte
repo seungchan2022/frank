@@ -15,10 +15,21 @@
 	let loading = $state(false);
 	let loadingMore = $state(false);
 	let summarizing = $state(false);
+	let summarizingTimeout = $state(false);
 	let error = $state<string | null>(null);
 	let hasMore = $state(true);
 	let sentinel = $state<HTMLDivElement | null>(null);
 	let selectedTagId = $state<string | null>(null);
+
+	const SUMMARIZE_TIMEOUT_MS = 30_000;
+	let summarizeTimerId: ReturnType<typeof setTimeout> | null = null;
+
+	function clearSummarizeTimer() {
+		if (summarizeTimerId !== null) {
+			clearTimeout(summarizeTimerId);
+			summarizeTimerId = null;
+		}
+	}
 
 	const tagMap = $derived(
 		tags.reduce<Record<string, string>>((acc, tag) => {
@@ -65,7 +76,10 @@
 			}
 		});
 
-		return () => observer.disconnect();
+		return () => {
+			observer.disconnect();
+			clearSummarizeTimer(); // 언마운트 시 진행 중인 타이머 정리
+		};
 	});
 
 	async function loadInitial() {
@@ -138,9 +152,21 @@
 	}
 
 	async function handleSummarize() {
+		const controller = new AbortController();
+
+		// 이전 요약 상태 전부 초기화 후 시작 (부분 리셋 시 이전 에러/타임아웃 잔류 방지)
 		summarizing = true;
+		summarizingTimeout = false;
+		error = null;
+
+		// 30초 후 요청을 중단해 타임아웃 배너로 전환
+		summarizeTimerId = setTimeout(() => {
+			summarizingTimeout = true;
+			controller.abort();
+		}, SUMMARIZE_TIMEOUT_MS);
+
 		try {
-			await apiClient.summarizeArticles();
+			await apiClient.summarizeArticles(controller.signal);
 			const arts = await apiClient.fetchArticles({
 				offset: 0,
 				limit: articles.length || 10,
@@ -148,10 +174,23 @@
 			});
 			articles = arts;
 		} catch (e) {
-			error = e instanceof Error ? e.message : 'Failed to summarize articles';
+			// AbortError는 타임아웃 콜백에서 이미 summarizingTimeout = true로 처리됨
+			if (!(e instanceof DOMException && e.name === 'AbortError')) {
+				error = e instanceof Error ? e.message : 'Failed to summarize articles';
+			}
 		} finally {
+			clearSummarizeTimer();
 			summarizing = false;
 		}
+	}
+
+	async function retrySummarize() {
+		// 타임아웃 배너에서 "다시 시도" 클릭 시: 잔류 타이머 정리 후 재시작
+		// summarizing guard: 이미 요약 중이면 중복 실행 방지
+		if (summarizing) return;
+		summarizingTimeout = false;
+		clearSummarizeTimer();
+		await handleSummarize();
 	}
 </script>
 
@@ -167,7 +206,7 @@
 					disabled={summarizing || loading}
 					class="rounded-lg border border-purple-300 bg-purple-50 px-4 py-2 text-sm font-medium text-purple-700 hover:bg-purple-100 disabled:opacity-50"
 				>
-					{summarizing ? 'Summarizing...' : 'Summarize'}
+					Summarize
 				</button>
 				<button
 					onclick={handleRefresh}
@@ -202,11 +241,41 @@
 			{/each}
 		</div>
 
+		<!-- 요약 진행 배너 -->
+		{#if summarizing && !summarizingTimeout}
+			<div class="mb-4 flex items-center gap-2 rounded-lg bg-gray-100 px-4 py-3 text-sm text-gray-500">
+				<svg class="h-4 w-4 animate-spin" fill="none" viewBox="0 0 24 24">
+					<circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+					<path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"></path>
+				</svg>
+				AI가 요약하고 있어요...
+			</div>
+		{/if}
+
+		<!-- 타임아웃 배너 — summarizing 여부와 무관하게 표시 -->
+		{#if summarizingTimeout}
+			<div class="mb-4 flex items-center gap-3 rounded-lg bg-orange-50 px-4 py-3 text-sm">
+				<svg class="h-4 w-4 flex-shrink-0 text-orange-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+					<path stroke-linecap="round" stroke-linejoin="round" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+				</svg>
+				<span class="flex-1 text-gray-600">요약이 오래 걸리고 있어요</span>
+				<button
+					onclick={retrySummarize}
+					class="rounded border border-orange-300 bg-white px-3 py-1 text-xs font-medium text-orange-600 hover:bg-orange-50"
+				>
+					다시 시도
+				</button>
+			</div>
+		{/if}
+
+		<!-- 에러 배너 -->
 		{#if error}
-			<div class="rounded-lg border border-red-200 bg-red-50 p-4 text-sm text-red-700">
+			<div class="mb-4 rounded-lg border border-red-200 bg-red-50 p-4 text-sm text-red-700">
 				{error}
 			</div>
-		{:else if loading && articles.length === 0}
+		{/if}
+
+		{#if loading && articles.length === 0}
 			<div class="py-12 text-center text-gray-500">
 				<p>Loading articles...</p>
 			</div>
