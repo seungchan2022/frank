@@ -48,6 +48,12 @@ final class AuthFeature {
         error = nil
     }
 
+    /// Apple 로그인 취소 외의 에러를 LoginView에서 직접 전달할 때 사용.
+    func send(_ error: Error) {
+        state = .unauthenticated
+        self.error = error
+    }
+
     // MARK: - Private
 
     private func checkSession() async {

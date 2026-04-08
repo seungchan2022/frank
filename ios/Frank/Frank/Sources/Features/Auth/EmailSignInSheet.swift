@@ -57,16 +57,14 @@ struct EmailSignInSheet: View {
                 ToolbarItem(placement: .cancellationAction) {
                     Button("닫기") { dismiss() }
                 }
-            }
-            .safeAreaInset(edge: .bottom) {
-                Button {
-                    isSignUp.toggle()
-                } label: {
-                    Text(isSignUp ? "이미 계정이 있나요? 로그인" : "계정이 없나요? 회원가입")
-                        .font(.footnote)
+                ToolbarItem(placement: .bottomBar) {
+                    Button {
+                        isSignUp.toggle()
+                    } label: {
+                        Text(isSignUp ? "이미 계정이 있나요? 로그인" : "계정이 없나요? 회원가입")
+                            .font(.footnote)
+                    }
                 }
-                .frame(maxWidth: .infinity)
-                .padding(.vertical, 12)
             }
             .onChange(of: feature.state) { _, newValue in
                 if case .authenticated = newValue {
@@ -75,6 +73,16 @@ struct EmailSignInSheet: View {
             }
         }
         .presentationDetents([.medium])
+        .alert("오류", isPresented: .init(
+            get: { feature.error != nil },
+            set: { if !$0 { feature.clearError() } }
+        )) {
+            Button("확인") { feature.clearError() }
+        } message: {
+            if let error = feature.error {
+                Text(error.localizedDescription)
+            }
+        }
     }
 
     private func submit() {

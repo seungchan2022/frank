@@ -79,9 +79,13 @@ struct LoginView: View {
             Task {
                 await feature.send(.signInWithApple(idToken: idTokenString, rawNonce: nonce))
             }
-        case .failure:
-            // 사용자가 취소한 경우 — 별도 처리 불필요
-            break
+        case .failure(let error):
+            // 사용자가 직접 취소한 경우 무시
+            if let authError = error as? ASAuthorizationError, authError.code == .canceled {
+                return
+            }
+            // 그 외 에러는 feature에 전달 (alert 표시)
+            feature.send(error)
         }
     }
 }

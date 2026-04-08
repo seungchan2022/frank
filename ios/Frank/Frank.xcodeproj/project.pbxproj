@@ -80,6 +80,7 @@
 		D48435F7B072FA9C70833FB7 /* TagChipBarView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7D9496C483F9E9D113A3A134 /* TagChipBarView.swift */; };
 		D59B52177ABC739480991469 /* PortContractTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = EEC784286BBC209A404AB018 /* PortContractTests.swift */; };
 		D5F057949A5571E2210F3249 /* MockFixtures.swift in Sources */ = {isa = PBXBuildFile; fileRef = 12E7761FF75A3377EF8D821C /* MockFixtures.swift */; };
+		D683287CA6629FDFE1C66DD6 /* AppleSignInHelperTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9EDBC1042DA502AA7D20D7D7 /* AppleSignInHelperTests.swift */; };
 		D8F6E0EA0ECA0820ED120A65 /* CollectPort.swift in Sources */ = {isa = PBXBuildFile; fileRef = FCECD344DC6F839CF9A42C87 /* CollectPort.swift */; };
 		DBF6F8BF5CB7CC94961AAC3E /* MockTagAdapter.swift in Sources */ = {isa = PBXBuildFile; fileRef = BE18C30FA4C00548C0738301 /* MockTagAdapter.swift */; };
 		DBF91D58C91370D2108AC200 /* TagPort.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9D056DE8B30EF660F5AA41E4 /* TagPort.swift */; };
@@ -213,6 +214,7 @@
 		963F9203A7A30E9F6845F72A /* Frank.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Frank.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		9CF4FFE942B3AA1EC2B85867 /* Storage.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; includeInIndex = 0; path = Storage.framework; sourceTree = BUILT_PRODUCTS_DIR; };
 		9D056DE8B30EF660F5AA41E4 /* TagPort.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TagPort.swift; sourceTree = "<group>"; };
+		9EDBC1042DA502AA7D20D7D7 /* AppleSignInHelperTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppleSignInHelperTests.swift; sourceTree = "<group>"; };
 		A9683C6B43DA974DCE5DD999 /* APITagAdapter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = APITagAdapter.swift; sourceTree = "<group>"; };
 		AAFFFD722BFE1D8068F82CBA /* TuistPlists+Frank.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "TuistPlists+Frank.swift"; sourceTree = "<group>"; };
 		AB571C1F1F7E8867D4716BAA /* Article.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Article.swift; sourceTree = "<group>"; };
@@ -295,6 +297,7 @@
 			isa = PBXGroup;
 			children = (
 				43FAB80D5C15DDCF5C41F6D8 /* AppDependenciesTests.swift */,
+				9EDBC1042DA502AA7D20D7D7 /* AppleSignInHelperTests.swift */,
 				C00B77130ECC94BD04814CE9 /* ArticleDetailFeatureTests.swift */,
 				AD78FFC05481C8B83E3B3F71 /* AuthFeatureTests.swift */,
 				C096BCCBE247FCB12D3140FB /* AuthFlowUITest.swift */,
@@ -795,6 +798,7 @@
 				8203E8CD3B8D455325E2B205 /* EmptyStateViewTests.swift in Sources */,
 				4F61ED1423EF0B17A7FEA2B9 /* TagChipBarViewTests.swift in Sources */,
 				75CAD4C21FA8379DEF6686E5 /* AppDependenciesTests.swift in Sources */,
+				D683287CA6629FDFE1C66DD6 /* AppleSignInHelperTests.swift in Sources */,
 				1B108E65BFCC8A4CACA11AA5 /* ArticleDetailFeatureTests.swift in Sources */,
 				F177587426E214F0D1BBD747 /* AuthFeatureTests.swift in Sources */,
 				66A7F3C8964B89BB7A013073 /* AuthFlowUITest.swift in Sources */,

@@ -26,9 +26,9 @@ struct RootView: View {
 
     var body: some View {
         switch feature.state {
-        case .checkingSession, .authenticating:
+        case .checkingSession:
             SplashView(feature: feature)
-        case .unauthenticated:
+        case .unauthenticated, .authenticating:
             LoginView(feature: feature)
         case .authenticated(let profile):
             if profile.onboardingCompleted {
