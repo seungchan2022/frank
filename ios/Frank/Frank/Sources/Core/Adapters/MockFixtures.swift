@@ -33,12 +33,19 @@ enum MockFixtures {
         Tag(id: tagDesign, name: "디자인", category: nil)
     ]
 
-    // MARK: - Profile fixture
+    // MARK: - Profile fixtures
 
     static let profile = Profile(
         id: mockUserId,
         displayName: "Mock User",
         onboardingCompleted: true
+    )
+
+    /// 온보딩 미완료 신규 사용자 fixture (TC-02)
+    static let newUserProfile = Profile(
+        id: mockUserId,
+        displayName: "Mock User",
+        onboardingCompleted: false
     )
 
     // MARK: - Article fixtures

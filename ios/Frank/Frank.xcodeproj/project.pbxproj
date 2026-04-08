@@ -25,6 +25,7 @@
 		320D44072834AB052F5FA0C2 /* swift-crypto_Crypto.bundle in Dependencies */ = {isa = PBXBuildFile; fileRef = 37670072226AC2A91EA7B29D /* swift-crypto_Crypto.bundle */; };
 		3A40536CBD27C0985CEE46E1 /* AuthPort.swift in Sources */ = {isa = PBXBuildFile; fileRef = 776D5B7E6632A447AF1F435D /* AuthPort.swift */; };
 		3B96BA6C0697FF2CC8D53502 /* FeedFeature.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2D9C2BEE2748078EA4D9C314 /* FeedFeature.swift */; };
+		3CD2EB50E5DEBCDD5A233A05 /* LoginFlowUITest.swift in Sources */ = {isa = PBXBuildFile; fileRef = EB8DDF05C2814294A438BC72 /* LoginFlowUITest.swift */; };
 		3F802F85360BE24F92FF95B9 /* Auth.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 6AB49EFA38B9EC19ACCFB0D1 /* Auth.framework */; };
 		4020195B3F7D2F5B0DFDD8E5 /* AppleSignInHelper.swift in Sources */ = {isa = PBXBuildFile; fileRef = 05A15B55BAA63D4848A0355C /* AppleSignInHelper.swift */; };
 		45B19CACED34B6C149CB4230 /* Article.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB571C1F1F7E8867D4716BAA /* Article.swift */; };
@@ -243,6 +244,7 @@
 		E8015A7E829FCD30E0F18482 /* XCTestDynamicOverlay.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; includeInIndex = 0; path = XCTestDynamicOverlay.framework; sourceTree = BUILT_PRODUCTS_DIR; };
 		E910979DCC81EFEA39CBEAFD /* ArticleFilter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ArticleFilter.swift; sourceTree = "<group>"; };
 		EB0DD21ECF33383D24DB0B37 /* Clocks.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; includeInIndex = 0; path = Clocks.framework; sourceTree = BUILT_PRODUCTS_DIR; };
+		EB8DDF05C2814294A438BC72 /* LoginFlowUITest.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LoginFlowUITest.swift; sourceTree = "<group>"; };
 		ED671A0ED94834053997DFD6 /* ArticleDetailFeature.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ArticleDetailFeature.swift; sourceTree = "<group>"; };
 		EE4527C03F473DDEDFA17A0C /* MockTagPort.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MockTagPort.swift; sourceTree = "<group>"; };
 		EEC784286BBC209A404AB018 /* PortContractTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PortContractTests.swift; sourceTree = "<group>"; };
@@ -326,6 +328,7 @@
 			isa = PBXGroup;
 			children = (
 				FE4500A81F7D0FCAF50285F6 /* CrossFeatureFlowUITest.swift */,
+				EB8DDF05C2814294A438BC72 /* LoginFlowUITest.swift */,
 				9573D714FA626A46DDE59685 /* OnboardingFlowUITest.swift */,
 			);
 			path = FrankUITests;
@@ -783,6 +786,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				52DD9C96D32A278DDB993735 /* CrossFeatureFlowUITest.swift in Sources */,
+				3CD2EB50E5DEBCDD5A233A05 /* LoginFlowUITest.swift in Sources */,
 				B7BDA6546104C807CF303301 /* OnboardingFlowUITest.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;

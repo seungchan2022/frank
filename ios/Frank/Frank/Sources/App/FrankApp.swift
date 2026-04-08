@@ -83,7 +83,8 @@ struct FeedContainerView: View {
         self._feedFeature = State(initialValue: FeedFeature(
             article: dependencies.article,
             collect: dependencies.collect,
-            tag: dependencies.tag
+            tag: dependencies.tag,
+            summarizeTimeoutSeconds: dependencies.summarizeTimeoutSeconds
         ))
     }
 

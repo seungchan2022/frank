@@ -7,17 +7,21 @@ final class AppDependencies {
     let tag: any TagPort
     let article: any ArticlePort
     let collect: any CollectPort
+    /// 요약 타임아웃 (초). UITest에서 FRANK_SUMMARIZE_TIMEOUT_SECONDS로 짧게 주입 (TC-03).
+    let summarizeTimeoutSeconds: Double
 
     init(
         auth: any AuthPort,
         tag: any TagPort,
         article: any ArticlePort,
-        collect: any CollectPort
+        collect: any CollectPort,
+        summarizeTimeoutSeconds: Double = 30
     ) {
         self.auth = auth
         self.tag = tag
         self.article = article
         self.collect = collect
+        self.summarizeTimeoutSeconds = summarizeTimeoutSeconds
     }
 
     static func live() -> AppDependencies {
@@ -44,19 +48,36 @@ final class AppDependencies {
             auth: authAdapter,
             tag: APITagAdapter(auth: authAdapter, serverConfig: serverConfig),
             article: APIArticleAdapter(auth: authAdapter, serverConfig: serverConfig),
-            collect: APICollectAdapter(auth: authAdapter, serverConfig: serverConfig)
+            collect: APICollectAdapter(auth: authAdapter, serverConfig: serverConfig),
+            summarizeTimeoutSeconds: Self.parseSummarizeTimeout()
         )
     }
 
     /// Mock 의존성 — fixture 기반, 외부 호출 0.
-    /// M1.5 병렬 개발 시 양쪽 탭이 외부 자원을 공유하지 않도록 격리.
+    ///
+    /// `FRANK_UI_SCENARIO` 환경변수로 시나리오 주입:
+    /// - `logged_out`: 로그인 화면 노출 (TC-01)
+    /// - `new_user`: 온보딩 화면 노출 (TC-02)
+    /// - `summarize_timeout`: 요약 타임아웃 재현 (TC-03)
     static func mock() -> AppDependencies {
-        AppDependencies(
-            auth: MockAuthAdapter(),
+        let scenario = ProcessInfo.processInfo.environment["FRANK_UI_SCENARIO"]
+
+        let profile = scenario == "new_user" ? MockFixtures.newUserProfile : MockFixtures.profile
+
+        return AppDependencies(
+            auth: MockAuthAdapter(profile: profile, scenario: scenario),
             tag: MockTagAdapter(),
             article: MockArticleAdapter(),
-            collect: MockCollectAdapter()
+            collect: MockCollectAdapter(scenario: scenario),
+            summarizeTimeoutSeconds: Self.parseSummarizeTimeout()
         )
+    }
+
+    // MARK: - Helpers
+
+    /// `FRANK_SUMMARIZE_TIMEOUT_SECONDS` 환경변수를 파싱한다. 미설정/파싱 실패 시 30초 반환.
+    private static func parseSummarizeTimeout() -> Double {
+        Double(ProcessInfo.processInfo.environment["FRANK_SUMMARIZE_TIMEOUT_SECONDS"] ?? "") ?? 30
     }
 }
 
