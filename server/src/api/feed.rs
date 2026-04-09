@@ -129,6 +129,7 @@ mod tests {
     use crate::domain::ports::SearchChainPort;
     use crate::infra::fake_crawl::FakeCrawlAdapter;
     use crate::infra::fake_db::FakeDbAdapter;
+    use crate::infra::fake_favorites::FakeFavoritesAdapter;
     use crate::infra::fake_llm::FakeLlmAdapter;
     use crate::infra::fake_notification::FakeNotificationAdapter;
     use crate::infra::fake_search::FakeSearchAdapter;
@@ -155,6 +156,7 @@ mod tests {
             llm: Arc::new(FakeLlmAdapter::new()),
             crawl: Arc::new(FakeCrawlAdapter::new()),
             notifier: Arc::new(FakeNotificationAdapter::new()),
+            favorites: Arc::new(FakeFavoritesAdapter::new()),
         }
     }
 
@@ -349,6 +351,7 @@ mod tests {
             llm: Arc::new(FakeLlmAdapter::new()),
             crawl: Arc::new(FakeCrawlAdapter::new()),
             notifier: Arc::new(FakeNotificationAdapter::new()),
+            favorites: Arc::new(FakeFavoritesAdapter::new()),
         };
         let app = make_app(state, user_id);
         let server = TestServer::new(app);

@@ -14,6 +14,9 @@ pub enum AppError {
 
     #[error("Internal error: {0}")]
     Internal(String),
+
+    #[error("Timeout: {0}")]
+    Timeout(String),
 }
 
 impl IntoResponse for AppError {
@@ -29,6 +32,7 @@ impl IntoResponse for AppError {
                     "Internal server error".to_string(),
                 )
             }
+            AppError::Timeout(msg) => (StatusCode::GATEWAY_TIMEOUT, msg.clone()),
         };
 
         let body = serde_json::json!({ "error": message });
@@ -67,6 +71,19 @@ mod tests {
         let err = AppError::Internal("boom".to_string());
         let resp = err.into_response();
         assert_eq!(resp.status(), StatusCode::INTERNAL_SERVER_ERROR);
+    }
+
+    #[test]
+    fn timeout_returns_504() {
+        let err = AppError::Timeout("took too long".to_string());
+        let resp = err.into_response();
+        assert_eq!(resp.status(), StatusCode::GATEWAY_TIMEOUT);
+    }
+
+    #[test]
+    fn timeout_body_contains_message() {
+        let body = extract_body(AppError::Timeout("request timed out".to_string()));
+        assert_eq!(body, serde_json::json!({"error": "request timed out"}));
     }
 
     #[test]

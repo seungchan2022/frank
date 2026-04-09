@@ -9,12 +9,12 @@ use std::sync::Arc;
 
 use axum::http::{HeaderValue, Method, header};
 use axum::middleware::from_fn;
-use axum::routing::{get, put};
+use axum::routing::{get, post, put};
 use axum::{Extension, Router};
 use tower_http::cors::CorsLayer;
 
 use api::AppState;
-use domain::ports::{CrawlPort, DbPort, LlmPort, NotificationPort, SearchChainPort};
+use domain::ports::{CrawlPort, DbPort, FavoritesPort, LlmPort, NotificationPort, SearchChainPort};
 use middleware::auth::SupabaseConfig;
 
 /// 웹/iOS 클라이언트용 CORS 레이어.
@@ -48,6 +48,7 @@ pub fn create_router<D: DbPort + Clone + 'static>(
     llm: Arc<dyn LlmPort>,
     crawl: Arc<dyn CrawlPort>,
     notifier: Arc<dyn NotificationPort>,
+    favorites: Arc<dyn FavoritesPort>,
 ) -> Router {
     let state = AppState {
         db,
@@ -55,6 +56,7 @@ pub fn create_router<D: DbPort + Clone + 'static>(
         llm,
         crawl,
         notifier,
+        favorites,
     };
 
     let auth_routes = Router::new()
@@ -65,6 +67,8 @@ pub fn create_router<D: DbPort + Clone + 'static>(
         .route("/me/tags", axum::routing::post(api::tags::save_my_tags::<D>))
         // MVP5 M1: GET /me/feed — 검색 API 직접 호출 (DB 저장 없음)
         .route("/me/feed", get(api::feed::get_feed::<D>))
+        // MVP5 M2: POST /me/summarize — URL 크롤링 + LLM 요약
+        .route("/me/summarize", post(api::summarize::post_summarize::<D>))
         // MVP5 M3 준비: favorites 엔드포인트는 M3에서 추가
         .layer(from_fn(middleware::auth::require_auth))
         .layer(Extension(supabase_config));
@@ -88,6 +92,7 @@ mod tests {
     use crate::create_router;
     use crate::infra::fake_crawl::FakeCrawlAdapter;
     use crate::infra::fake_db::FakeDbAdapter;
+    use crate::infra::fake_favorites::FakeFavoritesAdapter;
     use crate::infra::fake_llm::FakeLlmAdapter;
     use crate::infra::fake_notification::FakeNotificationAdapter;
     use crate::infra::fake_search::FakeSearchAdapter;
@@ -110,6 +115,7 @@ mod tests {
             Arc::new(FakeLlmAdapter::new()),
             Arc::new(FakeCrawlAdapter::new()),
             Arc::new(FakeNotificationAdapter::new()),
+            Arc::new(FakeFavoritesAdapter::new()),
         );
         TestServer::new(router)
     }

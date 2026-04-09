@@ -1,6 +1,7 @@
 pub mod exa;
 pub mod fake_crawl;
 pub mod fake_db;
+pub mod fake_favorites;
 pub mod fake_llm;
 pub mod fake_notification;
 pub mod fake_search;
@@ -9,5 +10,6 @@ pub mod http_utils;
 pub mod imessage;
 pub mod openrouter;
 pub mod postgres_db;
+pub mod postgres_favorites;
 pub mod search_chain;
 pub mod tavily;

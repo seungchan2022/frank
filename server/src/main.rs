@@ -7,6 +7,7 @@ use server::infra::firecrawl::FirecrawlAdapter;
 use server::infra::imessage::{ImessageAdapter, LogOnlyNotificationAdapter};
 use server::infra::openrouter::OpenRouterAdapter;
 use server::infra::postgres_db::PostgresDbAdapter;
+use server::infra::postgres_favorites::PostgresFavoritesAdapter;
 use server::infra::search_chain::SearchFallbackChain;
 use server::infra::tavily::TavilyAdapter;
 use server::middleware::auth::SupabaseConfig;
@@ -34,7 +35,7 @@ async fn main() {
 
     tracing::info!("connected to PostgreSQL (pool size: {})", pool.size());
 
-    let db = PostgresDbAdapter::new(pool);
+    let db = PostgresDbAdapter::new(pool.clone());
 
     let search_chain: Arc<dyn SearchChainPort> = Arc::new(SearchFallbackChain::new(vec![
         Box::new(TavilyAdapter::new(&config.tavily_api_key)),
@@ -54,6 +55,9 @@ async fn main() {
 
     let crawl: Arc<dyn server::domain::ports::CrawlPort> =
         Arc::new(FirecrawlAdapter::new(&config.firecrawl_api_key));
+
+    let favorites: Arc<dyn server::domain::ports::FavoritesPort> =
+        Arc::new(PostgresFavoritesAdapter::new(pool.clone()));
 
     // iMessage 알림: IMESSAGE_RECIPIENT 환경변수가 설정된 경우만 활성화
     let notifier: Arc<dyn server::domain::ports::NotificationPort> =
@@ -76,6 +80,7 @@ async fn main() {
         llm,
         crawl,
         notifier,
+        favorites,
     );
 
     let addr = format!("0.0.0.0:{}", config.port);

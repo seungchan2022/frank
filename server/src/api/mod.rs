@@ -1,11 +1,12 @@
 pub mod feed;
 pub mod health;
 pub mod profile;
+pub mod summarize;
 pub mod tags;
 
 use std::sync::Arc;
 
-use crate::domain::ports::{CrawlPort, DbPort, LlmPort, NotificationPort, SearchChainPort};
+use crate::domain::ports::{CrawlPort, DbPort, FavoritesPort, LlmPort, NotificationPort, SearchChainPort};
 
 #[derive(Clone)]
 pub struct AppState<D: DbPort> {
@@ -14,6 +15,7 @@ pub struct AppState<D: DbPort> {
     pub llm: Arc<dyn LlmPort>,
     pub crawl: Arc<dyn CrawlPort>,
     pub notifier: Arc<dyn NotificationPort>,
+    pub favorites: Arc<dyn FavoritesPort>,
 }
 
 impl<D: DbPort + std::fmt::Debug> std::fmt::Debug for AppState<D> {
@@ -24,6 +26,7 @@ impl<D: DbPort + std::fmt::Debug> std::fmt::Debug for AppState<D> {
             .field("llm", &"<dyn LlmPort>")
             .field("crawl", &"<dyn CrawlPort>")
             .field("notifier", &"<dyn NotificationPort>")
+            .field("favorites", &"<dyn FavoritesPort>")
             .finish()
     }
 }
@@ -33,6 +36,7 @@ mod tests {
     use super::*;
     use crate::infra::fake_crawl::FakeCrawlAdapter;
     use crate::infra::fake_db::FakeDbAdapter;
+    use crate::infra::fake_favorites::FakeFavoritesAdapter;
     use crate::infra::fake_llm::FakeLlmAdapter;
     use crate::infra::fake_notification::FakeNotificationAdapter;
     use crate::infra::fake_search::FakeSearchAdapter;
@@ -52,6 +56,7 @@ mod tests {
             llm: Arc::new(FakeLlmAdapter::new()),
             crawl: Arc::new(FakeCrawlAdapter::new()),
             notifier: Arc::new(FakeNotificationAdapter::new()),
+            favorites: Arc::new(FakeFavoritesAdapter::new()),
         };
 
         let debug_str = format!("{:?}", state);

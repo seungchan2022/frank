@@ -1,5 +1,6 @@
 use std::future::Future;
 use std::pin::Pin;
+use std::time::Duration;
 
 use crate::domain::error::AppError;
 use crate::domain::ports::CrawlPort;
@@ -7,15 +8,22 @@ use crate::domain::ports::CrawlPort;
 #[derive(Debug, Clone)]
 pub struct FakeCrawlAdapter {
     should_fail: bool,
+    sleep_secs: Option<u64>,
 }
 
 impl FakeCrawlAdapter {
     pub fn new() -> Self {
-        Self { should_fail: false }
+        Self { should_fail: false, sleep_secs: None }
     }
 
     pub fn failing() -> Self {
-        Self { should_fail: true }
+        Self { should_fail: true, sleep_secs: None }
+    }
+
+    /// tokio::time::sleep으로 지연하는 어댑터.
+    /// `tokio::time::pause()` + `advance()` 타임아웃 테스트용.
+    pub fn sleeping() -> Self {
+        Self { should_fail: false, sleep_secs: Some(60) }
     }
 }
 
@@ -31,9 +39,15 @@ impl CrawlPort for FakeCrawlAdapter {
         url: &str,
     ) -> Pin<Box<dyn Future<Output = Result<String, AppError>> + Send + '_>> {
         let url = url.to_string();
+        let should_fail = self.should_fail;
+        let sleep_secs = self.sleep_secs;
 
         Box::pin(async move {
-            if self.should_fail {
+            if let Some(secs) = sleep_secs {
+                tokio::time::sleep(Duration::from_secs(secs)).await;
+            }
+
+            if should_fail {
                 return Err(AppError::Internal("Fake crawl failure".to_string()));
             }
 

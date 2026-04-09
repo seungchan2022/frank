@@ -88,3 +88,17 @@ pub trait LlmPort: Send + Sync {
 pub trait NotificationPort: Send + Sync {
     fn send(&self, message: &str) -> Result<(), AppError>;
 }
+
+/// 즐겨찾기 포트 (M2: summary/insight 업데이트, M3: CRUD 확장)
+/// dyn compatible을 위해 boxed future 사용
+pub trait FavoritesPort: Send + Sync {
+    /// favorites 테이블에서 해당 (user_id, url) 행의 summary/insight를 업데이트.
+    /// url이 favorites에 없으면 0행 업데이트 (에러 없음).
+    fn update_favorite_summary<'a>(
+        &'a self,
+        user_id: Uuid,
+        url: &'a str,
+        summary: &'a str,
+        insight: &'a str,
+    ) -> Pin<Box<dyn Future<Output = Result<(), AppError>> + Send + 'a>>;
+}
