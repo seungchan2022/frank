@@ -3,14 +3,13 @@ pub mod config;
 pub mod domain;
 pub mod infra;
 pub mod middleware;
-pub mod scheduler;
 pub mod services;
 
 use std::sync::Arc;
 
 use axum::http::{HeaderValue, Method, header};
 use axum::middleware::from_fn;
-use axum::routing::{get, post, put};
+use axum::routing::{get, put};
 use axum::{Extension, Router};
 use tower_http::cors::CorsLayer;
 
@@ -63,11 +62,10 @@ pub fn create_router<D: DbPort + Clone + 'static>(
         .route("/me/profile", put(api::profile::update_profile::<D>))
         .route("/tags", get(api::tags::list_tags::<D>))
         .route("/me/tags", get(api::tags::get_my_tags::<D>))
-        .route("/me/tags", post(api::tags::save_my_tags::<D>))
-        .route("/me/collect", post(api::articles::collect_articles::<D>))
-        .route("/me/articles", get(api::articles::list_articles::<D>))
-        .route("/me/articles/{id}", get(api::articles::get_article::<D>))
-        // MVP5 M1: POST /me/summarize 제거 (온디맨드 요약은 M2에서 /me/articles/:id/summarize로 구현)
+        .route("/me/tags", axum::routing::post(api::tags::save_my_tags::<D>))
+        // MVP5 M1: GET /me/feed — 검색 API 직접 호출 (DB 저장 없음)
+        .route("/me/feed", get(api::feed::get_feed::<D>))
+        // MVP5 M3 준비: favorites 엔드포인트는 M3에서 추가
         .layer(from_fn(middleware::auth::require_auth))
         .layer(Extension(supabase_config));
 
@@ -80,13 +78,12 @@ pub fn create_router<D: DbPort + Clone + 'static>(
 
 #[cfg(test)]
 mod tests {
-    //! M1 신규/확장 엔드포인트의 인증 보호 회귀 테스트.
+    //! 인증 보호 회귀 테스트.
     //! `auth_routes` 전체에 `require_auth` 미들웨어가 걸려 있음을 보장한다.
 
     use std::sync::Arc;
 
     use axum_test::TestServer;
-    use uuid::Uuid;
 
     use crate::create_router;
     use crate::infra::fake_crawl::FakeCrawlAdapter;
@@ -118,18 +115,9 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn list_articles_without_auth_returns_401() {
+    async fn get_feed_without_auth_returns_401() {
         let server = make_full_app();
-        let resp = server.get("/api/me/articles").await;
-        resp.assert_status_unauthorized();
-    }
-
-    #[tokio::test]
-    async fn get_article_by_id_without_auth_returns_401() {
-        let server = make_full_app();
-        let resp = server
-            .get(&format!("/api/me/articles/{}", Uuid::new_v4()))
-            .await;
+        let resp = server.get("/api/me/feed").await;
         resp.assert_status_unauthorized();
     }
 
@@ -144,12 +132,18 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn summarize_endpoint_removed_returns_404() {
-        // MVP5 M1: POST /me/summarize 제거 확인
+    async fn collect_endpoint_removed_returns_404() {
+        // MVP5 M1: POST /me/collect 제거 확인
         let server = make_full_app();
-        let resp = server.post("/api/me/summarize").await;
-        // 인증 없으므로 401, 혹은 라우트 자체 없음(405/404)
-        // 핵심: 200 OK가 아님을 확인
+        let resp = server.post("/api/me/collect").await;
+        assert_ne!(resp.status_code(), axum::http::StatusCode::OK);
+    }
+
+    #[tokio::test]
+    async fn articles_endpoint_removed_returns_404() {
+        // MVP5 M1: GET /me/articles 제거 확인
+        let server = make_full_app();
+        let resp = server.get("/api/me/articles").await;
         assert_ne!(resp.status_code(), axum::http::StatusCode::OK);
     }
 }

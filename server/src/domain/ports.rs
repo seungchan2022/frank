@@ -4,9 +4,10 @@ use std::pin::Pin;
 use uuid::Uuid;
 
 use super::error::AppError;
-use super::models::{Article, LlmResponse, Profile, SearchResult, Tag, UserTag};
+use super::models::{LlmResponse, Profile, SearchResult, Tag, UserTag};
 
-/// DB 접근 포트 (sqlx PostgreSQL 직접 연결)
+/// DB 접근 포트 (Supabase REST API 또는 sqlx)
+/// MVP5 M1: articles 관련 메서드 제거 — 피드는 검색 API 직접 호출, DB 저장 없음
 pub trait DbPort: Send + Sync {
     fn get_profile(
         &self,
@@ -39,42 +40,6 @@ pub trait DbPort: Send + Sync {
         user_id: Uuid,
         tag_ids: Vec<Uuid>,
     ) -> impl std::future::Future<Output = Result<(), AppError>> + Send;
-
-    fn save_articles(
-        &self,
-        articles: Vec<Article>,
-    ) -> impl std::future::Future<Output = Result<usize, AppError>> + Send;
-
-    /// 유저의 기사 목록 조회 (페이지네이션).
-    ///
-    /// **계약**: `user_tags`에 등록된 활성 태그의 기사만 반환한다.
-    /// 사용자가 태그를 제거한 경우 해당 태그의 기사는 결과에서 제외된다.
-    /// `tag_id` 지정 시 해당 태그가 활성 상태일 때만 그 태그의 기사를 반환한다.
-    /// 최신순(`created_at DESC`) 정렬 후 `limit`/`offset` 페이지네이션 적용.
-    fn get_user_articles(
-        &self,
-        user_id: Uuid,
-        limit: i64,
-        offset: i64,
-        tag_id: Option<Uuid>,
-    ) -> impl std::future::Future<Output = Result<Vec<Article>, AppError>> + Send;
-
-    /// 본인 기사 단건 조회.
-    ///
-    /// **계약**: 활성 태그 기사만 접근 가능. 타인 기사, 비활성 태그 기사, 없는 기사는
-    /// 모두 `Ok(None)` 반환 (호출부에서 404 처리).
-    fn get_user_article_by_id(
-        &self,
-        user_id: Uuid,
-        article_id: Uuid,
-    ) -> impl std::future::Future<Output = Result<Option<Article>, AppError>> + Send;
-
-    /// 활성 태그를 보유한 유저의 user_id 목록 반환 (스케줄러용).
-    ///
-    /// 스케줄러는 모든 유저에 대해 수집을 실행하므로 전체 user_id 목록이 필요하다.
-    /// - Fake: profiles 전체 + user_tags 유저 합집합
-    /// - Postgres: user_tags에서 DISTINCT user_id 조회
-    fn get_all_user_ids(&self) -> impl Future<Output = Result<Vec<Uuid>, AppError>> + Send;
 }
 
 /// 검색 폴백 체인 포트 (여러 SearchPort를 순서대로 시도)

@@ -1,30 +1,30 @@
--- MVP5 M1: 피드 아키텍처 전환
--- articles 테이블 경량화 + favorites 테이블 신규 생성 + 기존 데이터 삭제
+-- MVP5 M1: 피드 아키텍처 전환 (올바른 버전)
+-- - articles 테이블 관련 이전 마이그레이션 롤백 (적용 안 된 경우 무시됨)
+-- - favorites 테이블 신규 생성 (article_id FK 없이 기사 메타 직접 저장)
 
--- 1. 기존 articles 데이터 전부 삭제 (새 구조로 시작)
-DELETE FROM articles;
+-- 1. 잘못된 favorites 테이블 제거 (article_id FK 있던 버전)
+DROP TABLE IF EXISTS favorites;
 
--- 2. articles 테이블에서 제거 대상 컬럼 DROP
---    (content, title_ko, llm_model, prompt_tokens, completion_tokens, summarized_at, search_query)
-ALTER TABLE articles
-  DROP COLUMN IF EXISTS content,
-  DROP COLUMN IF EXISTS title_ko,
-  DROP COLUMN IF EXISTS llm_model,
-  DROP COLUMN IF EXISTS prompt_tokens,
-  DROP COLUMN IF EXISTS completion_tokens,
-  DROP COLUMN IF EXISTS summarized_at,
-  DROP COLUMN IF EXISTS search_query;
+-- 2. articles 테이블 제거 (피드는 검색 API 직접 호출, DB 저장 불필요)
+DROP TABLE IF EXISTS articles;
 
--- 3. favorites 테이블 신규 생성
+-- 3. 올바른 favorites 테이블 생성
+--    article_id FK 없음 — articles 테이블을 참조하지 않고 기사 메타 전체를 직접 저장
+--    UNIQUE (user_id, url) — 동일 URL 중복 즐겨찾기 방지
 CREATE TABLE IF NOT EXISTS favorites (
-  id          uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-  user_id     uuid NOT NULL REFERENCES profiles(id) ON DELETE CASCADE,
-  article_id  uuid NOT NULL REFERENCES articles(id) ON DELETE CASCADE,
-  summary     text,
-  insight     text,
-  liked_at    timestamptz,
-  created_at  timestamptz NOT NULL DEFAULT now(),
-  UNIQUE (user_id, article_id)
+  id           uuid        PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id      uuid        NOT NULL REFERENCES profiles(id) ON DELETE CASCADE,
+  title        text        NOT NULL,
+  url          text        NOT NULL,
+  snippet      text,
+  source       text        NOT NULL,
+  published_at timestamptz,
+  tag_id       uuid,
+  summary      text,
+  insight      text,
+  liked_at     timestamptz,
+  created_at   timestamptz NOT NULL DEFAULT now(),
+  UNIQUE (user_id, url)
 );
 
 -- 4. favorites RLS 활성화

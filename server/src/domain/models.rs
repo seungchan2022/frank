@@ -22,29 +22,32 @@ pub struct UserTag {
     pub tag_id: Uuid,
 }
 
-/// MVP5 M1: 피드 아키텍처 전환 후 경량화된 Article 모델.
-/// 크롤링/요약 관련 컬럼(content, title_ko, llm_model, prompt_tokens,
-/// completion_tokens, summarized_at, search_query) 제거.
+/// MVP5 M1: 피드 아이템 — ephemeral, DB에 저장되지 않음.
+/// 검색 API 직접 호출 결과를 담는 임시 모델.
+/// id 없음 — 클라이언트는 url을 기사 식별자로 사용.
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct Article {
-    pub id: Uuid,
-    pub user_id: Uuid,
-    pub tag_id: Option<Uuid>,
+pub struct FeedItem {
     pub title: String,
     pub url: String,
     pub snippet: Option<String>,
     pub source: String,
     pub published_at: Option<DateTime<Utc>>,
-    pub created_at: Option<DateTime<Utc>>,
+    pub tag_id: Option<Uuid>,
 }
 
-/// MVP5 M1: favorites 테이블 모델.
-/// 즐겨찾기 시 현재 세션의 요약/인사이트 상태를 함께 저장.
+/// MVP5 M3: favorites 테이블 모델.
+/// article_id FK 없이 기사 메타 전체를 직접 저장.
+/// UNIQUE (user_id, url)
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Favorite {
     pub id: Uuid,
     pub user_id: Uuid,
-    pub article_id: Uuid,
+    pub title: String,
+    pub url: String,
+    pub snippet: Option<String>,
+    pub source: String,
+    pub published_at: Option<DateTime<Utc>>,
+    pub tag_id: Option<Uuid>,
     pub summary: Option<String>,
     pub insight: Option<String>,
     pub liked_at: Option<DateTime<Utc>>,
@@ -68,7 +71,7 @@ pub struct LlmResponse {
     pub completion_tokens: i32,
 }
 
-/// 웹서치 결과 (DB 저장 전 중간 모델)
+/// 웹서치 결과 (피드 생성 전 중간 모델)
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct SearchResult {
     pub title: String,

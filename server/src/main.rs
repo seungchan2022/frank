@@ -10,7 +10,6 @@ use server::infra::postgres_db::PostgresDbAdapter;
 use server::infra::search_chain::SearchFallbackChain;
 use server::infra::tavily::TavilyAdapter;
 use server::middleware::auth::SupabaseConfig;
-use server::scheduler;
 use sqlx::postgres::PgPoolOptions;
 use tokio::net::TcpListener;
 use tracing_subscriber::EnvFilter;
@@ -57,7 +56,6 @@ async fn main() {
         Arc::new(FirecrawlAdapter::new(&config.firecrawl_api_key));
 
     // iMessage 알림: IMESSAGE_RECIPIENT 환경변수가 설정된 경우만 활성화
-    // Docker 컨테이너 내부에서는 osascript 미지원이므로 LogOnly 사용
     let notifier: Arc<dyn server::domain::ports::NotificationPort> =
         match std::env::var("IMESSAGE_RECIPIENT") {
             Ok(recipient) if !recipient.is_empty() => {
@@ -70,19 +68,15 @@ async fn main() {
             }
         };
 
+    // MVP5 M1: 백그라운드 스케줄러 제거 — 피드는 GET /me/feed 온디맨드 호출
     let app = server::create_router(
-        db.clone(),
+        db,
         supabase_config,
-        search_chain.clone(),
+        search_chain,
         llm,
         crawl,
         notifier,
     );
-
-    // 백그라운드 스케줄러 시작 (MVP5 M1)
-    let interval_secs = scheduler::interval_secs_from_env();
-    tracing::info!(interval_secs, "백그라운드 수집 스케줄러 시작");
-    tokio::spawn(scheduler::run(db, search_chain, interval_secs));
 
     let addr = format!("0.0.0.0:{}", config.port);
     let listener = TcpListener::bind(&addr)
