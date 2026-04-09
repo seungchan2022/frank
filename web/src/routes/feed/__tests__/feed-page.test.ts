@@ -1,9 +1,6 @@
-// feed/+page.svelte 요약 타임아웃 UX 테스트.
-// iOS M2 FeedFeatureTests와 동일한 시나리오:
-//   1. summarizingTimeout 초기값 false
-//   2. 30s 타이머 발화 시 타임아웃 배너 표시
-//   3. 타이머 이내 완료 시 배너 미표시
-//   4. retrySummarize: summarizingTimeout 초기화 + 재요청
+// feed/+page.svelte 피드 UI 테스트 (MVP5 M1)
+// 요약 제거 후 카드에 제목 + source + 날짜만 표시되는지 확인.
+// 새로고침 버튼 → collect 후 목록 갱신 UX 확인.
 
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { render, screen, cleanup, fireEvent, waitFor } from '@testing-library/svelte';
@@ -26,140 +23,173 @@ vi.mock('$lib/stores/auth.svelte', () => ({
 }));
 
 // ── apiClient mock ────────────────────────────────────────────────────────
-const mockSummarizeArticles = vi.fn<(signal?: AbortSignal) => Promise<number>>();
+const mockCollectArticles = vi.fn<() => Promise<number>>();
 const mockFetchArticles = vi.fn();
 const mockFetchTags = vi.fn();
 const mockFetchMyTagIds = vi.fn();
 
 vi.mock('$lib/api', () => ({
 	apiClient: {
-		summarizeArticles: (...args: [AbortSignal?]) => mockSummarizeArticles(...args),
+		collectArticles: () => mockCollectArticles(),
 		fetchArticles: (...args: unknown[]) => mockFetchArticles(...args),
 		fetchTags: () => mockFetchTags(),
-		fetchMyTagIds: () => mockFetchMyTagIds(),
-		collectArticles: vi.fn().mockResolvedValue(0)
+		fetchMyTagIds: () => mockFetchMyTagIds()
 	}
 }));
 
 import FeedPage from '../+page.svelte';
 
+const sampleArticles = [
+	{
+		id: 'article-1',
+		user_id: 'user-1',
+		tag_id: null,
+		title: 'AI Revolution 2026',
+		url: 'https://example.com/article-1',
+		snippet: 'AI is changing everything.',
+		source: 'TechCrunch',
+		published_at: '2026-04-09T10:00:00Z',
+		created_at: '2026-04-09T10:00:00Z'
+	}
+];
+
 beforeEach(() => {
-	vi.useFakeTimers();
 	vi.clearAllMocks();
 
-	// 기본: 즉시 완료 (articles 빈 배열)
+	// 기본: 즉시 완료
 	mockFetchArticles.mockResolvedValue([]);
 	mockFetchTags.mockResolvedValue([]);
 	mockFetchMyTagIds.mockResolvedValue([]);
+	mockCollectArticles.mockResolvedValue(1);
 });
 
 afterEach(() => {
-	vi.useRealTimers();
 	cleanup();
 });
 
-// AbortSignal이 abort될 때 AbortError로 reject하는 슬로우 promise 생성 헬퍼
-function slowSummarize(signal?: AbortSignal): Promise<number> {
-	return new Promise((_, reject) => {
-		if (signal) {
-			signal.addEventListener('abort', () => {
-				reject(new DOMException('The operation was aborted.', 'AbortError'));
-			});
-		}
-		// 신호 없으면 영원히 pending (테스트에서 fake timer로 제어)
-	});
-}
-
-describe('feed/+page.svelte — 요약 타임아웃 UX (iOS M2 싱크)', () => {
-	it('초기 상태: 타임아웃 배너 없음', async () => {
+describe('feed/+page.svelte — MVP5 M1 피드 UI', () => {
+	it('초기 상태: 빈 피드 메시지 표시', async () => {
 		render(FeedPage);
 
 		await waitFor(() => {
-			expect(screen.queryByText(/오래 걸리고 있어요/)).toBeNull();
+			expect(screen.queryByText(/No articles yet/)).toBeTruthy();
 		});
 	});
 
-	it('Summarize 버튼 클릭 시 진행 배너 표시', async () => {
-		// 영원히 pending (abort될 때까지 대기)
-		mockSummarizeArticles.mockImplementation(slowSummarize);
+	it('기사 카드: 제목 표시', async () => {
+		mockFetchArticles.mockResolvedValue(sampleArticles);
 
 		render(FeedPage);
-		await vi.runAllTimersAsync(); // loadInitial 완료
 
-		const btn = screen.getByRole('button', { name: /Summarize/i });
+		await waitFor(() => {
+			expect(screen.getByText('AI Revolution 2026')).toBeTruthy();
+		});
+	});
+
+	it('기사 카드: source 표시', async () => {
+		mockFetchArticles.mockResolvedValue(sampleArticles);
+
+		render(FeedPage);
+
+		await waitFor(() => {
+			expect(screen.getByText('TechCrunch')).toBeTruthy();
+		});
+	});
+
+	it('기사 카드: 요약(summary) 미표시 — 제목+source+날짜만', async () => {
+		mockFetchArticles.mockResolvedValue(sampleArticles);
+
+		render(FeedPage);
+
+		await waitFor(() => {
+			// 요약 관련 텍스트 없음
+			expect(screen.queryByText(/요약/)).toBeNull();
+			expect(screen.queryByText(/Summarize/i)).toBeNull();
+		});
+	});
+
+	it('새 뉴스 가져오기 버튼 존재', async () => {
+		render(FeedPage);
+
+		await waitFor(() => {
+			expect(screen.getByRole('button', { name: /새 뉴스 가져오기/i })).toBeTruthy();
+		});
+	});
+
+	it('새 뉴스 가져오기 버튼 클릭 → collectArticles 호출', async () => {
+		mockCollectArticles.mockResolvedValue(1);
+		mockFetchArticles.mockResolvedValue([]);
+
+		render(FeedPage);
+		await waitFor(() => {
+			expect(screen.queryByText(/Loading/)).toBeNull();
+		});
+
+		const btn = screen.getByRole('button', { name: /새 뉴스 가져오기/i });
 		fireEvent.click(btn);
 
 		await waitFor(() => {
-			expect(screen.getByText(/AI가 요약하고 있어요/)).toBeTruthy();
+			expect(mockCollectArticles).toHaveBeenCalledTimes(1);
 		});
 	});
 
-	it('30s 타이머 발화 시 타임아웃 배너 + 재시도 버튼 표시 (iOS: isSummarizingTimeout = true)', async () => {
-		mockSummarizeArticles.mockImplementation(slowSummarize);
+	it('수집 중 배너 표시', async () => {
+		// collectArticles가 느리게 완료
+		mockCollectArticles.mockImplementation(
+			() => new Promise((resolve) => setTimeout(() => resolve(1), 200))
+		);
+		mockFetchArticles.mockResolvedValue([]);
 
 		render(FeedPage);
-		await vi.runAllTimersAsync(); // loadInitial 완료
+		await waitFor(() => {
+			expect(screen.queryByText(/Loading/)).toBeNull();
+		});
 
-		const btn = screen.getByRole('button', { name: /Summarize/i });
+		const btn = screen.getByRole('button', { name: /새 뉴스 가져오기/i });
 		fireEvent.click(btn);
 
-		// 30초 경과 → AbortController.abort() → AbortError
-		await vi.advanceTimersByTimeAsync(30_000);
-		await vi.runAllTimersAsync();
-
 		await waitFor(() => {
-			expect(screen.getByText(/오래 걸리고 있어요/)).toBeTruthy();
-			expect(screen.getByRole('button', { name: /다시 시도/i })).toBeTruthy();
+			expect(screen.getByText(/수집하고 있어요/)).toBeTruthy();
 		});
 	});
 
-	it('타임아웃 이내 완료 시 배너 미표시 (iOS: isSummarizingTimeout = false 유지)', async () => {
-		// 즉시 성공 (기본 mock)
-		mockSummarizeArticles.mockResolvedValue(3);
+	it('수집 완료 후 기사 목록 갱신', async () => {
+		const newArticle = { ...sampleArticles[0], id: 'new-article', title: 'New Article After Collect' };
+		mockCollectArticles.mockResolvedValue(1);
+		mockFetchArticles
+			.mockResolvedValueOnce([]) // loadInitial
+			.mockResolvedValueOnce([newArticle]) // handleRefresh 후 fetch
+			.mockResolvedValueOnce([]); // fetchTags는 별도
+
+		mockFetchTags.mockResolvedValue([]);
 
 		render(FeedPage);
-		await vi.runAllTimersAsync();
+		await waitFor(() => {
+			expect(screen.queryByText(/Loading/)).toBeNull();
+		});
 
-		const btn = screen.getByRole('button', { name: /Summarize/i });
+		const btn = screen.getByRole('button', { name: /새 뉴스 가져오기/i });
 		fireEvent.click(btn);
 
-		await vi.runAllTimersAsync();
-
 		await waitFor(() => {
-			expect(screen.queryByText(/오래 걸리고 있어요/)).toBeNull();
-			expect(screen.queryByRole('button', { name: /다시 시도/i })).toBeNull();
+			expect(screen.getByText('New Article After Collect')).toBeTruthy();
 		});
 	});
 
-	it('재시도 버튼 클릭: summarizingTimeout 초기화 + summarizeArticles 재호출 (iOS: retrySummarize)', async () => {
-		// 첫 번째 호출: 슬로우 (타임아웃 유발)
-		mockSummarizeArticles.mockImplementationOnce(slowSummarize);
-		// 두 번째 호출: 즉시 성공
-		mockSummarizeArticles.mockResolvedValueOnce(2);
+	it('수집 실패 시 에러 메시지 표시', async () => {
+		mockCollectArticles.mockRejectedValue(new Error('Network error'));
+		mockFetchArticles.mockResolvedValue([]);
 
 		render(FeedPage);
-		await vi.runAllTimersAsync();
+		await waitFor(() => {
+			expect(screen.queryByText(/Loading/)).toBeNull();
+		});
 
-		// 첫 번째 요약 → 타임아웃
-		const btn = screen.getByRole('button', { name: /Summarize/i });
+		const btn = screen.getByRole('button', { name: /새 뉴스 가져오기/i });
 		fireEvent.click(btn);
-		await vi.advanceTimersByTimeAsync(30_000);
-		await vi.runAllTimersAsync();
 
 		await waitFor(() => {
-			expect(screen.getByRole('button', { name: /다시 시도/i })).toBeTruthy();
+			expect(screen.getByText(/Network error/)).toBeTruthy();
 		});
-
-		// 재시도 클릭
-		const retryBtn = screen.getByRole('button', { name: /다시 시도/i });
-		fireEvent.click(retryBtn);
-		await vi.runAllTimersAsync();
-
-		await waitFor(() => {
-			// 타임아웃 배너 사라짐
-			expect(screen.queryByText(/오래 걸리고 있어요/)).toBeNull();
-		});
-		// summarizeArticles 총 2회 호출 (첫 요약 + 재시도)
-		expect(mockSummarizeArticles).toHaveBeenCalledTimes(2);
 	});
 });

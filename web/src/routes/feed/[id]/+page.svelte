@@ -14,7 +14,6 @@
 	let tags = $state<Tag[]>([]);
 	let loading = $state(true);
 	let error = $state<string | null>(null);
-	let snippetExpanded = $state(false);
 
 	const tagMap = $derived(
 		tags.reduce<Record<string, string>>((acc, tag) => {
@@ -115,52 +114,13 @@
 					</div>
 				</div>
 
-				<!-- Summary section -->
-				<div class="rounded-lg border border-gray-200 bg-white p-6">
-					<h2 class="mb-2 text-sm font-semibold tracking-wide text-gray-500 uppercase">
-						요약
-					</h2>
-					{#if article.summary}
-						<p class="text-gray-800 leading-relaxed">{article.summary}</p>
-					{:else}
-						<p class="text-sm text-gray-400 italic">요약 대기 중...</p>
-					{/if}
-					{#if article.summarized_at}
-						<p class="mt-3 text-xs text-gray-400">
-							생성: {formatArticleDate(article.summarized_at)}
-						</p>
-					{/if}
-				</div>
-
-				<!-- Insight section -->
-				<div class="rounded-lg border border-blue-100 bg-blue-50/50 p-6">
-					<h2 class="mb-2 text-sm font-semibold tracking-wide text-blue-600 uppercase">
-						인사이트
-					</h2>
-					{#if article.insight}
-						<p class="text-blue-800 leading-relaxed">{article.insight}</p>
-					{:else}
-						<p class="text-sm text-blue-400 italic">인사이트 대기 중...</p>
-					{/if}
-				</div>
-
-				<!-- Snippet section (collapsible) -->
+				<!-- Snippet section -->
 				{#if article.snippet}
 					<div class="rounded-lg border border-gray-200 bg-white p-6">
-						<button
-							onclick={() => (snippetExpanded = !snippetExpanded)}
-							class="flex w-full items-center justify-between text-left"
-						>
-							<h2 class="text-sm font-semibold tracking-wide text-gray-500 uppercase">
-								원문 스니펫
-							</h2>
-							<span class="text-xs text-gray-400">
-								{snippetExpanded ? '접기' : '펼치기'}
-							</span>
-						</button>
-						{#if snippetExpanded}
-							<p class="mt-3 text-sm text-gray-600 leading-relaxed">{article.snippet}</p>
-						{/if}
+						<h2 class="mb-2 text-sm font-semibold tracking-wide text-gray-500 uppercase">
+							원문 리드
+						</h2>
+						<p class="text-sm text-gray-600 leading-relaxed">{article.snippet}</p>
 					</div>
 				{/if}
 			</article>

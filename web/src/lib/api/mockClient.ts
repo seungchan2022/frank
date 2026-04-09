@@ -97,37 +97,13 @@ export const mockApiClient: ApiClient = {
 			user_id: profile.id,
 			tag_id: tags[0]?.id ?? null,
 			title: `Mock collected article ${Date.now()}`,
-			title_ko: '목업 수집 기사',
 			url: `https://example.com/mock/${Date.now()}`,
 			snippet: 'Mock fetched snippet',
 			source: 'mock',
-			search_query: 'mock',
-			summary: null,
-			insight: null,
-			summarized_at: null,
 			published_at: new Date().toISOString(),
 			created_at: new Date().toISOString()
 		};
 		articles = [newArticle, ...articles];
 		return delay(1, 200);
-	},
-
-	async summarizeArticles(_signal?: AbortSignal): Promise<number> {
-		// mock은 즉시 완료되므로 AbortSignal 무시 (실서버 지연 없음)
-		// 시뮬레이션: 미요약 기사들에 가짜 요약 채우기
-		let count = 0;
-		articles = articles.map((a) => {
-			if (a.summary === null) {
-				count += 1;
-				return {
-					...a,
-					summary: '목업 요약: 이 기사는 Mock 환경에서 자동 생성된 요약입니다.',
-					insight: '목업 인사이트: M1.5 단계에서 사용되는 fixture 기반 데이터입니다.',
-					summarized_at: new Date().toISOString()
-				};
-			}
-			return a;
-		});
-		return delay(count, 200);
 	}
 };

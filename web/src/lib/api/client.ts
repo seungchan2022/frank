@@ -29,5 +29,4 @@ export interface ApiClient {
 
 	// Pipeline
 	collectArticles(): Promise<number>;
-	summarizeArticles(signal?: AbortSignal): Promise<number>;
 }

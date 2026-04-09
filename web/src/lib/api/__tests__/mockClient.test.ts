@@ -135,23 +135,4 @@ describe('MockApiClient: articles', () => {
 		expect(after.length).toBe(before.length + 1);
 	});
 
-	it('summarizeArticles는 미요약 기사들에 summary/insight 채움', async () => {
-		const before = await mockApiClient.fetchArticles({ limit: 100 });
-		const unsummarizedBefore = before.filter((a) => a.summary === null);
-		expect(unsummarizedBefore.length).toBeGreaterThan(0);
-
-		const count = await mockApiClient.summarizeArticles();
-		expect(count).toBe(unsummarizedBefore.length);
-
-		const after = await mockApiClient.fetchArticles({ limit: 100 });
-		const unsummarizedAfter = after.filter((a) => a.summary === null);
-		expect(unsummarizedAfter).toHaveLength(0);
-	});
-
-	it('summarizeArticles - signal 파라미터를 받아도 정상 동작', async () => {
-		const controller = new AbortController();
-		const count = await mockApiClient.summarizeArticles(controller.signal);
-		expect(typeof count).toBe('number');
-		expect(count).toBeGreaterThanOrEqual(0);
-	});
 });
