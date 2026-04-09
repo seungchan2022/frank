@@ -1,6 +1,9 @@
 import Foundation
 import Supabase
 
+/// MVP5 M1: Supabase articles 테이블 직접 조회 어댑터.
+/// 피드는 Rust 서버의 GET /me/feed를 통해 검색 API에서 직접 가져오므로 이 어댑터는 사용하지 않음.
+/// APIArticleAdapter가 프로덕션 어댑터로 대체함.
 struct SupabaseArticleAdapter: ArticlePort {
     private let client: SupabaseClient
 
@@ -8,73 +11,9 @@ struct SupabaseArticleAdapter: ArticlePort {
         self.client = client
     }
 
-    func fetchArticles(filter: ArticleFilter) async throws -> [Article] {
-        var query = client.from("articles")
-            .select()
-
-        if let tagId = filter.tagId {
-            query = query.eq("tag_id", value: tagId)
-        }
-
-        let response: [ArticleDTO] = try await query
-            .order("created_at", ascending: false)
-            .range(from: filter.offset, to: filter.offset + filter.limit - 1)
-            .execute()
-            .value
-
-        return response.map { $0.toDomain() }
-    }
-
-    func fetchArticle(id: UUID) async throws -> Article {
-        let response: ArticleDTO = try await client.from("articles")
-            .select()
-            .eq("id", value: id)
-            .single()
-            .execute()
-            .value
-
-        return response.toDomain()
-    }
-}
-
-// MARK: - DTOs
-
-private enum ArticleDTOConstants {
-    // Known-valid literal — safe to force-unwrap at compile time
-    // swiftlint:disable:next force_unwrapping
-    static let fallbackURL = URL(string: "https://example.com")!
-}
-
-private struct ArticleDTO: Decodable {
-    let id: UUID
-    let userId: UUID
-    let title: String
-    let url: String
-    let source: String
-    let publishedAt: Date?
-    let tagId: UUID?
-    let snippet: String?
-    let createdAt: Date?
-
-    enum CodingKeys: String, CodingKey {
-        case id, title, url, source, snippet
-        case userId = "user_id"
-        case publishedAt = "published_at"
-        case tagId = "tag_id"
-        case createdAt = "created_at"
-    }
-
-    func toDomain() -> Article {
-        Article(
-            id: id,
-            userId: userId,
-            title: title,
-            url: URL(string: url) ?? ArticleDTOConstants.fallbackURL,
-            source: source,
-            publishedAt: publishedAt,
-            tagId: tagId,
-            snippet: snippet,
-            createdAt: createdAt
-        )
+    func fetchFeed() async throws -> [FeedItem] {
+        // MVP5 M1: 피드는 Rust 서버 GET /me/feed를 통해 가져옴.
+        // 이 어댑터는 미사용 — APIArticleAdapter 사용.
+        return []
     }
 }

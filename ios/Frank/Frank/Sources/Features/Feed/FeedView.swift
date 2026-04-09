@@ -1,8 +1,10 @@
 import SwiftUI
 
+/// MVP5 M1: FeedView — ephemeral 피드 표시.
+/// collectAndRefresh 버튼 제거. pull-to-refresh = API 재호출.
+/// NavigationLink value: String (FeedItem.id = url absoluteString 기반).
 struct FeedView: View {
     let feature: FeedFeature
-    let articlePort: any ArticlePort
     var onSettingsTapped: (() -> Void)?
 
     var body: some View {
@@ -17,23 +19,12 @@ struct FeedView: View {
                 )
                 .padding(.vertical, 8)
 
-                progressBanner
-
                 errorBanner
 
                 mainContent
             }
             .navigationTitle("Frank")
             .toolbar {
-                ToolbarItem(placement: .topBarLeading) {
-                    Button {
-                        Task { await feature.send(.collectAndRefresh) }
-                    } label: {
-                        Label("새 뉴스 가져오기", systemImage: "arrow.down.circle")
-                    }
-                    .disabled(feature.isCollecting || feature.isLoading || feature.isRefreshing)
-                }
-
                 ToolbarItem(placement: .topBarTrailing) {
                     Button {
                         onSettingsTapped?()
@@ -44,13 +35,10 @@ struct FeedView: View {
                     .accessibilityLabel("설정")
                 }
             }
-            .navigationDestination(for: UUID.self) { articleId in
-                ArticleDetailView(
-                    feature: ArticleDetailFeature(
-                        articleId: articleId,
-                        articlePort: articlePort
-                    )
-                )
+            .navigationDestination(for: String.self) { urlString in
+                if let item = feature.articles.first(where: { $0.id == urlString }) {
+                    ArticleDetailView(feedItem: item)
+                }
             }
             .task {
                 await feature.send(.loadInitial)
@@ -59,27 +47,6 @@ struct FeedView: View {
                 Task { await feature.send(.refresh) }
             }
         }
-    }
-
-    // MARK: - Progress Banner
-
-    @ViewBuilder
-    private var progressBanner: some View {
-        if feature.isCollecting {
-            bannerRow(text: "뉴스를 수집하고 있어요...")
-        }
-    }
-
-    private func bannerRow(text: String) -> some View {
-        HStack(spacing: 8) {
-            ProgressView()
-            Text(text)
-                .font(.subheadline)
-                .foregroundStyle(.secondary)
-        }
-        .frame(maxWidth: .infinity)
-        .padding(.vertical, 10)
-        .background(Color(.systemGray6))
     }
 
     // MARK: - Error Banner
@@ -121,30 +88,16 @@ struct FeedView: View {
 
     private var articleList: some View {
         List {
-            ForEach(feature.articles) { article in
-                NavigationLink(value: article.id) {
-                    ArticleCardView(article: article)
+            ForEach(feature.articles) { item in
+                NavigationLink(value: item.id) {
+                    ArticleCardView(article: item)
                 }
                 .buttonStyle(.plain)
-                .onAppear {
-                    if article.id == feature.articles.last?.id {
-                        Task { await feature.send(.loadMore) }
-                    }
-                }
-            }
-
-            if feature.isLoadingMore {
-                HStack {
-                    Spacer()
-                    ProgressView()
-                    Spacer()
-                }
-                .listRowSeparator(.hidden)
             }
         }
         .listStyle(.plain)
         .refreshable {
-            await feature.send(.collectAndRefresh)
+            await feature.send(.refresh)
         }
     }
 }

@@ -6,18 +6,15 @@ final class AppDependencies {
     let auth: any AuthPort
     let tag: any TagPort
     let article: any ArticlePort
-    let collect: any CollectPort
 
     init(
         auth: any AuthPort,
         tag: any TagPort,
-        article: any ArticlePort,
-        collect: any CollectPort
+        article: any ArticlePort
     ) {
         self.auth = auth
         self.tag = tag
         self.article = article
-        self.collect = collect
     }
 
     static func live() -> AppDependencies {
@@ -27,11 +24,8 @@ final class AppDependencies {
             return mock()
         }
 
-        // M3: 인증은 Supabase SDK, 데이터는 모두 Rust API 어댑터로 통합
-        // - Auth: SupabaseAuthAdapter (signIn/signUp/session) + ProfileAPI(PUT /api/me/profile)
-        // - Tag/Article/Collect: Rust API 어댑터
-        //
-        // Supabase{Tag,Article}Adapter 파일은 보존되며 사용되지 않음 (Rollback/참고용)
+        // MVP5 M1: 인증은 Supabase SDK, 데이터는 Rust API 어댑터.
+        // CollectPort 제거 — 피드는 GET /api/me/feed 직접 호출.
         let config = SupabaseConfig.live
         let serverConfig = ServerConfig.live
         let client = SupabaseClient(supabaseURL: config.url, supabaseKey: config.anonKey)
@@ -43,8 +37,7 @@ final class AppDependencies {
         return AppDependencies(
             auth: authAdapter,
             tag: APITagAdapter(auth: authAdapter, serverConfig: serverConfig),
-            article: APIArticleAdapter(auth: authAdapter, serverConfig: serverConfig),
-            collect: APICollectAdapter(auth: authAdapter, serverConfig: serverConfig)
+            article: APIArticleAdapter(auth: authAdapter, serverConfig: serverConfig)
         )
     }
 
@@ -61,13 +54,12 @@ final class AppDependencies {
         return AppDependencies(
             auth: MockAuthAdapter(profile: profile, scenario: scenario),
             tag: MockTagAdapter(),
-            article: MockArticleAdapter(),
-            collect: MockCollectAdapter()
+            article: MockArticleAdapter()
         )
     }
 }
 
-// MARK: - Placeholder Ports (M3~M6에서 프로덕션 어댑터로 교체)
+// MARK: - Placeholder Ports (참고용 — 미사용)
 
 private struct PlaceholderTagPort: TagPort {
     func fetchAllTags() async throws -> [Tag] { [] }
@@ -76,12 +68,5 @@ private struct PlaceholderTagPort: TagPort {
 }
 
 private struct PlaceholderArticlePort: ArticlePort {
-    func fetchArticles(filter: ArticleFilter) async throws -> [Article] { [] }
-    func fetchArticle(id: UUID) async throws -> Article {
-        throw URLError(.resourceUnavailable)
-    }
-}
-
-private struct PlaceholderCollectPort: CollectPort {
-    func triggerCollect() async throws -> Int { 0 }
+    func fetchFeed() async throws -> [FeedItem] { [] }
 }

@@ -2,8 +2,7 @@ import Foundation
 
 /// Rust API 서버를 호출하는 ArticlePort 구현체.
 ///
-/// - `GET /api/me/articles?limit=&offset=&tag_id=` — 본인 기사 목록
-/// - `GET /api/me/articles/:id` — 단건 (본인 기사만)
+/// MVP5 M1: GET /api/me/feed — 검색 API 직접 호출 결과 반환 (DB 저장 없음)
 struct APIArticleAdapter: ArticlePort {
     private let auth: any AuthPort
     private let serverURL: URL
@@ -17,10 +16,7 @@ struct APIArticleAdapter: ArticlePort {
         self.decoder = Self.makeDecoder()
     }
 
-    /// PostgREST가 반환하는 timestamptz는 microseconds 6자리(`.350714Z`) 형식이다.
-    /// `JSONDecoder.dateDecodingStrategy = .iso8601`는 fractional seconds를 미지원,
-    /// `.withFractionalSeconds`도 millisecond 3자리까지만 처리하므로 모두 실패한다.
-    /// → microseconds → milliseconds로 truncate 후 ISO8601 파싱하는 custom strategy.
+    /// timestamptz microseconds 형식 파싱용 커스텀 디코더
     private static func makeDecoder() -> JSONDecoder {
         let decoder = JSONDecoder()
         let isoFractional = ISO8601DateFormatter()
@@ -32,13 +28,8 @@ struct APIArticleAdapter: ArticlePort {
             let container = try decoder.singleValueContainer()
             let str = try container.decode(String.self)
 
-            // 1) 표준 ISO8601 (zone 있음)
             if let date = isoBasic.date(from: str) { return date }
-
-            // 2) fractional seconds 3자리 이내
             if let date = isoFractional.date(from: str) { return date }
-
-            // 3) microseconds(6자리) 등 → 첫 3자리만 남기고 truncate
             if let truncated = Self.truncateFractionalSeconds(str),
                let date = isoFractional.date(from: truncated) {
                 return date
@@ -52,9 +43,6 @@ struct APIArticleAdapter: ArticlePort {
         return decoder
     }
 
-    /// `2026-04-07T07:32:37.350714Z` → `2026-04-07T07:32:37.350Z`
-    /// fractional seconds가 3자리를 초과하면 millisecond까지만 남기고 truncate.
-    /// nil 반환 = truncate 대상 아님 (호출자가 다른 형식으로 시도).
     private static func truncateFractionalSeconds(_ str: String) -> String? {
         guard let dotIdx = str.firstIndex(of: ".") else { return nil }
         let afterDot = str.index(after: dotIdx)
@@ -67,30 +55,13 @@ struct APIArticleAdapter: ArticlePort {
         return String(str[..<truncEnd]) + String(str[zoneIdx...])
     }
 
-    func fetchArticles(filter: ArticleFilter) async throws -> [Article] {
+    func fetchFeed() async throws -> [FeedItem] {
         var components = URLComponents()
-        components.path = "/api/me/articles"
-        var items: [URLQueryItem] = [
-            URLQueryItem(name: "limit", value: String(filter.limit)),
-            URLQueryItem(name: "offset", value: String(filter.offset))
-        ]
-        if let tagId = filter.tagId {
-            items.append(URLQueryItem(name: "tag_id", value: tagId.uuidString))
-        }
-        components.queryItems = items
+        components.path = "/api/me/feed"
 
         let request = try await makeRequest(components: components, method: "GET")
-        let dtos: [ArticleDTO] = try await decode(request: request)
+        let dtos: [FeedItemDTO] = try await decode(request: request)
         return try dtos.map { try $0.toDomain() }
-    }
-
-    func fetchArticle(id: UUID) async throws -> Article {
-        var components = URLComponents()
-        components.path = "/api/me/articles/\(id.uuidString)"
-
-        let request = try await makeRequest(components: components, method: "GET")
-        let dto: ArticleDTO = try await decode(request: request)
-        return try dto.toDomain()
     }
 
     // MARK: - Private
@@ -128,41 +99,32 @@ struct APIArticleAdapter: ArticlePort {
 
 // MARK: - DTO
 
-private struct ArticleDTO: Decodable {
-    let id: UUID
-    let userId: UUID
-    let tagId: UUID?
+/// GET /me/feed 응답 DTO — ephemeral, id 없음
+private struct FeedItemDTO: Decodable {
     let title: String
     let url: String
     let snippet: String?
     let source: String
     let publishedAt: Date?
-    let createdAt: Date?
+    let tagId: UUID?
 
     enum CodingKeys: String, CodingKey {
-        case id, title, url, source, snippet
-        case userId = "user_id"
-        case tagId = "tag_id"
+        case title, url, source, snippet
         case publishedAt = "published_at"
-        case createdAt = "created_at"
+        case tagId = "tag_id"
     }
 
-    /// 잘못된 URL을 silent fallback 하지 않고 명시적 throw — 백엔드 데이터 오염을
-    /// 사용자에게 잘못된 링크로 노출하는 것을 차단한다 (보안 + 데이터 무결성).
-    func toDomain() throws -> Article {
+    func toDomain() throws -> FeedItem {
         guard let parsedURL = URL(string: url) else {
             throw APIArticleError.invalidArticleURL(url)
         }
-        return Article(
-            id: id,
-            userId: userId,
+        return FeedItem(
             title: title,
             url: parsedURL,
             source: source,
             publishedAt: publishedAt,
             tagId: tagId,
-            snippet: snippet,
-            createdAt: createdAt
+            snippet: snippet
         )
     }
 }

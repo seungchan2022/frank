@@ -1,32 +1,16 @@
 import Foundation
 
 /// In-memory ArticlePort 구현. fixture 기반.
-/// M1.5 병렬 작업 시 외부 의존 격리용.
+/// MVP5 M1: fetchFeed() 반환 — DB 저장 없는 ephemeral 피드.
 actor MockArticleAdapter: ArticlePort {
-    private var articles: [Article]
+    private var feedItems: [FeedItem]
 
-    init(seed: [Article] = MockFixtures.articles) {
-        self.articles = seed
+    init(seed: [FeedItem] = MockFixtures.feedItems) {
+        self.feedItems = seed
     }
 
-    func fetchArticles(filter: ArticleFilter) async throws -> [Article] {
-        var filtered = articles
-        if let tagId = filter.tagId {
-            filtered = filtered.filter { $0.tagId == tagId }
-        }
-        // publishedAt desc 정렬 (nil은 가장 오래된 것으로 취급)
-        filtered.sort { ($0.publishedAt ?? .distantPast) > ($1.publishedAt ?? .distantPast) }
-        let start = max(0, filter.offset)
-        let end = min(filtered.count, start + filter.limit)
-        guard start < end else { return [] }
-        return Array(filtered[start..<end])
-    }
-
-    func fetchArticle(id: UUID) async throws -> Article {
-        guard let article = articles.first(where: { $0.id == id }) else {
-            throw MockAdapterError.notFound
-        }
-        return article
+    func fetchFeed() async throws -> [FeedItem] {
+        feedItems
     }
 }
 

@@ -82,13 +82,12 @@ struct FeedContainerView: View {
         self.dependencies = dependencies
         self._feedFeature = State(initialValue: FeedFeature(
             article: dependencies.article,
-            collect: dependencies.collect,
             tag: dependencies.tag
         ))
     }
 
     var body: some View {
-        FeedView(feature: feedFeature, articlePort: dependencies.article, onSettingsTapped: {
+        FeedView(feature: feedFeature, onSettingsTapped: {
             settingsFeature = SettingsFeature(tag: dependencies.tag, auth: dependencies.auth)
         })
         .sheet(item: $settingsFeature) { feature in

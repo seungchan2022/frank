@@ -1,68 +1,20 @@
 import Foundation
 import Observation
 
-enum ArticleDetailAction {
-    case loadArticle
-}
-
+/// MVP5 M1: ArticleDetailFeature — FeedItem을 직접 보유.
+/// fetchArticle(id:) 제거 — ephemeral 피드에서는 아이템이 이미 메모리에 있음.
+/// M2에서 url 기반 요약 엔드포인트 추가 예정.
 @Observable
 @MainActor
 final class ArticleDetailFeature {
 
     // MARK: - Data
 
-    private(set) var article: Article? = nil
-
-    // MARK: - Loading
-
-    private(set) var isLoading = false
-
-    // MARK: - Error
-
-    private(set) var errorMessage: String? = nil
-
-    // MARK: - Dependencies
-
-    private let articleId: UUID
-    private let articlePort: any ArticlePort
+    let feedItem: FeedItem
 
     // MARK: - Init
 
-    init(articleId: UUID, articlePort: any ArticlePort) {
-        self.articleId = articleId
-        self.articlePort = articlePort
-    }
-
-    // MARK: - Send
-
-    func send(_ action: ArticleDetailAction) async {
-        switch action {
-        case .loadArticle:
-            await loadArticle()
-        }
-    }
-
-    // MARK: - State Transition Helpers
-
-    private func beginLoading() {
-        isLoading = true
-        errorMessage = nil
-    }
-
-    private func failLoading(_ message: String) {
-        isLoading = false
-        errorMessage = message
-    }
-
-    // MARK: - Core Logic
-
-    private func loadArticle() async {
-        beginLoading()
-        do {
-            article = try await articlePort.fetchArticle(id: articleId)
-            isLoading = false
-        } catch {
-            failLoading("기사를 불러오지 못했습니다.")
-        }
+    init(feedItem: FeedItem) {
+        self.feedItem = feedItem
     }
 }

@@ -1,35 +1,37 @@
 import Foundation
 
-struct Article: Identifiable, Equatable, Sendable {
-    let id: UUID
-    let userId: UUID
-    let tagId: UUID?
+/// MVP5 M1: FeedItem — ephemeral, DB에 저장되지 않음.
+/// GET /me/feed 응답. DB id 없음 — url을 기사 식별자로 사용.
+/// `id` 프로퍼티는 SwiftUI List 식별용으로 url absoluteString에서 파생된다.
+struct FeedItem: Identifiable, Equatable, Sendable {
+    /// SwiftUI Identifiable 준수용 — url absoluteString 기반
+    var id: String { url.absoluteString }
+
     let title: String
     let url: URL
     let snippet: String?
     let source: String
     let publishedAt: Date?
-    let createdAt: Date?
+    let tagId: UUID?
 
     init(
-        id: UUID,
-        userId: UUID = UUID(),
         title: String,
         url: URL,
         source: String,
         publishedAt: Date? = nil,
         tagId: UUID? = nil,
-        snippet: String? = nil,
-        createdAt: Date? = nil
+        snippet: String? = nil
     ) {
-        self.id = id
-        self.userId = userId
         self.title = title
         self.url = url
         self.source = source
         self.publishedAt = publishedAt
         self.tagId = tagId
         self.snippet = snippet
-        self.createdAt = createdAt
     }
 }
+
+/// MVP5 M1: 하위 호환 타입 별칭.
+/// FeedView, ArticleCardView, ArticleDetailView 등 Article 참조를 유지하면서
+/// M2에서 완전히 FeedItem으로 전환 예정.
+typealias Article = FeedItem

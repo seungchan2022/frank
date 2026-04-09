@@ -1,5 +1,7 @@
 import SwiftUI
 
+/// MVP5 M1: ArticleCardView — FeedItem(= Article typealias) 기반.
+/// createdAt 제거 (ephemeral 피드에는 없음).
 struct ArticleCardView: View {
     let article: Article
 
@@ -14,7 +16,7 @@ struct ArticleCardView: View {
             HStack(spacing: 4) {
                 Text(article.source)
                 Text("\u{00B7}")
-                Text(Self.relativeTimeText(article.publishedAt ?? article.createdAt))
+                Text(Self.relativeTimeText(article.publishedAt))
             }
             .font(.caption)
             .foregroundStyle(.secondary)
@@ -47,7 +49,6 @@ extension ArticleCardView {
 #Preview("With published date") {
     List {
         ArticleCardView(article: Article(
-            id: UUID(),
             title: "OpenAI releases GPT-5",
             url: URL(string: "https://example.com")!,
             source: "TechCrunch",
@@ -61,7 +62,6 @@ extension ArticleCardView {
 #Preview("Without optional fields") {
     List {
         ArticleCardView(article: Article(
-            id: UUID(),
             title: "Breaking news article",
             url: URL(string: "https://example.com")!,
             source: "Reuters",

@@ -15,13 +15,6 @@ enum MockFixtures {
     static let tagStartup = UUID(uuidString: "44444444-4444-4444-4444-444444444444")!
     static let tagDesign = UUID(uuidString: "55555555-5555-5555-5555-555555555555")!
 
-    private static let articleId1 = UUID(uuidString: "aaaaaaa1-0000-0000-0000-000000000001")!
-    private static let articleId2 = UUID(uuidString: "aaaaaaa2-0000-0000-0000-000000000002")!
-    private static let articleId3 = UUID(uuidString: "aaaaaaa3-0000-0000-0000-000000000003")!
-    private static let articleId4 = UUID(uuidString: "aaaaaaa4-0000-0000-0000-000000000004")!
-    private static let articleId5 = UUID(uuidString: "aaaaaaa5-0000-0000-0000-000000000005")!
-    private static let articleId6 = UUID(uuidString: "aaaaaaa6-0000-0000-0000-000000000006")!
-
     // MARK: - Tag fixtures
 
     static let tags: [Tag] = [
@@ -48,14 +41,13 @@ enum MockFixtures {
         onboardingCompleted: false
     )
 
-    // MARK: - Article fixtures
+    // MARK: - FeedItem fixtures (MVP5 M1: ephemeral, id 없음)
 
-    static var articles: [Article] {
-        [article1, article2, article3, article4, article5, article6]
+    static var feedItems: [FeedItem] {
+        [feedItem1, feedItem2, feedItem3, feedItem4, feedItem5, feedItem6]
     }
 
-    private static let article1 = Article(
-        id: articleId1,
+    private static let feedItem1 = FeedItem(
         title: "Anthropic Releases Claude 4.6 with 1M Context Window",
         url: URL(string: "https://example.com/news/claude-4-6-release")!,
         source: "tavily",
@@ -64,8 +56,7 @@ enum MockFixtures {
         snippet: "Anthropic announces the latest Claude model with 1M token context window."
     )
 
-    private static let article2 = Article(
-        id: articleId2,
+    private static let feedItem2 = FeedItem(
         title: "SvelteKit 2.0 Stable Release Notes",
         url: URL(string: "https://example.com/news/sveltekit-2-stable")!,
         source: "exa",
@@ -74,8 +65,7 @@ enum MockFixtures {
         snippet: "SvelteKit reaches stable 2.0 with improved routing and runes API."
     )
 
-    private static let article3 = Article(
-        id: articleId3,
+    private static let feedItem3 = FeedItem(
         title: "Swift 6.1 Concurrency Improvements",
         url: URL(string: "https://example.com/news/swift-6-1-concurrency")!,
         source: "firecrawl",
@@ -84,8 +74,7 @@ enum MockFixtures {
         snippet: "Swift 6.1 brings strict concurrency checking."
     )
 
-    private static let article4 = Article(
-        id: articleId4,
+    private static let feedItem4 = FeedItem(
         title: "RAG vs Fine-tuning: When to Use Which",
         url: URL(string: "https://example.com/news/rag-vs-finetuning")!,
         source: "tavily",
@@ -94,8 +83,7 @@ enum MockFixtures {
         snippet: "A practical guide on choosing between RAG and fine-tuning."
     )
 
-    private static let article5 = Article(
-        id: articleId5,
+    private static let feedItem5 = FeedItem(
         title: "YC W26 Batch Application Deadline",
         url: URL(string: "https://example.com/news/yc-w26-deadline")!,
         source: "exa",
@@ -104,8 +92,7 @@ enum MockFixtures {
         snippet: "Y Combinator opens applications for Winter 2026 batch."
     )
 
-    private static let article6 = Article(
-        id: articleId6,
+    private static let feedItem6 = FeedItem(
         title: "Untagged Article Example",
         url: URL(string: "https://example.com/news/untagged")!,
         source: "tavily",
