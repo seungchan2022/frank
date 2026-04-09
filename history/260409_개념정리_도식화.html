@@ -1,0 +1,899 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Frank 프로젝트 개념 정리</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;700&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+  <style>
+    :root {
+      --bg: #0f172a;
+      --bg-card: #1e293b;
+      --bg-code: #0d1117;
+      --border: #334155;
+      --border-accent: #3b82f6;
+      --text-primary: #f1f5f9;
+      --text-secondary: #94a3b8;
+      --text-muted: #64748b;
+      --accent-blue: #3b82f6;
+      --accent-green: #10b981;
+      --accent-amber: #f59e0b;
+      --accent-red: #ef4444;
+      --accent-purple: #8b5cf6;
+      --accent-cyan: #06b6d4;
+      --sidebar-w: 260px;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      background: var(--bg);
+      color: var(--text-primary);
+      font-family: 'Noto Sans KR', sans-serif;
+      font-size: 15px;
+      line-height: 1.7;
+      display: flex;
+      min-height: 100vh;
+    }
+
+    /* ── 사이드바 ── */
+    aside {
+      position: fixed;
+      top: 0; left: 0;
+      width: var(--sidebar-w);
+      height: 100vh;
+      background: #131c2e;
+      border-right: 1px solid var(--border);
+      display: flex;
+      flex-direction: column;
+      overflow-y: auto;
+      z-index: 100;
+    }
+
+    .sidebar-header {
+      padding: 24px 20px 16px;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .sidebar-header h1 {
+      font-size: 14px;
+      font-weight: 700;
+      color: var(--accent-blue);
+      letter-spacing: 0.05em;
+      text-transform: uppercase;
+    }
+
+    .sidebar-header p {
+      font-size: 12px;
+      color: var(--text-muted);
+      margin-top: 4px;
+    }
+
+    nav {
+      padding: 12px 0;
+      flex: 1;
+    }
+
+    nav a {
+      display: flex;
+      align-items: flex-start;
+      gap: 10px;
+      padding: 10px 20px;
+      color: var(--text-secondary);
+      text-decoration: none;
+      font-size: 13px;
+      line-height: 1.4;
+      transition: all 0.15s;
+      border-left: 2px solid transparent;
+    }
+
+    nav a:hover {
+      color: var(--text-primary);
+      background: rgba(59, 130, 246, 0.08);
+      border-left-color: var(--accent-blue);
+    }
+
+    nav a.active {
+      color: var(--accent-blue);
+      background: rgba(59, 130, 246, 0.12);
+      border-left-color: var(--accent-blue);
+    }
+
+    nav a .num {
+      flex-shrink: 0;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 11px;
+      color: var(--text-muted);
+      margin-top: 1px;
+    }
+
+    /* ── 메인 콘텐츠 ── */
+    main {
+      margin-left: var(--sidebar-w);
+      flex: 1;
+      padding: 48px 52px;
+      max-width: 960px;
+    }
+
+    .page-title {
+      margin-bottom: 48px;
+      padding-bottom: 24px;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .page-title h2 {
+      font-size: 28px;
+      font-weight: 700;
+      color: var(--text-primary);
+    }
+
+    .page-title p {
+      margin-top: 8px;
+      color: var(--text-secondary);
+      font-size: 14px;
+    }
+
+    /* ── 섹션 ── */
+    section {
+      margin-bottom: 72px;
+      scroll-margin-top: 32px;
+    }
+
+    .section-header {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 24px;
+    }
+
+    .section-num {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 12px;
+      color: var(--accent-blue);
+      background: rgba(59, 130, 246, 0.12);
+      border: 1px solid rgba(59, 130, 246, 0.3);
+      padding: 2px 8px;
+      border-radius: 4px;
+    }
+
+    .section-header h3 {
+      font-size: 20px;
+      font-weight: 700;
+      color: var(--text-primary);
+    }
+
+    /* ── 카드 ── */
+    .card {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 24px;
+      margin-bottom: 20px;
+    }
+
+    .card-title {
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--accent-blue);
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      margin-bottom: 16px;
+    }
+
+    /* ── Mermaid ── */
+    .mermaid-wrap {
+      background: var(--bg-code);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 20px;
+      margin-bottom: 20px;
+      overflow-x: auto;
+    }
+
+    .mermaid-wrap .mermaid {
+      display: flex;
+      justify-content: center;
+    }
+
+    .diagram-label {
+      font-size: 12px;
+      color: var(--text-muted);
+      font-family: 'JetBrains Mono', monospace;
+      margin-bottom: 10px;
+    }
+
+    /* ── 설명 텍스트 ── */
+    .desc {
+      color: var(--text-secondary);
+      font-size: 14px;
+      line-height: 1.8;
+    }
+
+    .desc strong {
+      color: var(--text-primary);
+      font-weight: 600;
+    }
+
+    .desc .highlight {
+      color: var(--accent-cyan);
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 13px;
+      background: rgba(6, 182, 212, 0.08);
+      padding: 1px 5px;
+      border-radius: 3px;
+    }
+
+    /* ── 포인트 리스트 ── */
+    .point-list {
+      list-style: none;
+      margin-top: 16px;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .point-list li {
+      display: flex;
+      align-items: flex-start;
+      gap: 10px;
+      font-size: 14px;
+      color: var(--text-secondary);
+    }
+
+    .point-list li::before {
+      content: '▸';
+      color: var(--accent-blue);
+      flex-shrink: 0;
+      margin-top: 1px;
+    }
+
+    .point-list li strong {
+      color: var(--text-primary);
+    }
+
+    /* ── 비교 표 ── */
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 13px;
+      margin-top: 12px;
+    }
+
+    th {
+      background: rgba(59, 130, 246, 0.12);
+      color: var(--accent-blue);
+      font-weight: 600;
+      padding: 10px 14px;
+      text-align: left;
+      border-bottom: 1px solid var(--border);
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 12px;
+    }
+
+    td {
+      padding: 10px 14px;
+      border-bottom: 1px solid rgba(51, 65, 85, 0.5);
+      color: var(--text-secondary);
+      vertical-align: top;
+    }
+
+    tr:last-child td { border-bottom: none; }
+
+    td strong { color: var(--text-primary); }
+
+    td .ok  { color: var(--accent-green); }
+    td .bad { color: var(--accent-red); }
+
+    /* ── 구분선 + 소제목 ── */
+    .sub-title {
+      font-size: 14px;
+      font-weight: 600;
+      color: var(--accent-amber);
+      margin-bottom: 10px;
+      margin-top: 8px;
+    }
+
+    .divider {
+      border: none;
+      border-top: 1px solid var(--border);
+      margin: 20px 0;
+    }
+
+    /* ── 콜아웃 ── */
+    .callout {
+      display: flex;
+      gap: 12px;
+      background: rgba(59, 130, 246, 0.07);
+      border: 1px solid rgba(59, 130, 246, 0.25);
+      border-radius: 8px;
+      padding: 16px;
+      margin-top: 16px;
+    }
+
+    .callout.green {
+      background: rgba(16, 185, 129, 0.07);
+      border-color: rgba(16, 185, 129, 0.25);
+    }
+
+    .callout.amber {
+      background: rgba(245, 158, 11, 0.07);
+      border-color: rgba(245, 158, 11, 0.25);
+    }
+
+    .callout.red {
+      background: rgba(239, 68, 68, 0.07);
+      border-color: rgba(239, 68, 68, 0.25);
+    }
+
+    .callout-icon { font-size: 18px; flex-shrink: 0; line-height: 1.4; }
+
+    .callout-body { font-size: 13px; color: var(--text-secondary); line-height: 1.7; }
+
+    .callout-body strong { color: var(--text-primary); }
+
+    /* ── 모바일 ── */
+    @media (max-width: 768px) {
+      aside {
+        position: relative;
+        width: 100%;
+        height: auto;
+        border-right: none;
+        border-bottom: 1px solid var(--border);
+      }
+      main {
+        margin-left: 0;
+        padding: 24px 20px;
+      }
+      body { flex-direction: column; }
+      nav { display: flex; flex-wrap: wrap; padding: 8px; }
+      nav a { font-size: 12px; padding: 6px 10px; }
+    }
+  </style>
+</head>
+<body>
+
+<!-- ── 사이드바 ── -->
+<aside>
+  <div class="sidebar-header">
+    <h1>Frank 개념 정리</h1>
+    <p>2026-04-09 · 멘토 발표 복습</p>
+  </div>
+  <nav>
+    <a href="#s1"><span class="num">01</span>인증 흐름 vs 서비스 흐름</a>
+    <a href="#s2"><span class="num">02</span>Rust API 단일화 (MVP2→MVP3)</a>
+    <a href="#s3"><span class="num">03</span>iOS Apple 로그인</a>
+    <a href="#s4"><span class="num">04</span>웹 Apple 로그인 (PKCE)</a>
+    <a href="#s5"><span class="num">05</span>JWT / 토큰 종류</a>
+    <a href="#s6"><span class="num">06</span>저장소 비교</a>
+  </nav>
+</aside>
+
+<!-- ── 메인 ── -->
+<main>
+  <div class="page-title">
+    <h2>Frank 프로젝트 개념 정리</h2>
+    <p>멘토 발표에서 막혔던 인증·토큰·저장소 흐름을 Mermaid 도식으로 정리한 문서</p>
+  </div>
+
+  <!-- ─── 섹션 1: 인증 흐름 vs 서비스 흐름 ─── -->
+  <section id="s1">
+    <div class="section-header">
+      <span class="section-num">01</span>
+      <h3>인증 흐름 vs 서비스 흐름</h3>
+    </div>
+
+    <div class="callout amber">
+      <span class="callout-icon">⚠️</span>
+      <div class="callout-body">
+        <strong>멘토 발표에서 가장 많이 헷갈렸던 부분.</strong><br>
+        두 흐름을 하나로 섞어서 설명하면 Rust 서버가 왜 등장하는지 이해가 안 됨.<br>
+        <strong>인증은 Supabase SDK</strong>가, <strong>데이터 요청은 Rust API</strong>가 처리한다.
+      </div>
+    </div>
+
+    <div class="card" style="margin-top: 20px;">
+      <div class="card-title">인증 흐름 — Rust 서버 없음</div>
+      <div class="diagram-label">// 사용자 → 앱 → Apple → Supabase SDK</div>
+      <div class="mermaid-wrap">
+        <div class="mermaid">
+sequenceDiagram
+    participant U as 사용자
+    participant App as iOS / 웹
+    participant Apple as Apple
+    participant SB as Supabase SDK
+
+    U->>App: Apple로 로그인 버튼 탭
+    App->>Apple: 인증 요청
+    Apple-->>App: idToken (iOS) / code (웹)
+    App->>SB: SDK.signIn(idToken)
+    SB-->>App: access_token + refresh_token 발급
+        </div>
+      </div>
+      <ul class="point-list">
+        <li>인증은 <strong>Supabase SDK</strong>가 처리 — Rust 서버는 전혀 관여하지 않음</li>
+        <li>결과물은 <strong>access_token</strong> (이후 API 호출에 쓸 JWT)</li>
+      </ul>
+    </div>
+
+    <div class="card">
+      <div class="card-title">서비스 흐름 — Rust 서버 거침</div>
+      <div class="diagram-label">// 앱 → Rust API → Supabase DB</div>
+      <div class="mermaid-wrap">
+        <div class="mermaid">
+sequenceDiagram
+    participant App as iOS / 웹
+    participant Rust as Rust API
+    participant SB as Supabase DB
+
+    App->>Rust: API 요청 + Bearer access_token
+    Rust->>Rust: JWT 검증 (Supabase 공개키)
+    Rust->>SB: Supabase REST API로 DB 조회
+    SB-->>Rust: 데이터 반환
+    Rust-->>App: JSON 응답
+        </div>
+      </div>
+      <ul class="point-list">
+        <li>앱은 <span class="highlight">Authorization: Bearer {access_token}</span> 헤더에 토큰을 담아 보냄</li>
+        <li>Rust API는 토큰을 검증하고 <strong>Supabase REST API</strong>로 DB에 접근</li>
+        <li>비즈니스 로직은 전부 Rust 안에 존재</li>
+      </ul>
+    </div>
+  </section>
+
+  <!-- ─── 섹션 2: Rust API 단일화 ─── -->
+  <section id="s2">
+    <div class="section-header">
+      <span class="section-num">02</span>
+      <h3>Rust API 단일화 — MVP2 → MVP3</h3>
+    </div>
+
+    <div class="card">
+      <div class="card-title">MVP2 — 분산된 데이터 접근</div>
+      <div class="mermaid-wrap">
+        <div class="mermaid">
+graph LR
+    iOS([iOS 앱])
+    Web([웹 SvelteKit])
+    Rust[Rust API]
+    DB[(Supabase DB)]
+
+    iOS -->|"태그·기사·프로필 조회\nSupabase SDK 직접"| DB
+    Web -->|"태그·기사·프로필 조회\nSupabase SDK 직접"| DB
+    iOS -->|"수집·요약만"| Rust
+    Web -->|"수집·요약만"| Rust
+    Rust --> DB
+
+    style DB fill:#1e293b,stroke:#3b82f6,color:#94a3b8
+    style Rust fill:#7c3aed,stroke:#8b5cf6,color:#f1f5f9
+        </div>
+      </div>
+      <ul class="point-list">
+        <li><strong>Supabase SDK 직접</strong>: 태그 목록, 기사 목록/상세, 프로필 — 단순 CRUD</li>
+        <li><strong>Rust API</strong>: 수집(<code style="font-family:'JetBrains Mono',monospace;font-size:12px;">POST /me/collect</code>), 요약(<code style="font-family:'JetBrains Mono',monospace;font-size:12px;">POST /me/summarize</code>) — 크롤링·AI 처리가 필요한 것만</li>
+        <li>웹/iOS 양쪽 모두 동일하게 분산 — <strong>비즈니스 로직이 클라이언트에 중복 존재</strong></li>
+      </ul>
+    </div>
+
+    <div class="card">
+      <div class="card-title">MVP3 — Rust API 단일 창구</div>
+      <div class="mermaid-wrap">
+        <div class="mermaid">
+graph LR
+    iOS([iOS 앱])
+    Web([웹 SvelteKit])
+    Rust[Rust API]
+    DB[(Supabase DB)]
+    SDK[Supabase SDK]
+
+    iOS -->|모든 데이터 요청| Rust
+    Web -->|모든 데이터 요청| Rust
+    Rust -->|Supabase REST API| DB
+
+    iOS -.-|인증만| SDK
+    Web -.-|인증만| SDK
+
+    style Rust fill:#065f46,stroke:#10b981,color:#f1f5f9
+    style DB fill:#1e293b,stroke:#3b82f6,color:#94a3b8
+    style SDK fill:#1e293b,stroke:#64748b,color:#94a3b8
+        </div>
+      </div>
+      <ul class="point-list">
+        <li><strong>모든 데이터 요청</strong> → Rust API (기사 조회, 태그 관리, 스크랩 등)</li>
+        <li><strong>인증만</strong> → 여전히 Supabase SDK 직접 사용 (변경 없음)</li>
+        <li>이유: 비즈니스 로직 한 곳 관리 / Supabase 서비스 키 클라이언트 노출 방지</li>
+      </ul>
+    </div>
+  </section>
+
+  <!-- ─── 섹션 3: iOS Apple 로그인 ─── -->
+  <section id="s3">
+    <div class="section-header">
+      <span class="section-num">03</span>
+      <h3>iOS Apple 로그인 — ASAuthorizationController</h3>
+    </div>
+
+    <div class="card">
+      <div class="card-title">iOS 인증 흐름 (브라우저 없음)</div>
+      <div class="mermaid-wrap">
+        <div class="mermaid">
+sequenceDiagram
+    participant U as 사용자
+    participant iOS as iOS 앱
+    participant AC as ASAuthorizationController
+    participant Apple as Apple 서버
+    participant SB as Supabase SDK
+
+    U->>iOS: Apple로 로그인 탭
+    iOS->>AC: 실행 (nonce 생성)
+    AC->>Apple: Face ID 확인 + 인증 요청 (+ nonce 해시)
+    Apple-->>AC: idToken + nonce 반환
+    AC-->>iOS: idToken 전달
+    iOS->>SB: signInWithIdToken(idToken, nonce)
+    SB-->>iOS: access_token + refresh_token
+    iOS->>iOS: Keychain에 토큰 저장
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-title">핵심 개념</div>
+      <ul class="point-list">
+        <li><strong>ASAuthorizationController</strong>: Apple이 iOS에 기본 제공하는 "Apple로 로그인" 프레임워크. 브라우저 팝업 없이 Face ID로 직접 처리</li>
+        <li><strong>idToken</strong>: Apple이 발급. "이 사용자 진짜 Apple 계정 맞음" 증명. <em>1회용</em></li>
+        <li><strong>nonce</strong>: 앱이 생성하는 일회용 랜덤 값 → 해시해서 Apple에 보냄 → idToken에 포함되어 돌아옴 → <strong>idToken 탈취 후 재사용 방지</strong></li>
+      </ul>
+      <div class="callout green" style="margin-top: 16px;">
+        <span class="callout-icon">✅</span>
+        <div class="callout-body">
+          <strong>웹과의 차이:</strong> iOS는 브라우저 리다이렉트 없이 idToken을 직접 받음.<br>
+          웹은 code를 받고 → Supabase SDK가 토큰으로 교환하는 단계 추가 필요.
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ─── 섹션 4: 웹 Apple 로그인 (PKCE) ─── -->
+  <section id="s4">
+    <div class="section-header">
+      <span class="section-num">04</span>
+      <h3>웹 Apple 로그인 — OAuth + PKCE</h3>
+    </div>
+
+    <div class="card">
+      <div class="card-title">PKCE 없을 때 — code 탈취 위험</div>
+      <div class="mermaid-wrap">
+        <div class="mermaid">
+sequenceDiagram
+    participant Web as 웹 (SvelteKit)
+    participant Apple as Apple
+    participant H as 해커
+
+    Web->>Apple: 로그인 요청
+    Apple-->>Web: /callback?code=abc123
+    H->>H: code 탈취!
+    H->>Apple: code로 토큰 교환 시도
+    Apple-->>H: 토큰 발급 (계정 탈취 성공)
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-title">PKCE 있을 때 — 처음 요청자만 교환 가능</div>
+      <div class="mermaid-wrap">
+        <div class="mermaid">
+sequenceDiagram
+    participant Web as 웹 (SvelteKit)
+    participant Apple as Apple
+    participant H as 해커
+
+    Web->>Web: code_verifier 생성 → SHA256 해시 → code_challenge
+    Web->>Apple: 로그인 요청 + code_challenge
+    Apple->>Apple: code_challenge 기억해둠
+    Apple-->>Web: /callback?code=abc123
+    H->>H: code 탈취!
+    H->>Apple: code만으로 교환 시도
+    Apple-->>H: code_verifier 없음 → 거부
+    Web->>Apple: code + code_verifier 제출
+    Apple->>Apple: SHA256(code_verifier) == code_challenge 확인
+    Apple-->>Web: 토큰 발급 성공
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-title">핵심 개념</div>
+      <ul class="point-list">
+        <li><strong>PKCE</strong> (Proof Key for Code Exchange): code를 교환할 때 "처음 요청한 사람"만 가능하도록 보장하는 보안 장치</li>
+        <li><strong>code_verifier</strong>: 브라우저(SvelteKit)가 로그인 시작 시 생성하는 랜덤 문자열</li>
+        <li><strong>code_challenge</strong>: code_verifier를 SHA256으로 해시한 값 → Apple에 먼저 전달</li>
+        <li><strong>Service ID</strong>: 웹 OAuth용 Apple 앱 식별자. iOS의 Bundle ID와 다름</li>
+      </ul>
+      <div class="callout green" style="margin-top: 16px;">
+        <span class="callout-icon">✅</span>
+        <div class="callout-body">
+          <strong>직접 구현 불필요:</strong> Supabase SDK가 PKCE 전체를 자동 처리함.<br>
+          <code style="font-family:'JetBrains Mono',monospace;font-size:12px;">supabase.auth.signInWithOAuth({ provider: 'apple' })</code> 한 줄로 끝.
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ─── 섹션 5: JWT / 토큰 종류 ─── -->
+  <section id="s5">
+    <div class="section-header">
+      <span class="section-num">05</span>
+      <h3>JWT / 토큰 종류</h3>
+    </div>
+
+    <div class="card">
+      <div class="card-title">토큰 흐름</div>
+      <div class="mermaid-wrap">
+        <div class="mermaid">
+graph TD
+    Apple([Apple])
+    SB[Supabase]
+    App([iOS / 웹 앱])
+    Rust[Rust API]
+
+    Apple -->|idToken 발급| SB
+    SB -->|access_token JWT| App
+    SB -->|refresh_token| App
+    App -->|Bearer access_token| Rust
+    App -->|만료 시 refresh_token| SB
+    SB -->|새 access_token| App
+
+    style Apple fill:#1e293b,stroke:#64748b,color:#94a3b8
+    style SB fill:#065f46,stroke:#10b981,color:#f1f5f9
+    style Rust fill:#7c3aed,stroke:#8b5cf6,color:#f1f5f9
+    style App fill:#1e3a5f,stroke:#3b82f6,color:#f1f5f9
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-title">토큰 비교</div>
+      <table>
+        <thead>
+          <tr>
+            <th>토큰</th>
+            <th>발급 주체</th>
+            <th>역할</th>
+            <th>수명</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><strong>idToken</strong></td>
+            <td>Apple</td>
+            <td>신원 증명. Supabase 로그인할 때만 사용 후 폐기</td>
+            <td>1회용</td>
+          </tr>
+          <tr>
+            <td><strong>access_token</strong></td>
+            <td>Supabase</td>
+            <td>API 호출용 JWT. Bearer 헤더에 담아서 Rust에 전달</td>
+            <td>짧음 (1시간)</td>
+          </tr>
+          <tr>
+            <td><strong>refresh_token</strong></td>
+            <td>Supabase</td>
+            <td>access_token 만료 시 새 것 발급받는 열쇠</td>
+            <td>김 (수 주~수 개월)</td>
+          </tr>
+        </tbody>
+      </table>
+
+      <hr class="divider">
+
+      <div class="sub-title">암호화 vs 서명 (JWT)</div>
+      <ul class="point-list">
+        <li><strong>암호화</strong>: 내용을 숨김. 키 없으면 읽을 수 없음</li>
+        <li><strong>서명 (JWT)</strong>: 내용은 <em>읽을 수 있음</em>. 변조하면 서명이 안 맞아서 서버가 거부. <br>→ Rust API는 내용을 읽고 변조 여부만 확인</li>
+      </ul>
+
+      <div class="callout" style="margin-top: 16px;">
+        <span class="callout-icon">💡</span>
+        <div class="callout-body">
+          <strong>nonce 복습:</strong> idToken 안에 포함된 일회용 랜덤 값.<br>
+          같은 idToken을 탈취해서 다시 쓰려 해도 nonce가 맞지 않아서 Supabase가 거부.
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ─── 섹션 6: 저장소 비교 ─── -->
+  <section id="s6">
+    <div class="section-header">
+      <span class="section-num">06</span>
+      <h3>저장소 비교 — httpOnly 쿠키 vs Keychain</h3>
+    </div>
+
+    <div class="card">
+      <div class="card-title">XSS 공격 — localStorage 취약점</div>
+      <div class="mermaid-wrap">
+        <div class="mermaid">
+sequenceDiagram
+    participant H as 해커
+    participant Web as 웹페이지
+    participant LS as localStorage
+
+    H->>Web: 악성 스크립트 심기 (XSS)
+    Note over Web: 다른 사용자가 페이지 접속
+    Web->>LS: localStorage.getItem('token')
+    LS-->>Web: 토큰 반환
+    Web->>H: 토큰 전송 → 계정 탈취 성공
+        </div>
+      </div>
+      <div class="callout red" style="margin-top: 12px;">
+        <span class="callout-icon">🚫</span>
+        <div class="callout-body">
+          <strong>localStorage는 JS로 접근 가능</strong> → XSS 공격에 토큰 탈취 위험.<br>
+          access_token을 localStorage에 저장하면 안 됨.
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-title">저장소 구조 비교</div>
+      <div class="mermaid-wrap">
+        <div class="mermaid">
+graph TD
+    Token[access_token]
+
+    subgraph 웹 저장소
+        httpOnly["httpOnly 쿠키\nJS 접근 불가 ✅"]
+        LS["localStorage\nJS 접근 가능 ❌"]
+        Cookie["일반 쿠키\nJS 접근 가능 ❌"]
+    end
+
+    subgraph iOS 저장소
+        Keychain["Keychain\nOS 레벨 암호화 ✅"]
+        UD["UserDefaults\n암호화 없음 ❌"]
+    end
+
+    Token -->|안전| httpOnly
+    Token -->|위험| LS
+    Token -->|안전| Keychain
+    Token -->|위험| UD
+
+    style httpOnly fill:#064e3b,stroke:#10b981,color:#f1f5f9
+    style Keychain fill:#064e3b,stroke:#10b981,color:#f1f5f9
+    style LS fill:#450a0a,stroke:#ef4444,color:#f1f5f9
+    style UD fill:#450a0a,stroke:#ef4444,color:#f1f5f9
+    style Cookie fill:#450a0a,stroke:#ef4444,color:#f1f5f9
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-title">쿠키 vs Keychain 개념 정리</div>
+      <table>
+        <thead>
+          <tr>
+            <th>저장소</th>
+            <th>플랫폼</th>
+            <th>JS 접근</th>
+            <th>특징</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><strong>쿠키</strong></td>
+            <td>웹</td>
+            <td><span class="bad">가능</span> (기본)</td>
+            <td>브라우저가 관리. 매 요청마다 자동 첨부. 브라우저마다 독립</td>
+          </tr>
+          <tr>
+            <td><strong>httpOnly 쿠키</strong></td>
+            <td>웹</td>
+            <td><span class="ok">불가능</span></td>
+            <td>서버가 Set-Cookie 헤더로 생성. JS에서 읽기 불가 → XSS 방어</td>
+          </tr>
+          <tr>
+            <td><strong>localStorage</strong></td>
+            <td>웹</td>
+            <td><span class="bad">가능</span></td>
+            <td>JS로 자유롭게 읽기/쓰기. XSS 취약</td>
+          </tr>
+          <tr>
+            <td><strong>Keychain</strong></td>
+            <td>iOS</td>
+            <td>해당없음</td>
+            <td>OS 레벨 암호화. 앱 삭제해도 유지. 다른 앱 접근 불가</td>
+          </tr>
+          <tr>
+            <td><strong>UserDefaults</strong></td>
+            <td>iOS</td>
+            <td>해당없음</td>
+            <td>단순 키-값 저장. 암호화 없음 → 민감 정보 저장 금지</td>
+          </tr>
+        </tbody>
+      </table>
+
+      <div class="callout green" style="margin-top: 16px;">
+        <span class="callout-icon">✅</span>
+        <div class="callout-body">
+          <strong>Frank에서의 결론:</strong><br>
+          웹 → <strong>httpOnly 쿠키</strong>에 access_token 저장 (서버가 Set-Cookie로 관리)<br>
+          iOS → <strong>Keychain</strong>에 access_token + refresh_token 저장
+        </div>
+      </div>
+    </div>
+  </section>
+
+</main>
+
+<script>
+  // Mermaid 초기화
+  mermaid.initialize({
+    startOnLoad: true,
+    theme: 'dark',
+    themeVariables: {
+      darkMode: true,
+      background: '#0d1117',
+      primaryColor: '#1e3a5f',
+      primaryTextColor: '#f1f5f9',
+      primaryBorderColor: '#3b82f6',
+      lineColor: '#64748b',
+      secondaryColor: '#1e293b',
+      tertiaryColor: '#0f172a',
+      edgeLabelBackground: '#1e293b',
+      clusterBkg: '#131c2e',
+      titleColor: '#f1f5f9',
+      activationBkgColor: '#1e3a5f',
+      activationBorderColor: '#3b82f6',
+      actorBkg: '#1e293b',
+      actorBorder: '#3b82f6',
+      actorTextColor: '#f1f5f9',
+      actorLineColor: '#475569',
+      signalColor: '#94a3b8',
+      signalTextColor: '#f1f5f9',
+      labelBoxBkgColor: '#1e293b',
+      labelBoxBorderColor: '#334155',
+      labelTextColor: '#94a3b8',
+      loopTextColor: '#94a3b8',
+      noteBorderColor: '#f59e0b',
+      noteBkgColor: '#1c1400',
+      noteTextColor: '#fbbf24',
+    },
+    sequence: {
+      actorMargin: 50,
+      messageMargin: 35,
+      mirrorActors: false,
+      fontSize: 13,
+    },
+    flowchart: {
+      htmlLabels: true,
+      curve: 'basis',
+    },
+  });
+
+  // 사이드바 활성화
+  const sections = document.querySelectorAll('section[id]');
+  const links = document.querySelectorAll('nav a');
+
+  const observer = new IntersectionObserver((entries) => {
+    entries.forEach(entry => {
+      if (entry.isIntersecting) {
+        links.forEach(l => l.classList.remove('active'));
+        const active = document.querySelector(`nav a[href="#${entry.target.id}"]`);
+        if (active) active.classList.add('active');
+      }
+    });
+  }, { rootMargin: '-20% 0px -70% 0px' });
+
+  sections.forEach(s => observer.observe(s));
+
+  // 부드러운 스크롤
+  links.forEach(link => {
+    link.addEventListener('click', e => {
+      e.preventDefault();
+      const target = document.querySelector(link.getAttribute('href'));
+      if (target) target.scrollIntoView({ behavior: 'smooth' });
+    });
+  });
+</script>
+</body>
+</html>
