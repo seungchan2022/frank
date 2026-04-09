@@ -9,11 +9,8 @@ struct ArticleCardViewTests {
 
     private func makeArticle(
         title: String = "Test Article",
-        titleKo: String? = nil,
         source: String = "TestSource",
-        publishedAt: Date = Date(),
-        summary: String? = nil,
-        insight: String? = nil
+        publishedAt: Date = Date()
     ) -> Article {
         Article(
             id: UUID(),
@@ -21,59 +18,51 @@ struct ArticleCardViewTests {
             url: URL(string: "https://example.com")!,
             source: source,
             publishedAt: publishedAt,
-            summary: summary,
-            tagId: UUID(),
-            titleKo: titleKo,
-            insight: insight
+            tagId: UUID()
         )
     }
 
-    // MARK: - displayTitle fallback
+    // MARK: - title 표시
 
-    @Test("titleKo가 있으면 titleKo를 displayTitle로 사용")
-    func displayTitleUsesKorean() {
-        let article = makeArticle(title: "English Title", titleKo: "한국어 제목")
+    @Test("title이 표시됨")
+    func titleDisplayed() {
+        let article = makeArticle(title: "English Title")
         let view = ArticleCardView(article: article)
 
-        #expect(view.displayTitle == "한국어 제목")
-    }
-
-    @Test("titleKo가 nil이면 title을 displayTitle로 사용")
-    func displayTitleFallsBackToTitle() {
-        let article = makeArticle(title: "English Title", titleKo: nil)
-        let view = ArticleCardView(article: article)
-
-        #expect(view.displayTitle == "English Title")
+        // accessibilityLabel이 title과 동일
+        #expect(view.article.title == "English Title")
     }
 
     // MARK: - Article model fields
 
-    @Test("summary가 nil인 Article 생성 가능")
-    func articleWithNilSummary() {
-        let article = makeArticle(summary: nil)
+    @Test("snippet이 nil인 Article 생성 가능")
+    func articleWithNilSnippet() {
+        let article = Article(
+            id: UUID(),
+            title: "Test",
+            url: URL(string: "https://example.com")!,
+            source: "Source",
+            publishedAt: Date(),
+            tagId: UUID(),
+            snippet: nil
+        )
 
-        #expect(article.summary == nil)
+        #expect(article.snippet == nil)
     }
 
-    @Test("summary가 있는 Article 생성 가능")
-    func articleWithSummary() {
-        let article = makeArticle(summary: "요약 텍스트")
+    @Test("snippet이 있는 Article 생성 가능")
+    func articleWithSnippet() {
+        let article = Article(
+            id: UUID(),
+            title: "Test",
+            url: URL(string: "https://example.com")!,
+            source: "Source",
+            publishedAt: Date(),
+            tagId: UUID(),
+            snippet: "리드 문장"
+        )
 
-        #expect(article.summary == "요약 텍스트")
-    }
-
-    @Test("insight가 nil인 Article 생성 가능")
-    func articleWithNilInsight() {
-        let article = makeArticle(insight: nil)
-
-        #expect(article.insight == nil)
-    }
-
-    @Test("insight가 있는 Article 생성 가능")
-    func articleWithInsight() {
-        let article = makeArticle(insight: "인사이트 텍스트")
-
-        #expect(article.insight == "인사이트 텍스트")
+        #expect(article.snippet == "리드 문장")
     }
 
     // MARK: - Date relative display
@@ -94,10 +83,10 @@ struct ArticleCardViewTests {
         #expect(!display.isEmpty)
     }
 
-    // MARK: - Backward compatibility
+    // MARK: - 기본값 검증
 
-    @Test("새 필드 없이 Article 생성 — 기본값 nil")
-    func articleBackwardCompatibility() {
+    @Test("옵셔널 필드 없이 Article 생성 — 기본값 nil")
+    func articleDefaultValues() {
         let article = Article(
             id: UUID(),
             title: "Test",
@@ -107,8 +96,7 @@ struct ArticleCardViewTests {
             tagId: UUID()
         )
 
-        #expect(article.titleKo == nil)
-        #expect(article.insight == nil)
-        #expect(article.summary == nil)
+        #expect(article.snippet == nil)
+        #expect(article.createdAt == nil)
     }
 }

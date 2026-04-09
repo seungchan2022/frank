@@ -16,14 +16,6 @@ struct APICollectAdapter: CollectPort {
         )
     }
 
-    func triggerSummarize() async throws -> Int {
-        try await postAndExtractCount(
-            path: "/api/me/summarize",
-            key: "summarized",
-            timeoutInterval: 60
-        )
-    }
-
     // MARK: - Private
 
     private func postAndExtractCount(path: String, key: String, timeoutInterval: TimeInterval = 30) async throws -> Int {

@@ -26,14 +26,12 @@ struct ArticleDetailView: View {
 // MARK: - Article Content
 
 extension ArticleDetailView {
-    // MVP2 부채: 본문 길이 54 lines (limit 50). M3 ST-7 범위 외 — 회고에 기록.
-    // swiftlint:disable function_body_length
     @ViewBuilder
     private func articleContent(_ article: Article) -> some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 16) {
                 // 제목
-                Text(article.titleKo ?? article.title)
+                Text(article.title)
                     .font(.title2)
                     .fontWeight(.bold)
 
@@ -48,39 +46,20 @@ extension ArticleDetailView {
 
                 Divider()
 
-                // AI 요약 섹션
-                VStack(alignment: .leading, spacing: 8) {
-                    Text("AI 요약")
-                        .font(.subheadline)
-                        .fontWeight(.bold)
-                        .foregroundStyle(.secondary)
-
-                    if let summary = article.summary {
-                        Text(summary)
-                            .font(.body)
-                    } else {
-                        Text("요약 중...")
-                            .font(.body)
-                            .italic()
-                            .foregroundStyle(.secondary)
-                    }
-                }
-
-                // 핵심 인사이트 섹션
-                if let insight = article.insight {
+                // 원문 리드 섹션
+                if let snippet = article.snippet {
                     VStack(alignment: .leading, spacing: 8) {
-                        Text("핵심 인사이트")
+                        Text("원문 리드")
                             .font(.subheadline)
                             .fontWeight(.bold)
                             .foregroundStyle(.secondary)
 
-                        Text(insight)
+                        Text(snippet)
                             .font(.body)
-                            .foregroundStyle(.tint)
                     }
-                }
 
-                Divider()
+                    Divider()
+                }
 
                 // 원문 보기 버튼
                 Button {
@@ -98,7 +77,6 @@ extension ArticleDetailView {
             .padding(.vertical, 16)
         }
     }
-    // swiftlint:enable function_body_length
 }
 
 // MARK: - Error View

@@ -189,16 +189,14 @@ struct PortContractTests {
         mock.articles = (0..<5).map { i in
             Article(
                 id: UUID(),
+                userId: UUID(),
                 title: "Article \(i)",
                 url: URL(string: "https://example.com/\(i)")!,
                 source: "Test",
                 publishedAt: Date(),
-                summary: nil,
                 tagId: tagId,
-                titleKo: nil,
-                insight: nil,
                 snippet: nil,
-                summarizedAt: nil
+                createdAt: nil
             )
         }
 
@@ -216,16 +214,14 @@ struct PortContractTests {
         let articleId = UUID()
         let article = Article(
             id: articleId,
+            userId: UUID(),
             title: "Test",
             url: URL(string: "https://example.com")!,
             source: "Test",
             publishedAt: Date(),
-            summary: "요약",
             tagId: UUID(),
-            titleKo: "테스트",
-            insight: "인사이트",
             snippet: "미리보기",
-            summarizedAt: Date()
+            createdAt: nil
         )
         mock.articles = [article]
 
@@ -257,25 +253,14 @@ struct PortContractTests {
         #expect(mock.triggerCollectCallCount == 1)
     }
 
-    @Test("MockCollectPort summarize 반환값")
-    func summarizeTrigger() async throws {
+    @Test("MockCollectPort collect 에러 전파")
+    func collectError() async {
         let mock = MockCollectPort()
-        mock.summarizeResult = 3
-
-        let count = try await mock.triggerSummarize()
-
-        #expect(count == 3)
-        #expect(mock.triggerSummarizeCallCount == 1)
-    }
-
-    @Test("MockCollectPort summarize 에러 전파")
-    func summarizeError() async {
-        let mock = MockCollectPort()
-        mock.summarizeError = URLError(.badServerResponse)
+        mock.collectError = URLError(.badServerResponse)
 
         await #expect(throws: URLError.self) {
-            try await mock.triggerSummarize()
+            try await mock.triggerCollect()
         }
-        #expect(mock.triggerSummarizeCallCount == 1)
+        #expect(mock.triggerCollectCallCount == 1)
     }
 }

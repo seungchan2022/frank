@@ -17,8 +17,7 @@ struct FeedFeatureTests {
         articlesByTag: [UUID: [Article]] = [:],
         fetchSequence: [[Article]] = [],
         fetchError: Error? = nil,
-        collectError: Error? = nil,
-        summarizeError: Error? = nil
+        collectError: Error? = nil
     ) -> (FeedFeature, MockArticlePort, MockCollectPort, MockTagPort) {
         let articlePort = MockArticlePort()
         articlePort.articles = articles
@@ -28,7 +27,6 @@ struct FeedFeatureTests {
 
         let collectPort = MockCollectPort()
         collectPort.collectError = collectError
-        collectPort.summarizeError = summarizeError
 
         let tagPort = MockTagPort()
         tagPort.allTags = tags
@@ -45,7 +43,6 @@ struct FeedFeatureTests {
     private func makeArticle(
         id: UUID = UUID(),
         title: String = "Test Article",
-        summary: String? = "Summary",
         tagId: UUID = UUID()
     ) -> Article {
         Article(
@@ -54,7 +51,6 @@ struct FeedFeatureTests {
             url: URL(string: "https://example.com")!,
             source: "Test",
             publishedAt: Date(),
-            summary: summary,
             tagId: tagId
         )
     }
@@ -80,7 +76,6 @@ struct FeedFeatureTests {
         #expect(sut.isLoadingMore == false)
         #expect(sut.hasMore == true)
         #expect(sut.isCollecting == false)
-        #expect(sut.isSummarizing == false)
         #expect(sut.errorMessage == nil)
     }
 
@@ -113,24 +108,23 @@ struct FeedFeatureTests {
         #expect(articlePort.fetchArticlesFilteredCallCount >= 1)
     }
 
-    // MARK: - 3. loadInitial 기사 0건 → 자동 collectAndSummarize
+    // MARK: - 3. loadInitial 기사 0건 → 자동 collectAndRefresh
 
-    @Test("loadInitial 기사 0건: 자동 collectAndSummarize 호출")
+    @Test("loadInitial 기사 0건: 자동 collectAndRefresh 호출")
     func loadInitialEmptyTriggersCollect() async {
         let (allTags, allIds) = makeTags(count: 2)
         // 첫 fetch는 빈 배열, collect 후 fetch는 기사 있음
         let articlesAfterCollect = [makeArticle(tagId: allIds[0])]
 
-        let (sut, articlePort, collectPort, _) = makeSUT(
+        let (sut, _, collectPort, _) = makeSUT(
             tags: allTags,
             myTagIds: allIds,
-            fetchSequence: [[], articlesAfterCollect, articlesAfterCollect]
+            fetchSequence: [[], articlesAfterCollect]
         )
 
         await sut.send(.loadInitial)
 
         #expect(collectPort.triggerCollectCallCount == 1)
-        #expect(collectPort.triggerSummarizeCallCount == 1)
         #expect(sut.articles.count == 1)
     }
 
@@ -281,16 +275,13 @@ struct FeedFeatureTests {
         #expect(sut.isLoadingMore == false)
     }
 
-    // MARK: - 10. collectAndSummarize 성공
+    // MARK: - 10. collectAndRefresh 성공
 
-    @Test("collectAndSummarize 성공: collect→fetch→summarize→재fetch")
-    func collectAndSummarizeSuccess() async {
+    @Test("collectAndRefresh 성공: collect→캐시 무효화→fetch")
+    func collectAndRefreshSuccess() async {
         let tagId = UUID()
-        let articlesWithoutSummary = [
-            makeArticle(title: "New Article", summary: nil, tagId: tagId),
-        ]
-        let articlesWithSummary = [
-            makeArticle(title: "New Article", summary: "AI가 생성한 요약", tagId: tagId),
+        let articlesAfterCollect = [
+            makeArticle(title: "New Article", tagId: tagId),
         ]
 
         let (sut, _, collectPort, _) = makeSUT(
@@ -298,24 +289,21 @@ struct FeedFeatureTests {
             myTagIds: [tagId],
             fetchSequence: [
                 [], // loadInitial: 빈 기사 → 자동 collect 트리거
-                articlesWithoutSummary, // collect 후 fetch
-                articlesWithSummary, // summarize 후 재fetch
+                articlesAfterCollect, // collect 후 fetch
             ]
         )
 
         await sut.send(.loadInitial)
 
         #expect(collectPort.triggerCollectCallCount == 1)
-        #expect(collectPort.triggerSummarizeCallCount == 1)
         #expect(sut.isCollecting == false)
-        #expect(sut.isSummarizing == false)
-        #expect(sut.articles.first?.summary == "AI가 생성한 요약")
+        #expect(sut.articles.count == 1)
     }
 
-    // MARK: - 11. collectAndSummarize 중복 방지
+    // MARK: - 11. collectAndRefresh 중복 방지
 
-    @Test("collectAndSummarize 중복 방지: isCollecting 중 무시")
-    func collectAndSummarizeDuplicatePrevention() async {
+    @Test("collectAndRefresh 중복 방지: isCollecting 중 무시")
+    func collectAndRefreshDuplicatePrevention() async {
         let (sut, _, collectPort, _) = makeSUT(
             tags: [Frank.Tag(id: UUID(), name: "AI", category: "ai")],
             myTagIds: [UUID()],
@@ -324,18 +312,18 @@ struct FeedFeatureTests {
 
         await sut.send(.loadInitial)
         // 첫 번째 실행
-        await sut.send(.collectAndSummarize)
+        await sut.send(.collectAndRefresh)
         let firstCount = collectPort.triggerCollectCallCount
 
         // 완료 후 다시 실행은 가능
-        await sut.send(.collectAndSummarize)
+        await sut.send(.collectAndRefresh)
         #expect(collectPort.triggerCollectCallCount == firstCount + 1)
     }
 
-    // MARK: - 12. collectAndSummarize 실패 → errorMessage
+    // MARK: - 12. collectAndRefresh 실패 → errorMessage
 
-    @Test("collectAndSummarize collect 실패: errorMessage 설정")
-    func collectAndSummarizeCollectFailure() async {
+    @Test("collectAndRefresh collect 실패: errorMessage 설정")
+    func collectAndRefreshCollectFailure() async {
         let (sut, _, _, _) = makeSUT(
             tags: [Frank.Tag(id: UUID(), name: "AI", category: "ai")],
             myTagIds: [UUID()],
@@ -344,47 +332,16 @@ struct FeedFeatureTests {
         )
 
         await sut.send(.loadInitial)
-        await sut.send(.collectAndSummarize)
+        await sut.send(.collectAndRefresh)
 
         #expect(sut.errorMessage != nil)
         #expect(sut.isCollecting == false)
-        #expect(sut.isSummarizing == false)
     }
 
-    @Test("collectAndSummarize summarize 실패: errorMessage 설정")
-    func collectAndSummarizeSummarizeFailure() async {
-        let (sut, _, _, _) = makeSUT(
-            tags: [Frank.Tag(id: UUID(), name: "AI", category: "ai")],
-            myTagIds: [UUID()],
-            articles: [makeArticle()],
-            summarizeError: URLError(.notConnectedToInternet)
-        )
+    // MARK: - 13. collectAndRefresh 후 캐시 무효화
 
-        await sut.send(.loadInitial)
-        await sut.send(.collectAndSummarize)
-
-        #expect(sut.errorMessage != nil)
-        #expect(sut.isCollecting == false)
-        #expect(sut.isSummarizing == false)
-    }
-
-    @Test("collectAndSummarize summarize URLError.timedOut: isSummarizingTimeout = true, errorMessage 없음")
-    func collectAndSummarizeSummarizeTransportTimeout() async {
-        let (sut, _, _, _) = makeSUT(
-            summarizeError: URLError(.timedOut)
-        )
-
-        await sut.send(.collectAndSummarize)
-
-        #expect(sut.isSummarizingTimeout == true)
-        #expect(sut.errorMessage == nil)
-        #expect(sut.isSummarizing == false)
-    }
-
-    // MARK: - 13. collectAndSummarize 후 캐시 무효화
-
-    @Test("collectAndSummarize 후 캐시 무효화")
-    func collectAndSummarizeInvalidatesCache() async {
+    @Test("collectAndRefresh 후 캐시 무효화")
+    func collectAndRefreshInvalidatesCache() async {
         let tagId = UUID()
         let tag = Frank.Tag(id: tagId, name: "AI", category: "ai")
         let oldArticles = [makeArticle(title: "Old", tagId: tagId)]
@@ -399,7 +356,6 @@ struct FeedFeatureTests {
             fetchSequence: [
                 oldArticles, // loadInitial
                 newArticles, // collect 후 fetch
-                newArticles, // summarize 후 재fetch
                 newArticles, // selectTag 재fetch (캐시 무효화 확인)
             ]
         )
@@ -407,7 +363,7 @@ struct FeedFeatureTests {
         await sut.send(.loadInitial)
         #expect(sut.articles.count == 1)
 
-        await sut.send(.collectAndSummarize)
+        await sut.send(.collectAndRefresh)
         #expect(sut.articles.count == 2)
 
         // 캐시 무효화되었으므로 태그 전환 시 서버 호출
@@ -445,50 +401,7 @@ struct FeedFeatureTests {
         #expect(sut.articles.count == 2)
     }
 
-    // MARK: - 15. 점진적 채움: collect→fetch(summary=nil)→summarize→재fetch(summary 있음)
-
-    @Test("점진적 채움: collect 후 summary=nil, summarize 후 summary 있음")
-    func progressiveFill() async {
-        let tagId = UUID()
-        let articleId = UUID()
-        let articleNoSummary = Article(
-            id: articleId,
-            title: "Breaking News",
-            url: URL(string: "https://example.com")!,
-            source: "Test",
-            publishedAt: Date(),
-            summary: nil,
-            tagId: tagId
-        )
-        let articleWithSummary = Article(
-            id: articleId,
-            title: "Breaking News",
-            url: URL(string: "https://example.com")!,
-            source: "Test",
-            publishedAt: Date(),
-            summary: "AI 요약 완료",
-            tagId: tagId
-        )
-
-        let (sut, _, collectPort, _) = makeSUT(
-            tags: [Frank.Tag(id: tagId, name: "AI", category: "ai")],
-            myTagIds: [tagId],
-            fetchSequence: [
-                [], // loadInitial (빈 → 자동 collect)
-                [articleNoSummary], // collect 후 fetch (summary=nil)
-                [articleWithSummary], // summarize 후 재fetch (summary 있음)
-            ]
-        )
-
-        await sut.send(.loadInitial)
-
-        #expect(collectPort.triggerCollectCallCount == 1)
-        #expect(collectPort.triggerSummarizeCallCount == 1)
-        // 최종 상태: summary가 채워진 기사
-        #expect(sut.articles.first?.summary == "AI 요약 완료")
-    }
-
-    // MARK: - 16. selectTag(nil)로 "전체" 탭 전환
+    // MARK: - 15. selectTag(nil)로 "전체" 탭 전환
 
     @Test("selectTag(nil): 전체 탭으로 전환")
     func selectTagNilShowsAll() async {
@@ -512,7 +425,7 @@ struct FeedFeatureTests {
         #expect(sut.articles.count == 3)
     }
 
-    // MARK: - 17. tagPort fetchError에서 loadInitial 실패
+    // MARK: - 16. tagPort fetchError에서 loadInitial 실패
 
     @Test("loadInitial 태그 로드 실패: errorMessage 설정")
     func loadInitialTagFetchFailure() async {
@@ -534,73 +447,4 @@ struct FeedFeatureTests {
         #expect(sut.tags.isEmpty)
     }
 
-    // MARK: - 요약 타임아웃
-
-    @Test("isSummarizingTimeout 초기값은 false")
-    func summarizingTimeoutInitialValue() {
-        let (sut, _, _, _) = makeSUT()
-        #expect(sut.isSummarizingTimeout == false)
-    }
-
-    @Test("요약이 타임아웃 이내에 완료되면 isSummarizingTimeout은 false 유지")
-    func summarizingCompletesBeforeTimeout() async {
-        let articlePort = MockArticlePort()
-        let collectPort = MockCollectPort()
-        collectPort.summarizeDelay = 0
-        let tagPort = MockTagPort()
-        let sut = FeedFeature(
-            article: articlePort,
-            collect: collectPort,
-            tag: tagPort,
-            summarizeTimeoutSeconds: 0.5
-        )
-
-        await sut.send(.collectAndSummarize)
-
-        #expect(sut.isSummarizingTimeout == false)
-        #expect(sut.phase == .idle)
-    }
-
-    @Test("요약이 타임아웃을 초과하면 isSummarizingTimeout = true")
-    func summarizingTimesOut() async {
-        let articlePort = MockArticlePort()
-        let collectPort = MockCollectPort()
-        collectPort.summarizeDelay = 0.3
-        let tagPort = MockTagPort()
-        let sut = FeedFeature(
-            article: articlePort,
-            collect: collectPort,
-            tag: tagPort,
-            summarizeTimeoutSeconds: 0.1
-        )
-
-        await sut.send(.collectAndSummarize)
-
-        #expect(sut.isSummarizingTimeout == true)
-    }
-
-    @Test("retrySummarize: isSummarizingTimeout 초기화 + collectAndSummarize 재시도")
-    func retrySummarizeResetsTimeout() async {
-        let articlePort = MockArticlePort()
-        let collectPort = MockCollectPort()
-        collectPort.summarizeDelay = 0.3
-        let tagPort = MockTagPort()
-        let sut = FeedFeature(
-            article: articlePort,
-            collect: collectPort,
-            tag: tagPort,
-            summarizeTimeoutSeconds: 0.1
-        )
-
-        // 타임아웃 발생
-        await sut.send(.collectAndSummarize)
-        #expect(sut.isSummarizingTimeout == true)
-
-        // 재시도: delay 제거 → 정상 완료
-        collectPort.summarizeDelay = 0
-        await sut.send(.retrySummarize)
-
-        #expect(sut.isSummarizingTimeout == false)
-        #expect(sut.phase == .idle)
-    }
 }

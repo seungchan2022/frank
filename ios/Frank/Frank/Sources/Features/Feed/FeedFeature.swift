@@ -6,9 +6,8 @@ enum FeedAction {
     case selectTag(UUID?)
     case loadMore
     case refresh
-    case collectAndSummarize
+    case collectAndRefresh
     case reloadAfterTagChange
-    case retrySummarize
 }
 
 /// Feed의 주(主) 로딩 phase. 동시에 한 가지 phase만 가질 수 있다.
@@ -18,7 +17,6 @@ enum LoadingPhase: Equatable, Sendable {
     case idle
     case initialLoading
     case collecting
-    case summarizing
     case refreshing
 }
 
@@ -34,7 +32,7 @@ final class FeedFeature {
 
     // MARK: - Loading State
 
-    /// 주(主) phase — `idle / initialLoading / collecting / summarizing / refreshing` 중 하나
+    /// 주(主) phase — `idle / initialLoading / collecting / refreshing` 중 하나
     private(set) var phase: LoadingPhase = .idle
     /// 페이지네이션 추가 로딩 — phase와 직교(병행 가능)
     private(set) var isLoadingMore = false
@@ -44,18 +42,11 @@ final class FeedFeature {
 
     var isLoading: Bool { phase == .initialLoading }
     var isCollecting: Bool { phase == .collecting }
-    var isSummarizing: Bool { phase == .summarizing }
     var isRefreshing: Bool { phase == .refreshing }
 
     // MARK: - Error
 
     private(set) var errorMessage: String?
-
-    // MARK: - Summarize Timeout
-    // 전체 요약 기준 (단일 요약 전환 시 10~15s로 줄일 것)
-    private let summarizeTimeoutSeconds: Double
-    private(set) var isSummarizingTimeout: Bool = false
-    private var summarizeTimerTask: Task<Void, Never>?
 
     // MARK: - Cache
 
@@ -75,11 +66,10 @@ final class FeedFeature {
 
     // MARK: - Init
 
-    init(article: any ArticlePort, collect: any CollectPort, tag: any TagPort, summarizeTimeoutSeconds: Double = 30) {
+    init(article: any ArticlePort, collect: any CollectPort, tag: any TagPort) {
         self.article = article
         self.collect = collect
         self.tag = tag
-        self.summarizeTimeoutSeconds = summarizeTimeoutSeconds
     }
 
     // MARK: - Send
@@ -94,15 +84,10 @@ final class FeedFeature {
             await loadMore()
         case .refresh:
             await refresh()
-        case .collectAndSummarize:
-            await collectAndSummarize()
+        case .collectAndRefresh:
+            await collectAndRefresh()
         case .reloadAfterTagChange:
             await reloadAfterTagChange()
-        case .retrySummarize:
-            isSummarizingTimeout = false
-            summarizeTimerTask?.cancel()
-            summarizeTimerTask = nil
-            await collectAndSummarize()
         }
     }
 
@@ -121,10 +106,6 @@ final class FeedFeature {
     private func beginCollect() {
         phase = .collecting
         errorMessage = nil
-    }
-
-    private func moveToSummarize() {
-        phase = .summarizing
     }
 
     private func finishCollect() {
@@ -195,7 +176,7 @@ final class FeedFeature {
 
             // 기사 0건이면 자동 수집
             if fetched.isEmpty {
-                await collectAndSummarize()
+                await collectAndRefresh()
             }
         } catch {
             failLoading("피드를 불러오지 못했습니다. 다시 시도해주세요.")
@@ -251,58 +232,26 @@ final class FeedFeature {
         }
     }
 
-    private func collectAndSummarize() async {
-        guard phase != .collecting, phase != .summarizing else { return }
+    private func collectAndRefresh() async {
+        guard phase == .idle else { return }
 
         beginCollect()
         do {
             // Step 1: 수집
             _ = try await collect.triggerCollect()
 
-            // Step 2: 수집 후 기사 fetch (summary=nil 가능)
-            try await fetchAndCache(tagId: selectedTagId)
-
-            // Step 3: 요약 (타임아웃 타이머 병행 — 60s transport timeout 별도 처리)
-            moveToSummarize()
-            startSummarizeTimer()
-            do {
-                _ = try await collect.triggerSummarize()
-            } catch let urlError as URLError where urlError.code == .timedOut {
-                summarizeTimerTask?.cancel()
-                summarizeTimerTask = nil
-                isSummarizingTimeout = true
-                phase = .idle
-                return
-            }
-            summarizeTimerTask?.cancel()
-            summarizeTimerTask = nil
-
-            // Step 4: 요약 후 기사 재fetch (summary 채워짐)
+            // Step 2: 수집 후 기사 fetch (메타데이터만)
             invalidateCache()
             try await fetchAndCache(tagId: selectedTagId)
 
             finishCollect()
         } catch {
-            summarizeTimerTask?.cancel()
-            summarizeTimerTask = nil
-            failCollect("수집/요약에 실패했습니다. 다시 시도해주세요.")
-        }
-    }
-
-    private func startSummarizeTimer() {
-        summarizeTimerTask = Task { [weak self] in
-            guard let self else { return }
-            do {
-                try await Task.sleep(for: .seconds(summarizeTimeoutSeconds))
-                isSummarizingTimeout = true
-            } catch {
-                // Task 취소됨 — no-op
-            }
+            failCollect("수집에 실패했습니다. 다시 시도해주세요.")
         }
     }
 
     private func refresh() async {
-        // 다른 phase 진행 중이면 무시 — refresh가 collect/summarize 진행을 덮어쓰는 것 차단
+        // 다른 phase 진행 중이면 무시 — refresh가 collect 진행을 덮어쓰는 것 차단
         guard phase == .idle else { return }
         beginRefresh()
         invalidateCache()

@@ -27,11 +27,11 @@ struct FeedView: View {
             .toolbar {
                 ToolbarItem(placement: .topBarLeading) {
                     Button {
-                        Task { await feature.send(.collectAndSummarize) }
+                        Task { await feature.send(.collectAndRefresh) }
                     } label: {
                         Label("새 뉴스 가져오기", systemImage: "arrow.down.circle")
                     }
-                    .disabled(feature.isCollecting || feature.isSummarizing)
+                    .disabled(feature.isCollecting || feature.isLoading || feature.isRefreshing)
                 }
 
                 ToolbarItem(placement: .topBarTrailing) {
@@ -55,6 +55,9 @@ struct FeedView: View {
             .task {
                 await feature.send(.loadInitial)
             }
+            .onReceive(NotificationCenter.default.publisher(for: UIApplication.willEnterForegroundNotification)) { _ in
+                Task { await feature.send(.refresh) }
+            }
         }
     }
 
@@ -64,32 +67,7 @@ struct FeedView: View {
     private var progressBanner: some View {
         if feature.isCollecting {
             bannerRow(text: "뉴스를 수집하고 있어요...")
-        } else if feature.isSummarizing {
-            if feature.isSummarizingTimeout {
-                timeoutBanner
-            } else {
-                bannerRow(text: "AI가 요약하고 있어요...")
-            }
         }
-    }
-
-    private var timeoutBanner: some View {
-        HStack(spacing: 12) {
-            Image(systemName: "clock.badge.exclamationmark")
-                .foregroundStyle(.orange)
-            Text("요약이 오래 걸리고 있어요")
-                .font(.subheadline)
-                .foregroundStyle(.secondary)
-            Spacer()
-            Button("다시 시도") {
-                Task { await feature.send(.retrySummarize) }
-            }
-            .font(.subheadline)
-            .buttonStyle(.bordered)
-        }
-        .padding(.horizontal, 16)
-        .padding(.vertical, 10)
-        .background(Color.orange.opacity(0.1))
     }
 
     private func bannerRow(text: String) -> some View {
@@ -166,7 +144,7 @@ struct FeedView: View {
         }
         .listStyle(.plain)
         .refreshable {
-            await feature.send(.collectAndSummarize)
+            await feature.send(.collectAndRefresh)
         }
     }
 }

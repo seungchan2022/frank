@@ -25,17 +25,18 @@ struct ArticleDetailFeatureTests {
     private func makeArticle(
         id: UUID = UUID(),
         title: String = "Test Article",
-        summary: String? = "Test summary",
-        insight: String? = "Test insight"
+        snippet: String? = nil
     ) -> Article {
         Article(
             id: id,
+            userId: UUID(),
             title: title,
             url: URL(string: "https://example.com")!,
             source: "TestSource",
             publishedAt: Date(),
-            summary: summary,
-            insight: insight
+            tagId: nil,
+            snippet: snippet,
+            createdAt: nil
         )
     }
 
@@ -143,12 +144,12 @@ struct ArticleDetailFeatureTests {
         #expect(port.fetchArticleCallCount == 1)
     }
 
-    // MARK: - 7. summary nil인 기사도 정상 로드
+    // MARK: - 7. snippet nil인 기사도 정상 로드
 
-    @Test("summary nil인 기사도 정상 로드")
-    func loadArticleWithNilSummary() async {
+    @Test("snippet nil인 기사도 정상 로드")
+    func loadArticleWithNilSnippet() async {
         let articleId = UUID()
-        let article = makeArticle(id: articleId, summary: nil, insight: nil)
+        let article = makeArticle(id: articleId, snippet: nil)
 
         let (sut, _) = makeSUT(
             articleId: articleId,
@@ -159,8 +160,7 @@ struct ArticleDetailFeatureTests {
 
         #expect(sut.article != nil)
         #expect(sut.article?.id == articleId)
-        #expect(sut.article?.summary == nil)
-        #expect(sut.article?.insight == nil)
+        #expect(sut.article?.snippet == nil)
         #expect(sut.isLoading == false)
         #expect(sut.errorMessage == nil)
     }

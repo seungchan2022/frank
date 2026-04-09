@@ -133,24 +133,16 @@ private struct ArticleDTO: Decodable {
     let userId: UUID
     let tagId: UUID?
     let title: String
-    let titleKo: String?
     let url: String
     let snippet: String?
     let source: String
-    let searchQuery: String?
-    let summary: String?
-    let insight: String?
-    let summarizedAt: Date?
     let publishedAt: Date?
     let createdAt: Date?
 
     enum CodingKeys: String, CodingKey {
-        case id, title, url, source, summary, insight, snippet
+        case id, title, url, source, snippet
         case userId = "user_id"
         case tagId = "tag_id"
-        case titleKo = "title_ko"
-        case searchQuery = "search_query"
-        case summarizedAt = "summarized_at"
         case publishedAt = "published_at"
         case createdAt = "created_at"
     }
@@ -168,13 +160,8 @@ private struct ArticleDTO: Decodable {
             url: parsedURL,
             source: source,
             publishedAt: publishedAt,
-            summary: summary,
             tagId: tagId,
-            titleKo: titleKo,
-            insight: insight,
             snippet: snippet,
-            summarizedAt: summarizedAt,
-            searchQuery: searchQuery,
             createdAt: createdAt
         )
     }

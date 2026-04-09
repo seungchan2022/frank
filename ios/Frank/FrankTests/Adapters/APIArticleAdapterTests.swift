@@ -51,14 +51,9 @@ struct APIArticleAdapterTests {
             "user_id": "\(userId.uuidString)",
             "tag_id": \(tagFragment),
             "title": "Hello",
-            "title_ko": "안녕",
             "url": "https://example.com/article",
             "snippet": "snippet",
             "source": "tavily",
-            "search_query": "AI news",
-            "summary": "요약",
-            "insight": "인사이트",
-            "summarized_at": "2026-04-06T10:30:00Z",
             "published_at": "2026-04-05T14:00:00Z",
             "created_at": "2026-04-06T09:00:00Z"
         }
@@ -101,8 +96,7 @@ struct APIArticleAdapterTests {
         #expect(articles[0].id == articleId)
         #expect(articles[0].userId == userId)
         #expect(articles[0].title == "Hello")
-        #expect(articles[0].titleKo == "안녕")
-        #expect(articles[0].searchQuery == "AI news")
+        #expect(articles[0].snippet == "snippet")
     }
 
     @Test("fetchArticles tagId 포함: tag_id 쿼리 추가")
@@ -142,14 +136,9 @@ struct APIArticleAdapterTests {
             "user_id": "\(userId.uuidString)",
             "tag_id": null,
             "title": "Hello",
-            "title_ko": null,
             "url": "ht!tp:// broken",
             "snippet": null,
             "source": "tavily",
-            "search_query": null,
-            "summary": null,
-            "insight": null,
-            "summarized_at": null,
             "published_at": null,
             "created_at": null
         }]
@@ -186,14 +175,9 @@ struct APIArticleAdapterTests {
             "user_id": "\(userId.uuidString)",
             "tag_id": null,
             "title": "Hello",
-            "title_ko": null,
             "url": "https://example.com",
             "snippet": null,
             "source": "tavily",
-            "search_query": null,
-            "summary": null,
-            "insight": null,
-            "summarized_at": null,
             "published_at": null,
             "created_at": "2026-04-07T07:32:37.350714Z"
         }]
