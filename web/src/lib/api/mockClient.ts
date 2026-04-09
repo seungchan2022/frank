@@ -7,6 +7,7 @@
 import type { ApiClient } from './client';
 import type {
 	Article,
+	FeedItem,
 	FetchArticlesOptions,
 	Profile,
 	ProfilePatch,
@@ -65,6 +66,19 @@ export const mockApiClient: ApiClient = {
 			profile = { ...profile, onboarding_completed: patch.onboarding_completed };
 		}
 		return delay({ ...profile });
+	},
+
+	async fetchFeed(): Promise<FeedItem[]> {
+		// Mock: 현재 articles fixture를 FeedItem 형태로 변환 (ephemeral 시뮬레이션)
+		const feedItems: FeedItem[] = articles.map((a) => ({
+			title: a.title,
+			url: a.url,
+			snippet: a.snippet,
+			source: a.source,
+			published_at: a.published_at,
+			tag_id: a.tag_id
+		}));
+		return delay([...feedItems]);
 	},
 
 	async fetchArticles(opts: FetchArticlesOptions = {}): Promise<Article[]> {

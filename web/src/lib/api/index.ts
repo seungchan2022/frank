@@ -15,4 +15,4 @@ const useMock = import.meta.env.VITE_USE_MOCK_API === 'true';
 export const apiClient: ApiClient = useMock ? mockApiClient : realApiClient;
 
 export type { ApiClient } from './client';
-export type { Article, Profile, ProfilePatch, Tag, FetchArticlesOptions } from './types';
+export type { Article, FeedItem, Profile, ProfilePatch, Tag, FetchArticlesOptions } from './types';

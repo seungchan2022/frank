@@ -10,6 +10,7 @@
 import type { ApiClient } from './client';
 import type {
 	Article,
+	FeedItem,
 	FetchArticlesOptions,
 	Profile,
 	ProfilePatch,
@@ -98,6 +99,10 @@ export const realApiClient: ApiClient = {
 			method: 'PUT',
 			body: JSON.stringify(patch)
 		});
+	},
+
+	async fetchFeed(): Promise<FeedItem[]> {
+		return request<FeedItem[]>('/api/me/feed');
 	},
 
 	async fetchArticles(opts: FetchArticlesOptions = {}): Promise<Article[]> {

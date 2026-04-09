@@ -200,6 +200,39 @@ describe('RealApiClient: articles', () => {
 	});
 });
 
+describe('RealApiClient: feed (MVP5 M1)', () => {
+	it('fetchFeed → GET /api/me/feed, returns FeedItem[]', async () => {
+		const feedItems = [
+			{
+				title: 'Test Article',
+				url: 'https://example.com/news/test',
+				snippet: 'snippet',
+				source: 'tavily',
+				published_at: '2026-04-09T10:00:00Z',
+				tag_id: 'tag-uuid'
+			}
+		];
+		(globalThis.fetch as unknown as ReturnType<typeof vi.fn>).mockResolvedValue(
+			jsonResponse(feedItems)
+		);
+
+		const result = await realApiClient.fetchFeed();
+		expect(result).toEqual(feedItems);
+
+		const { url } = lastFetchCall();
+		expect(url).toBe('http://localhost:8081/api/me/feed');
+	});
+
+	it('fetchFeed — 태그 없으면 빈 배열 반환', async () => {
+		(globalThis.fetch as unknown as ReturnType<typeof vi.fn>).mockResolvedValue(
+			jsonResponse([])
+		);
+
+		const result = await realApiClient.fetchFeed();
+		expect(result).toEqual([]);
+	});
+});
+
 describe('RealApiClient: pipeline', () => {
 	it('collectArticles → POST /api/me/collect, returns collected count', async () => {
 		(globalThis.fetch as unknown as ReturnType<typeof vi.fn>).mockResolvedValue(

@@ -136,3 +136,30 @@ describe('MockApiClient: articles', () => {
 	});
 
 });
+
+describe('MockApiClient: feed (MVP5 M1)', () => {
+	it('fetchFeed는 FeedItem 배열을 반환', async () => {
+		const items = await mockApiClient.fetchFeed();
+		expect(Array.isArray(items)).toBe(true);
+		expect(items.length).toBeGreaterThan(0);
+	});
+
+	it('fetchFeed 아이템에 id/user_id/created_at 없음', async () => {
+		const items = await mockApiClient.fetchFeed();
+		items.forEach((item) => {
+			// FeedItem은 id/user_id/created_at 필드 없음
+			expect('id' in item).toBe(false);
+			expect('user_id' in item).toBe(false);
+			expect('created_at' in item).toBe(false);
+		});
+	});
+
+	it('fetchFeed 아이템에 url/title/source 필드 존재', async () => {
+		const items = await mockApiClient.fetchFeed();
+		items.forEach((item) => {
+			expect(typeof item.title).toBe('string');
+			expect(typeof item.url).toBe('string');
+			expect(typeof item.source).toBe('string');
+		});
+	});
+});

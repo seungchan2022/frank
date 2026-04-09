@@ -3,22 +3,19 @@
 	import { goto } from '$app/navigation';
 	import { apiClient } from '$lib/api';
 	import { formatArticleDate, extractDomain } from '$lib/utils/article';
-	import type { Article } from '$lib/types/article';
+	import type { FeedItem } from '$lib/types/article';
 	import type { Tag } from '$lib/types/tag';
 	import Header from '$lib/components/Header.svelte';
-	import { onMount } from 'svelte';
 
 	const auth = getAuth();
 
-	let articles = $state<Article[]>([]);
+	let feedItems = $state<FeedItem[]>([]);
 	let tags = $state<Tag[]>([]);
 	let loading = $state(false);
-	let loadingMore = $state(false);
-	let collecting = $state(false);
+	let refreshing = $state(false);
 	let error = $state<string | null>(null);
-	let hasMore = $state(true);
-	let sentinel = $state<HTMLDivElement | null>(null);
 	let selectedTagId = $state<string | null>(null);
+	let myTagIds = $state<string[]>([]);
 
 	const tagMap = $derived(
 		tags.reduce<Record<string, string>>((acc, tag) => {
@@ -27,119 +24,64 @@
 		}, {})
 	);
 
-	let myTagIds = $state<string[]>([]);
-
 	// 사용자가 구독한 태그만 필터 탭에 표시
 	const filterTags = $derived(tags.filter((tag) => myTagIds.includes(tag.id)));
 
-	$effect(() => {
-		if (!auth.isAuthenticated) {
-			goto('/login');
-		}
-	});
+	// 선택된 태그로 필터링 (tag_id 기반)
+	const filteredItems = $derived(
+		selectedTagId ? feedItems.filter((item) => item.tag_id === selectedTagId) : feedItems
+	);
 
 	let initialLoaded = false;
 
-	onMount(() => {
-		const observer = new IntersectionObserver(
-			(entries) => {
-				if (entries[0].isIntersecting && hasMore && !loadingMore && !loading) {
-					loadMore();
-				}
-			},
-			{ threshold: 0.1 }
-		);
-
-		$effect(() => {
-			if (!auth.loading && auth.isAuthenticated && !initialLoaded) {
-				initialLoaded = true;
-				loadInitial();
-			}
-		});
-
-		$effect(() => {
-			if (sentinel) {
-				const el = sentinel;
-				observer.observe(el);
-				return () => observer.unobserve(el);
-			}
-		});
-
-		return () => {
-			observer.disconnect();
-		};
+	// 인증 상태 확정 후 리다이렉트 or 초기 로드
+	$effect(() => {
+		if (auth.loading) return;
+		if (!auth.isAuthenticated) {
+			goto('/login');
+			return;
+		}
+		if (!initialLoaded) {
+			initialLoaded = true;
+			loadFeed();
+		}
 	});
 
-	async function loadInitial() {
+	async function loadFeed() {
 		loading = true;
 		error = null;
 		try {
-			const [arts, allTags, tagIds] = await Promise.all([
-				apiClient.fetchArticles({ offset: 0, limit: 10, tagId: selectedTagId ?? undefined }),
+			const [items, allTags, tagIds] = await Promise.all([
+				apiClient.fetchFeed(),
 				apiClient.fetchTags(),
 				apiClient.fetchMyTagIds()
 			]);
-			articles = arts;
+			feedItems = items;
 			tags = allTags;
 			myTagIds = tagIds;
-			hasMore = arts.length >= 10;
 		} catch (e) {
-			error = e instanceof Error ? e.message : 'Failed to load articles';
-			articles = [];
+			error = e instanceof Error ? e.message : 'Failed to load feed';
+			feedItems = [];
 		} finally {
 			loading = false;
 		}
 	}
 
-	async function loadMore() {
-		if (loadingMore || !hasMore) return;
-		loadingMore = true;
-		try {
-			const moreArticles = await apiClient.fetchArticles({
-				offset: articles.length,
-				limit: 10,
-				tagId: selectedTagId ?? undefined
-			});
-			if (moreArticles.length === 0) {
-				hasMore = false;
-			} else {
-				articles = [...articles, ...moreArticles];
-				hasMore = moreArticles.length >= 10;
-			}
-		} catch (e) {
-			error = e instanceof Error ? e.message : 'Failed to load more articles';
-		} finally {
-			loadingMore = false;
-		}
-	}
-
-	async function selectTag(tagId: string | null) {
-		selectedTagId = tagId;
-		articles = [];
-		hasMore = true;
-		await loadInitial();
-	}
-
 	async function handleRefresh() {
-		if (collecting) return;
-		collecting = true;
+		if (refreshing) return;
+		refreshing = true;
 		error = null;
 		try {
-			await apiClient.collectArticles();
-			const [arts, allTags, tagIds] = await Promise.all([
-				apiClient.fetchArticles({ offset: 0, limit: 10, tagId: selectedTagId ?? undefined }),
-				apiClient.fetchTags(),
-				apiClient.fetchMyTagIds()
-			]);
-			articles = arts;
-			tags = allTags;
-			myTagIds = tagIds;
-			hasMore = arts.length >= 10;
+			feedItems = await apiClient.fetchFeed();
 		} catch (e) {
-			error = e instanceof Error ? e.message : 'Failed to collect articles';
+			error = e instanceof Error ? e.message : 'Failed to refresh feed';
 		} finally {
-			collecting = false;
+			refreshing = false;
 		}
+	}
+
+	function selectTag(tagId: string | null) {
+		selectedTagId = tagId;
 	}
 </script>
 
@@ -151,15 +93,15 @@
 			<h2 class="text-lg font-semibold text-gray-900">My Feed</h2>
 			<button
 				onclick={handleRefresh}
-				disabled={collecting || loading}
+				disabled={refreshing || loading}
 				class="flex items-center gap-2 rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-50"
 			>
-				{#if collecting}
+				{#if refreshing}
 					<svg class="h-4 w-4 animate-spin" fill="none" viewBox="0 0 24 24">
 						<circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
 						<path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"></path>
 					</svg>
-					수집 중...
+					갱신 중...
 				{:else}
 					새 뉴스 가져오기
 				{/if}
@@ -189,17 +131,6 @@
 			{/each}
 		</div>
 
-		<!-- 수집 진행 배너 -->
-		{#if collecting}
-			<div class="mb-4 flex items-center gap-2 rounded-lg bg-gray-100 px-4 py-3 text-sm text-gray-500">
-				<svg class="h-4 w-4 animate-spin" fill="none" viewBox="0 0 24 24">
-					<circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-					<path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"></path>
-				</svg>
-				뉴스를 수집하고 있어요...
-			</div>
-		{/if}
-
 		<!-- 에러 배너 -->
 		{#if error}
 			<div class="mb-4 rounded-lg border border-red-200 bg-red-50 p-4 text-sm text-red-700">
@@ -207,57 +138,54 @@
 			</div>
 		{/if}
 
-		{#if loading && articles.length === 0}
+		{#if loading && feedItems.length === 0}
 			<div class="py-12 text-center text-gray-500">
-				<p>Loading articles...</p>
+				<p>Loading feed...</p>
 			</div>
-		{:else if articles.length === 0}
+		{:else if filteredItems.length === 0}
 			<div class="py-12 text-center text-gray-500">
 				<p class="text-lg">No articles yet.</p>
-				<p class="mt-2 text-sm">Articles will appear here once collection runs.</p>
+				<p class="mt-2 text-sm">새 뉴스 가져오기를 눌러 피드를 불러오세요.</p>
 			</div>
 		{:else}
 			<div class="grid grid-cols-1 gap-4 md:grid-cols-2">
-				{#each articles as article (article.id)}
+				{#each filteredItems as item (item.url)}
 					<article class="flex flex-col rounded-lg border border-gray-200 bg-white p-4">
 						<div class="mb-2 flex items-center gap-2">
 							<span
 								class="inline-block rounded bg-gray-200 px-2 py-0.5 text-xs font-medium text-gray-600"
 							>
-								{article.source || extractDomain(article.url)}
+								{item.source || extractDomain(item.url)}
 							</span>
-							{#if article.tag_id && tagMap[article.tag_id]}
+							{#if item.tag_id && tagMap[item.tag_id]}
 								<span
 									class="inline-block rounded bg-blue-100 px-2 py-0.5 text-xs font-medium text-blue-700"
 								>
-									{tagMap[article.tag_id]}
+									{tagMap[item.tag_id]}
 								</span>
 							{/if}
 						</div>
 
 						<a
-							href="/feed/{article.id}"
+							href={item.url}
+							target="_blank"
+							rel="noopener noreferrer"
 							class="text-base font-semibold text-gray-900 hover:text-blue-600"
 						>
-							{article.title}
+							{item.title}
 						</a>
 
+						{#if item.snippet}
+							<p class="mt-1 line-clamp-2 text-sm text-gray-500">{item.snippet}</p>
+						{/if}
+
 						<div class="mt-auto pt-3 text-xs text-gray-400">
-							{#if article.published_at}
-								<span>{formatArticleDate(article.published_at)}</span>
+							{#if item.published_at}
+								<span>{formatArticleDate(item.published_at)}</span>
 							{/if}
 						</div>
 					</article>
 				{/each}
-			</div>
-
-			<!-- 무한 스크롤 감지 영역 -->
-			<div bind:this={sentinel} class="py-8 text-center">
-				{#if loadingMore}
-					<p class="text-sm text-gray-400">Loading more...</p>
-				{:else if !hasMore}
-					<p class="text-sm text-gray-400">모든 기사를 불러왔습니다.</p>
-				{/if}
 			</div>
 		{/if}
 	</main>
