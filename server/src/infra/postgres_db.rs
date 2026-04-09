@@ -302,6 +302,7 @@ impl DbPort for PostgresDbAdapter {
             let sql = format!(
                 "SELECT {ARTICLE_COLUMNS} FROM articles \
                  WHERE user_id = $1 AND tag_id = $2 \
+                 AND tag_id IN (SELECT tag_id FROM user_tags WHERE user_id = $1) \
                  ORDER BY created_at DESC \
                  LIMIT $3 OFFSET $4"
             );
@@ -316,6 +317,7 @@ impl DbPort for PostgresDbAdapter {
             let sql = format!(
                 "SELECT {ARTICLE_COLUMNS} FROM articles \
                  WHERE user_id = $1 \
+                 AND tag_id IN (SELECT tag_id FROM user_tags WHERE user_id = $1) \
                  ORDER BY created_at DESC \
                  LIMIT $2 OFFSET $3"
             );
@@ -335,7 +337,11 @@ impl DbPort for PostgresDbAdapter {
         user_id: Uuid,
         article_id: Uuid,
     ) -> Result<Option<Article>, AppError> {
-        let sql = format!("SELECT {ARTICLE_COLUMNS} FROM articles WHERE id = $1 AND user_id = $2");
+        let sql = format!(
+            "SELECT {ARTICLE_COLUMNS} FROM articles \
+             WHERE id = $1 AND user_id = $2 \
+             AND tag_id IN (SELECT tag_id FROM user_tags WHERE user_id = $2)"
+        );
         let row = sqlx::query_as::<_, ArticleRow>(&sql)
             .bind(article_id)
             .bind(user_id)

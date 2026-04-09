@@ -45,6 +45,12 @@ pub trait DbPort: Send + Sync {
         articles: Vec<Article>,
     ) -> impl std::future::Future<Output = Result<usize, AppError>> + Send;
 
+    /// 유저의 기사 목록 조회 (페이지네이션).
+    ///
+    /// **계약**: `user_tags`에 등록된 활성 태그의 기사만 반환한다.
+    /// 사용자가 태그를 제거한 경우 해당 태그의 기사는 결과에서 제외된다.
+    /// `tag_id` 지정 시 해당 태그가 활성 상태일 때만 그 태그의 기사를 반환한다.
+    /// 최신순(`created_at DESC`) 정렬 후 `limit`/`offset` 페이지네이션 적용.
     fn get_user_articles(
         &self,
         user_id: Uuid,
@@ -53,7 +59,10 @@ pub trait DbPort: Send + Sync {
         tag_id: Option<Uuid>,
     ) -> impl std::future::Future<Output = Result<Vec<Article>, AppError>> + Send;
 
-    /// 본인 기사 단건 조회. 타인 기사 또는 없는 기사면 Ok(None) 반환 (호출부에서 404 처리).
+    /// 본인 기사 단건 조회.
+    ///
+    /// **계약**: 활성 태그 기사만 접근 가능. 타인 기사, 비활성 태그 기사, 없는 기사는
+    /// 모두 `Ok(None)` 반환 (호출부에서 404 처리).
     fn get_user_article_by_id(
         &self,
         user_id: Uuid,
