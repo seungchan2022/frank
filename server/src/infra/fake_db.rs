@@ -1,4 +1,4 @@
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 use std::sync::{Arc, Mutex};
 
 use chrono::Utc;
@@ -60,6 +60,27 @@ impl FakeDbAdapter {
 
     pub fn get_tags(&self) -> Vec<Tag> {
         self.tags.lock().unwrap().clone()
+    }
+
+    pub fn seed_user_tag(&self, user_id: Uuid, tag_id: Uuid) {
+        self.user_tags
+            .lock()
+            .unwrap()
+            .push(UserTag { user_id, tag_id });
+    }
+
+    /// 유저의 활성 태그 ID 집합을 반환한다.
+    ///
+    /// `user_tags` 락을 취득해 `HashSet<Uuid>`로 materialize한 뒤
+    /// 함수 종료 시 락이 해제된다. 호출부에서 이후 `articles` 락을
+    /// 취득해도 중첩 락이 발생하지 않으므로 deadlock이 방지된다.
+    fn active_tag_ids_for(&self, user_id: Uuid) -> HashSet<Uuid> {
+        let user_tags = self.user_tags.lock().unwrap();
+        user_tags
+            .iter()
+            .filter(|t| t.user_id == user_id)
+            .map(|t| t.tag_id)
+            .collect()
     }
 }
 
@@ -148,17 +169,25 @@ impl DbPort for FakeDbAdapter {
         offset: i64,
         tag_id: Option<Uuid>,
     ) -> Result<Vec<Article>, AppError> {
+        let active_tag_ids = self.active_tag_ids_for(user_id);
         let articles = self.articles.lock().unwrap();
-        let user_articles: Vec<_> = articles
+        // Postgres와 동일하게 created_at DESC 정렬 후 offset/limit 적용
+        let mut filtered: Vec<_> = articles
             .iter()
             .filter(|a| a.user_id == user_id)
             .filter(|a| match tag_id {
-                Some(tid) => a.tag_id == Some(tid),
-                None => true,
+                // 특정 태그: 활성 태그인 경우만
+                Some(tid) => a.tag_id == Some(tid) && active_tag_ids.contains(&tid),
+                // 전체 피드: 현재 활성 태그 기사만
+                None => a.tag_id.is_some_and(|tid| active_tag_ids.contains(&tid)),
             })
+            .cloned()
+            .collect();
+        filtered.sort_by(|a, b| b.created_at.cmp(&a.created_at));
+        let user_articles: Vec<_> = filtered
+            .into_iter()
             .skip(offset.max(0) as usize)
             .take(limit.max(0) as usize)
-            .cloned()
             .collect();
         Ok(user_articles)
     }
@@ -168,10 +197,15 @@ impl DbPort for FakeDbAdapter {
         user_id: Uuid,
         article_id: Uuid,
     ) -> Result<Option<Article>, AppError> {
+        let active_tag_ids = self.active_tag_ids_for(user_id);
         let articles = self.articles.lock().unwrap();
         Ok(articles
             .iter()
-            .find(|a| a.id == article_id && a.user_id == user_id)
+            .find(|a| {
+                a.id == article_id
+                    && a.user_id == user_id
+                    && a.tag_id.is_some_and(|tid| active_tag_ids.contains(&tid))
+            })
             .cloned())
     }
 
@@ -218,6 +252,164 @@ impl DbPort for FakeDbAdapter {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    fn make_article(user_id: Uuid, tag_id: Uuid, url: &str) -> Article {
+        Article {
+            id: Uuid::new_v4(),
+            user_id,
+            tag_id: Some(tag_id),
+            title: url.to_string(),
+            url: url.to_string(),
+            snippet: None,
+            source: "test".to_string(),
+            search_query: None,
+            summary: None,
+            insight: None,
+            summarized_at: None,
+            published_at: None,
+            created_at: None,
+            title_ko: None,
+            content: None,
+            llm_model: None,
+            prompt_tokens: None,
+            completion_tokens: None,
+        }
+    }
+
+    // 태그 삭제 후 전체 피드에서 stale 기사 제외 검증
+    #[tokio::test]
+    async fn get_user_articles_excludes_removed_tag_in_all_feed() {
+        let db = FakeDbAdapter::new();
+        let user_id = Uuid::new_v4();
+        let tags = db.list_tags().await.unwrap();
+        let tag_a = tags[0].id;
+        let tag_b = tags[1].id;
+
+        db.set_user_tags(user_id, vec![tag_a, tag_b]).await.unwrap();
+        db.seed_article(make_article(user_id, tag_a, "https://a.com"));
+        db.seed_article(make_article(user_id, tag_b, "https://b.com"));
+
+        // 삭제 전: 2개
+        let before = db.get_user_articles(user_id, 10, 0, None).await.unwrap();
+        assert_eq!(before.len(), 2);
+
+        // tag_b 삭제 후: tag_a 기사만
+        db.set_user_tags(user_id, vec![tag_a]).await.unwrap();
+        let after = db.get_user_articles(user_id, 10, 0, None).await.unwrap();
+        assert_eq!(after.len(), 1);
+        assert_eq!(after[0].tag_id, Some(tag_a));
+    }
+
+    // 삭제된 태그 ID로 특정 태그 조회 시 빈 배열
+    #[tokio::test]
+    async fn get_user_articles_returns_empty_for_removed_tag() {
+        let db = FakeDbAdapter::new();
+        let user_id = Uuid::new_v4();
+        let tags = db.list_tags().await.unwrap();
+        let tag_a = tags[0].id;
+        let tag_b = tags[1].id;
+
+        db.set_user_tags(user_id, vec![tag_a, tag_b]).await.unwrap();
+        db.seed_article(make_article(user_id, tag_b, "https://b.com"));
+
+        db.set_user_tags(user_id, vec![tag_a]).await.unwrap();
+        let result = db
+            .get_user_articles(user_id, 10, 0, Some(tag_b))
+            .await
+            .unwrap();
+        assert!(result.is_empty());
+    }
+
+    // 단건 조회: 삭제된 태그 기사 → None
+    #[tokio::test]
+    async fn get_user_article_by_id_returns_none_for_removed_tag() {
+        let db = FakeDbAdapter::new();
+        let user_id = Uuid::new_v4();
+        let tags = db.list_tags().await.unwrap();
+        let tag_a = tags[0].id;
+        let tag_b = tags[1].id;
+
+        db.set_user_tags(user_id, vec![tag_a, tag_b]).await.unwrap();
+        let article = make_article(user_id, tag_b, "https://b.com");
+        let article_id = article.id;
+        db.seed_article(article);
+
+        // 활성 상태: 조회 가능
+        let found = db
+            .get_user_article_by_id(user_id, article_id)
+            .await
+            .unwrap();
+        assert!(found.is_some());
+
+        // tag_b 삭제 후: None
+        db.set_user_tags(user_id, vec![tag_a]).await.unwrap();
+        let not_found = db
+            .get_user_article_by_id(user_id, article_id)
+            .await
+            .unwrap();
+        assert!(not_found.is_none());
+    }
+
+    // created_at DESC 정렬 — tag_id=None (전체 피드)
+    #[tokio::test]
+    async fn get_user_articles_sorted_by_created_at_desc_all_feed() {
+        let db = FakeDbAdapter::new();
+        let user_id = Uuid::new_v4();
+        let tags = db.list_tags().await.unwrap();
+        let tag_id = tags[0].id;
+        db.set_user_tags(user_id, vec![tag_id]).await.unwrap();
+
+        let now = chrono::Utc::now();
+        let old = make_article(user_id, tag_id, "https://old.com");
+        let new_ = Article {
+            created_at: Some(now),
+            ..make_article(user_id, tag_id, "https://new.com")
+        };
+        let older = Article {
+            created_at: Some(now - chrono::Duration::hours(2)),
+            ..make_article(user_id, tag_id, "https://older.com")
+        };
+        // 삽입 순서: old(None), new_(latest), older
+        db.seed_article(old);
+        db.seed_article(new_.clone());
+        db.seed_article(older.clone());
+
+        let result = db.get_user_articles(user_id, 10, 0, None).await.unwrap();
+        assert_eq!(result.len(), 3);
+        // created_at=Some(now) 가 최상단, created_at=None 은 최하단
+        assert_eq!(result[0].url, "https://new.com");
+        assert_eq!(result[1].url, "https://older.com");
+    }
+
+    // created_at DESC 정렬 — tag_id=Some (특정 태그 피드)
+    #[tokio::test]
+    async fn get_user_articles_sorted_by_created_at_desc_tag_filter() {
+        let db = FakeDbAdapter::new();
+        let user_id = Uuid::new_v4();
+        let tags = db.list_tags().await.unwrap();
+        let tag_id = tags[0].id;
+        db.set_user_tags(user_id, vec![tag_id]).await.unwrap();
+
+        let now = chrono::Utc::now();
+        let first = Article {
+            created_at: Some(now - chrono::Duration::hours(1)),
+            ..make_article(user_id, tag_id, "https://first.com")
+        };
+        let second = Article {
+            created_at: Some(now),
+            ..make_article(user_id, tag_id, "https://second.com")
+        };
+        db.seed_article(first);
+        db.seed_article(second);
+
+        let result = db
+            .get_user_articles(user_id, 10, 0, Some(tag_id))
+            .await
+            .unwrap();
+        assert_eq!(result.len(), 2);
+        assert_eq!(result[0].url, "https://second.com"); // 최신이 첫 번째
+        assert_eq!(result[1].url, "https://first.com");
+    }
 
     #[test]
     fn fake_db_default() {

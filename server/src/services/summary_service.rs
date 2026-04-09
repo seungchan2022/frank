@@ -101,12 +101,17 @@ mod tests {
     use crate::infra::fake_llm::FakeLlmAdapter;
     use crate::infra::fake_notification::FakeNotificationAdapter;
 
-    fn setup_db_with_articles(db: &FakeDbAdapter, user_id: Uuid) {
+    /// 프로필 seed + 활성 태그 1개 등록. 반환값은 등록된 tag_id.
+    fn setup_db_with_articles(db: &FakeDbAdapter, user_id: Uuid) -> Uuid {
         db.seed_profile(Profile {
             id: user_id,
             display_name: Some("Tester".to_string()),
             onboarding_completed: true,
         });
+        let tags = db.get_tags();
+        let tag_id = tags[0].id;
+        db.seed_user_tag(user_id, tag_id);
+        tag_id
     }
 
     async fn insert_articles(db: &FakeDbAdapter, user_id: Uuid, articles: Vec<Article>) {
@@ -114,11 +119,11 @@ mod tests {
         let _ = db.get_user_articles(user_id, 100, 0, None).await;
     }
 
-    fn make_article(user_id: Uuid, title: &str, snippet: Option<&str>) -> Article {
+    fn make_article(user_id: Uuid, tag_id: Uuid, title: &str, snippet: Option<&str>) -> Article {
         Article {
             id: Uuid::new_v4(),
             user_id,
-            tag_id: None,
+            tag_id: Some(tag_id),
             title: title.to_string(),
             url: format!("https://example.com/{}", title.replace(' ', "-")),
             snippet: snippet.map(|s| s.to_string()),
@@ -143,11 +148,16 @@ mod tests {
         let llm = FakeLlmAdapter::new();
         let notifier = FakeNotificationAdapter::new();
         let user_id = Uuid::new_v4();
-        setup_db_with_articles(&db, user_id);
+        let tag_id = setup_db_with_articles(&db, user_id);
 
         let articles = vec![
-            make_article(user_id, "AI News", Some("AI is transforming...")),
-            make_article(user_id, "Web Dev", Some("Web development trends...")),
+            make_article(user_id, tag_id, "AI News", Some("AI is transforming...")),
+            make_article(
+                user_id,
+                tag_id,
+                "Web Dev",
+                Some("Web development trends..."),
+            ),
         ];
         insert_articles(&db, user_id, articles).await;
 
@@ -157,7 +167,6 @@ mod tests {
 
         assert_eq!(count, 2);
 
-        // 요약이 저장되었는지 확인
         let saved = db.get_user_articles(user_id, 100, 0, None).await.unwrap();
         for article in &saved {
             assert!(article.summary.is_some());
@@ -165,7 +174,6 @@ mod tests {
             assert!(article.summarized_at.is_some());
         }
 
-        // 알림이 전송되었는지 확인
         let messages = notifier.sent_messages();
         assert_eq!(messages.len(), 1);
         assert!(messages[0].contains("2 articles"));
@@ -177,11 +185,11 @@ mod tests {
         let llm = FakeLlmAdapter::new();
         let notifier = FakeNotificationAdapter::new();
         let user_id = Uuid::new_v4();
-        setup_db_with_articles(&db, user_id);
+        let tag_id = setup_db_with_articles(&db, user_id);
 
         let articles = vec![
-            make_article(user_id, "Has Snippet", Some("Some content")),
-            make_article(user_id, "No Snippet", None),
+            make_article(user_id, tag_id, "Has Snippet", Some("Some content")),
+            make_article(user_id, tag_id, "No Snippet", None),
         ];
         insert_articles(&db, user_id, articles).await;
 
@@ -198,9 +206,9 @@ mod tests {
         let llm = FakeLlmAdapter::new();
         let notifier = FakeNotificationAdapter::new();
         let user_id = Uuid::new_v4();
-        setup_db_with_articles(&db, user_id);
+        let tag_id = setup_db_with_articles(&db, user_id);
 
-        let mut article = make_article(user_id, "Already Done", Some("content"));
+        let mut article = make_article(user_id, tag_id, "Already Done", Some("content"));
         article.summary = Some("existing summary".to_string());
         article.insight = Some("existing insight".to_string());
         article.summarized_at = Some(chrono::Utc::now());
@@ -212,8 +220,6 @@ mod tests {
             .unwrap();
 
         assert_eq!(count, 0);
-
-        // 새 요약이 없으므로 알림 전송 안 됨
         assert!(notifier.sent_messages().is_empty());
     }
 
@@ -223,16 +229,15 @@ mod tests {
         let llm = FakeLlmAdapter::failing();
         let notifier = FakeNotificationAdapter::new();
         let user_id = Uuid::new_v4();
-        setup_db_with_articles(&db, user_id);
+        let tag_id = setup_db_with_articles(&db, user_id);
 
-        let articles = vec![make_article(user_id, "Will Fail", Some("content"))];
+        let articles = vec![make_article(user_id, tag_id, "Will Fail", Some("content"))];
         insert_articles(&db, user_id, articles).await;
 
         let count = summarize_articles(&db, &llm, &notifier, user_id)
             .await
             .unwrap();
 
-        // LLM 실패 시 건너뛰므로 0
         assert_eq!(count, 0);
     }
 
@@ -242,9 +247,9 @@ mod tests {
         let llm = FakeLlmAdapter::new();
         let notifier = FakeNotificationAdapter::new();
         let user_id = Uuid::new_v4();
-        setup_db_with_articles(&db, user_id);
+        let tag_id = setup_db_with_articles(&db, user_id);
 
-        let mut article = make_article(user_id, "Both", Some("snippet text"));
+        let mut article = make_article(user_id, tag_id, "Both", Some("snippet text"));
         article.content = Some("full content text".to_string());
         insert_articles(&db, user_id, vec![article]).await;
 
@@ -252,7 +257,6 @@ mod tests {
             .await
             .unwrap();
 
-        // content 존재 시 content가 LLM에 전달됨 (snippet 무시)
         assert_eq!(count, 1);
     }
 
@@ -262,17 +266,16 @@ mod tests {
         let llm = FakeLlmAdapter::new();
         let notifier = FakeNotificationAdapter::new();
         let user_id = Uuid::new_v4();
-        setup_db_with_articles(&db, user_id);
+        let tag_id = setup_db_with_articles(&db, user_id);
 
-        let mut article = make_article(user_id, "EmptyContent", Some("valid snippet"));
-        article.content = Some(String::new()); // 빈 문자열
+        let mut article = make_article(user_id, tag_id, "EmptyContent", Some("valid snippet"));
+        article.content = Some(String::new());
         insert_articles(&db, user_id, vec![article]).await;
 
         let count = summarize_articles(&db, &llm, &notifier, user_id)
             .await
             .unwrap();
 
-        // content가 빈 문자열이면 snippet으로 폴백
         assert_eq!(count, 1);
     }
 
@@ -282,9 +285,9 @@ mod tests {
         let llm = FakeLlmAdapter::new();
         let notifier = FakeNotificationAdapter::new();
         let user_id = Uuid::new_v4();
-        setup_db_with_articles(&db, user_id);
+        let tag_id = setup_db_with_articles(&db, user_id);
 
-        let mut article = make_article(user_id, "AllEmpty", None);
+        let mut article = make_article(user_id, tag_id, "AllEmpty", None);
         article.content = Some(String::new());
         article.snippet = Some(String::new());
         insert_articles(&db, user_id, vec![article]).await;
@@ -293,7 +296,6 @@ mod tests {
             .await
             .unwrap();
 
-        // 둘 다 빈 문자열이면 건너뜀
         assert_eq!(count, 0);
         assert!(notifier.sent_messages().is_empty());
     }
@@ -304,14 +306,14 @@ mod tests {
         let llm = FakeLlmAdapter::new();
         let notifier = FakeNotificationAdapter::new();
         let user_id = Uuid::new_v4();
-        setup_db_with_articles(&db, user_id);
+        let tag_id = setup_db_with_articles(&db, user_id);
 
-        let mut already_done = make_article(user_id, "Done", Some("content"));
+        let mut already_done = make_article(user_id, tag_id, "Done", Some("content"));
         already_done.summary = Some("existing".to_string());
         already_done.insight = Some("existing".to_string());
         already_done.summarized_at = Some(chrono::Utc::now());
 
-        let new_article = make_article(user_id, "New", Some("new content"));
+        let new_article = make_article(user_id, tag_id, "New", Some("new content"));
 
         insert_articles(&db, user_id, vec![already_done, new_article]).await;
 
@@ -319,9 +321,7 @@ mod tests {
             .await
             .unwrap();
 
-        // 이미 요약된 1건 건너뛰고, 새 1건만 요약
         assert_eq!(count, 1);
-        // 알림은 새로 요약된 1건에 대해서만
         let messages = notifier.sent_messages();
         assert_eq!(messages.len(), 1);
         assert!(messages[0].contains("1 articles"));

@@ -320,7 +320,9 @@ mod tests {
     async fn list_articles_offset_pagination() {
         let db = FakeDbAdapter::new();
         let user_id = Uuid::new_v4();
-        seed_articles(&db, user_id, 5, None);
+        let tag_id = db.get_tags()[0].id;
+        db.seed_user_tag(user_id, tag_id);
+        seed_articles(&db, user_id, 5, Some(tag_id));
         let state = make_test_state(db, vec![]);
         let app = make_app(state, user_id);
         let server = TestServer::new(app);
@@ -335,7 +337,8 @@ mod tests {
     async fn list_articles_tag_filter() {
         let db = FakeDbAdapter::new();
         let user_id = Uuid::new_v4();
-        let tag_id = Uuid::new_v4();
+        let tag_id = db.get_tags()[0].id;
+        db.seed_user_tag(user_id, tag_id);
         seed_articles(&db, user_id, 3, Some(tag_id));
         seed_articles(&db, user_id, 2, None);
         let state = make_test_state(db, vec![]);
@@ -389,9 +392,12 @@ mod tests {
     async fn get_article_returns_own_article() {
         let db = FakeDbAdapter::new();
         let user_id = Uuid::new_v4();
+        let tag_id = db.get_tags()[0].id;
+        db.seed_user_tag(user_id, tag_id);
         let article_id = Uuid::new_v4();
         db.seed_article(Article {
             id: article_id,
+            tag_id: Some(tag_id),
             title: "mine".to_string(),
             url: "https://example.com/mine".to_string(),
             ..make_article(user_id)
@@ -445,7 +451,9 @@ mod tests {
     async fn list_articles_oversized_limit_clamped() {
         let db = FakeDbAdapter::new();
         let user_id = Uuid::new_v4();
-        seed_articles(&db, user_id, 150, None);
+        let tag_id = db.get_tags()[0].id;
+        db.seed_user_tag(user_id, tag_id);
+        seed_articles(&db, user_id, 150, Some(tag_id));
         let state = make_test_state(db, vec![]);
         let app = make_app(state, user_id);
         let server = TestServer::new(app);
