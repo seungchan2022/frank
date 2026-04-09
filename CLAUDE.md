@@ -73,7 +73,8 @@ scripts/deploy.sh --target=api --tunnel   # API + Cloudflare 터널
 - 모든 외부 호출을 포트(trait/protocol)로 추상화
 - State injection으로 프로덕션 어댑터와 Fake 어댑터 교체
 - 포트는 관심사별 분리, 어댑터는 통일
-- DB 접근은 Supabase REST API (sqlx 미사용)
+- DB 접근은 sqlx PgPool 직접 사용 (Supabase REST API 미사용)
+- Supabase SDK는 인증(Auth) 전용으로만 사용
 
 ### 디렉토리 구조
 
