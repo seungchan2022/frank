@@ -173,6 +173,7 @@ run_front() {
     check_env_files
     check_docker
     run_docker_service "web" "$FRONT_PORT"
+    open "http://localhost:$FRONT_PORT"
 }
 
 # ─── Cloudflare 터널 ──────────────────────────────────────────────────────────
