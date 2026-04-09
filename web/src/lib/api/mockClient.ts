@@ -13,6 +13,7 @@ import type {
 	ProfilePatch,
 	Tag
 } from './types';
+import type { SummaryResult } from '$lib/types/summary';
 import articlesFixture from './__fixtures__/articles.json';
 import tagsFixture from './__fixtures__/tags.json';
 import profileFixture from './__fixtures__/profile.json';
@@ -119,5 +120,15 @@ export const mockApiClient: ApiClient = {
 		};
 		articles = [newArticle, ...articles];
 		return delay(1, 200);
+	},
+
+	async summarize(_url: string, _title: string): Promise<SummaryResult> {
+		return delay(
+			{
+				summary: 'Mock 요약: 이 기사는 AI 기술의 최신 동향을 다루고 있습니다.',
+				insight: 'Mock 인사이트: AI 기술이 산업 전반에 미치는 영향이 커지고 있습니다.'
+			},
+			600
+		);
 	}
 };

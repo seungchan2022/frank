@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { getAuth } from '$lib/stores/auth.svelte';
-	import { goto } from '$app/navigation';
+	import { goto, pushState } from '$app/navigation';
 	import { apiClient } from '$lib/api';
 	import { formatArticleDate, extractDomain } from '$lib/utils/article';
 	import type { FeedItem } from '$lib/types/article';
@@ -82,6 +82,17 @@
 
 	function selectTag(tagId: string | null) {
 		selectedTagId = tagId;
+	}
+
+	function navigateToArticle(item: FeedItem) {
+		const params = new URLSearchParams({
+			url: item.url,
+			title: item.title,
+			source: item.source
+		});
+		const path = `/feed/article?${params.toString()}`;
+		pushState(path, { feedItem: item });
+		goto(path);
 	}
 </script>
 
@@ -166,14 +177,12 @@
 							{/if}
 						</div>
 
-						<a
-							href={item.url}
-							target="_blank"
-							rel="noopener noreferrer"
-							class="text-base font-semibold text-gray-900 hover:text-blue-600"
+						<button
+							onclick={() => navigateToArticle(item)}
+							class="text-left text-base font-semibold text-gray-900 hover:text-blue-600"
 						>
 							{item.title}
-						</a>
+						</button>
 
 						{#if item.snippet}
 							<p class="mt-1 line-clamp-2 text-sm text-gray-500">{item.snippet}</p>

@@ -16,6 +16,7 @@ import type {
 	ProfilePatch,
 	Tag
 } from './types';
+import type { SummaryResult } from '$lib/types/summary';
 
 const API_BASE = (import.meta.env.VITE_RUST_API_URL ?? 'http://localhost:8080').replace(/\/$/, '');
 
@@ -127,5 +128,12 @@ export const realApiClient: ApiClient = {
 	async collectArticles(): Promise<number> {
 		const data = await request<{ collected: number }>('/api/me/collect', { method: 'POST' });
 		return data.collected;
+	},
+
+	async summarize(url: string, title: string): Promise<SummaryResult> {
+		return request<SummaryResult>('/api/me/summarize', {
+			method: 'POST',
+			body: JSON.stringify({ url, title })
+		});
 	}
 };

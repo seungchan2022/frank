@@ -12,6 +12,7 @@ import type {
 	ProfilePatch,
 	Tag
 } from './types';
+import type { SummaryResult } from '$lib/types/summary';
 
 export interface ApiClient {
 	// Tags
@@ -26,6 +27,9 @@ export interface ApiClient {
 
 	// Feed (MVP5 M1: ephemeral, DB 저장 없음)
 	fetchFeed(): Promise<FeedItem[]>;
+
+	// Summarize (MVP5 M2: 온디맨드 URL 크롤링 + LLM 요약)
+	summarize(url: string, title: string): Promise<SummaryResult>;
 
 	// Articles (즐겨찾기/상세용 — MVP5 M3에서 favorites로 전환 예정)
 	fetchArticles(opts?: FetchArticlesOptions): Promise<Article[]>;
