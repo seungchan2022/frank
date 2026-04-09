@@ -5,6 +5,7 @@ import SwiftUI
 /// NavigationLink value: String (FeedItem.id = url absoluteString 기반).
 struct FeedView: View {
     let feature: FeedFeature
+    let summarize: any SummarizePort
     var onSettingsTapped: (() -> Void)?
 
     var body: some View {
@@ -37,7 +38,7 @@ struct FeedView: View {
             }
             .navigationDestination(for: String.self) { urlString in
                 if let item = feature.articles.first(where: { $0.id == urlString }) {
-                    ArticleDetailView(feedItem: item)
+                    ArticleDetailView(feedItem: item, summarize: summarize)
                 }
             }
             .task {

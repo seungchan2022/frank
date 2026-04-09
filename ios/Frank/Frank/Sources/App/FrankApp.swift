@@ -87,7 +87,7 @@ struct FeedContainerView: View {
     }
 
     var body: some View {
-        FeedView(feature: feedFeature, onSettingsTapped: {
+        FeedView(feature: feedFeature, summarize: dependencies.summarize, onSettingsTapped: {
             settingsFeature = SettingsFeature(tag: dependencies.tag, auth: dependencies.auth)
         })
         .sheet(item: $settingsFeature) { feature in

@@ -6,15 +6,18 @@ final class AppDependencies {
     let auth: any AuthPort
     let tag: any TagPort
     let article: any ArticlePort
+    let summarize: any SummarizePort
 
     init(
         auth: any AuthPort,
         tag: any TagPort,
-        article: any ArticlePort
+        article: any ArticlePort,
+        summarize: any SummarizePort
     ) {
         self.auth = auth
         self.tag = tag
         self.article = article
+        self.summarize = summarize
     }
 
     static func live() -> AppDependencies {
@@ -37,7 +40,8 @@ final class AppDependencies {
         return AppDependencies(
             auth: authAdapter,
             tag: APITagAdapter(auth: authAdapter, serverConfig: serverConfig),
-            article: APIArticleAdapter(auth: authAdapter, serverConfig: serverConfig)
+            article: APIArticleAdapter(auth: authAdapter, serverConfig: serverConfig),
+            summarize: APISummarizeAdapter(auth: authAdapter, serverConfig: serverConfig)
         )
     }
 
@@ -54,7 +58,8 @@ final class AppDependencies {
         return AppDependencies(
             auth: MockAuthAdapter(profile: profile, scenario: scenario),
             tag: MockTagAdapter(),
-            article: MockArticleAdapter()
+            article: MockArticleAdapter(),
+            summarize: MockSummarizeAdapter()
         )
     }
 }
