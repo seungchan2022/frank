@@ -180,87 +180,57 @@ struct PortContractTests {
         #expect(mock.savedTagIds == ids)
     }
 
-    // MARK: - ArticlePort
+    // MARK: - ArticlePort (MVP5 M1: fetchFeed)
 
-    @Test("MockArticlePort 기사 목록 filter 적용")
-    func articleFetchWithFilter() async throws {
+    @Test("MockArticlePort fetchFeed 성공")
+    func articleFetchFeed() async throws {
         let mock = MockArticlePort()
-        let tagId = UUID()
-        mock.articles = (0..<5).map { i in
-            Article(
-                id: UUID(),
-                userId: UUID(),
-                title: "Article \(i)",
-                url: URL(string: "https://example.com/\(i)")!,
-                source: "Test",
-                publishedAt: Date(),
-                tagId: tagId,
-                snippet: nil,
-                createdAt: nil
-            )
-        }
+        mock.feedItems = [
+            FeedItem(title: "Article 1", url: URL(string: "https://example.com/1")!, source: "Test"),
+            FeedItem(title: "Article 2", url: URL(string: "https://example.com/2")!, source: "Test"),
+        ]
 
-        let filter = ArticleFilter(tagId: tagId, limit: 3, offset: 0)
-        let result = try await mock.fetchArticles(filter: filter)
+        let result = try await mock.fetchFeed()
 
-        #expect(result.count == 3)
-        #expect(mock.fetchArticlesCallCount == 1)
-        #expect(mock.lastFilter == filter)
+        #expect(result.count == 2)
+        #expect(mock.fetchFeedCallCount == 1)
     }
 
-    @Test("MockArticlePort 기사 상세 조회")
-    func articleFetchDetail() async throws {
-        let mock = MockArticlePort()
-        let articleId = UUID()
-        let article = Article(
-            id: articleId,
-            userId: UUID(),
-            title: "Test",
-            url: URL(string: "https://example.com")!,
-            source: "Test",
-            publishedAt: Date(),
-            tagId: UUID(),
-            snippet: "미리보기",
-            createdAt: nil
-        )
-        mock.articles = [article]
-
-        let result = try await mock.fetchArticle(id: articleId)
-
-        #expect(result == article)
-    }
-
-    @Test("MockArticlePort 조회 실패")
-    func articleFetchError() async {
+    @Test("MockArticlePort fetchFeed 에러 전파")
+    func articleFetchFeedError() async {
         let mock = MockArticlePort()
         mock.fetchError = URLError(.timedOut)
 
         await #expect(throws: URLError.self) {
-            try await mock.fetchArticles(filter: ArticleFilter())
+            try await mock.fetchFeed()
         }
+        #expect(mock.fetchFeedCallCount == 1)
     }
 
-    // MARK: - CollectPort
+    // MARK: - SummarizePort (MVP5 M2)
 
-    @Test("MockCollectPort collect 호출 추적 및 반환값")
-    func collectTrigger() async throws {
-        let mock = MockCollectPort()
-        mock.collectResult = 5
+    @Test("MockSummarizePort summarize 성공")
+    func summarizeSuccess() async throws {
+        let mock = MockSummarizePort()
+        mock.result = SummaryResult(summary: "요약 내용", insight: "인사이트 내용")
 
-        let count = try await mock.triggerCollect()
+        let result = try await mock.summarize(url: "https://example.com", title: "Test")
 
-        #expect(count == 5)
-        #expect(mock.triggerCollectCallCount == 1)
+        #expect(result.summary == "요약 내용")
+        #expect(result.insight == "인사이트 내용")
+        #expect(mock.callCount == 1)
+        #expect(mock.lastURL == "https://example.com")
+        #expect(mock.lastTitle == "Test")
     }
 
-    @Test("MockCollectPort collect 에러 전파")
-    func collectError() async {
-        let mock = MockCollectPort()
-        mock.collectError = URLError(.badServerResponse)
+    @Test("MockSummarizePort summarize 에러 전파")
+    func summarizeError() async {
+        let mock = MockSummarizePort()
+        mock.error = URLError(.timedOut)
 
         await #expect(throws: URLError.self) {
-            try await mock.triggerCollect()
+            try await mock.summarize(url: "https://example.com", title: "Test")
         }
-        #expect(mock.triggerCollectCallCount == 1)
+        #expect(mock.callCount == 1)
     }
 }

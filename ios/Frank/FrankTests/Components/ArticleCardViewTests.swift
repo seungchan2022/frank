@@ -10,12 +10,12 @@ struct ArticleCardViewTests {
     private func makeArticle(
         title: String = "Test Article",
         source: String = "TestSource",
-        publishedAt: Date = Date()
+        publishedAt: Date = Date(),
+        urlSuffix: String = "article"
     ) -> Article {
         Article(
-            id: UUID(),
             title: title,
-            url: URL(string: "https://example.com")!,
+            url: URL(string: "https://example.com/\(urlSuffix)")!,
             source: source,
             publishedAt: publishedAt,
             tagId: UUID()
@@ -38,9 +38,8 @@ struct ArticleCardViewTests {
     @Test("snippet이 nil인 Article 생성 가능")
     func articleWithNilSnippet() {
         let article = Article(
-            id: UUID(),
             title: "Test",
-            url: URL(string: "https://example.com")!,
+            url: URL(string: "https://example.com/nil-snippet")!,
             source: "Source",
             publishedAt: Date(),
             tagId: UUID(),
@@ -53,9 +52,8 @@ struct ArticleCardViewTests {
     @Test("snippet이 있는 Article 생성 가능")
     func articleWithSnippet() {
         let article = Article(
-            id: UUID(),
             title: "Test",
-            url: URL(string: "https://example.com")!,
+            url: URL(string: "https://example.com/with-snippet")!,
             source: "Source",
             publishedAt: Date(),
             tagId: UUID(),
@@ -88,15 +86,13 @@ struct ArticleCardViewTests {
     @Test("옵셔널 필드 없이 Article 생성 — 기본값 nil")
     func articleDefaultValues() {
         let article = Article(
-            id: UUID(),
             title: "Test",
-            url: URL(string: "https://example.com")!,
+            url: URL(string: "https://example.com/defaults")!,
             source: "Source",
             publishedAt: Date(),
             tagId: UUID()
         )
 
         #expect(article.snippet == nil)
-        #expect(article.createdAt == nil)
     }
 }

@@ -10,12 +10,12 @@ struct AppDependenciesTests {
             auth: MockAuthPort(),
             tag: MockTagPort(),
             article: MockArticlePort(),
-            collect: MockCollectPort()
+            summarize: MockSummarizePort()
         )
 
         #expect(deps.auth is MockAuthPort)
         #expect(deps.tag is MockTagPort)
         #expect(deps.article is MockArticlePort)
-        #expect(deps.collect is MockCollectPort)
+        #expect(deps.summarize is MockSummarizePort)
     }
 }
