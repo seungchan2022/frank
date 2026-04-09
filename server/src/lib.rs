@@ -3,6 +3,7 @@ pub mod config;
 pub mod domain;
 pub mod infra;
 pub mod middleware;
+pub mod scheduler;
 pub mod services;
 
 use std::sync::Arc;
@@ -66,10 +67,7 @@ pub fn create_router<D: DbPort + Clone + 'static>(
         .route("/me/collect", post(api::articles::collect_articles::<D>))
         .route("/me/articles", get(api::articles::list_articles::<D>))
         .route("/me/articles/{id}", get(api::articles::get_article::<D>))
-        .route(
-            "/me/summarize",
-            post(api::articles::summarize_articles::<D>),
-        )
+        // MVP5 M1: POST /me/summarize 제거 (온디맨드 요약은 M2에서 /me/articles/:id/summarize로 구현)
         .layer(from_fn(middleware::auth::require_auth))
         .layer(Extension(supabase_config));
 
@@ -143,5 +141,15 @@ mod tests {
             .json(&serde_json::json!({"onboarding_completed": true}))
             .await;
         resp.assert_status_unauthorized();
+    }
+
+    #[tokio::test]
+    async fn summarize_endpoint_removed_returns_404() {
+        // MVP5 M1: POST /me/summarize 제거 확인
+        let server = make_full_app();
+        let resp = server.post("/api/me/summarize").await;
+        // 인증 없으므로 401, 혹은 라우트 자체 없음(405/404)
+        // 핵심: 200 OK가 아님을 확인
+        assert_ne!(resp.status_code(), axum::http::StatusCode::OK);
     }
 }

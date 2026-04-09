@@ -1,11 +1,8 @@
-use futures::stream::{self, StreamExt};
 use uuid::Uuid;
 
 use crate::domain::error::AppError;
 use crate::domain::models::Article;
-use crate::domain::ports::{CrawlPort, DbPort, SearchChainPort};
-
-const MAX_CONCURRENT_CRAWLS: usize = 5;
+use crate::domain::ports::{DbPort, SearchChainPort};
 
 /// 홈페이지/목록 페이지 URL을 판별한다.
 /// path 세그먼트가 1개 이하면 개별 기사가 아닌 것으로 간주.
@@ -13,12 +10,14 @@ const MAX_CONCURRENT_CRAWLS: usize = 5;
 /// 예: "https://example.com/news/some-article" → false
 fn is_homepage_url(raw_url: &str) -> bool {
     // "https://domain.com/path" 에서 path 부분 추출
+    // find("://") 결과를 한 번만 사용해 중복 계산 제거
     let path = raw_url
         .find("://")
-        .and_then(|i| raw_url[i + 3..].find('/'))
-        .map(|i| {
-            let start = raw_url.find("://").unwrap() + 3 + i;
-            &raw_url[start..]
+        .and_then(|scheme_end| {
+            let after_scheme = &raw_url[scheme_end + 3..];
+            after_scheme
+                .find('/')
+                .map(|slash_pos| &after_scheme[slash_pos..])
         })
         .unwrap_or("/");
     let path = path.trim_end_matches('/');
@@ -27,10 +26,10 @@ fn is_homepage_url(raw_url: &str) -> bool {
 }
 
 /// 사용자의 태그를 기반으로 뉴스를 검색하고 DB에 저장한다.
+/// MVP5 M1: 크롤링(본문 추출) 없이 메타데이터만 저장.
 pub async fn collect_for_user<D: DbPort>(
     db: &D,
     search_chain: &dyn SearchChainPort,
-    crawl: &dyn CrawlPort,
     user_id: Uuid,
 ) -> Result<usize, AppError> {
     // 1. 사용자 태그 조회
@@ -79,60 +78,16 @@ pub async fn collect_for_user<D: DbPort>(
                 url: sr.url,
                 snippet: sr.snippet,
                 source: source.clone(),
-                search_query: Some(query.clone()),
-                summary: None,
-                insight: None,
-                summarized_at: None,
                 published_at: sr.published_at.and_then(|s| s.parse().ok()),
                 created_at: None,
-                title_ko: None,
-                content: None,
-                llm_model: None,
-                prompt_tokens: None,
-                completion_tokens: None,
             });
         }
     }
 
-    // 4. DB에 저장
+    // 4. DB에 저장 (메타데이터만, 크롤링 없음)
     let count = all_articles.len();
     if !all_articles.is_empty() {
-        // 크롤링할 기사 정보를 미리 복사
-        let crawl_targets: Vec<(Uuid, String)> =
-            all_articles.iter().map(|a| (a.id, a.url.clone())).collect();
-
         db.save_articles(all_articles).await?;
-
-        // 5. 각 기사 URL에서 본문 크롤링 (병렬, 최대 MAX_CONCURRENT_CRAWLS개 동시)
-        let crawl_results: Vec<_> = stream::iter(crawl_targets)
-            .map(|(article_id, url)| async move {
-                let result = crawl.scrape(&url).await;
-                (article_id, url, result)
-            })
-            .buffer_unordered(MAX_CONCURRENT_CRAWLS)
-            .collect()
-            .await;
-
-        for (article_id, url, result) in crawl_results {
-            match result {
-                Ok(content) => {
-                    if let Err(e) = db.update_article_content(article_id, &content).await {
-                        tracing::warn!(
-                            article_id = %article_id,
-                            error = %e,
-                            "failed to save crawled content"
-                        );
-                    }
-                }
-                Err(e) => {
-                    tracing::warn!(
-                        url = %url,
-                        error = %e,
-                        "crawl failed, skipping content extraction"
-                    );
-                }
-            }
-        }
     }
 
     Ok(count)
@@ -142,7 +97,6 @@ pub async fn collect_for_user<D: DbPort>(
 mod tests {
     use super::*;
     use crate::domain::models::{Profile, SearchResult};
-    use crate::infra::fake_crawl::FakeCrawlAdapter;
     use crate::infra::fake_db::FakeDbAdapter;
     use crate::infra::fake_search::FakeSearchAdapter;
     use crate::infra::search_chain::SearchFallbackChain;
@@ -169,7 +123,6 @@ mod tests {
     #[tokio::test]
     async fn collect_returns_article_count() {
         let db = FakeDbAdapter::new();
-        let crawl = FakeCrawlAdapter::new();
         let (user_id, tag_ids) = setup_db_with_tags(&db);
 
         // 태그 설정
@@ -193,7 +146,7 @@ mod tests {
             false,
         );
 
-        let count = collect_for_user(&db, chain.as_ref(), &crawl, user_id)
+        let count = collect_for_user(&db, chain.as_ref(), user_id)
             .await
             .unwrap();
 
@@ -204,16 +157,13 @@ mod tests {
         let articles = db.get_user_articles(user_id, 100, 0, None).await.unwrap();
         assert_eq!(articles.len(), 2);
 
-        // 크롤링된 콘텐츠가 저장되었는지 확인
-        for article in &articles {
-            assert!(article.content.is_some());
-        }
+        // MVP5 M1: 크롤링 없음 → 모든 기사에 tag_id가 설정되어 있어야 한다
+        assert!(articles.iter().all(|a| a.tag_id.is_some()));
     }
 
     #[tokio::test]
     async fn collect_with_no_tags_returns_error() {
         let db = FakeDbAdapter::new();
-        let crawl = FakeCrawlAdapter::new();
         let user_id = Uuid::new_v4();
         db.seed_profile(Profile {
             id: user_id,
@@ -223,53 +173,23 @@ mod tests {
 
         let chain = make_chain(vec![], false);
 
-        let result = collect_for_user(&db, chain.as_ref(), &crawl, user_id).await;
+        let result = collect_for_user(&db, chain.as_ref(), user_id).await;
         assert!(result.is_err());
     }
 
     #[tokio::test]
     async fn collect_skips_failed_searches() {
         let db = FakeDbAdapter::new();
-        let crawl = FakeCrawlAdapter::new();
         let (user_id, tag_ids) = setup_db_with_tags(&db);
         db.set_user_tags(user_id, tag_ids).await.unwrap();
 
         // 검색이 실패해도 에러가 아닌 0 반환
         let chain = make_chain(vec![], true);
 
-        let count = collect_for_user(&db, chain.as_ref(), &crawl, user_id)
+        let count = collect_for_user(&db, chain.as_ref(), user_id)
             .await
             .unwrap();
         assert_eq!(count, 0);
-    }
-
-    #[tokio::test]
-    async fn collect_continues_on_crawl_failure() {
-        let db = FakeDbAdapter::new();
-        let crawl = FakeCrawlAdapter::failing();
-        let (user_id, tag_ids) = setup_db_with_tags(&db);
-        db.set_user_tags(user_id, tag_ids).await.unwrap();
-
-        let chain = make_chain(
-            vec![SearchResult {
-                title: "Article 1".to_string(),
-                url: "https://example.com/news/article-1".to_string(),
-                snippet: Some("snippet 1".to_string()),
-                published_at: None,
-            }],
-            false,
-        );
-
-        let count = collect_for_user(&db, chain.as_ref(), &crawl, user_id)
-            .await
-            .unwrap();
-
-        // 기사는 저장되지만 content는 None (크롤 실패)
-        assert_eq!(count, 2); // 2 tags x 1 result (동일 URL이므로 DB에는 1개)
-        let articles = db.get_user_articles(user_id, 100, 0, None).await.unwrap();
-        for article in &articles {
-            assert!(article.content.is_none());
-        }
     }
 
     #[test]
@@ -310,7 +230,6 @@ mod tests {
     #[tokio::test]
     async fn collect_parses_published_at() {
         let db = FakeDbAdapter::new();
-        let crawl = FakeCrawlAdapter::new();
         let (user_id, tag_ids) = setup_db_with_tags(&db);
         db.set_user_tags(user_id, vec![tag_ids[0]]).await.unwrap();
 
@@ -324,7 +243,7 @@ mod tests {
             false,
         );
 
-        collect_for_user(&db, chain.as_ref(), &crawl, user_id)
+        collect_for_user(&db, chain.as_ref(), user_id)
             .await
             .unwrap();
 
@@ -336,7 +255,6 @@ mod tests {
     #[tokio::test]
     async fn collect_handles_invalid_published_at() {
         let db = FakeDbAdapter::new();
-        let crawl = FakeCrawlAdapter::new();
         let (user_id, tag_ids) = setup_db_with_tags(&db);
         db.set_user_tags(user_id, vec![tag_ids[0]]).await.unwrap();
 
@@ -350,7 +268,7 @@ mod tests {
             false,
         );
 
-        collect_for_user(&db, chain.as_ref(), &crawl, user_id)
+        collect_for_user(&db, chain.as_ref(), user_id)
             .await
             .unwrap();
 
@@ -361,9 +279,8 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn collect_sets_tag_id_and_search_query() {
+    async fn collect_sets_tag_id() {
         let db = FakeDbAdapter::new();
-        let crawl = FakeCrawlAdapter::new();
         let (user_id, tag_ids) = setup_db_with_tags(&db);
         db.set_user_tags(user_id, vec![tag_ids[0]]).await.unwrap();
 
@@ -377,27 +294,18 @@ mod tests {
             false,
         );
 
-        collect_for_user(&db, chain.as_ref(), &crawl, user_id)
+        collect_for_user(&db, chain.as_ref(), user_id)
             .await
             .unwrap();
 
         let articles = db.get_user_articles(user_id, 100, 0, None).await.unwrap();
         assert_eq!(articles.len(), 1);
         assert_eq!(articles[0].tag_id, Some(tag_ids[0]));
-        assert!(articles[0].search_query.is_some());
-        assert!(
-            articles[0]
-                .search_query
-                .as_ref()
-                .unwrap()
-                .contains("latest news")
-        );
     }
 
     #[tokio::test]
     async fn collect_skips_homepage_urls() {
         let db = FakeDbAdapter::new();
-        let crawl = FakeCrawlAdapter::new();
         let (user_id, tag_ids) = setup_db_with_tags(&db);
         db.set_user_tags(user_id, vec![tag_ids[0]]).await.unwrap();
 
@@ -419,7 +327,7 @@ mod tests {
             false,
         );
 
-        let count = collect_for_user(&db, chain.as_ref(), &crawl, user_id)
+        let count = collect_for_user(&db, chain.as_ref(), user_id)
             .await
             .unwrap();
 
@@ -428,5 +336,33 @@ mod tests {
         let articles = db.get_user_articles(user_id, 100, 0, None).await.unwrap();
         assert_eq!(articles.len(), 1);
         assert!(articles[0].url.contains("real-article"));
+    }
+
+    #[tokio::test]
+    async fn collect_no_crawling_no_content_field() {
+        // MVP5 M1: Article 모델에 content 필드가 없음을 확인
+        let db = FakeDbAdapter::new();
+        let (user_id, tag_ids) = setup_db_with_tags(&db);
+        db.set_user_tags(user_id, vec![tag_ids[0]]).await.unwrap();
+
+        let chain = make_chain(
+            vec![SearchResult {
+                title: "Test".to_string(),
+                url: "https://example.com/news/test".to_string(),
+                snippet: Some("snippet".to_string()),
+                published_at: None,
+            }],
+            false,
+        );
+
+        let count = collect_for_user(&db, chain.as_ref(), user_id)
+            .await
+            .unwrap();
+
+        assert_eq!(count, 1);
+        let articles = db.get_user_articles(user_id, 100, 0, None).await.unwrap();
+        assert_eq!(articles.len(), 1);
+        // snippet은 검색 결과에서 그대로 저장됨
+        assert_eq!(articles[0].snippet, Some("snippet".to_string()));
     }
 }

@@ -8,26 +8,21 @@ use crate::domain::error::AppError;
 use crate::domain::models::Article;
 use crate::domain::ports::DbPort;
 use crate::middleware::auth::AuthUser;
-use crate::services::{collect_service, summary_service};
+use crate::services::collect_service;
 
 use super::AppState;
 
-/// 클라이언트 노출용 Article DTO.
-/// 내부 필드(`content`, `llm_model`, `prompt_tokens`, `completion_tokens`)는 제외한다.
+/// 클라이언트 노출용 Article DTO (MVP5 M1 경량화).
+/// title, url, snippet, source, published_at, tag_id, created_at만 포함.
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub struct ArticleResponse {
     pub id: Uuid,
     pub user_id: Uuid,
     pub tag_id: Option<Uuid>,
     pub title: String,
-    pub title_ko: Option<String>,
     pub url: String,
     pub snippet: Option<String>,
     pub source: String,
-    pub search_query: Option<String>,
-    pub summary: Option<String>,
-    pub insight: Option<String>,
-    pub summarized_at: Option<DateTime<Utc>>,
     pub published_at: Option<DateTime<Utc>>,
     pub created_at: Option<DateTime<Utc>>,
 }
@@ -39,14 +34,9 @@ impl From<Article> for ArticleResponse {
             user_id: a.user_id,
             tag_id: a.tag_id,
             title: a.title,
-            title_ko: a.title_ko,
             url: a.url,
             snippet: a.snippet,
             source: a.source,
-            search_query: a.search_query,
-            summary: a.summary,
-            insight: a.insight,
-            summarized_at: a.summarized_at,
             published_at: a.published_at,
             created_at: a.created_at,
         }
@@ -57,13 +47,8 @@ pub async fn collect_articles<D: DbPort>(
     Extension(state): Extension<AppState<D>>,
     Extension(user): Extension<AuthUser>,
 ) -> Result<Json<serde_json::Value>, AppError> {
-    let count = collect_service::collect_for_user(
-        &state.db,
-        state.search_chain.as_ref(),
-        state.crawl.as_ref(),
-        user.id,
-    )
-    .await?;
+    let count =
+        collect_service::collect_for_user(&state.db, state.search_chain.as_ref(), user.id).await?;
     Ok(Json(serde_json::json!({ "collected": count })))
 }
 
@@ -123,20 +108,6 @@ pub async fn get_article<D: DbPort>(
     Ok(Json(ArticleResponse::from(article)))
 }
 
-pub async fn summarize_articles<D: DbPort>(
-    Extension(state): Extension<AppState<D>>,
-    Extension(user): Extension<AuthUser>,
-) -> Result<Json<serde_json::Value>, AppError> {
-    let count = summary_service::summarize_articles(
-        &state.db,
-        state.llm.as_ref(),
-        state.notifier.as_ref(),
-        user.id,
-    )
-    .await?;
-    Ok(Json(serde_json::json!({ "summarized": count })))
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -178,7 +149,6 @@ mod tests {
             .route("/me/collect", post(collect_articles::<FakeDbAdapter>))
             .route("/me/articles", get(list_articles::<FakeDbAdapter>))
             .route("/me/articles/{id}", get(get_article::<FakeDbAdapter>))
-            .route("/me/summarize", post(summarize_articles::<FakeDbAdapter>))
             .layer(Extension(state))
             .layer(Extension(AuthUser { id: user_id }))
     }
@@ -198,7 +168,6 @@ mod tests {
     }
 
     /// 테스트 전용 Article 생성 헬퍼.
-    /// 기본값은 전부 None/기본 문자열이며 필요한 필드만 호출부에서 덮어쓴다.
     fn make_article(user_id: Uuid) -> Article {
         Article {
             id: Uuid::new_v4(),
@@ -208,38 +177,40 @@ mod tests {
             url: "https://example.com".to_string(),
             snippet: None,
             source: "test".to_string(),
-            search_query: None,
-            summary: None,
-            insight: None,
-            summarized_at: None,
             published_at: None,
             created_at: None,
-            title_ko: None,
-            content: None,
-            llm_model: None,
-            prompt_tokens: None,
-            completion_tokens: None,
         }
     }
 
     #[test]
-    fn article_response_excludes_internal_fields() {
-        // ArticleResponse는 content/llm_model/prompt_tokens/completion_tokens를 노출하지 않는다
+    fn article_response_has_lightweight_fields() {
+        // ArticleResponse는 MVP5 M1 경량화 필드만 포함
         let article = Article {
-            title_ko: Some("한글".to_string()),
-            content: Some("internal-content".to_string()),
-            llm_model: Some("internal-model".to_string()),
-            prompt_tokens: Some(123),
-            completion_tokens: Some(456),
+            tag_id: Some(Uuid::new_v4()),
+            snippet: Some("snippet text".to_string()),
             ..make_article(Uuid::new_v4())
         };
-        let dto = ArticleResponse::from(article);
+        let dto = ArticleResponse::from(article.clone());
         let json = serde_json::to_value(&dto).unwrap();
+
+        // 경량화 필드 존재 확인
+        assert!(json.get("id").is_some());
+        assert!(json.get("title").is_some());
+        assert!(json.get("url").is_some());
+        assert!(json.get("snippet").is_some());
+        assert!(json.get("source").is_some());
+        assert!(json.get("tag_id").is_some());
+
+        // 제거된 필드 없음 확인
         assert!(json.get("content").is_none());
+        assert!(json.get("summary").is_none());
+        assert!(json.get("insight").is_none());
+        assert!(json.get("title_ko").is_none());
         assert!(json.get("llm_model").is_none());
         assert!(json.get("prompt_tokens").is_none());
         assert!(json.get("completion_tokens").is_none());
-        assert_eq!(json["title_ko"], "한글");
+        assert!(json.get("summarized_at").is_none());
+        assert!(json.get("search_query").is_none());
     }
 
     #[tokio::test]
@@ -271,26 +242,6 @@ mod tests {
         resp.assert_status_ok();
         let body: serde_json::Value = resp.json();
         assert_eq!(body["collected"], 1);
-    }
-
-    #[tokio::test]
-    async fn summarize_articles_empty() {
-        let db = FakeDbAdapter::new();
-        let user_id = Uuid::new_v4();
-        db.seed_profile(Profile {
-            id: user_id,
-            display_name: None,
-            onboarding_completed: true,
-        });
-
-        let state = make_test_state(db, vec![]);
-        let app = make_app(state, user_id);
-        let server = TestServer::new(app);
-
-        let resp = server.post("/me/summarize").await;
-        resp.assert_status_ok();
-        let body: serde_json::Value = resp.json();
-        assert_eq!(body["summarized"], 0);
     }
 
     #[tokio::test]

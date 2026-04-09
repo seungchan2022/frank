@@ -10,6 +10,7 @@ use server::infra::postgres_db::PostgresDbAdapter;
 use server::infra::search_chain::SearchFallbackChain;
 use server::infra::tavily::TavilyAdapter;
 use server::middleware::auth::SupabaseConfig;
+use server::scheduler;
 use sqlx::postgres::PgPoolOptions;
 use tokio::net::TcpListener;
 use tracing_subscriber::EnvFilter;
@@ -69,7 +70,19 @@ async fn main() {
             }
         };
 
-    let app = server::create_router(db, supabase_config, search_chain, llm, crawl, notifier);
+    let app = server::create_router(
+        db.clone(),
+        supabase_config,
+        search_chain.clone(),
+        llm,
+        crawl,
+        notifier,
+    );
+
+    // 백그라운드 스케줄러 시작 (MVP5 M1)
+    let interval_secs = scheduler::interval_secs_from_env();
+    tracing::info!(interval_secs, "백그라운드 수집 스케줄러 시작");
+    tokio::spawn(scheduler::run(db, search_chain, interval_secs));
 
     let addr = format!("0.0.0.0:{}", config.port);
     let listener = TcpListener::bind(&addr)

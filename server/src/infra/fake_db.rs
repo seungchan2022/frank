@@ -1,11 +1,10 @@
 use std::collections::{HashMap, HashSet};
 use std::sync::{Arc, Mutex};
 
-use chrono::Utc;
 use uuid::Uuid;
 
 use crate::domain::error::AppError;
-use crate::domain::models::{Article, Profile, Tag, UserTag};
+use crate::domain::models::{Article, Favorite, Profile, Tag, UserTag};
 use crate::domain::ports::DbPort;
 
 #[derive(Debug, Clone)]
@@ -14,6 +13,9 @@ pub struct FakeDbAdapter {
     tags: Arc<Mutex<Vec<Tag>>>,
     user_tags: Arc<Mutex<Vec<UserTag>>>,
     articles: Arc<Mutex<Vec<Article>>>,
+    // MVP5 M3에서 favorites 엔드포인트 구현 시 사용
+    #[allow(dead_code)]
+    favorites: Arc<Mutex<Vec<Favorite>>>,
 }
 
 impl Default for FakeDbAdapter {
@@ -47,6 +49,7 @@ impl FakeDbAdapter {
             tags: Arc::new(Mutex::new(tags)),
             user_tags: Arc::new(Mutex::new(Vec::new())),
             articles: Arc::new(Mutex::new(Vec::new())),
+            favorites: Arc::new(Mutex::new(Vec::new())),
         }
     }
 
@@ -209,43 +212,17 @@ impl DbPort for FakeDbAdapter {
             .cloned())
     }
 
-    async fn update_article_summary(
-        &self,
-        article_id: Uuid,
-        summary: &str,
-        insight: &str,
-        title_ko: &str,
-        llm_model: &str,
-        prompt_tokens: i32,
-        completion_tokens: i32,
-    ) -> Result<(), AppError> {
-        let mut articles = self.articles.lock().unwrap();
-        let article = articles
-            .iter_mut()
-            .find(|a| a.id == article_id)
-            .ok_or_else(|| AppError::NotFound("Article not found".to_string()))?;
-        article.summary = Some(summary.to_string());
-        article.insight = Some(insight.to_string());
-        article.title_ko = Some(title_ko.to_string());
-        article.llm_model = Some(llm_model.to_string());
-        article.prompt_tokens = Some(prompt_tokens);
-        article.completion_tokens = Some(completion_tokens);
-        article.summarized_at = Some(Utc::now());
-        Ok(())
-    }
-
-    async fn update_article_content(
-        &self,
-        article_id: Uuid,
-        content: &str,
-    ) -> Result<(), AppError> {
-        let mut articles = self.articles.lock().unwrap();
-        let article = articles
-            .iter_mut()
-            .find(|a| a.id == article_id)
-            .ok_or_else(|| AppError::NotFound("Article not found".to_string()))?;
-        article.content = Some(content.to_string());
-        Ok(())
+    async fn get_all_user_ids(&self) -> Result<Vec<Uuid>, AppError> {
+        // user_tags와 profiles를 순서대로 락 취득 (deadlock 방지: 항상 동일 순서)
+        let from_tags: HashSet<Uuid> = {
+            let user_tags = self.user_tags.lock().unwrap();
+            user_tags.iter().map(|t| t.user_id).collect()
+        };
+        let from_profiles: HashSet<Uuid> = {
+            let profiles = self.profiles.lock().unwrap();
+            profiles.keys().copied().collect()
+        };
+        Ok(from_tags.union(&from_profiles).copied().collect())
     }
 }
 
@@ -262,17 +239,8 @@ mod tests {
             url: url.to_string(),
             snippet: None,
             source: "test".to_string(),
-            search_query: None,
-            summary: None,
-            insight: None,
-            summarized_at: None,
             published_at: None,
             created_at: None,
-            title_ko: None,
-            content: None,
-            llm_model: None,
-            prompt_tokens: None,
-            completion_tokens: None,
         }
     }
 
@@ -450,5 +418,35 @@ mod tests {
         db.update_profile_onboarding(user_id, true).await.unwrap();
         let profile = db.get_profile(user_id).await.unwrap();
         assert!(profile.onboarding_completed);
+    }
+
+    #[tokio::test]
+    async fn get_all_user_ids_returns_all_users() {
+        let db = FakeDbAdapter::new();
+
+        let user_a = Uuid::new_v4();
+        let user_b = Uuid::new_v4();
+
+        db.seed_profile(Profile {
+            id: user_a,
+            display_name: None,
+            onboarding_completed: true,
+        });
+        db.seed_profile(Profile {
+            id: user_b,
+            display_name: None,
+            onboarding_completed: true,
+        });
+
+        let ids = db.get_all_user_ids().await.unwrap();
+        assert!(ids.contains(&user_a));
+        assert!(ids.contains(&user_b));
+    }
+
+    #[tokio::test]
+    async fn get_all_user_ids_empty_when_no_users() {
+        let db = FakeDbAdapter::new();
+        let ids = db.get_all_user_ids().await.unwrap();
+        assert!(ids.is_empty());
     }
 }

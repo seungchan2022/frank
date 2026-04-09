@@ -69,23 +69,12 @@ pub trait DbPort: Send + Sync {
         article_id: Uuid,
     ) -> impl std::future::Future<Output = Result<Option<Article>, AppError>> + Send;
 
-    #[allow(clippy::too_many_arguments)]
-    fn update_article_summary(
-        &self,
-        article_id: Uuid,
-        summary: &str,
-        insight: &str,
-        title_ko: &str,
-        llm_model: &str,
-        prompt_tokens: i32,
-        completion_tokens: i32,
-    ) -> impl Future<Output = Result<(), AppError>> + Send;
-
-    fn update_article_content(
-        &self,
-        article_id: Uuid,
-        content: &str,
-    ) -> impl Future<Output = Result<(), AppError>> + Send;
+    /// 활성 태그를 보유한 유저의 user_id 목록 반환 (스케줄러용).
+    ///
+    /// 스케줄러는 모든 유저에 대해 수집을 실행하므로 전체 user_id 목록이 필요하다.
+    /// - Fake: profiles 전체 + user_tags 유저 합집합
+    /// - Postgres: user_tags에서 DISTINCT user_id 조회
+    fn get_all_user_ids(&self) -> impl Future<Output = Result<Vec<Uuid>, AppError>> + Send;
 }
 
 /// 검색 폴백 체인 포트 (여러 SearchPort를 순서대로 시도)

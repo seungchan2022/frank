@@ -22,6 +22,9 @@ pub struct UserTag {
     pub tag_id: Uuid,
 }
 
+/// MVP5 M1: 피드 아키텍처 전환 후 경량화된 Article 모델.
+/// 크롤링/요약 관련 컬럼(content, title_ko, llm_model, prompt_tokens,
+/// completion_tokens, summarized_at, search_query) 제거.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Article {
     pub id: Uuid,
@@ -31,17 +34,21 @@ pub struct Article {
     pub url: String,
     pub snippet: Option<String>,
     pub source: String,
-    pub search_query: Option<String>,
-    pub summary: Option<String>,
-    pub insight: Option<String>,
-    pub summarized_at: Option<DateTime<Utc>>,
     pub published_at: Option<DateTime<Utc>>,
     pub created_at: Option<DateTime<Utc>>,
-    pub title_ko: Option<String>,
-    pub content: Option<String>,
-    pub llm_model: Option<String>,
-    pub prompt_tokens: Option<i32>,
-    pub completion_tokens: Option<i32>,
+}
+
+/// MVP5 M1: favorites 테이블 모델.
+/// 즐겨찾기 시 현재 세션의 요약/인사이트 상태를 함께 저장.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct Favorite {
+    pub id: Uuid,
+    pub user_id: Uuid,
+    pub article_id: Uuid,
+    pub summary: Option<String>,
+    pub insight: Option<String>,
+    pub liked_at: Option<DateTime<Utc>>,
+    pub created_at: Option<DateTime<Utc>>,
 }
 
 /// LLM 요약 결과

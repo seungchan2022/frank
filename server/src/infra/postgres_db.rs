@@ -3,11 +3,12 @@ use sqlx::PgPool;
 use uuid::Uuid;
 
 use crate::domain::error::AppError;
-use crate::domain::models::{Article, Profile, Tag, UserTag};
+use crate::domain::models::{Article, Favorite, Profile, Tag, UserTag};
 use crate::domain::ports::DbPort;
 
-/// articles 테이블의 `SELECT` 컬럼 목록. `ArticleRow::FromRow`와 순서가 일치해야 한다.
-const ARTICLE_COLUMNS: &str = "id, user_id, tag_id, title, url, snippet, source, search_query, summary, insight, summarized_at, published_at, created_at, title_ko, content, llm_model, prompt_tokens, completion_tokens";
+/// articles 테이블의 `SELECT` 컬럼 목록 (MVP5 M1 경량화).
+const ARTICLE_COLUMNS: &str =
+    "id, user_id, tag_id, title, url, snippet, source, published_at, created_at";
 
 // --- infra-only row structs (sqlx::FromRow는 여기서만 사용) ---
 
@@ -69,17 +70,8 @@ struct ArticleRow {
     url: String,
     snippet: Option<String>,
     source: String,
-    search_query: Option<String>,
-    summary: Option<String>,
-    insight: Option<String>,
-    summarized_at: Option<DateTime<Utc>>,
     published_at: Option<DateTime<Utc>>,
     created_at: Option<DateTime<Utc>>,
-    title_ko: Option<String>,
-    content: Option<String>,
-    llm_model: Option<String>,
-    prompt_tokens: Option<i32>,
-    completion_tokens: Option<i32>,
 }
 
 impl From<ArticleRow> for Article {
@@ -92,17 +84,37 @@ impl From<ArticleRow> for Article {
             url: r.url,
             snippet: r.snippet,
             source: r.source,
-            search_query: r.search_query,
-            summary: r.summary,
-            insight: r.insight,
-            summarized_at: r.summarized_at,
             published_at: r.published_at,
             created_at: r.created_at,
-            title_ko: r.title_ko,
-            content: r.content,
-            llm_model: r.llm_model,
-            prompt_tokens: r.prompt_tokens,
-            completion_tokens: r.completion_tokens,
+        }
+    }
+}
+
+/// MVP5 M3에서 favorites 엔드포인트 구현 시 활성화.
+/// 현재는 DB 스키마 매핑 준비 코드로만 존재.
+#[allow(dead_code)]
+#[derive(sqlx::FromRow)]
+struct FavoriteRow {
+    id: Uuid,
+    user_id: Uuid,
+    article_id: Uuid,
+    summary: Option<String>,
+    insight: Option<String>,
+    liked_at: Option<DateTime<Utc>>,
+    created_at: Option<DateTime<Utc>>,
+}
+
+#[allow(dead_code)]
+impl From<FavoriteRow> for Favorite {
+    fn from(r: FavoriteRow) -> Self {
+        Self {
+            id: r.id,
+            user_id: r.user_id,
+            article_id: r.article_id,
+            summary: r.summary,
+            insight: r.insight,
+            liked_at: r.liked_at,
+            created_at: r.created_at,
         }
     }
 }
@@ -267,10 +279,11 @@ impl DbPort for PostgresDbAdapter {
 
         let count = articles.len();
 
+        // TODO(MVP5 M2+): 건수가 많아지면 bulk INSERT (UNNEST) 로 전환
         for article in &articles {
             sqlx::query(
-                "INSERT INTO articles (id, user_id, tag_id, title, url, snippet, source, search_query, published_at)
-                 VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+                "INSERT INTO articles (id, user_id, tag_id, title, url, snippet, source, published_at)
+                 VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
                  ON CONFLICT (user_id, url) DO NOTHING",
             )
             .bind(article.id)
@@ -280,7 +293,6 @@ impl DbPort for PostgresDbAdapter {
             .bind(&article.url)
             .bind(&article.snippet)
             .bind(&article.source)
-            .bind(&article.search_query)
             .bind(article.published_at)
             .execute(&self.pool)
             .await
@@ -351,51 +363,11 @@ impl DbPort for PostgresDbAdapter {
         Ok(row.map(Article::from))
     }
 
-    async fn update_article_summary(
-        &self,
-        article_id: Uuid,
-        summary: &str,
-        insight: &str,
-        title_ko: &str,
-        llm_model: &str,
-        prompt_tokens: i32,
-        completion_tokens: i32,
-    ) -> Result<(), AppError> {
-        let result = sqlx::query(
-            "UPDATE articles SET summary = $1, insight = $2, title_ko = $3, llm_model = $4, prompt_tokens = $5, completion_tokens = $6, summarized_at = now() WHERE id = $7",
-        )
-        .bind(summary)
-        .bind(insight)
-        .bind(title_ko)
-        .bind(llm_model)
-        .bind(prompt_tokens)
-        .bind(completion_tokens)
-        .bind(article_id)
-        .execute(&self.pool)
-        .await
-        .map_err(|e| AppError::Internal(format!("DB update failed: {e}")))?;
-
-        if result.rows_affected() == 0 {
-            return Err(AppError::NotFound("Article not found".to_string()));
-        }
-        Ok(())
-    }
-
-    async fn update_article_content(
-        &self,
-        article_id: Uuid,
-        content: &str,
-    ) -> Result<(), AppError> {
-        let result = sqlx::query("UPDATE articles SET content = $1 WHERE id = $2")
-            .bind(content)
-            .bind(article_id)
-            .execute(&self.pool)
+    async fn get_all_user_ids(&self) -> Result<Vec<Uuid>, AppError> {
+        let rows: Vec<(Uuid,)> = sqlx::query_as("SELECT DISTINCT user_id FROM user_tags")
+            .fetch_all(&self.pool)
             .await
-            .map_err(|e| AppError::Internal(format!("DB update failed: {e}")))?;
-
-        if result.rows_affected() == 0 {
-            return Err(AppError::NotFound("Article not found".to_string()));
-        }
-        Ok(())
+            .map_err(|e| AppError::Internal(format!("DB query failed: {e}")))?;
+        Ok(rows.into_iter().map(|(id,)| id).collect())
     }
 }
