@@ -248,6 +248,36 @@ describe('RealApiClient: pipeline', () => {
 	});
 });
 
+describe('RealApiClient: summarize (MVP5 M2)', () => {
+	it('summarize → POST /api/me/summarize, returns SummaryResult', async () => {
+		const result = { summary: 'Test summary', insight: 'Test insight' };
+		(globalThis.fetch as unknown as ReturnType<typeof vi.fn>).mockResolvedValue(
+			jsonResponse(result)
+		);
+
+		const resp = await realApiClient.summarize('https://example.com/article', 'Test Article');
+		expect(resp).toEqual(result);
+
+		const { url, init } = lastFetchCall();
+		expect(url).toBe('http://localhost:8081/api/me/summarize');
+		expect(init.method).toBe('POST');
+		expect(JSON.parse(init.body as string)).toEqual({
+			url: 'https://example.com/article',
+			title: 'Test Article'
+		});
+	});
+
+	it('summarize 504 → throw', async () => {
+		(globalThis.fetch as unknown as ReturnType<typeof vi.fn>).mockResolvedValue(
+			jsonResponse({ error: '요약 요청이 시간을 초과했습니다 (30초)' }, 504)
+		);
+
+		await expect(
+			realApiClient.summarize('https://example.com/article', 'Test')
+		).rejects.toThrow();
+	});
+});
+
 describe('RealApiClient: 에러 처리', () => {
 	it('서버 에러 응답의 error 메시지를 throw', async () => {
 		(globalThis.fetch as unknown as ReturnType<typeof vi.fn>).mockResolvedValue(

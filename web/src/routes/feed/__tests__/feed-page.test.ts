@@ -12,7 +12,7 @@ global.IntersectionObserver = class {
 } as unknown as typeof IntersectionObserver;
 
 // ── SvelteKit 모듈 mock ───────────────────────────────────────────────────
-vi.mock('$app/navigation', () => ({ goto: vi.fn() }));
+vi.mock('$app/navigation', () => ({ goto: vi.fn(), pushState: vi.fn() }));
 vi.mock('$app/state', () => ({ page: { url: { pathname: '/feed' } } }));
 vi.mock('$app/forms', () => ({ enhance: () => ({ destroy: () => undefined }) }));
 
@@ -170,7 +170,8 @@ describe('feed/+page.svelte — MVP5 M1 피드 UI', () => {
 		});
 	});
 
-	it('피드 아이템에 id 필드 없음 — url 기반 key', async () => {
+	it('피드 아이템에 id 필드 없음 — url 기반 key, 클릭 시 디테일 페이지로 이동', async () => {
+		const { goto: mockGoto } = await import('$app/navigation');
 		mockFetchFeed.mockResolvedValue(sampleFeedItems);
 
 		render(FeedPage);
@@ -179,9 +180,15 @@ describe('feed/+page.svelte — MVP5 M1 피드 UI', () => {
 			expect(screen.getByText('AI Revolution 2026')).toBeTruthy();
 		});
 
-		// 피드 아이템 링크가 외부 URL로 직접 연결됨
-		const link = screen.getByRole('link', { name: /AI Revolution 2026/i });
-		expect(link.getAttribute('href')).toBe('https://example.com/news/ai-revolution-2026');
-		expect(link.getAttribute('target')).toBe('_blank');
+		// 피드 아이템 제목은 버튼으로 디테일 페이지 내비게이션
+		const btn = screen.getByRole('button', { name: /AI Revolution 2026/i });
+		expect(btn).toBeTruthy();
+		fireEvent.click(btn);
+
+		await waitFor(() => {
+			expect(mockGoto).toHaveBeenCalledWith(
+				expect.stringContaining('/feed/article')
+			);
+		});
 	});
 });

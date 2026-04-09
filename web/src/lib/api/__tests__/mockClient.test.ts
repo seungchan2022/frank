@@ -163,3 +163,13 @@ describe('MockApiClient: feed (MVP5 M1)', () => {
 		});
 	});
 });
+
+describe('MockApiClient: summarize (MVP5 M2)', () => {
+	it('summarize는 summary + insight 반환', async () => {
+		const result = await mockApiClient.summarize('https://example.com', 'Test');
+		expect(typeof result.summary).toBe('string');
+		expect(typeof result.insight).toBe('string');
+		expect(result.summary.length).toBeGreaterThan(0);
+		expect(result.insight.length).toBeGreaterThan(0);
+	});
+});
