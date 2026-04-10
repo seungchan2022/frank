@@ -172,12 +172,11 @@ fn extract_og_image(html: &str) -> Option<String> {
         let tag = &html[tag_start..tag_end];
         let tag_lower = &lower[tag_start..tag_end];
 
-        if tag_lower.contains("og:image") {
-            if let Some(url) = extract_attr(tag, "content") {
-                if url.starts_with("http") {
-                    return Some(url);
-                }
-            }
+        if tag_lower.contains("og:image")
+            && let Some(url) = extract_attr(tag, "content")
+            && url.starts_with("http")
+        {
+            return Some(url);
         }
 
         search_from = tag_end;
@@ -218,7 +217,8 @@ mod tests {
 
     #[test]
     fn og_image_standard_order() {
-        let html = r#"<head><meta property="og:image" content="https://example.com/img.jpg" /></head>"#;
+        let html =
+            r#"<head><meta property="og:image" content="https://example.com/img.jpg" /></head>"#;
         assert_eq!(
             extract_og_image(html),
             Some("https://example.com/img.jpg".to_string())
@@ -227,7 +227,8 @@ mod tests {
 
     #[test]
     fn og_image_reversed_attr_order() {
-        let html = r#"<head><meta content="https://example.com/img.jpg" property="og:image" /></head>"#;
+        let html =
+            r#"<head><meta content="https://example.com/img.jpg" property="og:image" /></head>"#;
         assert_eq!(
             extract_og_image(html),
             Some("https://example.com/img.jpg".to_string())
@@ -368,7 +369,10 @@ mod tests {
 
         assert_eq!(results.len(), 2);
         assert_eq!(results[0].title, "Article 1");
-        assert_eq!(results[0].image_url, Some("https://cdn.example.com/thumb.jpg".to_string()));
+        assert_eq!(
+            results[0].image_url,
+            Some("https://cdn.example.com/thumb.jpg".to_string())
+        );
         assert_eq!(results[1].image_url, None);
     }
 }

@@ -42,6 +42,7 @@ impl From<FeedItem> for FeedItemResponse {
 /// GET /me/feed
 /// 사용자 태그를 기반으로 검색 API를 직접 호출해 피드를 반환한다.
 /// DB에 저장하지 않음 — 매 호출마다 검색 API를 새로 호출.
+/// 모든 태그 검색을 `futures::future::join_all`로 병렬 실행한다.
 pub async fn get_feed<D: DbPort>(
     Extension(state): Extension<AppState<D>>,
     Extension(user): Extension<AuthUser>,
@@ -53,38 +54,59 @@ pub async fn get_feed<D: DbPort>(
     }
 
     let all_tags = state.db.list_tags().await?;
+
+    // tag_id → name 맵: 잡 생성 + orphan 검증 양쪽에서 재사용
+    let tag_name_map: std::collections::HashMap<uuid::Uuid, &str> =
+        all_tags.iter().map(|t| (t.id, t.name.as_str())).collect();
+
+    // (tag_id, tag_name, query) tuple로 병렬 검색 잡 표현 — owned String으로 future 캡처
+    let jobs: Vec<(uuid::Uuid, String, String)> = user_tags
+        .iter()
+        .map(|user_tag| {
+            let tag_name = tag_name_map
+                .get(&user_tag.tag_id)
+                .copied()
+                .unwrap_or("unknown")
+                .to_string();
+            let query = format!("{tag_name} latest news");
+            (user_tag.tag_id, tag_name, query)
+        })
+        .collect();
+
+    // join_all로 모든 태그 검색을 동시에 실행
+    let chain = std::sync::Arc::clone(&state.search_chain);
+    let futures = jobs.into_iter().map(|(tag_id, tag_name, query)| {
+        let chain = std::sync::Arc::clone(&chain);
+        async move {
+            let result = chain.search(&query, 5).await;
+            (tag_id, tag_name, result)
+        }
+    });
+    let results = futures::future::join_all(futures).await;
+
     let mut items: Vec<FeedItem> = vec![];
 
-    for user_tag in &user_tags {
-        let tag_name = all_tags
-            .iter()
-            .find(|t| t.id == user_tag.tag_id)
-            .map(|t| t.name.as_str())
-            .unwrap_or("unknown");
-
-        let query = format!("{tag_name} latest news");
-
-        let search_result = state.search_chain.search(&query, 5).await;
-        let (results, source) = match search_result {
+    for (tag_id, tag_name, search_result) in results {
+        let (search_items, source) = match search_result {
             Ok(pair) => pair,
             Err(e) => {
-                tracing::warn!(tag = tag_name, error = %e, "search failed for tag, skipping");
+                tracing::warn!(tag = %tag_name, error = %e, "search failed for tag, skipping");
                 continue;
             }
         };
 
         // tag가 실제로 존재하는지 검증 (orphaned tag_id 방어)
-        let tag_id = if all_tags.iter().any(|t| t.id == user_tag.tag_id) {
-            Some(user_tag.tag_id)
+        let resolved_tag_id = if tag_name_map.contains_key(&tag_id) {
+            Some(tag_id)
         } else {
             tracing::warn!(
-                tag_id = %user_tag.tag_id,
+                tag_id = %tag_id,
                 "orphaned user_tag: tag not found in all_tags, skipping tag_id"
             );
             None
         };
 
-        for sr in results {
+        for sr in search_items {
             // 홈페이지/목록 URL 필터링
             if is_homepage_url(&sr.url) {
                 tracing::debug!(url = %sr.url, "skipping homepage/listing URL");
@@ -98,7 +120,7 @@ pub async fn get_feed<D: DbPort>(
                 published_at: sr
                     .published_at
                     .and_then(|s| s.parse::<DateTime<Utc>>().ok()),
-                tag_id,
+                tag_id: resolved_tag_id,
                 image_url: sr.image_url,
             });
         }
@@ -164,6 +186,7 @@ mod tests {
     use axum::Router;
     use axum::routing::get;
     use axum_test::TestServer;
+    use std::collections::HashMap;
     use std::sync::Arc;
     use uuid::Uuid;
 
@@ -175,6 +198,23 @@ mod tests {
             "test",
             search_results,
             false,
+        ))]);
+        super::super::AppState {
+            db,
+            search_chain: Arc::new(chain) as Arc<dyn SearchChainPort>,
+            llm: Arc::new(FakeLlmAdapter::new()),
+            crawl: Arc::new(FakeCrawlAdapter::new()),
+            notifier: Arc::new(FakeNotificationAdapter::new()),
+            favorites: Arc::new(FakeFavoritesAdapter::new()),
+        }
+    }
+
+    fn make_test_state_with_query_map(
+        db: FakeDbAdapter,
+        query_map: HashMap<String, Result<Vec<SearchResult>, String>>,
+    ) -> super::super::AppState<FakeDbAdapter> {
+        let chain = SearchFallbackChain::new(vec![Box::new(FakeSearchAdapter::with_query_map(
+            "test", query_map,
         ))]);
         super::super::AppState {
             db,
@@ -416,14 +456,32 @@ mod tests {
 
     #[test]
     fn test_normalize_url() {
-        assert_eq!(normalize_url("https://example.com/news/"), "example.com/news");
-        assert_eq!(normalize_url("http://www.example.com/news"), "example.com/news");
-        assert_eq!(normalize_url("https://www.example.com/news/"), "example.com/news");
-        assert_eq!(normalize_url("HTTPS://Example.com/News"), "example.com/news");
+        assert_eq!(
+            normalize_url("https://example.com/news/"),
+            "example.com/news"
+        );
+        assert_eq!(
+            normalize_url("http://www.example.com/news"),
+            "example.com/news"
+        );
+        assert_eq!(
+            normalize_url("https://www.example.com/news/"),
+            "example.com/news"
+        );
+        assert_eq!(
+            normalize_url("HTTPS://Example.com/News"),
+            "example.com/news"
+        );
         // http vs https → 같은 키
-        assert_eq!(normalize_url("http://example.com/a"), normalize_url("https://example.com/a"));
+        assert_eq!(
+            normalize_url("http://example.com/a"),
+            normalize_url("https://example.com/a")
+        );
         // www vs non-www → 같은 키
-        assert_eq!(normalize_url("https://www.example.com/a"), normalize_url("https://example.com/a"));
+        assert_eq!(
+            normalize_url("https://www.example.com/a"),
+            normalize_url("https://example.com/a")
+        );
     }
 
     #[test]
@@ -433,5 +491,106 @@ mod tests {
         assert!(is_homepage_url("https://example.com/blog/"));
         assert!(!is_homepage_url("https://example.com/news/some-article"));
         assert!(!is_homepage_url("https://example.com/2024/01/my-post"));
+    }
+
+    /// S1: 태그 2개 — 각 태그 쿼리에 서로 다른 결과 → 두 결과가 모두 합산됨
+    #[tokio::test]
+    async fn get_feed_parallel_tags_merged() {
+        let db = FakeDbAdapter::new();
+        let user_id = Uuid::new_v4();
+        db.seed_profile(Profile {
+            id: user_id,
+            display_name: None,
+            onboarding_completed: true,
+        });
+
+        let tags = db.get_tags();
+        let tag_a = &tags[0]; // "AI/ML"
+        let tag_b = &tags[1]; // "웹 개발"
+        db.seed_user_tag(user_id, tag_a.id);
+        db.seed_user_tag(user_id, tag_b.id);
+
+        let query_a = format!("{} latest news", tag_a.name);
+        let query_b = format!("{} latest news", tag_b.name);
+
+        let mut query_map: HashMap<String, Result<Vec<SearchResult>, String>> = HashMap::new();
+        query_map.insert(
+            query_a,
+            Ok(vec![SearchResult {
+                title: "AI Article".to_string(),
+                url: "https://example.com/news/ai-article".to_string(),
+                snippet: None,
+                published_at: None,
+                image_url: None,
+            }]),
+        );
+        query_map.insert(
+            query_b,
+            Ok(vec![SearchResult {
+                title: "Web Article".to_string(),
+                url: "https://example.com/news/web-article".to_string(),
+                snippet: None,
+                published_at: None,
+                image_url: None,
+            }]),
+        );
+
+        let state = make_test_state_with_query_map(db, query_map);
+        let app = make_app(state, user_id);
+        let server = TestServer::new(app);
+
+        let resp = server.get("/me/feed").await;
+        resp.assert_status_ok();
+        let items: Vec<FeedItemResponse> = resp.json();
+        // 두 태그 결과가 모두 포함 (URL이 달라 dedupe 없음)
+        assert_eq!(items.len(), 2, "두 태그의 결과가 모두 합산돼야 한다");
+        let urls: Vec<&str> = items.iter().map(|i| i.url.as_str()).collect();
+        assert!(urls.contains(&"https://example.com/news/ai-article"));
+        assert!(urls.contains(&"https://example.com/news/web-article"));
+    }
+
+    /// S1: 태그 A 쿼리 실패, 태그 B 쿼리 성공 → B 결과만 반환
+    #[tokio::test]
+    async fn get_feed_one_tag_fails_other_succeeds() {
+        let db = FakeDbAdapter::new();
+        let user_id = Uuid::new_v4();
+        db.seed_profile(Profile {
+            id: user_id,
+            display_name: None,
+            onboarding_completed: true,
+        });
+
+        let tags = db.get_tags();
+        let tag_a = &tags[0]; // "AI/ML" — 실패
+        let tag_b = &tags[1]; // "웹 개발" — 성공
+        db.seed_user_tag(user_id, tag_a.id);
+        db.seed_user_tag(user_id, tag_b.id);
+
+        let query_a = format!("{} latest news", tag_a.name);
+        let query_b = format!("{} latest news", tag_b.name);
+
+        let mut query_map: HashMap<String, Result<Vec<SearchResult>, String>> = HashMap::new();
+        query_map.insert(query_a, Err("search failed".to_string()));
+        query_map.insert(
+            query_b,
+            Ok(vec![SearchResult {
+                title: "Web Article".to_string(),
+                url: "https://example.com/news/web-only".to_string(),
+                snippet: None,
+                published_at: None,
+                image_url: None,
+            }]),
+        );
+
+        let state = make_test_state_with_query_map(db, query_map);
+        let app = make_app(state, user_id);
+        let server = TestServer::new(app);
+
+        let resp = server.get("/me/feed").await;
+        resp.assert_status_ok();
+        let items: Vec<FeedItemResponse> = resp.json();
+        // A 실패는 skip, B 성공 결과만
+        assert_eq!(items.len(), 1, "실패한 태그는 skip, 성공한 태그 결과만");
+        assert_eq!(items[0].url, "https://example.com/news/web-only");
     }
 }
