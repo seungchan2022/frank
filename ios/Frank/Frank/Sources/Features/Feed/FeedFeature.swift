@@ -47,6 +47,10 @@ final class FeedFeature {
     private let article: any ArticlePort
     private let tag: any TagPort
 
+    /// loadInitial이 이미 한 번 이상 완료됐는지 추적.
+    /// .task 재실행(뒤로가기 복귀 등)에 의한 중복 API 호출 방지.
+    private var hasLoadedInitially = false
+
     // MARK: - Init
 
     init(article: any ArticlePort, tag: any TagPort) {
@@ -106,6 +110,8 @@ final class FeedFeature {
     // MARK: - Core Logic
 
     private func loadInitial() async {
+        guard !hasLoadedInitially else { return }
+        hasLoadedInitially = true
         beginLoading()
         do {
             let allTags = try await tag.fetchAllTags()
@@ -136,6 +142,7 @@ final class FeedFeature {
 
     private func reloadAfterTagChange() async {
         selectedTagId = nil
+        hasLoadedInitially = false
         await loadInitial()
     }
 }

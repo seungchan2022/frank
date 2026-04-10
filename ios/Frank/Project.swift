@@ -40,7 +40,11 @@ let project = Project(
             infoPlist: .default,
             sources: ["FrankTests/**"],
             resources: [],
-            dependencies: [.target(name: "Frank")]
+            dependencies: [.target(name: "Frank")],
+            settings: .settings(
+                // Swift Testing 모듈 경로 활성화 → SourceKit LSP "No such module 'Testing'" 오탐 제거
+                base: ["ENABLE_TESTING_SEARCH_PATHS": "YES"]
+            )
         ),
         .target(
             name: "FrankUITests",

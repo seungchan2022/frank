@@ -1,17 +1,20 @@
 import SwiftUI
 
-/// MVP5 M2: ArticleDetailView — 온디맨드 요약 UI.
+/// MVP5 M3: ArticleDetailView — 온디맨드 요약 + 즐겨찾기 토글 UI.
 /// - 요약하기 버튼: idle/loading/done/failed 상태에 따라 UI 전환
-/// - 즐겨찾기 버튼: M3에서 구현 (레이아웃 예약만)
+/// - 즐겨찾기 버튼: isLiked 상태에 따라 채워진/빈 하트 아이콘
 struct ArticleDetailView: View {
     let feedItem: FeedItem
+    let favoritesFeature: FavoritesFeature
     private let summarizePort: any SummarizePort
     @State private var feature: ArticleDetailFeature
+    @State private var favoriteLoading: Bool = false
 
-    @Environment(\.openURL) private var openURL
+    @State private var showSafari = false
 
-    init(feedItem: FeedItem, summarize: any SummarizePort) {
+    init(feedItem: FeedItem, summarize: any SummarizePort, favoritesFeature: FavoritesFeature) {
         self.feedItem = feedItem
+        self.favoritesFeature = favoritesFeature
         self.summarizePort = summarize
         self._feature = State(initialValue: ArticleDetailFeature(feedItem: feedItem, summarize: summarize))
     }
@@ -22,6 +25,13 @@ struct ArticleDetailView: View {
                 headerSection
                 Divider()
                 snippetSection
+                if let errMsg = favoritesFeature.operationError {
+                    Text(errMsg)
+                        .font(.footnote)
+                        .foregroundStyle(.red)
+                        .padding(.horizontal, 4)
+                        .onTapGesture { favoritesFeature.clearOperationError() }
+                }
                 actionButtons
                 summarySection
             }
@@ -29,6 +39,9 @@ struct ArticleDetailView: View {
             .padding(.vertical, 16)
         }
         .navigationBarTitleDisplayMode(.inline)
+        .sheet(isPresented: $showSafari) {
+            SafariView(url: feedItem.url)
+        }
     }
 }
 
@@ -80,7 +93,7 @@ extension ArticleDetailView {
         VStack(spacing: 10) {
             // 원문 보기
             Button {
-                openURL(feedItem.url)
+                showSafari = true
             } label: {
                 HStack {
                     Image(systemName: "safari")
@@ -93,20 +106,43 @@ extension ArticleDetailView {
             // 요약하기
             summarizeButton
 
-            // 즐겨찾기 (M3 예약 — 비활성)
-            Button {
-                // M3에서 구현
-            } label: {
-                HStack {
-                    Image(systemName: "star")
-                    Text("즐겨찾기")
-                }
-                .frame(maxWidth: .infinity)
-            }
-            .buttonStyle(.bordered)
-            .disabled(true)
-            .opacity(0.4)
+            // 즐겨찾기 토글 버튼
+            favoriteButton
         }
+    }
+
+    @ViewBuilder
+    private var favoriteButton: some View {
+        let isLiked = favoritesFeature.isLiked(feedItem.url.absoluteString)
+        Button {
+            guard !favoriteLoading else { return }
+            Task {
+                favoriteLoading = true
+                defer { favoriteLoading = false }
+                if isLiked {
+                    await favoritesFeature.removeFavorite(url: feedItem.url.absoluteString)
+                } else {
+                    // step-5 K: phase.done에서 summary/insight 꺼내 전달
+                    let summary = feature.phase.summaryResult?.summary
+                    let insight = feature.phase.summaryResult?.insight
+                    await favoritesFeature.addFavorite(
+                        feedItem: feedItem,
+                        summary: summary,
+                        insight: insight
+                    )
+                }
+            }
+        } label: {
+            HStack {
+                Image(systemName: isLiked ? "star.fill" : "star")
+                    .foregroundStyle(isLiked ? .yellow : .primary)
+                Text(isLiked ? "즐겨찾기 해제" : "즐겨찾기 추가")
+            }
+            .frame(maxWidth: .infinity)
+        }
+        .buttonStyle(.bordered)
+        .disabled(favoriteLoading)
+        .opacity(favoriteLoading ? 0.5 : 1.0)
     }
 
     @ViewBuilder
