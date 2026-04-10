@@ -5,6 +5,7 @@
 	import { apiClient } from '$lib/api';
 	import type { Tag } from '$lib/types/tag';
 	import Header from '$lib/components/Header.svelte';
+	import { feedStore } from '$lib/stores/feedStore.svelte';
 
 	const auth = getAuth();
 
@@ -67,6 +68,8 @@
 			await apiClient.updateMyTags([...selectedIds]);
 			savedIds = new Set(selectedIds);
 			success = 'Tags saved successfully.';
+			// 태그 변경 → 피드 캐시 무효화 (다음 피드 방문 시 재로드)
+			feedStore.reset();
 		} catch (err) {
 			error = err instanceof Error ? err.message : 'Failed to save tags';
 		} finally {
