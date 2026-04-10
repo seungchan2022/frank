@@ -83,7 +83,7 @@ struct APIArticleAdapterTests {
             return (response, data)
         }
 
-        let items = try await adapter.fetchFeed()
+        let items = try await adapter.fetchFeed(tagId: nil)
         #expect(items.count == 1)
         #expect(items[0].title == "Hello")
         #expect(items[0].source == "tavily")
@@ -106,7 +106,7 @@ struct APIArticleAdapterTests {
             return (response, Data("[]".utf8))
         }
 
-        let items = try await adapter.fetchFeed()
+        let items = try await adapter.fetchFeed(tagId: nil)
         #expect(items.isEmpty)
     }
 
@@ -141,7 +141,7 @@ struct APIArticleAdapterTests {
         }
 
         await #expect(throws: APIArticleError.self) {
-            _ = try await adapter.fetchFeed()
+            _ = try await adapter.fetchFeed(tagId: nil)
         }
     }
 
@@ -175,7 +175,7 @@ struct APIArticleAdapterTests {
             return (response, data)
         }
 
-        let items = try await adapter.fetchFeed()
+        let items = try await adapter.fetchFeed(tagId: nil)
         #expect(items.count == 1)
         #expect(items[0].publishedAt != nil)
     }
@@ -196,7 +196,7 @@ struct APIArticleAdapterTests {
         }
 
         await #expect(throws: APIArticleError.unauthorized) {
-            _ = try await adapter.fetchFeed()
+            _ = try await adapter.fetchFeed(tagId: nil)
         }
     }
 
@@ -214,7 +214,7 @@ struct APIArticleAdapterTests {
         }
 
         await #expect(throws: APIArticleError.httpError(statusCode: 400)) {
-            _ = try await adapter.fetchFeed()
+            _ = try await adapter.fetchFeed(tagId: nil)
         }
     }
 
@@ -224,7 +224,7 @@ struct APIArticleAdapterTests {
         let (adapter, _) = try makeAdapter(getAccessTokenError: URLError(.userAuthenticationRequired))
 
         await #expect(throws: URLError.self) {
-            _ = try await adapter.fetchFeed()
+            _ = try await adapter.fetchFeed(tagId: nil)
         }
     }
 }

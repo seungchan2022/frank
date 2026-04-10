@@ -78,5 +78,5 @@ private struct PlaceholderTagPort: TagPort {
 }
 
 private struct PlaceholderArticlePort: ArticlePort {
-    func fetchFeed() async throws -> [FeedItem] { [] }
+    func fetchFeed(tagId: UUID?) async throws -> [FeedItem] { [] }
 }

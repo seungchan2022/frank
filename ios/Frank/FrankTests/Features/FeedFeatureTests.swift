@@ -82,7 +82,8 @@ struct FeedFeatureTests {
         #expect(sut.errorMessage == nil)
         #expect(tagPort.fetchAllTagsCallCount == 1)
         #expect(tagPort.fetchMyTagIdsCallCount == 1)
-        #expect(articlePort.fetchFeedCallCount == 1)
+        // 전체 피드(1) + 구독 태그 프리패치(2) = 3
+        #expect(articlePort.fetchFeedCallCount == 3)
     }
 
     // MARK: - 3. loadInitial 피드 실패
@@ -245,14 +246,14 @@ struct FeedFeatureTests {
             myTagIds: [tagId]
         )
 
-        await sut.send(.loadInitial)
-        await sut.send(.selectTag(tagId))
+        await sut.send(.loadInitial)           // all(1) + 프리패치(1) = 2
+        await sut.send(.selectTag(tagId))      // 캐시 히트 → 0
         #expect(sut.selectedTagId == tagId)
 
-        await sut.send(.reloadAfterTagChange)
+        await sut.send(.reloadAfterTagChange)  // 캐시 초기화 + loadInitial: all(1) + 프리패치(1) = 2
 
         #expect(sut.selectedTagId == nil)
-        #expect(articlePort.fetchFeedCallCount == 2)
+        #expect(articlePort.fetchFeedCallCount == 4)
     }
 
     // MARK: - 11. loadInitial 후 isLoading=false
@@ -342,5 +343,101 @@ struct FeedFeatureTests {
         #expect(sut.phase == .idle)
         #expect(sut.isRefreshing == false)
         #expect(sut.errorMessage == nil)
+    }
+
+    // MARK: - M3: 탭 캐시
+
+    /// M3: 프리패치 안 된 태그(구독 외) 선택 시 캐시 미스 → 조용히 fetchFeed 호출 (isRefreshing 없음)
+    @Test("selectTag 캐시 미스 시 조용히 fetchFeed 호출 (로딩 표시 없음)")
+    func selectTag_캐시미스_fetchFeed_tagId_전달() async {
+        let myTagId = UUID()
+        let otherTagId = UUID() // 구독 외 태그 → 프리패치 안 됨
+        let items = [
+            makeFeedItem(title: "AI Article", urlSuffix: "ai", tagId: myTagId),
+            makeFeedItem(title: "Other Article", urlSuffix: "other", tagId: otherTagId)
+        ]
+        // myTagIds에는 myTagId만 포함 → otherTagId는 프리패치 안 됨
+        let (sut, articlePort, _) = makeSUT(
+            feedItems: items,
+            tags: [Frank.Tag(id: myTagId, name: "AI", category: "ai")],
+            myTagIds: [myTagId]
+        )
+
+        await sut.send(.loadInitial) // all + myTagId 프리패치
+        let countBefore = articlePort.fetchFeedCallCount
+
+        // otherTagId는 캐시 없음 → 조용히 fetch (isRefreshing false)
+        await sut.send(.selectTag(otherTagId))
+
+        #expect(articlePort.fetchFeedCallCount == countBefore + 1)
+        #expect(articlePort.lastFetchTagId == .some(otherTagId))
+        #expect(sut.isRefreshing == false) // 로딩 표시 없음
+        #expect(sut.selectedTagId == otherTagId)
+    }
+
+    /// M3 S6: selectTag 캐시 히트 → fetchFeed 재호출 없음
+    @Test("selectTag 캐시 히트 시 fetchFeed 재호출 없음")
+    func selectTag_캐시히트_재요청없음() async {
+        let tagId = UUID()
+        let items = [makeFeedItem(urlSuffix: "ai", tagId: tagId)]
+        let (sut, articlePort, _) = makeSUT(
+            feedItems: items,
+            tags: [Frank.Tag(id: tagId, name: "AI", category: "ai")],
+            myTagIds: [tagId]
+        )
+
+        await sut.send(.loadInitial) // 프리패치로 tagId 이미 캐시됨
+        // 첫 번째 selectTag — 캐시 히트 (프리패치됨) → no fetch
+        await sut.send(.selectTag(tagId))
+        let countAfterFirst = articlePort.fetchFeedCallCount
+
+        // 두 번째 selectTag — 캐시 히트 → no fetch
+        await sut.send(.selectTag(tagId))
+
+        #expect(articlePort.fetchFeedCallCount == countAfterFirst, "캐시 히트 시 재요청 없음")
+    }
+
+    /// M3 S6: refresh → 현재 탭 캐시 무효화 + 재요청
+    @Test("refresh 현재 탭 캐시 무효화 후 재요청")
+    func refresh_현재탭_캐시무효화_후_재요청() async {
+        let tagId = UUID()
+        let items = [makeFeedItem(urlSuffix: "ai", tagId: tagId)]
+        let (sut, articlePort, _) = makeSUT(
+            feedItems: items,
+            tags: [Frank.Tag(id: tagId, name: "AI", category: "ai")],
+            myTagIds: [tagId]
+        )
+
+        await sut.send(.loadInitial)
+        await sut.send(.selectTag(tagId))
+        let countAfterSelect = articlePort.fetchFeedCallCount
+
+        // refresh → 현재 탭(tagId) 캐시 무효화 + 재요청
+        await sut.send(.refresh)
+
+        #expect(articlePort.fetchFeedCallCount == countAfterSelect + 1)
+        #expect(articlePort.lastFetchTagId == .some(tagId))
+    }
+
+    /// M3 S6: 전체 탭 복귀 시 캐시 히트 → fetchFeed(tagId: nil) 재호출 없음
+    @Test("전체 탭 복귀 시 캐시 히트 — fetchFeed 재호출 없음")
+    func selectTag_nil_캐시히트() async {
+        let tagId = UUID()
+        let items = [makeFeedItem(urlSuffix: "ai", tagId: tagId)]
+        let (sut, articlePort, _) = makeSUT(
+            feedItems: items,
+            tags: [Frank.Tag(id: tagId, name: "AI", category: "ai")],
+            myTagIds: [tagId]
+        )
+
+        await sut.send(.loadInitial) // 'all' 캐시 저장
+        await sut.send(.selectTag(tagId)) // tag 캐시 저장
+        let countAfterTag = articlePort.fetchFeedCallCount
+
+        // 전체 탭으로 복귀 → 'all' 캐시 히트 → no fetch
+        await sut.send(.selectTag(nil))
+
+        #expect(articlePort.fetchFeedCallCount == countAfterTag, "전체 탭 캐시 히트 → 재요청 없음")
+        #expect(sut.selectedTagId == nil)
     }
 }

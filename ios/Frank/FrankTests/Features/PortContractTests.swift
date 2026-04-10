@@ -190,7 +190,7 @@ struct PortContractTests {
             FeedItem(title: "Article 2", url: URL(string: "https://example.com/2")!, source: "Test"),
         ]
 
-        let result = try await mock.fetchFeed()
+        let result = try await mock.fetchFeed(tagId: nil)
 
         #expect(result.count == 2)
         #expect(mock.fetchFeedCallCount == 1)
@@ -202,7 +202,7 @@ struct PortContractTests {
         mock.fetchError = URLError(.timedOut)
 
         await #expect(throws: URLError.self) {
-            try await mock.fetchFeed()
+            try await mock.fetchFeed(tagId: nil)
         }
         #expect(mock.fetchFeedCallCount == 1)
     }

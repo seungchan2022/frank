@@ -11,7 +11,7 @@ struct SupabaseArticleAdapter: ArticlePort {
         self.client = client
     }
 
-    func fetchFeed() async throws -> [FeedItem] {
+    func fetchFeed(tagId: UUID?) async throws -> [FeedItem] {
         // MVP5 M1: 피드는 Rust 서버 GET /me/feed를 통해 가져옴.
         // 이 어댑터는 미사용 — APIArticleAdapter 사용.
         return []

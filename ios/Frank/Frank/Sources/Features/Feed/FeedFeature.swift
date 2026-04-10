@@ -4,6 +4,10 @@ import Observation
 /// MVP5 M1: FeedFeature — 검색 API 직접 호출 (DB 저장 없음).
 /// CollectPort 의존성 제거. 페이지네이션/캐시 제거 (ephemeral 피드).
 /// pull-to-refresh = 동일 API 재호출.
+///
+/// MVP6 M3: 탭별 캐시 (tagCache) + 초기 프리패치.
+/// - loadInitial 시 구독 태그 전체를 병렬 프리패치 → 탭 전환 항상 즉시 표시
+/// - pull-to-refresh만 현재 탭 캐시 갱신 + 재요청
 enum FeedAction {
     case loadInitial
     case selectTag(UUID?)
@@ -42,6 +46,11 @@ final class FeedFeature {
 
     private(set) var errorMessage: String?
 
+    // MARK: - Cache
+
+    /// 탭별 피드 캐시. 키: tagId?.uuidString ?? "all"
+    private var tagCache: [String: [FeedItem]] = [:]
+
     // MARK: - Dependencies
 
     private let article: any ArticlePort
@@ -65,7 +74,7 @@ final class FeedFeature {
         case .loadInitial:
             await loadInitial()
         case .selectTag(let tagId):
-            selectTag(tagId)
+            await selectTag(tagId)
         case .refresh:
             await refresh()
         case .reloadAfterTagChange:
@@ -73,13 +82,10 @@ final class FeedFeature {
         }
     }
 
-    // MARK: - Computed (derived from feedItems + selectedTagId)
+    // MARK: - Computed (server-filtered — no client-side filtering)
 
-    /// 현재 선택된 태그 필터에 맞는 피드 아이템 목록
-    var articles: [FeedItem] {
-        guard let tagId = selectedTagId else { return feedItems }
-        return feedItems.filter { $0.tagId == tagId }
-    }
+    /// 현재 피드 아이템. 서버에서 이미 태그 필터링된 결과.
+    var articles: [FeedItem] { feedItems }
 
     // MARK: - State Transition Helpers
 
@@ -107,6 +113,12 @@ final class FeedFeature {
         errorMessage = message
     }
 
+    // MARK: - Cache Helpers
+
+    private func cacheKey(for tagId: UUID?) -> String {
+        tagId?.uuidString ?? "all"
+    }
+
     // MARK: - Core Logic
 
     private func loadInitial() async {
@@ -118,22 +130,66 @@ final class FeedFeature {
             let myTagIds = try await tag.fetchMyTagIds()
             tags = allTags.filter { myTagIds.contains($0.id) }
 
-            feedItems = try await article.fetchFeed()
+            let items = try await article.fetchFeed(tagId: nil)
+            feedItems = items
+            tagCache["all"] = items
+
+            // 구독 태그 전체 병렬 프리패치 → 탭 전환 항상 즉시 표시
+            await withTaskGroup(of: (String, [FeedItem]?).self) { group in
+                for tagId in myTagIds {
+                    group.addTask {
+                        let key = tagId.uuidString
+                        let result = try? await self.article.fetchFeed(tagId: tagId)
+                        return (key, result)
+                    }
+                }
+                for await (key, result) in group {
+                    if let result {
+                        tagCache[key] = result
+                    }
+                }
+            }
+
+            selectedTagId = nil
             phase = .idle
         } catch {
             failLoading("피드를 불러오지 못했습니다. 다시 시도해주세요.")
         }
     }
 
-    private func selectTag(_ tagId: UUID?) {
-        selectedTagId = tagId
+    private func selectTag(_ tagId: UUID?) async {
+        guard phase == .idle else { return }
+
+        let key = cacheKey(for: tagId)
+
+        // 캐시 히트 → 즉시 표시, 재요청 없음
+        if let cached = tagCache[key] {
+            feedItems = cached
+            selectedTagId = tagId
+            return
+        }
+
+        // 캐시 미스 → 조용히 fetch (로딩 표시 없음, 프리패치 실패 시 fallback)
+        do {
+            let items = try await article.fetchFeed(tagId: tagId)
+            feedItems = items
+            tagCache[key] = items
+            selectedTagId = tagId
+        } catch {
+            errorMessage = "태그 피드를 불러오지 못했습니다."
+        }
     }
 
     private func refresh() async {
         guard phase == .idle else { return }
         beginRefresh()
+
+        let key = cacheKey(for: selectedTagId)
+
         do {
-            feedItems = try await article.fetchFeed()
+            let items = try await article.fetchFeed(tagId: selectedTagId)
+            feedItems = items
+            tagCache[key] = items
             finishRefresh()
         } catch {
             failRefresh("새로고침에 실패했습니다.")
@@ -142,6 +198,7 @@ final class FeedFeature {
 
     private func reloadAfterTagChange() async {
         selectedTagId = nil
+        tagCache = [:]
         hasLoadedInitially = false
         await loadInitial()
     }

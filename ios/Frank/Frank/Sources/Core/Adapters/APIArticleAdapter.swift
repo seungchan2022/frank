@@ -55,9 +55,13 @@ struct APIArticleAdapter: ArticlePort {
         return String(str[..<truncEnd]) + String(str[zoneIdx...])
     }
 
-    func fetchFeed() async throws -> [FeedItem] {
+    func fetchFeed(tagId: UUID?) async throws -> [FeedItem] {
         var components = URLComponents()
         components.path = "/api/me/feed"
+        // MVP6 M3: tag_id 있으면 해당 태그만 서버에서 필터링
+        if let tagId {
+            components.queryItems = [URLQueryItem(name: "tag_id", value: tagId.uuidString)]
+        }
 
         let request = try await makeRequest(components: components, method: "GET")
         let dtos: [FeedItemDTO] = try await decode(request: request)
