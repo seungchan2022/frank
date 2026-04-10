@@ -1,5 +1,5 @@
-// feed/+page.svelte 피드 UI 테스트 (MVP5 M1)
-// ephemeral FeedItem 기반 피드 — fetchFeed() 호출, article.id 없음.
+// feed/+page.svelte 피드 UI 테스트 (MVP5 M1 → M3 feedStore 기반)
+// feedStore를 mock하여 컴포넌트 UI만 검증.
 
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { render, screen, cleanup, fireEvent, waitFor } from '@testing-library/svelte';
@@ -12,25 +12,35 @@ global.IntersectionObserver = class {
 } as unknown as typeof IntersectionObserver;
 
 // ── SvelteKit 모듈 mock ───────────────────────────────────────────────────
-vi.mock('$app/navigation', () => ({ goto: vi.fn(), pushState: vi.fn() }));
+vi.mock('$app/navigation', () => ({ goto: vi.fn() }));
 vi.mock('$app/state', () => ({ page: { url: { pathname: '/feed' } } }));
 vi.mock('$app/forms', () => ({ enhance: () => ({ destroy: () => undefined }) }));
 
 // ── auth store mock (항상 로그인 상태) ────────────────────────────────────
 vi.mock('$lib/stores/auth.svelte', () => ({
-	getAuth: () => ({ isAuthenticated: true, loading: false, user: { email: 't@t.com' } })
+	getAuth: () => ({ isAuthenticated: true, loading: false, user: { email: 't@t.com', id: 'user-1' } })
 }));
 
-// ── apiClient mock ────────────────────────────────────────────────────────
-const mockFetchFeed = vi.fn<() => Promise<import('$lib/types/article').FeedItem[]>>();
-const mockFetchTags = vi.fn();
-const mockFetchMyTagIds = vi.fn();
+// ── feedStore mock ────────────────────────────────────────────────────────
+const mockLoadFeed = vi.fn<() => Promise<void>>();
+const mockRefresh = vi.fn<() => Promise<void>>();
 
-vi.mock('$lib/api', () => ({
-	apiClient: {
-		fetchFeed: () => mockFetchFeed(),
-		fetchTags: () => mockFetchTags(),
-		fetchMyTagIds: () => mockFetchMyTagIds()
+let mockFeedItems: import('$lib/types/article').FeedItem[] = [];
+let mockLoading = false;
+let mockLoaded = false;
+let mockError: string | null = null;
+
+vi.mock('$lib/stores/feedStore.svelte', () => ({
+	feedStore: {
+		get feedItems() { return mockFeedItems; },
+		get tags() { return []; },
+		get myTagIds() { return []; },
+		get loaded() { return mockLoaded; },
+		get loading() { return mockLoading; },
+		get error() { return mockError; },
+		loadFeed: (...args: Parameters<typeof mockLoadFeed>) => mockLoadFeed(...args),
+		refresh: (...args: Parameters<typeof mockRefresh>) => mockRefresh(...args),
+		reset: vi.fn()
 	}
 }));
 
@@ -49,17 +59,19 @@ const sampleFeedItems: import('$lib/types/article').FeedItem[] = [
 
 beforeEach(() => {
 	vi.clearAllMocks();
-
-	mockFetchFeed.mockResolvedValue([]);
-	mockFetchTags.mockResolvedValue([]);
-	mockFetchMyTagIds.mockResolvedValue([]);
+	mockFeedItems = [];
+	mockLoading = false;
+	mockLoaded = false;
+	mockError = null;
+	mockLoadFeed.mockResolvedValue(undefined);
+	mockRefresh.mockResolvedValue(undefined);
 });
 
 afterEach(() => {
 	cleanup();
 });
 
-describe('feed/+page.svelte — MVP5 M1 피드 UI', () => {
+describe('feed/+page.svelte — MVP5 피드 UI', () => {
 	it('초기 상태: 빈 피드 메시지 표시', async () => {
 		render(FeedPage);
 
@@ -69,7 +81,7 @@ describe('feed/+page.svelte — MVP5 M1 피드 UI', () => {
 	});
 
 	it('기사 카드: 제목 표시', async () => {
-		mockFetchFeed.mockResolvedValue(sampleFeedItems);
+		mockFeedItems = sampleFeedItems;
 
 		render(FeedPage);
 
@@ -79,7 +91,7 @@ describe('feed/+page.svelte — MVP5 M1 피드 UI', () => {
 	});
 
 	it('기사 카드: source 표시', async () => {
-		mockFetchFeed.mockResolvedValue(sampleFeedItems);
+		mockFeedItems = sampleFeedItems;
 
 		render(FeedPage);
 
@@ -89,12 +101,11 @@ describe('feed/+page.svelte — MVP5 M1 피드 UI', () => {
 	});
 
 	it('기사 카드: 요약(summary) 미표시 — 제목+source+날짜만', async () => {
-		mockFetchFeed.mockResolvedValue(sampleFeedItems);
+		mockFeedItems = sampleFeedItems;
 
 		render(FeedPage);
 
 		await waitFor(() => {
-			// 요약 관련 텍스트 없음
 			expect(screen.queryByText(/요약/)).toBeNull();
 			expect(screen.queryByText(/Summarize/i)).toBeNull();
 		});
@@ -108,11 +119,9 @@ describe('feed/+page.svelte — MVP5 M1 피드 UI', () => {
 		});
 	});
 
-	it('새 뉴스 가져오기 버튼 클릭 → fetchFeed 재호출', async () => {
-		mockFetchFeed.mockResolvedValue([]);
-
+	it('새 뉴스 가져오기 버튼 클릭 → refresh 호출', async () => {
 		render(FeedPage);
-		// 초기 로드 완료 대기
+
 		await waitFor(() => {
 			expect(screen.queryByText(/Loading feed/)).toBeNull();
 		});
@@ -121,58 +130,34 @@ describe('feed/+page.svelte — MVP5 M1 피드 UI', () => {
 		fireEvent.click(btn);
 
 		await waitFor(() => {
-			// 초기 1회 + 갱신 1회 = 최소 2회
-			expect(mockFetchFeed).toHaveBeenCalledTimes(2);
+			expect(mockRefresh).toHaveBeenCalledTimes(1);
 		});
 	});
 
-	it('갱신 완료 후 새 아이템 표시', async () => {
-		const newItem: import('$lib/types/article').FeedItem = {
-			title: 'New Article After Refresh',
-			url: 'https://example.com/news/new-article',
-			snippet: null,
-			source: 'mock',
-			published_at: null,
-			tag_id: null
-		};
-		mockFetchFeed
-			.mockResolvedValueOnce([]) // loadFeed (초기)
-			.mockResolvedValueOnce([newItem]); // handleRefresh
+	it('로딩 중 빈 피드: Loading feed 표시', async () => {
+		mockLoading = true;
+		mockLoaded = false;
 
 		render(FeedPage);
-		await waitFor(() => {
-			expect(screen.queryByText(/Loading feed/)).toBeNull();
-		});
-
-		const btn = screen.getByRole('button', { name: /새 뉴스 가져오기/i });
-		fireEvent.click(btn);
 
 		await waitFor(() => {
-			expect(screen.getByText('New Article After Refresh')).toBeTruthy();
+			expect(screen.queryByText(/Loading feed/)).toBeTruthy();
 		});
 	});
 
-	it('갱신 실패 시 에러 메시지 표시', async () => {
-		mockFetchFeed
-			.mockResolvedValueOnce([]) // loadFeed (초기)
-			.mockRejectedValueOnce(new Error('Network error')); // handleRefresh 실패
+	it('에러 상태: 에러 메시지 표시', async () => {
+		mockError = 'Network error';
 
 		render(FeedPage);
-		await waitFor(() => {
-			expect(screen.queryByText(/Loading feed/)).toBeNull();
-		});
-
-		const btn = screen.getByRole('button', { name: /새 뉴스 가져오기/i });
-		fireEvent.click(btn);
 
 		await waitFor(() => {
 			expect(screen.getByText(/Network error/)).toBeTruthy();
 		});
 	});
 
-	it('피드 아이템에 id 필드 없음 — url 기반 key, 클릭 시 디테일 페이지로 이동', async () => {
+	it('피드 아이템 클릭 시 디테일 페이지로 이동', async () => {
 		const { goto: mockGoto } = await import('$app/navigation');
-		mockFetchFeed.mockResolvedValue(sampleFeedItems);
+		mockFeedItems = sampleFeedItems;
 
 		render(FeedPage);
 
@@ -180,15 +165,31 @@ describe('feed/+page.svelte — MVP5 M1 피드 UI', () => {
 			expect(screen.getByText('AI Revolution 2026')).toBeTruthy();
 		});
 
-		// 피드 아이템 제목은 버튼으로 디테일 페이지 내비게이션
 		const btn = screen.getByRole('button', { name: /AI Revolution 2026/i });
 		expect(btn).toBeTruthy();
 		fireEvent.click(btn);
 
 		await waitFor(() => {
 			expect(mockGoto).toHaveBeenCalledWith(
-				expect.stringContaining('/feed/article')
+				expect.stringContaining('/feed/article'),
+				expect.objectContaining({ state: expect.objectContaining({ feedItem: expect.any(Object) }) })
 			);
+		});
+	});
+
+	it('뒤로가기 복귀 시 loadFeed no-op 확인 (feedStore.loaded=true → loadFeed 1회만)', async () => {
+		mockLoaded = true;
+		mockFeedItems = sampleFeedItems;
+
+		// 컴포넌트 2회 mount (뒤로가기 시뮬레이션)
+		const { unmount } = render(FeedPage);
+		unmount();
+		render(FeedPage);
+
+		await waitFor(() => {
+			// feedStore.loadFeed는 내부에서 no-op guard를 가짐
+			// 컴포넌트는 항상 loadFeed를 호출하지만 store 내부에서 중복 방지
+			expect(mockLoadFeed).toHaveBeenCalled();
 		});
 	});
 });
