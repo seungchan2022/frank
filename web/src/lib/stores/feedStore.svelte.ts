@@ -2,6 +2,10 @@
  * MVP5 M3: 피드 상태 관리 store.
  * Svelte 5 $state 기반 모듈 수준 상태 — 페이지 remount(뒤로가기 복귀) 시에도 데이터 유지.
  * SvelteKit 라우터가 +page.svelte를 재마운트해도 피드를 재요청하지 않는다.
+ *
+ * MVP6 M2: isRefreshing 상태 분리 (stale-while-revalidate).
+ * - loading: 초기 로드 중 (feedItems 없음)
+ * - isRefreshing: 갱신 중 (feedItems 유지, 상단 progress bar 표시)
  */
 
 import { apiClient } from '$lib/api';
@@ -13,6 +17,7 @@ let tags = $state<Tag[]>([]);
 let myTagIds = $state<string[]>([]);
 let loaded = $state(false);
 let loading = $state(false);
+let isRefreshing = $state(false);
 let error = $state<string | null>(null);
 
 /**
@@ -21,6 +26,9 @@ let error = $state<string | null>(null);
  */
 async function loadFeed(userId?: string): Promise<void> {
 	if (loaded && loadedForUserId === (userId ?? null)) return;
+
+	// 재진입 가드 — loading 또는 isRefreshing 중이면 no-op
+	if (loading || isRefreshing) return;
 
 	if (loadedForUserId !== (userId ?? null)) {
 		feedItems = [];
@@ -55,17 +63,25 @@ let loadedForUserId = $state<string | null>(null);
 
 /**
  * 새 뉴스 가져오기 — 강제 재요청. 버튼 클릭 또는 pull-to-refresh용.
+ * stale-while-revalidate: 갱신 중에도 이전 feedItems 유지.
+ * @returns 성공 시 true, 재진입/실패 시 false
  */
-async function refresh(): Promise<void> {
-	loading = true;
+async function refresh(): Promise<boolean> {
+	// 재진입 가드 — loading 또는 이미 isRefreshing 중이면 no-op
+	if (loading || isRefreshing) return false;
+
+	isRefreshing = true;
 	error = null;
 
 	try {
-		feedItems = await apiClient.fetchFeed();
+		const items = await apiClient.fetchFeed();
+		feedItems = items;
+		return true;
 	} catch (e) {
 		error = e instanceof Error ? e.message : 'Failed to refresh feed';
+		return false;
 	} finally {
-		loading = false;
+		isRefreshing = false;
 	}
 }
 
@@ -79,6 +95,7 @@ function reset(): void {
 	loaded = false;
 	loadedForUserId = null;
 	loading = false;
+	isRefreshing = false;
 	error = null;
 }
 
@@ -97,6 +114,9 @@ export const feedStore = {
 	},
 	get loading() {
 		return loading;
+	},
+	get isRefreshing() {
+		return isRefreshing;
 	},
 	get error() {
 		return error;

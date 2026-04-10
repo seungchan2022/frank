@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { tick } from 'svelte';
 	import { getAuth } from '$lib/stores/auth.svelte';
 	import { goto } from '$app/navigation';
 	import { feedStore } from '$lib/stores/feedStore.svelte';
@@ -41,6 +42,15 @@
 		selectedTagId = tagId;
 	}
 
+	// refresh 성공 시 상단 스크롤 (stale-while-revalidate UX)
+	async function handleRefresh() {
+		const ok = await feedStore.refresh();
+		if (ok && feedStore.feedItems.length > 0) {
+			await tick();
+			window.scrollTo({ top: 0, behavior: 'smooth' });
+		}
+	}
+
 	function navigateToArticle(item: FeedItem) {
 		const params = new URLSearchParams({
 			url: item.url,
@@ -59,11 +69,11 @@
 		<div class="mb-6 flex items-center justify-between">
 			<h2 class="text-lg font-semibold text-gray-900">My Feed</h2>
 			<button
-				onclick={() => feedStore.refresh()}
-				disabled={feedStore.loading}
+				onclick={handleRefresh}
+				disabled={feedStore.loading || feedStore.isRefreshing}
 				class="flex items-center gap-2 rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-50"
 			>
-				{#if feedStore.loading && feedStore.loaded}
+				{#if feedStore.isRefreshing}
 					<svg class="h-4 w-4 animate-spin" fill="none" viewBox="0 0 24 24">
 						<circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
 						<path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"></path>
@@ -74,6 +84,11 @@
 				{/if}
 			</button>
 		</div>
+
+		<!-- Progress Bar: refresh 중 카드 목록 위 표시 -->
+		{#if feedStore.isRefreshing}
+			<div class="mb-2 h-1 w-full animate-pulse rounded bg-blue-500"></div>
+		{/if}
 
 		<!-- 태그 필터 탭 -->
 		<div class="mb-4 flex flex-wrap gap-2">

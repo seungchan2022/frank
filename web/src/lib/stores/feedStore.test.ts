@@ -138,3 +138,113 @@ describe('feedStore: reset', () => {
 		expect(feedStore.error).toBeNull();
 	});
 });
+
+describe('feedStore: isRefreshing 상태 분리 (stale-while-revalidate)', () => {
+	it('refresh 중에는 isRefreshing이 true, loading은 false', async () => {
+		// 초기 로드 완료
+		vi.mocked(apiClient.fetchFeed).mockResolvedValueOnce([makeFeedItem()]);
+		vi.mocked(apiClient.fetchTags).mockResolvedValueOnce([]);
+		vi.mocked(apiClient.fetchMyTagIds).mockResolvedValueOnce([]);
+		await feedStore.loadFeed('user-1');
+
+		// refresh 중 상태를 캡처하기 위해 Promise로 제어
+		let resolveRefresh!: (value: typeof import('$lib/types/article').FeedItem[]) => void;
+		const refreshPromise = new Promise<typeof import('$lib/types/article').FeedItem[]>((res) => {
+			resolveRefresh = res;
+		});
+		vi.mocked(apiClient.fetchFeed).mockReturnValueOnce(refreshPromise);
+
+		const refreshing = feedStore.refresh();
+
+		// 아직 완료되지 않은 상태에서 검증
+		expect(feedStore.isRefreshing).toBe(true);
+		expect(feedStore.loading).toBe(false);
+
+		// 완료 처리
+		resolveRefresh([makeFeedItem('https://example.com/news/new')]);
+		await refreshing;
+	});
+
+	it('refresh 중에도 이전 feedItems 유지됨', async () => {
+		const oldItem = makeFeedItem('https://example.com/news/old');
+		vi.mocked(apiClient.fetchFeed).mockResolvedValueOnce([oldItem]);
+		vi.mocked(apiClient.fetchTags).mockResolvedValueOnce([]);
+		vi.mocked(apiClient.fetchMyTagIds).mockResolvedValueOnce([]);
+		await feedStore.loadFeed('user-1');
+
+		let resolveRefresh!: (value: typeof import('$lib/types/article').FeedItem[]) => void;
+		const refreshPromise = new Promise<typeof import('$lib/types/article').FeedItem[]>((res) => {
+			resolveRefresh = res;
+		});
+		vi.mocked(apiClient.fetchFeed).mockReturnValueOnce(refreshPromise);
+
+		const refreshing = feedStore.refresh();
+
+		// refresh 중에 이전 아이템 유지
+		expect(feedStore.feedItems).toHaveLength(1);
+		expect(feedStore.feedItems[0].url).toBe('https://example.com/news/old');
+
+		resolveRefresh([makeFeedItem('https://example.com/news/new')]);
+		await refreshing;
+	});
+
+	it('refresh 완료 후 isRefreshing false로 복귀', async () => {
+		vi.mocked(apiClient.fetchFeed).mockResolvedValueOnce([makeFeedItem()]);
+		vi.mocked(apiClient.fetchTags).mockResolvedValueOnce([]);
+		vi.mocked(apiClient.fetchMyTagIds).mockResolvedValueOnce([]);
+		await feedStore.loadFeed('user-1');
+
+		vi.mocked(apiClient.fetchFeed).mockResolvedValueOnce([
+			makeFeedItem('https://example.com/news/new')
+		]);
+		await feedStore.refresh();
+
+		expect(feedStore.isRefreshing).toBe(false);
+	});
+
+	it('loadFeed 진행 중 refresh 호출 시 no-op', async () => {
+		let resolveLoad!: (value: typeof import('$lib/types/article').FeedItem[]) => void;
+		const loadPromise = new Promise<typeof import('$lib/types/article').FeedItem[]>((res) => {
+			resolveLoad = res;
+		});
+		vi.mocked(apiClient.fetchFeed).mockReturnValueOnce(loadPromise);
+		vi.mocked(apiClient.fetchTags).mockResolvedValueOnce([]);
+		vi.mocked(apiClient.fetchMyTagIds).mockResolvedValueOnce([]);
+
+		const loading = feedStore.loadFeed('user-1');
+
+		// loadFeed 진행 중 refresh 호출 → no-op
+		await feedStore.refresh();
+		expect(feedStore.isRefreshing).toBe(false);
+
+		resolveLoad([makeFeedItem()]);
+		await loading;
+	});
+
+	it('refresh 진행 중 재호출 시 no-op', async () => {
+		vi.mocked(apiClient.fetchFeed).mockResolvedValueOnce([makeFeedItem()]);
+		vi.mocked(apiClient.fetchTags).mockResolvedValueOnce([]);
+		vi.mocked(apiClient.fetchMyTagIds).mockResolvedValueOnce([]);
+		await feedStore.loadFeed('user-1');
+
+		// fetchFeed mock 초기화 후 카운트 시작
+		vi.mocked(apiClient.fetchFeed).mockClear();
+
+		let resolveRefresh!: (value: typeof import('$lib/types/article').FeedItem[]) => void;
+		const refreshPromise = new Promise<typeof import('$lib/types/article').FeedItem[]>((res) => {
+			resolveRefresh = res;
+		});
+		vi.mocked(apiClient.fetchFeed).mockReturnValueOnce(refreshPromise);
+
+		const refreshing = feedStore.refresh();
+
+		// 진행 중 재호출 → no-op (fetchFeed가 두 번 호출되지 않음)
+		await feedStore.refresh();
+		// 두 번째 refresh는 no-op이므로 fetchFeed는 1번만 호출됨
+		expect(vi.mocked(apiClient.fetchFeed).mock.calls.length).toBe(1);
+
+		resolveRefresh([makeFeedItem('https://example.com/news/new')]);
+		await refreshing;
+		expect(feedStore.isRefreshing).toBe(false);
+	});
+});
