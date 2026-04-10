@@ -48,6 +48,7 @@ DerivedData/
 **/Secrets.plist
 **/Tuist/.build/
 **/Derived/
+ios/Frank/Config.xcconfig
 
 # === ML 모델 ===
 *.pt
