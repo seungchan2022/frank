@@ -15,6 +15,7 @@ let project = Project(
                         "UIColorName": "",
                         "UIImageName": "",
                     ],
+                    // xcconfig에서 주입 — Config.xcconfig (git ignore됨)
                     "SUPABASE_URL": "$(SUPABASE_URL)",
                     "SUPABASE_ANON_KEY": "$(SUPABASE_ANON_KEY)",
                     "SERVER_URL": "$(SERVER_URL)",
@@ -29,7 +30,13 @@ let project = Project(
             entitlements: "Frank/Frank.entitlements",
             dependencies: [
                 .external(name: "Supabase"),
-            ]
+            ],
+            settings: .settings(
+                configurations: [
+                    .debug(name: "Debug", xcconfig: "Config.xcconfig"),
+                    .release(name: "Release", xcconfig: "Config.xcconfig"),
+                ]
+            )
         ),
         .target(
             name: "FrankTests",
