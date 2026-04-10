@@ -81,9 +81,10 @@ describe('feedStore: loadFeed', () => {
 
 	it('tags + myTagIds도 채워짐', async () => {
 		const tag = makeTag();
-		vi.mocked(apiClient.fetchFeed).mockResolvedValueOnce([]);
+		vi.mocked(apiClient.fetchFeed).mockResolvedValueOnce([]); // 전체 피드
 		vi.mocked(apiClient.fetchTags).mockResolvedValueOnce([tag]);
 		vi.mocked(apiClient.fetchMyTagIds).mockResolvedValueOnce(['tag-1']);
+		vi.mocked(apiClient.fetchFeed).mockResolvedValueOnce([]); // tag-1 프리패치
 
 		await feedStore.loadFeed('user-1');
 
@@ -246,5 +247,96 @@ describe('feedStore: isRefreshing 상태 분리 (stale-while-revalidate)', () =>
 		resolveRefresh([makeFeedItem('https://example.com/news/new')]);
 		await refreshing;
 		expect(feedStore.isRefreshing).toBe(false);
+	});
+});
+
+describe('feedStore: 탭 캐시 (M3)', () => {
+	it('loadFeed 시 구독 태그 전체 프리패치', async () => {
+		const allItems = [makeFeedItem()];
+		const aiItems = [makeFeedItem('https://example.com/news/ai')];
+		vi.mocked(apiClient.fetchFeed).mockResolvedValueOnce(allItems); // 전체 피드
+		vi.mocked(apiClient.fetchTags).mockResolvedValueOnce([makeTag('tag-1', 'AI')]);
+		vi.mocked(apiClient.fetchMyTagIds).mockResolvedValueOnce(['tag-1']);
+		vi.mocked(apiClient.fetchFeed).mockResolvedValueOnce(aiItems); // tag-1 프리패치
+
+		await feedStore.loadFeed('user-1');
+
+		// tag-1이 프리패치되어 있으므로 selectTag 즉시 캐시 히트
+		vi.mocked(apiClient.fetchFeed).mockClear();
+		await feedStore.selectTag('tag-1');
+
+		expect(vi.mocked(apiClient.fetchFeed)).not.toHaveBeenCalled();
+		expect(feedStore.feedItems).toEqual(aiItems);
+	});
+
+	it('selectTag 캐시 히트 시 fetchFeed 재호출 없음', async () => {
+		// loadFeed 시 tag-1 프리패치됨
+		vi.mocked(apiClient.fetchFeed).mockResolvedValueOnce([makeFeedItem()]);
+		vi.mocked(apiClient.fetchTags).mockResolvedValueOnce([makeTag('tag-1', 'AI')]);
+		vi.mocked(apiClient.fetchMyTagIds).mockResolvedValueOnce(['tag-1']);
+		vi.mocked(apiClient.fetchFeed).mockResolvedValueOnce([makeFeedItem('https://example.com/news/ai')]);
+		await feedStore.loadFeed('user-1');
+
+		vi.mocked(apiClient.fetchFeed).mockClear();
+
+		// tag-1 선택 → 캐시 히트 (프리패치됨)
+		await feedStore.selectTag('tag-1');
+
+		expect(vi.mocked(apiClient.fetchFeed)).not.toHaveBeenCalled();
+	});
+
+	it('selectTag 구독 외 태그 캐시 미스 시 fetchFeed 호출 (로딩 표시 없음)', async () => {
+		// loadFeed 시 tag-1만 프리패치됨
+		vi.mocked(apiClient.fetchFeed).mockResolvedValueOnce([makeFeedItem()]);
+		vi.mocked(apiClient.fetchTags).mockResolvedValueOnce([makeTag('tag-1', 'AI')]);
+		vi.mocked(apiClient.fetchMyTagIds).mockResolvedValueOnce(['tag-1']);
+		vi.mocked(apiClient.fetchFeed).mockResolvedValueOnce([]);
+		await feedStore.loadFeed('user-1');
+
+		vi.mocked(apiClient.fetchFeed).mockClear();
+		const tag2Items = [makeFeedItem('https://example.com/news/dev')];
+		vi.mocked(apiClient.fetchFeed).mockResolvedValueOnce(tag2Items);
+
+		// tag-2는 프리패치 안 됨 → 캐시 미스 → 조용히 fetch (isRefreshing 없음)
+		await feedStore.selectTag('tag-2');
+
+		expect(vi.mocked(apiClient.fetchFeed)).toHaveBeenCalledWith('tag-2');
+		expect(feedStore.isRefreshing).toBe(false); // 로딩 표시 없음
+		expect(feedStore.feedItems).toEqual(tag2Items);
+	});
+
+	it('refresh는 현재 탭 캐시 갱신 후 재요청', async () => {
+		// 초기 로드 (전체 탭, myTagIds 없음)
+		vi.mocked(apiClient.fetchFeed).mockResolvedValueOnce([makeFeedItem()]);
+		vi.mocked(apiClient.fetchTags).mockResolvedValueOnce([]);
+		vi.mocked(apiClient.fetchMyTagIds).mockResolvedValueOnce([]);
+		await feedStore.loadFeed('user-1');
+
+		vi.mocked(apiClient.fetchFeed).mockClear();
+		vi.mocked(apiClient.fetchFeed).mockResolvedValueOnce([makeFeedItem('https://example.com/news/new')]);
+
+		await feedStore.refresh();
+
+		expect(vi.mocked(apiClient.fetchFeed)).toHaveBeenCalledWith(undefined);
+		expect(feedStore.feedItems[0].url).toBe('https://example.com/news/new');
+	});
+
+	it('전체 탭 복귀 시 캐시 히트', async () => {
+		// loadFeed 시 tag-1 프리패치됨
+		vi.mocked(apiClient.fetchFeed).mockResolvedValueOnce([makeFeedItem()]);
+		vi.mocked(apiClient.fetchTags).mockResolvedValueOnce([makeTag('tag-1', 'AI')]);
+		vi.mocked(apiClient.fetchMyTagIds).mockResolvedValueOnce(['tag-1']);
+		vi.mocked(apiClient.fetchFeed).mockResolvedValueOnce([makeFeedItem('https://example.com/news/ai')]);
+		await feedStore.loadFeed('user-1');
+
+		await feedStore.selectTag('tag-1');
+
+		vi.mocked(apiClient.fetchFeed).mockClear();
+
+		// 전체 탭 복귀 → 'all' 캐시 히트
+		await feedStore.selectTag(null);
+
+		expect(vi.mocked(apiClient.fetchFeed)).not.toHaveBeenCalled();
+		expect(feedStore.activeTagId).toBeNull();
 	});
 });

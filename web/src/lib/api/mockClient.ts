@@ -70,7 +70,7 @@ export const mockApiClient: ApiClient = {
 		return delay({ ...profile });
 	},
 
-	async fetchFeed(): Promise<FeedItem[]> {
+	async fetchFeed(_tagId?: string): Promise<FeedItem[]> {
 		// Mock: 현재 articles fixture를 FeedItem 형태로 변환 (ephemeral 시뮬레이션)
 		const feedItems: FeedItem[] = articles.map((a) => ({
 			title: a.title,

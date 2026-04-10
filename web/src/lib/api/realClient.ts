@@ -103,8 +103,9 @@ export const realApiClient: ApiClient = {
 		});
 	},
 
-	async fetchFeed(): Promise<FeedItem[]> {
-		return request<FeedItem[]>('/api/me/feed');
+	async fetchFeed(tagId?: string): Promise<FeedItem[]> {
+		const qs = tagId ? `?tag_id=${encodeURIComponent(tagId)}` : '';
+		return request<FeedItem[]>(`/api/me/feed${qs}`);
 	},
 
 	async fetchArticles(opts: FetchArticlesOptions = {}): Promise<Article[]> {

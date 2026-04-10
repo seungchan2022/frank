@@ -9,8 +9,6 @@
 
 	const auth = getAuth();
 
-	let selectedTagId = $state<string | null>(null);
-
 	const tagMap = $derived(
 		feedStore.tags.reduce<Record<string, string>>((acc, tag) => {
 			acc[tag.id] = tag.name;
@@ -20,13 +18,6 @@
 
 	// 사용자가 구독한 태그만 필터 탭에 표시
 	const filterTags = $derived(feedStore.tags.filter((tag) => feedStore.myTagIds.includes(tag.id)));
-
-	// 선택된 태그로 필터링 (tag_id 기반)
-	const filteredItems = $derived(
-		selectedTagId
-			? feedStore.feedItems.filter((item) => item.tag_id === selectedTagId)
-			: feedStore.feedItems
-	);
 
 	// 인증 상태 확정 후 리다이렉트 or 초기 로드
 	$effect(() => {
@@ -39,7 +30,7 @@
 	});
 
 	function selectTag(tagId: string | null) {
-		selectedTagId = tagId;
+		feedStore.selectTag(tagId);
 	}
 
 	// refresh 성공 시 상단 스크롤 (stale-while-revalidate UX)
@@ -94,7 +85,7 @@
 		<div class="mb-4 flex flex-wrap gap-2">
 			<button
 				onclick={() => selectTag(null)}
-				class="rounded-full px-3 py-1 text-sm font-medium transition-colors {selectedTagId === null
+				class="rounded-full px-3 py-1 text-sm font-medium transition-colors {feedStore.activeTagId === null
 					? 'bg-gray-900 text-white'
 					: 'bg-gray-100 text-gray-600 hover:bg-gray-200'}"
 			>
@@ -103,7 +94,7 @@
 			{#each filterTags as tag (tag.id)}
 				<button
 					onclick={() => selectTag(tag.id)}
-					class="rounded-full px-3 py-1 text-sm font-medium transition-colors {selectedTagId ===
+					class="rounded-full px-3 py-1 text-sm font-medium transition-colors {feedStore.activeTagId ===
 					tag.id
 						? 'bg-blue-600 text-white'
 						: 'bg-gray-100 text-gray-600 hover:bg-gray-200'}"
@@ -124,14 +115,14 @@
 			<div class="py-12 text-center text-gray-500">
 				<p>Loading feed...</p>
 			</div>
-		{:else if filteredItems.length === 0}
+		{:else if feedStore.feedItems.length === 0}
 			<div class="py-12 text-center text-gray-500">
 				<p class="text-lg">No articles yet.</p>
 				<p class="mt-2 text-sm">새 뉴스 가져오기를 눌러 피드를 불러오세요.</p>
 			</div>
 		{:else}
 			<div class="grid grid-cols-1 gap-4 md:grid-cols-2">
-				{#each filteredItems as item (item.url)}
+				{#each feedStore.feedItems as item (item.url)}
 					<article class="flex rounded-lg border border-gray-200 bg-white p-4">
 						<!-- 썸네일 영역 (72×72) -->
 						<div class="mr-3 h-18 w-18 flex-shrink-0">
