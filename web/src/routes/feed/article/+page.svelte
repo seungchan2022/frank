@@ -1,16 +1,22 @@
 <script lang="ts">
 	import { getAuth } from '$lib/stores/auth.svelte';
 	import { goto } from '$app/navigation';
+	import { page } from '$app/state';
 	import { apiClient } from '$lib/api';
 	import { summaryCache } from '$lib/stores/summaryCache.svelte';
+	import { favoritesStore } from '$lib/stores/favoritesStore.svelte';
 	import { formatArticleDate } from '$lib/utils/article';
 	import Header from '$lib/components/Header.svelte';
 	import type { SummaryResult } from '$lib/types/summary';
+	import type { ArticlePageState } from './+page';
 
 	const auth = getAuth();
 
 	let { data } = $props();
-	const feedItem = $derived(data.feedItem);
+	// state.feedItem (goto state로 전달 시 snippet 포함) 우선, 없으면 URL params 폴백
+	const feedItem = $derived(
+		(page.state as Partial<ArticlePageState>).feedItem ?? data.fallbackItem
+	);
 
 	// 요약 상태: idle | loading | done | failed
 	type SummaryPhase =
@@ -20,6 +26,7 @@
 		| { tag: 'failed'; message: string };
 
 	let phase = $state<SummaryPhase>({ tag: 'idle' });
+	let favoriteLoading = $state(false);
 
 	$effect(() => {
 		if (!auth.isAuthenticated) {
@@ -32,6 +39,13 @@
 		const cached = summaryCache.get(feedItem.url);
 		if (cached) {
 			phase = { tag: 'done', result: cached };
+		}
+	});
+
+	// 페이지 진입 시 즐겨찾기 로드 (이미 로드됐으면 no-op)
+	$effect(() => {
+		if (auth.isAuthenticated) {
+			favoritesStore.loadFavorites(auth.user?.id);
 		}
 	});
 
@@ -55,6 +69,25 @@
 			const message =
 				e instanceof Error ? e.message : '요약을 불러오지 못했습니다. 다시 시도해주세요.';
 			phase = { tag: 'failed', message };
+		}
+	}
+
+	async function handleFavoriteToggle() {
+		if (favoriteLoading) return;
+		favoriteLoading = true;
+		try {
+			if (favoritesStore.isLiked(feedItem.url)) {
+				await favoritesStore.removeFavorite(feedItem.url);
+			} else {
+				const summary = phase.tag === 'done' ? phase.result.summary : undefined;
+				const insight = phase.tag === 'done' ? phase.result.insight : undefined;
+				await favoritesStore.addFavorite(feedItem, summary, insight);
+			}
+		} catch (e) {
+			// 에러는 무시 (UI 일관성 유지)
+			console.error('favorite toggle failed', e);
+		} finally {
+			favoriteLoading = false;
 		}
 	}
 </script>
@@ -144,13 +177,26 @@
 			{/if}
 		</div>
 
-		<!-- 즐겨찾기 (M3 예약) -->
+		<!-- 즐겨찾기 -->
 		<div class="mt-4">
 			<button
-				disabled
-				class="w-full cursor-not-allowed rounded-lg border border-gray-200 bg-gray-50 px-4 py-2 text-sm font-medium text-gray-400"
+				onclick={handleFavoriteToggle}
+				disabled={favoriteLoading}
+				class={[
+					'w-full rounded-lg px-4 py-2 text-sm font-medium transition-colors',
+					favoritesStore.isLiked(feedItem.url)
+						? 'border border-yellow-400 bg-yellow-50 text-yellow-700 hover:bg-yellow-100'
+						: 'border border-gray-200 bg-white text-gray-700 hover:bg-gray-50',
+					favoriteLoading ? 'cursor-not-allowed opacity-50' : ''
+				].join(' ')}
 			>
-				☆ 즐겨찾기 (준비 중)
+				{#if favoriteLoading}
+					⏳ 처리 중...
+				{:else if favoritesStore.isLiked(feedItem.url)}
+					★ 즐겨찾기 해제
+				{:else}
+					☆ 즐겨찾기 추가
+				{/if}
 			</button>
 		</div>
 	</main>

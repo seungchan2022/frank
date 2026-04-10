@@ -8,7 +8,7 @@ import type { SummaryResult } from '$lib/types/summary';
 
 // ── SvelteKit 모듈 mock ───────────────────────────────────────────────────
 vi.mock('$app/navigation', () => ({ goto: vi.fn(), pushState: vi.fn() }));
-vi.mock('$app/state', () => ({ page: { url: { pathname: '/feed/article' } } }));
+vi.mock('$app/state', () => ({ page: { url: { pathname: '/feed/article' }, state: {} } }));
 vi.mock('$app/forms', () => ({ enhance: () => ({ destroy: () => undefined }) }));
 
 // ── auth store mock (항상 로그인 상태) ────────────────────────────────────
@@ -46,7 +46,7 @@ const sampleFeedItem: FeedItem = {
 };
 
 function makeProps(feedItem: FeedItem = sampleFeedItem) {
-	return { data: { feedItem } };
+	return { data: { fallbackItem: feedItem } };
 }
 
 beforeEach(() => {
