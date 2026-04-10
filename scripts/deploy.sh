@@ -102,6 +102,10 @@ run_ios() {
     log_section "iOS 시뮬레이터 실행"
     check_xcode
 
+    # 신규 Swift 파일 추가 시 pbxproj 자동 갱신 (항상 실행)
+    log_info "Tuist 프로젝트 재생성 중..."
+    (cd "$PROJECT_ROOT/ios/Frank" && ~/.tuist/Versions/4.31.0/tuist generate --no-open)
+
     log_info "시뮬레이터 부팅: $IOS_SIMULATOR_NAME"
     xcrun simctl boot "$IOS_SIMULATOR_NAME" 2>/dev/null || true
     open -a Simulator
@@ -138,6 +142,8 @@ run_docker_service() {
         docker compose stop "$service"
     fi
     docker compose rm -f "$service" 2>/dev/null || true
+    # stale 컨테이너 ID 잔재 제거 (Docker Desktop 재시동 후 발생 가능)
+    docker container prune -f > /dev/null 2>&1 || true
 
     # 2) 로컬 포트에 남은 프로세스도 정리
     kill_port "$port"
