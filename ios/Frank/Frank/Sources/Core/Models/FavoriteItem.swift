@@ -16,6 +16,8 @@ struct FavoriteItem: Codable, Identifiable, Equatable, Hashable, Sendable {
     let insight: String?
     let likedAt: Date?
     let createdAt: Date?
+    /// MVP6 M1: 썸네일 이미지 URL 문자열 (없으면 nil)
+    let imageUrl: String?
 
     enum CodingKeys: String, CodingKey {
         case id
@@ -30,5 +32,6 @@ struct FavoriteItem: Codable, Identifiable, Equatable, Hashable, Sendable {
         case insight
         case likedAt = "liked_at"
         case createdAt = "created_at"
+        case imageUrl = "image_url"
     }
 }

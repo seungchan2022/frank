@@ -107,24 +107,30 @@ private struct FeedItemDTO: Decodable {
     let source: String
     let publishedAt: Date?
     let tagId: UUID?
+    /// MVP6 M1: 썸네일 이미지 URL 문자열 (없으면 nil)
+    let imageUrl: String?
 
     enum CodingKeys: String, CodingKey {
         case title, url, source, snippet
         case publishedAt = "published_at"
         case tagId = "tag_id"
+        case imageUrl = "image_url"
     }
 
     func toDomain() throws -> FeedItem {
         guard let parsedURL = URL(string: url) else {
             throw APIArticleError.invalidArticleURL(url)
         }
+        // imageUrl 파싱 실패 시 nil (에러 아님)
+        let parsedImageUrl = imageUrl.flatMap { URL(string: $0) }
         return FeedItem(
             title: title,
             url: parsedURL,
             source: source,
             publishedAt: publishedAt,
             tagId: tagId,
-            snippet: snippet
+            snippet: snippet,
+            imageUrl: parsedImageUrl
         )
     }
 }

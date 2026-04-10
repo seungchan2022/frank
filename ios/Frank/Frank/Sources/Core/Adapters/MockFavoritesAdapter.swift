@@ -16,7 +16,8 @@ struct MockFavoritesAdapter: FavoritesPort {
             summary: summary,
             insight: insight,
             likedAt: now,
-            createdAt: now
+            createdAt: now,
+            imageUrl: item.imageUrl?.absoluteString
         )
     }
 

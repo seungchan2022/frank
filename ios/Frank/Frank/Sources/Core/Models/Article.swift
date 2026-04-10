@@ -13,6 +13,8 @@ struct FeedItem: Identifiable, Equatable, Sendable {
     let source: String
     let publishedAt: Date?
     let tagId: UUID?
+    /// MVP6 M1: 썸네일 이미지 URL (없으면 nil)
+    let imageUrl: URL?
 
     init(
         title: String,
@@ -20,7 +22,8 @@ struct FeedItem: Identifiable, Equatable, Sendable {
         source: String,
         publishedAt: Date? = nil,
         tagId: UUID? = nil,
-        snippet: String? = nil
+        snippet: String? = nil,
+        imageUrl: URL? = nil
     ) {
         self.title = title
         self.url = url
@@ -28,6 +31,7 @@ struct FeedItem: Identifiable, Equatable, Sendable {
         self.publishedAt = publishedAt
         self.tagId = tagId
         self.snippet = snippet
+        self.imageUrl = imageUrl
     }
 }
 

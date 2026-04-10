@@ -117,7 +117,8 @@ struct FavoritesView: View {
                 source: item.source,
                 publishedAt: item.publishedAt,
                 tagId: item.tagId,
-                snippet: item.snippet
+                snippet: item.snippet,
+                imageUrl: item.imageUrl.flatMap { URL(string: $0) }
             )
             let _ = injectSummaryCache(item: item, url: url.absoluteString)
             ArticleDetailView(
@@ -158,45 +159,67 @@ struct FavoritesView: View {
     }
 }
 
-/// 즐겨찾기 목록 행 뷰.
+/// 즐겨찾기 목록 행 뷰 — MVP6 M1: ArticleCardView와 동일한 썸네일 레이아웃.
 struct FavoriteRowView: View {
     let item: FavoriteItem
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 4) {
-            Text(item.title)
-                .font(.body)
-                .fontWeight(.medium)
-                .lineLimit(2)
+        HStack(alignment: .top, spacing: 12) {
+            // 썸네일 영역 (72×72)
+            thumbnailView
 
-            HStack(spacing: 4) {
-                Text(item.source)
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
+            // 텍스트 영역
+            VStack(alignment: .leading, spacing: 6) {
+                Text(item.title)
+                    .font(.subheadline)
+                    .fontWeight(.semibold)
+                    .foregroundStyle(.primary)
+                    .lineLimit(2)
 
-                if let createdAt = item.createdAt {
-                    Text("·")
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                    Text(relativeDate(createdAt))
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
+                HStack(spacing: 4) {
+                    Text(item.source)
+                    if let createdAt = item.createdAt {
+                        Text("·")
+                        Text(ArticleCardView.relativeTimeText(createdAt))
+                    }
+                    if item.summary != nil {
+                        Spacer()
+                        Image(systemName: "text.quote")
+                            .foregroundStyle(.indigo)
+                    }
                 }
-
-                if item.summary != nil {
-                    Spacer()
-                    Image(systemName: "text.quote")
-                        .font(.caption)
-                        .foregroundStyle(.indigo)
-                }
+                .font(.caption)
+                .foregroundStyle(.secondary)
             }
+            .frame(maxWidth: .infinity, alignment: .leading)
         }
-        .padding(.vertical, 4)
+        .padding(.vertical, 8)
     }
 
-    private func relativeDate(_ date: Date) -> String {
-        let formatter = RelativeDateTimeFormatter()
-        formatter.unitsStyle = .short
-        return formatter.localizedString(for: date, relativeTo: Date())
+    @ViewBuilder
+    private var thumbnailView: some View {
+        if let imageUrl = item.imageUrl.flatMap({ URL(string: $0) }) {
+            AsyncImage(url: imageUrl) { phase in
+                switch phase {
+                case .success(let image):
+                    image
+                        .resizable()
+                        .scaledToFill()
+                        .frame(width: 72, height: 72)
+                        .clipShape(RoundedRectangle(cornerRadius: 8))
+                default:
+                    thumbnailPlaceholder
+                }
+            }
+            .frame(width: 72, height: 72)
+        } else {
+            thumbnailPlaceholder
+        }
+    }
+
+    private var thumbnailPlaceholder: some View {
+        RoundedRectangle(cornerRadius: 8)
+            .fill(Color(.systemGray5))
+            .frame(width: 72, height: 72)
     }
 }

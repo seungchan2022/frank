@@ -30,7 +30,8 @@ struct APIFavoritesAdapter: FavoritesPort {
             publishedAt: item.publishedAt,
             tagId: item.tagId,
             summary: summary,
-            insight: insight
+            insight: insight,
+            imageUrl: item.imageUrl?.absoluteString
         )
         request.httpBody = try jsonEncoder.encode(body)
 
@@ -112,11 +113,14 @@ private struct AddFavoriteBody: Encodable {
     let tagId: UUID?
     let summary: String?
     let insight: String?
+    /// MVP6 M1: 썸네일 이미지 URL 문자열 (없으면 nil)
+    let imageUrl: String?
 
     enum CodingKeys: String, CodingKey {
         case title, url, snippet, source, summary, insight
         case publishedAt = "published_at"
         case tagId = "tag_id"
+        case imageUrl = "image_url"
     }
 }
 

@@ -1,30 +1,67 @@
 import SwiftUI
 
-/// MVP5 M1: ArticleCardView — FeedItem(= Article typealias) 기반.
-/// createdAt 제거 (ephemeral 피드에는 없음).
+/// MVP6 M1: ArticleCardView — 썸네일 + 텍스트 HStack 레이아웃.
+/// 왼쪽 72×72 썸네일(AsyncImage 또는 플레이스홀더) + 오른쪽 제목·source·발행일.
 struct ArticleCardView: View {
     let article: Article
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            Text(article.title)
-                .font(.headline)
-                .fontWeight(.bold)
-                .foregroundStyle(.primary)
-                .multilineTextAlignment(.leading)
+        HStack(alignment: .top, spacing: 12) {
+            // 썸네일 영역 (72×72)
+            thumbnailView
 
-            HStack(spacing: 4) {
-                Text(article.source)
-                Text("\u{00B7}")
-                Text(Self.relativeTimeText(article.publishedAt))
+            // 텍스트 영역
+            VStack(alignment: .leading, spacing: 6) {
+                Text(article.title)
+                    .font(.subheadline)
+                    .fontWeight(.semibold)
+                    .foregroundStyle(.primary)
+                    .multilineTextAlignment(.leading)
+                    .lineLimit(2)
+
+                HStack(spacing: 4) {
+                    Text(article.source)
+                    Text("\u{00B7}")
+                    Text(Self.relativeTimeText(article.publishedAt))
+                }
+                .font(.caption)
+                .foregroundStyle(.secondary)
             }
-            .font(.caption)
-            .foregroundStyle(.secondary)
+            .frame(maxWidth: .infinity, alignment: .leading)
         }
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .padding(.vertical, 12)
+        .padding(.vertical, 8)
         .accessibilityElement(children: .combine)
         .accessibilityLabel(article.title)
+    }
+
+    // MARK: - Thumbnail
+
+    @ViewBuilder
+    private var thumbnailView: some View {
+        if let imageUrl = article.imageUrl {
+            AsyncImage(url: imageUrl) { phase in
+                switch phase {
+                case .success(let image):
+                    image
+                        .resizable()
+                        .scaledToFill()
+                        .frame(width: 72, height: 72)
+                        .clipShape(RoundedRectangle(cornerRadius: 8))
+                default:
+                    // loading / failure → 동일 플레이스홀더 (layout shift 방지)
+                    thumbnailPlaceholder
+                }
+            }
+            .frame(width: 72, height: 72)
+        } else {
+            thumbnailPlaceholder
+        }
+    }
+
+    private var thumbnailPlaceholder: some View {
+        RoundedRectangle(cornerRadius: 8)
+            .fill(Color(.systemGray5))
+            .frame(width: 72, height: 72)
     }
 }
 
