@@ -1,5 +1,5 @@
 use axum::Json;
-use axum::extract::Extension;
+use axum::extract::{Extension, Query};
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
@@ -10,6 +10,13 @@ use crate::domain::ports::DbPort;
 use crate::middleware::auth::AuthUser;
 
 use super::AppState;
+
+/// GET /me/feed 쿼리 파라미터
+#[derive(Debug, Deserialize, Default)]
+pub struct FeedQuery {
+    /// 특정 태그만 필터링. 없으면 전체 태그 검색 (하위 호환)
+    pub tag_id: Option<Uuid>,
+}
 
 /// 클라이언트 노출용 FeedItem DTO.
 /// ephemeral — DB에 저장되지 않음. id 없음.
@@ -43,9 +50,11 @@ impl From<FeedItem> for FeedItemResponse {
 /// 사용자 태그를 기반으로 검색 API를 직접 호출해 피드를 반환한다.
 /// DB에 저장하지 않음 — 매 호출마다 검색 API를 새로 호출.
 /// 모든 태그 검색을 `futures::future::join_all`로 병렬 실행한다.
+/// `tag_id` 쿼리 파라미터가 있으면 해당 태그만 검색 (하위 호환).
 pub async fn get_feed<D: DbPort>(
     Extension(state): Extension<AppState<D>>,
     Extension(user): Extension<AuthUser>,
+    Query(feed_query): Query<FeedQuery>,
 ) -> Result<Json<Vec<FeedItemResponse>>, AppError> {
     let user_tags = state.db.get_user_tags(user.id).await?;
     if user_tags.is_empty() {
@@ -59,8 +68,23 @@ pub async fn get_feed<D: DbPort>(
     let tag_name_map: std::collections::HashMap<uuid::Uuid, &str> =
         all_tags.iter().map(|t| (t.id, t.name.as_str())).collect();
 
-    // (tag_id, tag_name, query) tuple로 병렬 검색 잡 표현 — owned String으로 future 캡처
-    let jobs: Vec<(uuid::Uuid, String, String)> = user_tags
+    // tag_id 파라미터가 있으면 해당 태그만 필터 (사용자 구독 태그 중)
+    let filtered_tags: Vec<_> = if let Some(filter_tag_id) = feed_query.tag_id {
+        user_tags
+            .iter()
+            .filter(|ut| ut.tag_id == filter_tag_id)
+            .collect()
+    } else {
+        user_tags.iter().collect()
+    };
+
+    if filtered_tags.is_empty() {
+        // 해당 tag_id가 사용자 구독 태그가 아니면 빈 결과 (403 아님)
+        return Ok(Json(vec![]));
+    }
+
+    // (tag_id, tag_name, search_query) tuple로 병렬 검색 잡 표현 — owned String으로 future 캡처
+    let jobs: Vec<(uuid::Uuid, String, String)> = filtered_tags
         .iter()
         .map(|user_tag| {
             let tag_name = tag_name_map
@@ -68,17 +92,17 @@ pub async fn get_feed<D: DbPort>(
                 .copied()
                 .unwrap_or("unknown")
                 .to_string();
-            let query = format!("{tag_name} latest news");
-            (user_tag.tag_id, tag_name, query)
+            let search_query = format!("{tag_name} latest news");
+            (user_tag.tag_id, tag_name, search_query)
         })
         .collect();
 
     // join_all로 모든 태그 검색을 동시에 실행
     let chain = std::sync::Arc::clone(&state.search_chain);
-    let futures = jobs.into_iter().map(|(tag_id, tag_name, query)| {
+    let futures = jobs.into_iter().map(|(tag_id, tag_name, search_query)| {
         let chain = std::sync::Arc::clone(&chain);
         async move {
-            let result = chain.search(&query, 5).await;
+            let result = chain.search(&search_query, 5).await;
             (tag_id, tag_name, result)
         }
     });
@@ -547,6 +571,145 @@ mod tests {
         let urls: Vec<&str> = items.iter().map(|i| i.url.as_str()).collect();
         assert!(urls.contains(&"https://example.com/news/ai-article"));
         assert!(urls.contains(&"https://example.com/news/web-article"));
+    }
+
+    /// M3 S0: tag_id 쿼리 파라미터 — 해당 태그 결과만 반환
+    #[tokio::test]
+    async fn get_feed_with_tag_id_returns_only_that_tag() {
+        let db = FakeDbAdapter::new();
+        let user_id = Uuid::new_v4();
+        db.seed_profile(Profile {
+            id: user_id,
+            display_name: None,
+            onboarding_completed: true,
+        });
+
+        let tags = db.get_tags();
+        let tag_a = &tags[0]; // "AI/ML"
+        let tag_b = &tags[1]; // "웹 개발"
+        db.seed_user_tag(user_id, tag_a.id);
+        db.seed_user_tag(user_id, tag_b.id);
+
+        let query_a = format!("{} latest news", tag_a.name);
+        let query_b = format!("{} latest news", tag_b.name);
+
+        let mut query_map: HashMap<String, Result<Vec<SearchResult>, String>> = HashMap::new();
+        query_map.insert(
+            query_a,
+            Ok(vec![SearchResult {
+                title: "AI Article".to_string(),
+                url: "https://example.com/news/ai-only".to_string(),
+                snippet: None,
+                published_at: None,
+                image_url: None,
+            }]),
+        );
+        query_map.insert(
+            query_b,
+            Ok(vec![SearchResult {
+                title: "Web Article".to_string(),
+                url: "https://example.com/news/web-only".to_string(),
+                snippet: None,
+                published_at: None,
+                image_url: None,
+            }]),
+        );
+
+        let state = make_test_state_with_query_map(db, query_map);
+        let app = make_app(state, user_id);
+        let server = TestServer::new(app);
+
+        // tag_id=tag_a.id 로 요청 → tag_a 결과만
+        let resp = server
+            .get(&format!("/me/feed?tag_id={}", tag_a.id))
+            .await;
+        resp.assert_status_ok();
+        let items: Vec<FeedItemResponse> = resp.json();
+        assert_eq!(items.len(), 1, "tag_id 필터 시 해당 태그 결과만 반환");
+        assert_eq!(items[0].url, "https://example.com/news/ai-only");
+        assert_eq!(items[0].tag_id, Some(tag_a.id));
+    }
+
+    /// M3 S0: tag_id 없으면 전체 태그 검색 (하위 호환)
+    #[tokio::test]
+    async fn get_feed_without_tag_id_returns_all_tags() {
+        let db = FakeDbAdapter::new();
+        let user_id = Uuid::new_v4();
+        db.seed_profile(Profile {
+            id: user_id,
+            display_name: None,
+            onboarding_completed: true,
+        });
+
+        let tags = db.get_tags();
+        let tag_a = &tags[0];
+        let tag_b = &tags[1];
+        db.seed_user_tag(user_id, tag_a.id);
+        db.seed_user_tag(user_id, tag_b.id);
+
+        let query_a = format!("{} latest news", tag_a.name);
+        let query_b = format!("{} latest news", tag_b.name);
+
+        let mut query_map: HashMap<String, Result<Vec<SearchResult>, String>> = HashMap::new();
+        query_map.insert(
+            query_a,
+            Ok(vec![SearchResult {
+                title: "AI Article".to_string(),
+                url: "https://example.com/news/ai-all".to_string(),
+                snippet: None,
+                published_at: None,
+                image_url: None,
+            }]),
+        );
+        query_map.insert(
+            query_b,
+            Ok(vec![SearchResult {
+                title: "Web Article".to_string(),
+                url: "https://example.com/news/web-all".to_string(),
+                snippet: None,
+                published_at: None,
+                image_url: None,
+            }]),
+        );
+
+        let state = make_test_state_with_query_map(db, query_map);
+        let app = make_app(state, user_id);
+        let server = TestServer::new(app);
+
+        // tag_id 없이 요청 → 전체 태그 결과
+        let resp = server.get("/me/feed").await;
+        resp.assert_status_ok();
+        let items: Vec<FeedItemResponse> = resp.json();
+        assert_eq!(items.len(), 2, "tag_id 없으면 전체 태그 결과 합산");
+    }
+
+    /// M3 S0: 사용자 구독 태그가 아닌 tag_id → 빈 결과 (403 아님)
+    #[tokio::test]
+    async fn get_feed_with_unsubscribed_tag_id_returns_empty() {
+        let db = FakeDbAdapter::new();
+        let user_id = Uuid::new_v4();
+        db.seed_profile(Profile {
+            id: user_id,
+            display_name: None,
+            onboarding_completed: true,
+        });
+
+        let tags = db.get_tags();
+        let tag_a = &tags[0];
+        // tag_b는 구독하지 않음
+        db.seed_user_tag(user_id, tag_a.id);
+
+        let state = make_test_state(db, vec![]);
+        let app = make_app(state, user_id);
+        let server = TestServer::new(app);
+
+        let random_tag_id = Uuid::new_v4();
+        let resp = server
+            .get(&format!("/me/feed?tag_id={random_tag_id}"))
+            .await;
+        resp.assert_status_ok();
+        let items: Vec<FeedItemResponse> = resp.json();
+        assert!(items.is_empty(), "미구독 tag_id → 빈 결과");
     }
 
     /// S1: 태그 A 쿼리 실패, 태그 B 쿼리 성공 → B 결과만 반환
