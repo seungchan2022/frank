@@ -21,6 +21,8 @@ pub struct FeedItemResponse {
     pub source: String,
     pub published_at: Option<DateTime<Utc>>,
     pub tag_id: Option<Uuid>,
+    /// MVP6 M1: 썸네일 이미지 URL (없으면 null)
+    pub image_url: Option<String>,
 }
 
 impl From<FeedItem> for FeedItemResponse {
@@ -32,6 +34,7 @@ impl From<FeedItem> for FeedItemResponse {
             source: item.source,
             published_at: item.published_at,
             tag_id: item.tag_id,
+            image_url: item.image_url,
         }
     }
 }
@@ -96,17 +99,36 @@ pub async fn get_feed<D: DbPort>(
                     .published_at
                     .and_then(|s| s.parse::<DateTime<Utc>>().ok()),
                 tag_id,
+                image_url: sr.image_url,
             });
         }
     }
 
-    // URL 기반 중복 제거 (여러 태그에서 동일 URL이 나올 수 있음)
+    // URL 정규화 기반 중복 제거
+    // trailing slash / www. / 스킴 차이 등으로 같은 페이지가 다른 URL로 올 수 있음
     let mut seen_urls = std::collections::HashSet::new();
-    items.retain(|item| seen_urls.insert(item.url.clone()));
+    items.retain(|item| seen_urls.insert(normalize_url(&item.url)));
 
     Ok(Json(
         items.into_iter().map(FeedItemResponse::from).collect(),
     ))
+}
+
+/// URL을 정규화한다 — 중복 제거 키로 사용.
+/// - 스킴(http/https) 제거
+/// - www. 제거
+/// - trailing slash 제거
+/// - 소문자로 통일
+fn normalize_url(url: &str) -> String {
+    let lower = url.to_lowercase();
+    let without_scheme = lower
+        .strip_prefix("https://")
+        .or_else(|| lower.strip_prefix("http://"))
+        .unwrap_or(&lower);
+    let without_www = without_scheme
+        .strip_prefix("www.")
+        .unwrap_or(without_scheme);
+    without_www.trim_end_matches('/').to_string()
 }
 
 /// 홈페이지/목록 URL을 판별한다.
@@ -204,6 +226,7 @@ mod tests {
             url: "https://example.com/news/test-article".to_string(),
             snippet: Some("test snippet".to_string()),
             published_at: None,
+            image_url: None,
         }];
 
         let state = make_test_state(db, results);
@@ -238,6 +261,7 @@ mod tests {
             url: "https://example.com/news/article".to_string(),
             snippet: None,
             published_at: None,
+            image_url: None,
         }];
 
         let state = make_test_state(db, results);
@@ -279,6 +303,7 @@ mod tests {
             url: "https://example.com/news/shared".to_string(),
             snippet: None,
             published_at: None,
+            image_url: None,
         }];
 
         let state = make_test_state(db, results);
@@ -312,12 +337,14 @@ mod tests {
                 url: "https://example.com/".to_string(),
                 snippet: None,
                 published_at: None,
+                image_url: None,
             },
             SearchResult {
                 title: "Real Article".to_string(),
                 url: "https://example.com/news/real-article".to_string(),
                 snippet: None,
                 published_at: None,
+                image_url: None,
             },
         ];
 
@@ -378,12 +405,25 @@ mod tests {
             source: "test".to_string(),
             published_at: None,
             tag_id: Some(Uuid::new_v4()),
+            image_url: None,
         };
         let json = serde_json::to_value(&item).unwrap();
         assert!(json.get("id").is_none());
         assert!(json.get("title").is_some());
         assert!(json.get("url").is_some());
         assert!(json.get("tag_id").is_some());
+    }
+
+    #[test]
+    fn test_normalize_url() {
+        assert_eq!(normalize_url("https://example.com/news/"), "example.com/news");
+        assert_eq!(normalize_url("http://www.example.com/news"), "example.com/news");
+        assert_eq!(normalize_url("https://www.example.com/news/"), "example.com/news");
+        assert_eq!(normalize_url("HTTPS://Example.com/News"), "example.com/news");
+        // http vs https → 같은 키
+        assert_eq!(normalize_url("http://example.com/a"), normalize_url("https://example.com/a"));
+        // www vs non-www → 같은 키
+        assert_eq!(normalize_url("https://www.example.com/a"), normalize_url("https://example.com/a"));
     }
 
     #[test]

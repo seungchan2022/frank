@@ -106,6 +106,7 @@ impl SearchPort for ExaAdapter {
                     url: r.url,
                     snippet: r.text,
                     published_at: r.published_date,
+                    image_url: None, // Exa API는 image_url 미제공
                 })
                 .collect())
         })

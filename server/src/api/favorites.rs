@@ -23,6 +23,8 @@ pub struct AddFavoriteRequest {
     pub tag_id: Option<Uuid>,
     pub summary: Option<String>,
     pub insight: Option<String>,
+    /// MVP6 M1: 썸네일 이미지 URL (없으면 null)
+    pub image_url: Option<String>,
 }
 
 /// DELETE /me/favorites?url=... 쿼리 파라미터.
@@ -57,6 +59,7 @@ pub async fn add_favorite<D: DbPort>(
         insight: body.insight,
         liked_at: None,
         created_at: None,
+        image_url: body.image_url,
     };
 
     let favorite = state.favorites.add_favorite(user.id, &item).await?;

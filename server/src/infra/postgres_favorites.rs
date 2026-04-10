@@ -54,8 +54,8 @@ impl FavoritesPort for PostgresFavoritesAdapter {
         Box::pin(async move {
             match sqlx::query_as::<_, Favorite>(
                 r#"INSERT INTO favorites
-                   (user_id, title, url, snippet, source, published_at, tag_id, summary, insight)
-                   VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+                   (user_id, title, url, snippet, source, published_at, tag_id, summary, insight, image_url)
+                   VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
                    RETURNING *"#,
             )
             .bind(user_id)
@@ -67,6 +67,7 @@ impl FavoritesPort for PostgresFavoritesAdapter {
             .bind(item.tag_id)
             .bind(&item.summary)
             .bind(&item.insight)
+            .bind(&item.image_url)
             .fetch_one(&self.pool)
             .await
             {

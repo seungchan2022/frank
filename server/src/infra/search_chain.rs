@@ -82,6 +82,7 @@ mod tests {
                 url: "https://example.com".to_string(),
                 snippet: Some("snippet".to_string()),
                 published_at: None,
+                image_url: None,
             }],
             false,
         );
@@ -114,6 +115,7 @@ mod tests {
                 url: "https://example.com/result".to_string(),
                 snippet: None,
                 published_at: None,
+                image_url: None,
             }],
             false,
         );
@@ -147,6 +149,7 @@ mod tests {
                 url: "https://example.com/first".to_string(),
                 snippet: None,
                 published_at: None,
+                image_url: None,
             }],
             false,
         );
@@ -195,6 +198,7 @@ mod tests {
                 url: "https://example.com/trait".to_string(),
                 snippet: None,
                 published_at: None,
+                image_url: None,
             }],
             false,
         );

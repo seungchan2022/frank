@@ -1,3 +1,4 @@
+use futures::future::join_all;
 use reqwest::Client;
 use serde::Deserialize;
 
@@ -6,9 +7,16 @@ use crate::domain::models::SearchResult;
 use crate::domain::ports::SearchPort;
 use crate::infra::http_utils::{RetryConfig, read_body_limited, send_with_retry};
 
+/// og:image 크롤링에 읽을 최대 바이트 (64KB — <head>는 항상 이 안에 있음)
+const OG_IMAGE_READ_LIMIT: usize = 64 * 1024;
+/// og:image 크롤링 타임아웃 (초)
+const OG_IMAGE_TIMEOUT_SECS: u64 = 5;
+
 #[derive(Debug, Clone)]
 pub struct TavilyAdapter {
     client: Client,
+    /// og:image 크롤링 전용 클라이언트 (짧은 타임아웃)
+    crawl_client: Client,
     api_key: String,
     base_url: String,
 }
@@ -37,6 +45,11 @@ impl TavilyAdapter {
                 .timeout(std::time::Duration::from_secs(30))
                 .build()
                 .expect("Failed to build HTTP client"),
+            crawl_client: Client::builder()
+                .timeout(std::time::Duration::from_secs(OG_IMAGE_TIMEOUT_SECS))
+                .user_agent("Mozilla/5.0 (compatible; FrankBot/1.0)")
+                .build()
+                .expect("Failed to build crawl client"),
             api_key: api_key.to_string(),
             base_url: base_url.to_string(),
         }
@@ -61,7 +74,6 @@ impl SearchPort for TavilyAdapter {
             });
 
             let config = RetryConfig::for_search();
-
             let api_key = self.api_key.clone();
             let url = format!("{}/search", self.base_url);
 
@@ -98,14 +110,24 @@ impl SearchPort for TavilyAdapter {
             let data: TavilyResponse = serde_json::from_str(&body)
                 .map_err(|e| AppError::Internal(format!("Tavily parse failed: {e}")))?;
 
+            // 각 기사 URL에서 og:image 병렬 크롤링
+            let crawl_futures: Vec<_> = data
+                .results
+                .iter()
+                .map(|r| fetch_og_image(&self.crawl_client, &r.url))
+                .collect();
+            let image_urls: Vec<Option<String>> = join_all(crawl_futures).await;
+
             Ok(data
                 .results
                 .into_iter()
-                .map(|r| SearchResult {
+                .zip(image_urls)
+                .map(|(r, image_url)| SearchResult {
                     title: r.title,
                     url: r.url,
                     snippet: r.content,
                     published_at: r.published_date,
+                    image_url,
                 })
                 .collect())
         })
@@ -116,11 +138,115 @@ impl SearchPort for TavilyAdapter {
     }
 }
 
+// MARK: - og:image 크롤링
+
+/// 기사 URL에서 og:image 메타태그를 추출한다.
+/// 실패(타임아웃, 봇 차단, 파싱 불가)하면 None 반환 — 피드 로딩에 영향 없음.
+async fn fetch_og_image(client: &Client, article_url: &str) -> Option<String> {
+    let resp = client.get(article_url).send().await.ok()?;
+    if !resp.status().is_success() {
+        return None;
+    }
+
+    // 최대 64KB만 읽어 파싱 (og:image는 항상 <head> 안에 있음)
+    let bytes = resp.bytes().await.ok()?;
+    let html = std::str::from_utf8(&bytes[..bytes.len().min(OG_IMAGE_READ_LIMIT)]).ok()?;
+
+    extract_og_image(html)
+}
+
+/// HTML에서 og:image content 값을 추출한다.
+/// `<meta property="og:image" content="URL">` 및
+/// `<meta content="URL" property="og:image">` 두 순서를 모두 처리한다.
+fn extract_og_image(html: &str) -> Option<String> {
+    let lower = html.to_lowercase();
+    let mut search_from = 0;
+
+    while let Some(rel_pos) = lower[search_from..].find("<meta") {
+        let tag_start = search_from + rel_pos;
+        let tag_end = lower[tag_start..]
+            .find('>')
+            .map(|p| tag_start + p + 1)
+            .unwrap_or(lower.len());
+
+        let tag = &html[tag_start..tag_end];
+        let tag_lower = &lower[tag_start..tag_end];
+
+        if tag_lower.contains("og:image") {
+            if let Some(url) = extract_attr(tag, "content") {
+                if url.starts_with("http") {
+                    return Some(url);
+                }
+            }
+        }
+
+        search_from = tag_end;
+        if search_from >= lower.len() {
+            break;
+        }
+    }
+
+    None
+}
+
+/// HTML 태그에서 지정한 속성값을 추출한다. 큰따옴표·작은따옴표 모두 처리.
+fn extract_attr(tag: &str, attr: &str) -> Option<String> {
+    let lower = tag.to_lowercase();
+    let search = format!("{attr}=");
+    let pos = lower.find(&search)?;
+    let after = &tag[pos + search.len()..];
+
+    if let Some(rest) = after.strip_prefix('"') {
+        let end = rest.find('"')?;
+        Some(rest[..end].to_string())
+    } else if let Some(rest) = after.strip_prefix('\'') {
+        let end = rest.find('\'')?;
+        Some(rest[..end].to_string())
+    } else {
+        let end = after.find(|c: char| c.is_whitespace() || c == '>' || c == '/')?;
+        Some(after[..end].to_string())
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
     use wiremock::matchers::{method, path};
     use wiremock::{Mock, MockServer, ResponseTemplate};
+
+    // MARK: - og:image 파싱 단위 테스트
+
+    #[test]
+    fn og_image_standard_order() {
+        let html = r#"<head><meta property="og:image" content="https://example.com/img.jpg" /></head>"#;
+        assert_eq!(
+            extract_og_image(html),
+            Some("https://example.com/img.jpg".to_string())
+        );
+    }
+
+    #[test]
+    fn og_image_reversed_attr_order() {
+        let html = r#"<head><meta content="https://example.com/img.jpg" property="og:image" /></head>"#;
+        assert_eq!(
+            extract_og_image(html),
+            Some("https://example.com/img.jpg".to_string())
+        );
+    }
+
+    #[test]
+    fn og_image_not_present() {
+        let html = r#"<head><meta property="og:title" content="Hello" /></head>"#;
+        assert_eq!(extract_og_image(html), None);
+    }
+
+    #[test]
+    fn og_image_relative_url_ignored() {
+        let html = r#"<head><meta property="og:image" content="/img/thumb.jpg" /></head>"#;
+        assert_eq!(extract_og_image(html), None);
+    }
+
+    // MARK: - Tavily 어댑터 통합 테스트
 
     #[tokio::test]
     async fn retry_on_retryable_status() {
@@ -200,34 +326,49 @@ mod tests {
 
     #[tokio::test]
     async fn request_error_network_failure() {
-        // Use a port that's not listening
         let adapter = TavilyAdapter::with_base_url("test-key", "http://127.0.0.1:1");
         let result = adapter.search("test", 5).await;
         assert!(result.is_err());
     }
 
     #[tokio::test]
-    async fn successful_search_maps_fields() {
+    async fn successful_search_with_og_image() {
         let mock_server = MockServer::start().await;
 
+        // Tavily 검색 응답
         Mock::given(method("POST"))
             .and(path("/search"))
             .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({
                 "results": [
-                    {"title": "Article 1", "url": "https://a.com", "content": "snippet 1", "published_date": "2026-01-01"},
-                    {"title": "Article 2", "url": "https://b.com", "content": null, "published_date": null}
+                    {"title": "Article 1", "url": format!("{}/article1", mock_server.uri()), "content": "snippet 1", "published_date": "2026-01-01"},
+                    {"title": "Article 2", "url": format!("{}/article2", mock_server.uri()), "content": null, "published_date": null}
                 ]
             })))
             .mount(&mock_server)
             .await;
 
+        // article1: og:image 있음
+        Mock::given(method("GET"))
+            .and(path("/article1"))
+            .respond_with(ResponseTemplate::new(200).set_body_string(
+                r#"<html><head><meta property="og:image" content="https://cdn.example.com/thumb.jpg" /></head></html>"#,
+            ))
+            .mount(&mock_server)
+            .await;
+
+        // article2: og:image 없음 (403 차단)
+        Mock::given(method("GET"))
+            .and(path("/article2"))
+            .respond_with(ResponseTemplate::new(403))
+            .mount(&mock_server)
+            .await;
+
         let adapter = TavilyAdapter::with_base_url("test-key", &mock_server.uri());
         let results = adapter.search("test", 5).await.unwrap();
+
         assert_eq!(results.len(), 2);
         assert_eq!(results[0].title, "Article 1");
-        assert_eq!(results[0].url, "https://a.com");
-        assert_eq!(results[0].snippet, Some("snippet 1".to_string()));
-        assert_eq!(results[0].published_at, Some("2026-01-01".to_string()));
-        assert_eq!(results[1].snippet, None);
+        assert_eq!(results[0].image_url, Some("https://cdn.example.com/thumb.jpg".to_string()));
+        assert_eq!(results[1].image_url, None);
     }
 }

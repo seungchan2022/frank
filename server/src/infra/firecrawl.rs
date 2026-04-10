@@ -114,6 +114,7 @@ impl SearchPort for FirecrawlAdapter {
                         url: r.url?,
                         snippet: r.description,
                         published_at: None,
+                        image_url: None, // Firecrawl API는 image_url 미제공
                     })
                 })
                 .collect())

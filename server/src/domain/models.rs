@@ -33,6 +33,8 @@ pub struct FeedItem {
     pub source: String,
     pub published_at: Option<DateTime<Utc>>,
     pub tag_id: Option<Uuid>,
+    /// MVP6 M1: 썸네일 이미지 URL (없으면 None)
+    pub image_url: Option<String>,
 }
 
 /// MVP5 M3: favorites 테이블 모델.
@@ -52,6 +54,8 @@ pub struct Favorite {
     pub insight: Option<String>,
     pub liked_at: Option<DateTime<Utc>>,
     pub created_at: Option<DateTime<Utc>>,
+    /// MVP6 M1: 썸네일 이미지 URL (없으면 None)
+    pub image_url: Option<String>,
 }
 
 /// LLM 요약 결과
@@ -78,4 +82,6 @@ pub struct SearchResult {
     pub url: String,
     pub snippet: Option<String>,
     pub published_at: Option<String>,
+    /// MVP6 M1: 썸네일 이미지 URL (없으면 None)
+    pub image_url: Option<String>,
 }

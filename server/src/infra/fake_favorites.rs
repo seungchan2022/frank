@@ -119,6 +119,7 @@ impl FavoritesPort for FakeFavoritesAdapter {
                 insight: item.insight.clone(),
                 liked_at: Some(now),
                 created_at: Some(now),
+                image_url: item.image_url.clone(),
             };
 
             guard.1.push(key.clone());
@@ -188,6 +189,7 @@ mod tests {
             insight: None,
             liked_at: None,
             created_at: None,
+            image_url: None,
         }
     }
 
