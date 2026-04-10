@@ -3,11 +3,15 @@ import SwiftUI
 /// MVP5 M1: FeedView — ephemeral 피드 표시.
 /// collectAndRefresh 버튼 제거. pull-to-refresh = API 재호출.
 /// NavigationLink value: String (FeedItem.id = url absoluteString 기반).
+/// MVP6 M2: refresh 완료 후 scroll to top (scrollPosition(id:)).
 struct FeedView: View {
     let feature: FeedFeature
     let summarize: any SummarizePort
     let favoritesFeature: FavoritesFeature
     var onSettingsTapped: (() -> Void)?
+
+    /// scrollPosition(id:) modifier에 바인딩 — refresh 성공 시 첫 아이템 ID로 설정
+    @State private var scrolledID: String?
 
     var body: some View {
         NavigationStack {
@@ -47,6 +51,15 @@ struct FeedView: View {
             }
             .onReceive(NotificationCenter.default.publisher(for: UIApplication.willEnterForegroundNotification)) { _ in
                 Task { await feature.send(.refresh) }
+            }
+            .onChange(of: feature.phase) { oldPhase, newPhase in
+                // refresh 성공 완료 시 첫 아이템으로 스크롤
+                // 실패 refresh도 .idle로 복귀하므로 errorMessage == nil 조건 필수
+                if oldPhase == .refreshing && newPhase == .idle {
+                    guard feature.errorMessage == nil,
+                          let firstID = feature.articles.first?.id else { return }
+                    scrolledID = firstID
+                }
             }
         }
     }
@@ -98,6 +111,7 @@ struct FeedView: View {
             }
         }
         .listStyle(.plain)
+        .scrollPosition(id: $scrolledID)
         .refreshable {
             await feature.send(.refresh)
         }
