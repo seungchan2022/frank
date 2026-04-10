@@ -13,6 +13,7 @@ import type {
 	Tag
 } from './types';
 import type { SummaryResult } from '$lib/types/summary';
+import type { Favorite } from '$lib/types/favorite';
 
 export interface ApiClient {
 	// Tags
@@ -37,4 +38,9 @@ export interface ApiClient {
 
 	// Pipeline
 	collectArticles(): Promise<number>;
+
+	// Favorites (MVP5 M3)
+	addFavorite(item: FeedItem, summary?: string, insight?: string): Promise<Favorite>;
+	deleteFavorite(url: string): Promise<void>;
+	listFavorites(): Promise<Favorite[]>;
 }

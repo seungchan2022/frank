@@ -29,6 +29,14 @@
 					Feed
 				</a>
 				<a
+					href="/favorites"
+					class="text-sm font-medium {isActive('/favorites')
+						? 'text-blue-600'
+						: 'text-gray-600 hover:text-gray-900'}"
+				>
+					스크랩
+				</a>
+				<a
 					href="/settings"
 					class="text-sm font-medium {isActive('/settings')
 						? 'text-blue-600'

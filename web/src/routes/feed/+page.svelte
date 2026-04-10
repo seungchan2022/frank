@@ -1,38 +1,31 @@
 <script lang="ts">
 	import { getAuth } from '$lib/stores/auth.svelte';
-	import { goto, pushState } from '$app/navigation';
-	import { apiClient } from '$lib/api';
+	import { goto } from '$app/navigation';
+	import { feedStore } from '$lib/stores/feedStore.svelte';
 	import { formatArticleDate, extractDomain } from '$lib/utils/article';
 	import type { FeedItem } from '$lib/types/article';
-	import type { Tag } from '$lib/types/tag';
 	import Header from '$lib/components/Header.svelte';
 
 	const auth = getAuth();
 
-	let feedItems = $state<FeedItem[]>([]);
-	let tags = $state<Tag[]>([]);
-	let loading = $state(false);
-	let refreshing = $state(false);
-	let error = $state<string | null>(null);
 	let selectedTagId = $state<string | null>(null);
-	let myTagIds = $state<string[]>([]);
 
 	const tagMap = $derived(
-		tags.reduce<Record<string, string>>((acc, tag) => {
+		feedStore.tags.reduce<Record<string, string>>((acc, tag) => {
 			acc[tag.id] = tag.name;
 			return acc;
 		}, {})
 	);
 
 	// 사용자가 구독한 태그만 필터 탭에 표시
-	const filterTags = $derived(tags.filter((tag) => myTagIds.includes(tag.id)));
+	const filterTags = $derived(feedStore.tags.filter((tag) => feedStore.myTagIds.includes(tag.id)));
 
 	// 선택된 태그로 필터링 (tag_id 기반)
 	const filteredItems = $derived(
-		selectedTagId ? feedItems.filter((item) => item.tag_id === selectedTagId) : feedItems
+		selectedTagId
+			? feedStore.feedItems.filter((item) => item.tag_id === selectedTagId)
+			: feedStore.feedItems
 	);
-
-	let initialLoaded = false;
 
 	// 인증 상태 확정 후 리다이렉트 or 초기 로드
 	$effect(() => {
@@ -41,44 +34,8 @@
 			goto('/login');
 			return;
 		}
-		if (!initialLoaded) {
-			initialLoaded = true;
-			loadFeed();
-		}
+		feedStore.loadFeed(auth.user?.id);
 	});
-
-	async function loadFeed() {
-		loading = true;
-		error = null;
-		try {
-			const [items, allTags, tagIds] = await Promise.all([
-				apiClient.fetchFeed(),
-				apiClient.fetchTags(),
-				apiClient.fetchMyTagIds()
-			]);
-			feedItems = items;
-			tags = allTags;
-			myTagIds = tagIds;
-		} catch (e) {
-			error = e instanceof Error ? e.message : 'Failed to load feed';
-			feedItems = [];
-		} finally {
-			loading = false;
-		}
-	}
-
-	async function handleRefresh() {
-		if (refreshing) return;
-		refreshing = true;
-		error = null;
-		try {
-			feedItems = await apiClient.fetchFeed();
-		} catch (e) {
-			error = e instanceof Error ? e.message : 'Failed to refresh feed';
-		} finally {
-			refreshing = false;
-		}
-	}
 
 	function selectTag(tagId: string | null) {
 		selectedTagId = tagId;
@@ -91,8 +48,7 @@
 			source: item.source
 		});
 		const path = `/feed/article?${params.toString()}`;
-		pushState(path, { feedItem: item });
-		goto(path);
+		goto(path, { state: { feedItem: JSON.parse(JSON.stringify(item)) } });
 	}
 </script>
 
@@ -103,11 +59,11 @@
 		<div class="mb-6 flex items-center justify-between">
 			<h2 class="text-lg font-semibold text-gray-900">My Feed</h2>
 			<button
-				onclick={handleRefresh}
-				disabled={refreshing || loading}
+				onclick={() => feedStore.refresh()}
+				disabled={feedStore.loading}
 				class="flex items-center gap-2 rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-50"
 			>
-				{#if refreshing}
+				{#if feedStore.loading && feedStore.loaded}
 					<svg class="h-4 w-4 animate-spin" fill="none" viewBox="0 0 24 24">
 						<circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
 						<path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"></path>
@@ -143,13 +99,13 @@
 		</div>
 
 		<!-- 에러 배너 -->
-		{#if error}
+		{#if feedStore.error}
 			<div class="mb-4 rounded-lg border border-red-200 bg-red-50 p-4 text-sm text-red-700">
-				{error}
+				{feedStore.error}
 			</div>
 		{/if}
 
-		{#if loading && feedItems.length === 0}
+		{#if feedStore.loading && feedStore.feedItems.length === 0}
 			<div class="py-12 text-center text-gray-500">
 				<p>Loading feed...</p>
 			</div>

@@ -14,6 +14,7 @@ import type {
 	Tag
 } from './types';
 import type { SummaryResult } from '$lib/types/summary';
+import type { Favorite } from '$lib/types/favorite';
 import articlesFixture from './__fixtures__/articles.json';
 import tagsFixture from './__fixtures__/tags.json';
 import profileFixture from './__fixtures__/profile.json';
@@ -130,5 +131,39 @@ export const mockApiClient: ApiClient = {
 			},
 			600
 		);
+	},
+
+	async addFavorite(item: FeedItem, summary?: string, insight?: string): Promise<Favorite> {
+		const existing = mockFavorites.find((f) => f.url === item.url);
+		if (existing) throw Object.assign(new Error('이미 즐겨찾기에 추가된 기사입니다.'), { status: 409 });
+		const now = new Date().toISOString();
+		const fav: Favorite = {
+			id: crypto.randomUUID(),
+			userId: profile.id,
+			title: item.title,
+			url: item.url,
+			snippet: item.snippet ?? null,
+			source: item.source,
+			publishedAt: item.published_at ?? null,
+			tagId: item.tag_id ?? null,
+			summary: summary ?? null,
+			insight: insight ?? null,
+			likedAt: now,
+			createdAt: now
+		};
+		mockFavorites = [fav, ...mockFavorites];
+		return delay({ ...fav });
+	},
+
+	async deleteFavorite(url: string): Promise<void> {
+		mockFavorites = mockFavorites.filter((f) => f.url !== url);
+		return delay(undefined);
+	},
+
+	async listFavorites(): Promise<Favorite[]> {
+		return delay([...mockFavorites]);
 	}
 };
+
+// 인메모리 즐겨찾기 스토어
+let mockFavorites: Favorite[] = [];

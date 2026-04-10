@@ -17,6 +17,7 @@ import type {
 	Tag
 } from './types';
 import type { SummaryResult } from '$lib/types/summary';
+import type { Favorite } from '$lib/types/favorite';
 
 const API_BASE = (import.meta.env.VITE_RUST_API_URL ?? 'http://localhost:8080').replace(/\/$/, '');
 
@@ -135,5 +136,51 @@ export const realApiClient: ApiClient = {
 			method: 'POST',
 			body: JSON.stringify({ url, title })
 		});
+	},
+
+	async addFavorite(item: FeedItem, summary?: string, insight?: string): Promise<Favorite> {
+		const raw = await request<Record<string, unknown>>('/api/me/favorites', {
+			method: 'POST',
+			body: JSON.stringify({
+				title: item.title,
+				url: item.url,
+				snippet: item.snippet ?? null,
+				source: item.source,
+				published_at: item.published_at ?? null,
+				tag_id: item.tag_id ?? null,
+				summary: summary ?? null,
+				insight: insight ?? null
+			})
+		});
+		return snakeToCamelFavorite(raw);
+	},
+
+	async deleteFavorite(url: string): Promise<void> {
+		await request<void>(`/api/me/favorites?url=${encodeURIComponent(url)}`, {
+			method: 'DELETE'
+		});
+	},
+
+	async listFavorites(): Promise<Favorite[]> {
+		const raw = await request<Record<string, unknown>[]>('/api/me/favorites');
+		return raw.map(snakeToCamelFavorite);
 	}
 };
+
+/// 서버 snake_case 응답 → Favorite camelCase 변환.
+function snakeToCamelFavorite(raw: Record<string, unknown>): Favorite {
+	return {
+		id: raw.id as string,
+		userId: raw.user_id as string,
+		title: raw.title as string,
+		url: raw.url as string,
+		snippet: (raw.snippet as string | null) ?? null,
+		source: raw.source as string,
+		publishedAt: (raw.published_at as string | null) ?? null,
+		tagId: (raw.tag_id as string | null) ?? null,
+		summary: (raw.summary as string | null) ?? null,
+		insight: (raw.insight as string | null) ?? null,
+		likedAt: (raw.liked_at as string | null) ?? null,
+		createdAt: raw.created_at as string
+	};
+}
