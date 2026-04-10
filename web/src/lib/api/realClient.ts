@@ -149,7 +149,8 @@ export const realApiClient: ApiClient = {
 				published_at: item.published_at ?? null,
 				tag_id: item.tag_id ?? null,
 				summary: summary ?? null,
-				insight: insight ?? null
+				insight: insight ?? null,
+				image_url: item.image_url ?? null
 			})
 		});
 		return snakeToCamelFavorite(raw);
@@ -181,6 +182,7 @@ function snakeToCamelFavorite(raw: Record<string, unknown>): Favorite {
 		summary: (raw.summary as string | null) ?? null,
 		insight: (raw.insight as string | null) ?? null,
 		likedAt: (raw.liked_at as string | null) ?? null,
-		createdAt: raw.created_at as string
+		createdAt: raw.created_at as string,
+		imageUrl: (raw.image_url as string | null) ?? null
 	};
 }

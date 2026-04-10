@@ -13,6 +13,8 @@ export interface Favorite {
 	insight: string | null;
 	likedAt: string | null;
 	createdAt: string;
+	/// MVP6 M1: 썸네일 이미지 URL (없으면 null)
+	imageUrl?: string | null;
 }
 
 /// POST /me/favorites 요청 바디.
@@ -26,4 +28,6 @@ export interface AddFavoriteBody {
 	tag_id: string | null;
 	summary: string | null;
 	insight: string | null;
+	/// MVP6 M1: 썸네일 이미지 URL (없으면 null)
+	image_url?: string | null;
 }

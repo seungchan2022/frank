@@ -117,37 +117,55 @@
 		{:else}
 			<div class="grid grid-cols-1 gap-4 md:grid-cols-2">
 				{#each filteredItems as item (item.url)}
-					<article class="flex flex-col rounded-lg border border-gray-200 bg-white p-4">
-						<div class="mb-2 flex items-center gap-2">
-							<span
-								class="inline-block rounded bg-gray-200 px-2 py-0.5 text-xs font-medium text-gray-600"
-							>
-								{item.source || extractDomain(item.url)}
-							</span>
-							{#if item.tag_id && tagMap[item.tag_id]}
-								<span
-									class="inline-block rounded bg-blue-100 px-2 py-0.5 text-xs font-medium text-blue-700"
-								>
-									{tagMap[item.tag_id]}
-								</span>
+					<article class="flex rounded-lg border border-gray-200 bg-white p-4">
+						<!-- 썸네일 영역 (72×72) -->
+						<div class="mr-3 h-18 w-18 flex-shrink-0">
+							{#if item.image_url}
+								<img
+									src={item.image_url}
+									alt=""
+									class="h-18 w-18 rounded-lg object-cover"
+									onerror={(e) => {
+										const el = e.currentTarget as HTMLImageElement;
+										el.style.display = 'none';
+										el.nextElementSibling?.classList.remove('hidden');
+									}}
+								/>
+								<div class="hidden h-18 w-18 rounded-lg bg-gray-200"></div>
+							{:else}
+								<div class="h-18 w-18 rounded-lg bg-gray-200"></div>
 							{/if}
 						</div>
 
-						<button
-							onclick={() => navigateToArticle(item)}
-							class="text-left text-base font-semibold text-gray-900 hover:text-blue-600"
-						>
-							{item.title}
-						</button>
+						<!-- 텍스트 영역 -->
+						<div class="flex min-w-0 flex-1 flex-col">
+							<div class="mb-1 flex items-center gap-2">
+								<span
+									class="inline-block rounded bg-gray-200 px-2 py-0.5 text-xs font-medium text-gray-600"
+								>
+									{item.source || extractDomain(item.url)}
+								</span>
+								{#if item.tag_id && tagMap[item.tag_id]}
+									<span
+										class="inline-block rounded bg-blue-100 px-2 py-0.5 text-xs font-medium text-blue-700"
+									>
+										{tagMap[item.tag_id]}
+									</span>
+								{/if}
+							</div>
 
-						{#if item.snippet}
-							<p class="mt-1 line-clamp-2 text-sm text-gray-500">{item.snippet}</p>
-						{/if}
+							<button
+								onclick={() => navigateToArticle(item)}
+								class="line-clamp-2 text-left text-sm font-semibold text-gray-900 hover:text-blue-600"
+							>
+								{item.title}
+							</button>
 
-						<div class="mt-auto pt-3 text-xs text-gray-400">
-							{#if item.published_at}
-								<span>{formatArticleDate(item.published_at)}</span>
-							{/if}
+							<div class="mt-auto pt-2 text-xs text-gray-400">
+								{#if item.published_at}
+									<span>{formatArticleDate(item.published_at)}</span>
+								{/if}
+							</div>
 						</div>
 					</article>
 				{/each}

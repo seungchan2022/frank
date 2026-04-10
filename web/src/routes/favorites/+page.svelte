@@ -105,21 +105,45 @@
 					<div class="group flex items-stretch rounded-lg border border-gray-200 bg-white transition-shadow hover:shadow-md">
 						<button
 							onclick={() => goToArticle(fav)}
-							class="min-w-0 flex-1 p-5 text-left"
+							class="min-w-0 flex-1 p-4 text-left"
 						>
-							<h2 class="mb-1 line-clamp-2 text-base font-semibold text-gray-900 group-hover:text-indigo-700">
-								{fav.title}
-							</h2>
-							<div class="flex flex-wrap items-center gap-2 text-xs text-gray-400">
-								<span class="inline-block rounded bg-gray-100 px-2 py-0.5 font-medium text-gray-600">
-									{fav.source}
-								</span>
-								{#if fav.createdAt}
-									<span>스크랩: {formatArticleDate(fav.createdAt)}</span>
-								{/if}
-								{#if fav.summary}
-									<span class="text-indigo-500">✨ 요약 있음</span>
-								{/if}
+							<div class="flex items-start gap-3">
+								<!-- 썸네일 영역 (72×72) -->
+								<div class="h-18 w-18 flex-shrink-0">
+									{#if fav.imageUrl}
+										<img
+											src={fav.imageUrl}
+											alt=""
+											class="h-18 w-18 rounded-lg object-cover"
+											onerror={(e) => {
+												const el = e.currentTarget as HTMLImageElement;
+												el.style.display = 'none';
+												el.nextElementSibling?.classList.remove('hidden');
+											}}
+										/>
+										<div class="hidden h-18 w-18 rounded-lg bg-gray-200"></div>
+									{:else}
+										<div class="h-18 w-18 rounded-lg bg-gray-200"></div>
+									{/if}
+								</div>
+
+								<!-- 텍스트 영역 -->
+								<div class="min-w-0 flex-1">
+									<h2 class="mb-1 line-clamp-2 text-sm font-semibold text-gray-900 group-hover:text-indigo-700">
+										{fav.title}
+									</h2>
+									<div class="flex flex-wrap items-center gap-2 text-xs text-gray-400">
+										<span class="inline-block rounded bg-gray-100 px-2 py-0.5 font-medium text-gray-600">
+											{fav.source}
+										</span>
+										{#if fav.createdAt}
+											<span>스크랩: {formatArticleDate(fav.createdAt)}</span>
+										{/if}
+										{#if fav.summary}
+											<span class="text-indigo-500">✨ 요약 있음</span>
+										{/if}
+									</div>
+								</div>
 							</div>
 						</button>
 						<button

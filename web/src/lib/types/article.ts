@@ -19,4 +19,6 @@ export interface FeedItem {
 	source: string;
 	published_at: string | null;
 	tag_id: string | null;
+	/// MVP6 M1: 썸네일 이미지 URL (없으면 null)
+	image_url?: string | null;
 }
