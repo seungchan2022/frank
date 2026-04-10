@@ -54,8 +54,8 @@ mod tests {
     use super::*;
     use crate::domain::models::Profile;
     use crate::infra::fake_crawl::FakeCrawlAdapter;
-    use crate::infra::fake_favorites::FakeFavoritesAdapter;
     use crate::infra::fake_db::FakeDbAdapter;
+    use crate::infra::fake_favorites::FakeFavoritesAdapter;
     use crate::infra::fake_llm::FakeLlmAdapter;
     use crate::infra::fake_notification::FakeNotificationAdapter;
     use crate::infra::fake_search::FakeSearchAdapter;

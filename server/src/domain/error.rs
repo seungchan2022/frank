@@ -17,6 +17,9 @@ pub enum AppError {
 
     #[error("Timeout: {0}")]
     Timeout(String),
+
+    #[error("Conflict: {0}")]
+    Conflict(String),
 }
 
 impl IntoResponse for AppError {
@@ -33,6 +36,7 @@ impl IntoResponse for AppError {
                 )
             }
             AppError::Timeout(msg) => (StatusCode::GATEWAY_TIMEOUT, msg.clone()),
+            AppError::Conflict(msg) => (StatusCode::CONFLICT, msg.clone()),
         };
 
         let body = serde_json::json!({ "error": message });
@@ -87,6 +91,19 @@ mod tests {
     }
 
     #[test]
+    fn conflict_returns_409() {
+        let err = AppError::Conflict("already exists".to_string());
+        let resp = err.into_response();
+        assert_eq!(resp.status(), StatusCode::CONFLICT);
+    }
+
+    #[test]
+    fn conflict_body_contains_message() {
+        let body = extract_body(AppError::Conflict("duplicate favorite".to_string()));
+        assert_eq!(body, serde_json::json!({"error": "duplicate favorite"}));
+    }
+
+    #[test]
     fn error_display_contains_message() {
         let err = AppError::Unauthorized("test msg".to_string());
         assert!(err.to_string().contains("test msg"));
@@ -99,6 +116,9 @@ mod tests {
 
         let err = AppError::Internal("server error".to_string());
         assert!(err.to_string().contains("server error"));
+
+        let err = AppError::Conflict("duplicate".to_string());
+        assert!(err.to_string().contains("duplicate"));
     }
 
     fn extract_body(err: AppError) -> serde_json::Value {

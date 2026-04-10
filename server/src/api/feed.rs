@@ -92,7 +92,9 @@ pub async fn get_feed<D: DbPort>(
                 url: sr.url,
                 snippet: sr.snippet,
                 source: source.clone(),
-                published_at: sr.published_at.and_then(|s| s.parse::<DateTime<Utc>>().ok()),
+                published_at: sr
+                    .published_at
+                    .and_then(|s| s.parse::<DateTime<Utc>>().ok()),
                 tag_id,
             });
         }
@@ -102,7 +104,9 @@ pub async fn get_feed<D: DbPort>(
     let mut seen_urls = std::collections::HashSet::new();
     items.retain(|item| seen_urls.insert(item.url.clone()));
 
-    Ok(Json(items.into_iter().map(FeedItemResponse::from).collect()))
+    Ok(Json(
+        items.into_iter().map(FeedItemResponse::from).collect(),
+    ))
 }
 
 /// 홈페이지/목록 URL을 판별한다.
@@ -246,7 +250,10 @@ mod tests {
         let items: Vec<FeedItemResponse> = resp.json();
         assert_eq!(items.len(), 1);
         let json = serde_json::to_value(&items[0]).unwrap();
-        assert!(json.get("id").is_none(), "id 필드는 ephemeral 피드에 없어야 한다");
+        assert!(
+            json.get("id").is_none(),
+            "id 필드는 ephemeral 피드에 없어야 한다"
+        );
     }
 
     #[tokio::test]

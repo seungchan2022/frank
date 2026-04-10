@@ -4,7 +4,7 @@ use std::pin::Pin;
 use uuid::Uuid;
 
 use super::error::AppError;
-use super::models::{LlmResponse, Profile, SearchResult, Tag, UserTag};
+use super::models::{Favorite, LlmResponse, Profile, SearchResult, Tag, UserTag};
 
 /// DB 접근 포트 (Supabase REST API 또는 sqlx)
 /// MVP5 M1: articles 관련 메서드 제거 — 피드는 검색 API 직접 호출, DB 저장 없음
@@ -101,4 +101,26 @@ pub trait FavoritesPort: Send + Sync {
         summary: &'a str,
         insight: &'a str,
     ) -> Pin<Box<dyn Future<Output = Result<(), AppError>> + Send + 'a>>;
+
+    /// MVP5 M3: 즐겨찾기 추가.
+    /// 동일 (user_id, url)이 이미 존재하면 AppError::Conflict 반환.
+    fn add_favorite<'a>(
+        &'a self,
+        user_id: Uuid,
+        item: &'a Favorite,
+    ) -> Pin<Box<dyn Future<Output = Result<Favorite, AppError>> + Send + 'a>>;
+
+    /// MVP5 M3: 즐겨찾기 삭제.
+    /// 존재하지 않는 url이어도 Ok(()) 반환 (no-op).
+    fn delete_favorite<'a>(
+        &'a self,
+        user_id: Uuid,
+        url: &'a str,
+    ) -> Pin<Box<dyn Future<Output = Result<(), AppError>> + Send + 'a>>;
+
+    /// MVP5 M3: 즐겨찾기 목록 조회 (created_at DESC).
+    fn list_favorites(
+        &self,
+        user_id: Uuid,
+    ) -> Pin<Box<dyn Future<Output = Result<Vec<Favorite>, AppError>> + Send + '_>>;
 }

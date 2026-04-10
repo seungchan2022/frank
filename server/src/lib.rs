@@ -9,7 +9,7 @@ use std::sync::Arc;
 
 use axum::http::{HeaderValue, Method, header};
 use axum::middleware::from_fn;
-use axum::routing::{get, post, put};
+use axum::routing::{delete, get, post, put};
 use axum::{Extension, Router};
 use tower_http::cors::CorsLayer;
 
@@ -64,12 +64,21 @@ pub fn create_router<D: DbPort + Clone + 'static>(
         .route("/me/profile", put(api::profile::update_profile::<D>))
         .route("/tags", get(api::tags::list_tags::<D>))
         .route("/me/tags", get(api::tags::get_my_tags::<D>))
-        .route("/me/tags", axum::routing::post(api::tags::save_my_tags::<D>))
+        .route(
+            "/me/tags",
+            axum::routing::post(api::tags::save_my_tags::<D>),
+        )
         // MVP5 M1: GET /me/feed — 검색 API 직접 호출 (DB 저장 없음)
         .route("/me/feed", get(api::feed::get_feed::<D>))
         // MVP5 M2: POST /me/summarize — URL 크롤링 + LLM 요약
         .route("/me/summarize", post(api::summarize::post_summarize::<D>))
-        // MVP5 M3 준비: favorites 엔드포인트는 M3에서 추가
+        // MVP5 M3: favorites CRUD
+        .route("/me/favorites", post(api::favorites::add_favorite::<D>))
+        .route(
+            "/me/favorites",
+            delete(api::favorites::delete_favorite::<D>),
+        )
+        .route("/me/favorites", get(api::favorites::list_favorites::<D>))
         .layer(from_fn(middleware::auth::require_auth))
         .layer(Extension(supabase_config));
 
@@ -151,5 +160,44 @@ mod tests {
         let server = make_full_app();
         let resp = server.get("/api/me/articles").await;
         assert_ne!(resp.status_code(), axum::http::StatusCode::OK);
+    }
+
+    #[tokio::test]
+    async fn post_favorites_without_auth_returns_401() {
+        // MVP5 M3: POST /me/favorites — 인증 없으면 401
+        let server = make_full_app();
+        let resp = server
+            .post("/api/me/favorites")
+            .json(&serde_json::json!({
+                "title": "기사",
+                "url": "https://example.com",
+                "source": "test",
+                "snippet": null,
+                "published_at": null,
+                "tag_id": null,
+                "summary": null,
+                "insight": null
+            }))
+            .await;
+        resp.assert_status_unauthorized();
+    }
+
+    #[tokio::test]
+    async fn delete_favorites_without_auth_returns_401() {
+        // MVP5 M3: DELETE /me/favorites — 인증 없으면 401
+        let server = make_full_app();
+        let resp = server
+            .delete("/api/me/favorites")
+            .add_query_param("url", "https://example.com")
+            .await;
+        resp.assert_status_unauthorized();
+    }
+
+    #[tokio::test]
+    async fn get_favorites_without_auth_returns_401() {
+        // MVP5 M3: GET /me/favorites — 인증 없으면 401
+        let server = make_full_app();
+        let resp = server.get("/api/me/favorites").await;
+        resp.assert_status_unauthorized();
     }
 }

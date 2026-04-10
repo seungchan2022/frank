@@ -38,7 +38,7 @@ pub struct FeedItem {
 /// MVP5 M3: favorites 테이블 모델.
 /// article_id FK 없이 기사 메타 전체를 직접 저장.
 /// UNIQUE (user_id, url)
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, sqlx::FromRow)]
 pub struct Favorite {
     pub id: Uuid,
     pub user_id: Uuid,

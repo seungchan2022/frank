@@ -1,3 +1,4 @@
+pub mod favorites;
 pub mod feed;
 pub mod health;
 pub mod profile;
@@ -6,7 +7,9 @@ pub mod tags;
 
 use std::sync::Arc;
 
-use crate::domain::ports::{CrawlPort, DbPort, FavoritesPort, LlmPort, NotificationPort, SearchChainPort};
+use crate::domain::ports::{
+    CrawlPort, DbPort, FavoritesPort, LlmPort, NotificationPort, SearchChainPort,
+};
 
 #[derive(Clone)]
 pub struct AppState<D: DbPort> {

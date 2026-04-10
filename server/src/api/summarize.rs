@@ -57,7 +57,6 @@ mod tests {
     use super::*;
     use crate::domain::ports::SearchChainPort;
     use crate::infra::fake_crawl::FakeCrawlAdapter;
-    use std::time::Duration;
     use crate::infra::fake_db::FakeDbAdapter;
     use crate::infra::fake_favorites::FakeFavoritesAdapter;
     use crate::infra::fake_llm::FakeLlmAdapter;
@@ -69,12 +68,10 @@ mod tests {
     use axum::routing::post;
     use axum_test::TestServer;
     use std::sync::Arc;
+    use std::time::Duration;
     use uuid::Uuid;
 
-    fn make_test_state(
-        crawl_fail: bool,
-        llm_fail: bool,
-    ) -> super::super::AppState<FakeDbAdapter> {
+    fn make_test_state(crawl_fail: bool, llm_fail: bool) -> super::super::AppState<FakeDbAdapter> {
         let chain = SearchFallbackChain::new(vec![Box::new(FakeSearchAdapter::new(
             "test",
             vec![],

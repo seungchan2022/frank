@@ -13,17 +13,26 @@ pub struct FakeCrawlAdapter {
 
 impl FakeCrawlAdapter {
     pub fn new() -> Self {
-        Self { should_fail: false, sleep_secs: None }
+        Self {
+            should_fail: false,
+            sleep_secs: None,
+        }
     }
 
     pub fn failing() -> Self {
-        Self { should_fail: true, sleep_secs: None }
+        Self {
+            should_fail: true,
+            sleep_secs: None,
+        }
     }
 
     /// tokio::time::sleep으로 지연하는 어댑터.
     /// `tokio::time::pause()` + `advance()` 타임아웃 테스트용.
     pub fn sleeping() -> Self {
-        Self { should_fail: false, sleep_secs: Some(60) }
+        Self {
+            should_fail: false,
+            sleep_secs: Some(60),
+        }
     }
 }
 

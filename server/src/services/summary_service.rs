@@ -53,7 +53,12 @@ where
 
     // favorites DB 업데이트 (실패해도 사용자 응답에 영향 없음)
     if let Err(e) = favorites
-        .update_favorite_summary(user_id, url, &result.summary.summary, &result.summary.insight)
+        .update_favorite_summary(
+            user_id,
+            url,
+            &result.summary.summary,
+            &result.summary.insight,
+        )
         .await
     {
         tracing::warn!(
@@ -70,7 +75,6 @@ where
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::domain::models::LlmResponse;
     use crate::infra::fake_crawl::FakeCrawlAdapter;
     use crate::infra::fake_favorites::FakeFavoritesAdapter;
     use crate::infra::fake_llm::FakeLlmAdapter;

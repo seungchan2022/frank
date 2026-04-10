@@ -3,18 +3,26 @@ use std::future::Future;
 use std::pin::Pin;
 use std::sync::{Arc, Mutex};
 
+use chrono::Utc;
 use uuid::Uuid;
 
 use crate::domain::error::AppError;
+use crate::domain::models::Favorite;
 use crate::domain::ports::FavoritesPort;
 
-type SummaryStore = Arc<Mutex<HashMap<(Uuid, String), (String, String)>>>;
+/// should_fail 시 반환할 에러 메시지 상수.
+const FAKE_FAIL_MSG: &str = "Fake favorites failure";
+
+/// 인메모리 favorites 저장소.
+/// 키: (user_id, url) → Favorite.
+/// 삽입 순서 추적을 위해 별도 Vec 보관.
+type FavoriteStore = Arc<Mutex<(HashMap<(Uuid, String), Favorite>, Vec<(Uuid, String)>)>>;
 
 /// 테스트용 인메모리 FavoritesAdapter.
 /// call_count로 update_favorite_summary 호출 여부 검증 가능.
 #[derive(Debug, Clone)]
 pub struct FakeFavoritesAdapter {
-    store: SummaryStore,
+    store: FavoriteStore,
     should_fail: bool,
     call_count: Arc<Mutex<usize>>,
 }
@@ -22,7 +30,7 @@ pub struct FakeFavoritesAdapter {
 impl FakeFavoritesAdapter {
     pub fn new() -> Self {
         Self {
-            store: Arc::new(Mutex::new(HashMap::new())),
+            store: Arc::new(Mutex::new((HashMap::new(), Vec::new()))),
             should_fail: false,
             call_count: Arc::new(Mutex::new(0)),
         }
@@ -30,7 +38,7 @@ impl FakeFavoritesAdapter {
 
     pub fn failing() -> Self {
         Self {
-            store: Arc::new(Mutex::new(HashMap::new())),
+            store: Arc::new(Mutex::new((HashMap::new(), Vec::new()))),
             should_fail: true,
             call_count: Arc::new(Mutex::new(0)),
         }
@@ -63,15 +71,100 @@ impl FavoritesPort for FakeFavoritesAdapter {
             *self.call_count.lock().unwrap() += 1;
 
             if self.should_fail {
-                return Err(AppError::Internal("Fake favorites failure".to_string()));
+                return Err(AppError::Internal(FAKE_FAIL_MSG.to_string()));
             }
 
-            self.store
-                .lock()
-                .unwrap()
-                .insert((user_id, url), (summary, insight));
+            // url이 favorites에 없으면 no-op (M2 의미 유지)
+            let mut guard = self.store.lock().unwrap();
+            if let Some(fav) = guard.0.get_mut(&(user_id, url)) {
+                fav.summary = Some(summary);
+                fav.insight = Some(insight);
+            }
 
             Ok(())
+        })
+    }
+
+    fn add_favorite<'a>(
+        &'a self,
+        user_id: Uuid,
+        item: &'a Favorite,
+    ) -> Pin<Box<dyn Future<Output = Result<Favorite, AppError>> + Send + 'a>> {
+        let item = item.clone();
+        Box::pin(async move {
+            if self.should_fail {
+                return Err(AppError::Internal(FAKE_FAIL_MSG.to_string()));
+            }
+
+            let key = (user_id, item.url.clone());
+            let mut guard = self.store.lock().unwrap();
+
+            if guard.0.contains_key(&key) {
+                return Err(AppError::Conflict(
+                    "이미 즐겨찾기에 추가된 기사입니다.".to_string(),
+                ));
+            }
+
+            let now = Utc::now();
+            let favorite = Favorite {
+                id: Uuid::new_v4(),
+                user_id,
+                title: item.title.clone(),
+                url: item.url.clone(),
+                snippet: item.snippet.clone(),
+                source: item.source.clone(),
+                published_at: item.published_at,
+                tag_id: item.tag_id,
+                summary: item.summary.clone(),
+                insight: item.insight.clone(),
+                liked_at: Some(now),
+                created_at: Some(now),
+            };
+
+            guard.1.push(key.clone());
+            guard.0.insert(key, favorite.clone());
+            Ok(favorite)
+        })
+    }
+
+    fn delete_favorite<'a>(
+        &'a self,
+        user_id: Uuid,
+        url: &'a str,
+    ) -> Pin<Box<dyn Future<Output = Result<(), AppError>> + Send + 'a>> {
+        let url = url.to_string();
+        Box::pin(async move {
+            if self.should_fail {
+                return Err(AppError::Internal(FAKE_FAIL_MSG.to_string()));
+            }
+
+            let key = (user_id, url);
+            let mut guard = self.store.lock().unwrap();
+            guard.0.remove(&key);
+            guard.1.retain(|k| k != &key);
+            Ok(())
+        })
+    }
+
+    fn list_favorites(
+        &self,
+        user_id: Uuid,
+    ) -> Pin<Box<dyn Future<Output = Result<Vec<Favorite>, AppError>> + Send + '_>> {
+        Box::pin(async move {
+            if self.should_fail {
+                return Err(AppError::Internal(FAKE_FAIL_MSG.to_string()));
+            }
+
+            let guard = self.store.lock().unwrap();
+            // 삽입 역순으로 반환 (created_at DESC 모사)
+            let mut items: Vec<Favorite> = guard
+                .1
+                .iter()
+                .filter(|(uid, _)| *uid == user_id)
+                .filter_map(|k| guard.0.get(k).cloned())
+                .collect();
+            items.reverse();
+            Ok(items)
         })
     }
 }
@@ -79,14 +172,38 @@ impl FavoritesPort for FakeFavoritesAdapter {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::domain::models::Favorite;
+
+    fn make_favorite(url: &str) -> Favorite {
+        Favorite {
+            id: Uuid::new_v4(),
+            user_id: Uuid::new_v4(),
+            title: "테스트 기사".to_string(),
+            url: url.to_string(),
+            snippet: None,
+            source: "테스트".to_string(),
+            published_at: None,
+            tag_id: None,
+            summary: None,
+            insight: None,
+            liked_at: None,
+            created_at: None,
+        }
+    }
 
     #[tokio::test]
     async fn update_succeeds_and_tracks_call() {
         let adapter = FakeFavoritesAdapter::new();
         let user_id = Uuid::new_v4();
+        let url = "https://example.com";
+
+        // update_call_count 검증을 위해 먼저 add_favorite으로 행을 삽입
+        let mut item = make_favorite(url);
+        item.user_id = user_id;
+        adapter.add_favorite(user_id, &item).await.unwrap();
 
         let result = adapter
-            .update_favorite_summary(user_id, "https://example.com", "요약", "인사이트")
+            .update_favorite_summary(user_id, url, "요약", "인사이트")
             .await;
 
         assert!(result.is_ok());
@@ -108,7 +225,7 @@ mod tests {
 
     #[tokio::test]
     async fn no_favorite_row_still_ok() {
-        // url이 favorites에 없어도 에러 없이 Ok(()) 반환
+        // url이 favorites에 없어도 에러 없이 Ok(()) 반환 (no-op)
         let adapter = FakeFavoritesAdapter::new();
         let user_id = Uuid::new_v4();
 
@@ -117,5 +234,98 @@ mod tests {
             .await;
 
         assert!(result.is_ok());
+    }
+
+    #[tokio::test]
+    async fn add_favorite_returns_favorite_with_id() {
+        let adapter = FakeFavoritesAdapter::new();
+        let user_id = Uuid::new_v4();
+        let item = make_favorite("https://example.com");
+
+        let result = adapter.add_favorite(user_id, &item).await.unwrap();
+
+        assert_eq!(result.url, "https://example.com");
+        assert_eq!(result.user_id, user_id);
+        assert!(result.created_at.is_some());
+    }
+
+    #[tokio::test]
+    async fn add_favorite_duplicate_returns_conflict() {
+        let adapter = FakeFavoritesAdapter::new();
+        let user_id = Uuid::new_v4();
+        let item = make_favorite("https://example.com");
+
+        adapter.add_favorite(user_id, &item).await.unwrap();
+        let result = adapter.add_favorite(user_id, &item).await;
+
+        assert!(matches!(result, Err(AppError::Conflict(_))));
+    }
+
+    #[tokio::test]
+    async fn delete_favorite_removes_item() {
+        let adapter = FakeFavoritesAdapter::new();
+        let user_id = Uuid::new_v4();
+        let item = make_favorite("https://example.com");
+
+        adapter.add_favorite(user_id, &item).await.unwrap();
+        adapter
+            .delete_favorite(user_id, "https://example.com")
+            .await
+            .unwrap();
+
+        let list = adapter.list_favorites(user_id).await.unwrap();
+        assert!(list.is_empty());
+    }
+
+    #[tokio::test]
+    async fn delete_nonexistent_returns_ok() {
+        let adapter = FakeFavoritesAdapter::new();
+        let user_id = Uuid::new_v4();
+
+        let result = adapter
+            .delete_favorite(user_id, "https://not-exist.com")
+            .await;
+        assert!(result.is_ok());
+    }
+
+    #[tokio::test]
+    async fn list_favorites_returns_desc_order() {
+        let adapter = FakeFavoritesAdapter::new();
+        let user_id = Uuid::new_v4();
+
+        adapter
+            .add_favorite(user_id, &make_favorite("https://first.com"))
+            .await
+            .unwrap();
+        adapter
+            .add_favorite(user_id, &make_favorite("https://second.com"))
+            .await
+            .unwrap();
+
+        let list = adapter.list_favorites(user_id).await.unwrap();
+        assert_eq!(list.len(), 2);
+        // 역순: second → first
+        assert_eq!(list[0].url, "https://second.com");
+        assert_eq!(list[1].url, "https://first.com");
+    }
+
+    #[tokio::test]
+    async fn list_favorites_only_returns_own_items() {
+        let adapter = FakeFavoritesAdapter::new();
+        let user1 = Uuid::new_v4();
+        let user2 = Uuid::new_v4();
+
+        adapter
+            .add_favorite(user1, &make_favorite("https://user1.com"))
+            .await
+            .unwrap();
+        adapter
+            .add_favorite(user2, &make_favorite("https://user2.com"))
+            .await
+            .unwrap();
+
+        let list = adapter.list_favorites(user1).await.unwrap();
+        assert_eq!(list.len(), 1);
+        assert_eq!(list[0].url, "https://user1.com");
     }
 }
