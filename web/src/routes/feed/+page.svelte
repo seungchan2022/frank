@@ -3,6 +3,7 @@
 	import { getAuth } from '$lib/stores/auth.svelte';
 	import { goto } from '$app/navigation';
 	import { feedStore } from '$lib/stores/feedStore.svelte';
+	import { likedStore } from '$lib/stores/liked.svelte';
 	import { formatArticleDate, extractDomain } from '$lib/utils/article';
 	import type { FeedItem } from '$lib/types/article';
 	import Header from '$lib/components/Header.svelte';
@@ -170,11 +171,30 @@
 								{item.title}
 							</button>
 
-							<div class="mt-auto pt-2 text-xs text-gray-400">
+							<div class="mt-auto flex items-center justify-between pt-2">
+							<div class="text-xs text-gray-400">
 								{#if item.published_at}
 									<span>{formatArticleDate(item.published_at)}</span>
 								{/if}
 							</div>
+							<!-- 하트 버튼 -->
+							<button
+								onclick={(e) => {
+									e.stopPropagation();
+									likedStore.likeArticle({
+										url: item.url,
+										title: item.title,
+										snippet: item.snippet ?? null
+									});
+								}}
+								aria-label={likedStore.isLiked(item.url) ? '좋아요 완료' : '좋아요'}
+								class="text-sm transition-colors {likedStore.isLiked(item.url)
+									? 'text-red-500'
+									: 'text-gray-300 hover:text-red-400'}"
+							>
+								{likedStore.isLiked(item.url) ? '♥' : '♡'}
+							</button>
+						</div>
 						</div>
 					</article>
 				{/each}

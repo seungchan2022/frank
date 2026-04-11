@@ -5,6 +5,7 @@
 	import { apiClient } from '$lib/api';
 	import { summaryCache } from '$lib/stores/summaryCache.svelte';
 	import { favoritesStore } from '$lib/stores/favoritesStore.svelte';
+	import { likedStore } from '$lib/stores/liked.svelte';
 	import { formatArticleDate } from '$lib/utils/article';
 	import Header from '$lib/components/Header.svelte';
 	import { marked } from 'marked';
@@ -103,15 +104,33 @@
 
 		<!-- 기사 헤더 -->
 		<div class="mb-6 rounded-lg border border-gray-200 bg-white p-6">
-			<div class="mb-3 flex flex-wrap items-center gap-2">
-				<span class="inline-block rounded bg-gray-200 px-2 py-0.5 text-xs font-medium text-gray-600">
-					{feedItem.source}
-				</span>
-				{#if feedItem.published_at}
-					<span class="text-xs text-gray-400">
-						{formatArticleDate(feedItem.published_at)}
+			<div class="mb-3 flex flex-wrap items-center justify-between gap-2">
+				<div class="flex flex-wrap items-center gap-2">
+					<span class="inline-block rounded bg-gray-200 px-2 py-0.5 text-xs font-medium text-gray-600">
+						{feedItem.source}
 					</span>
-				{/if}
+					{#if feedItem.published_at}
+						<span class="text-xs text-gray-400">
+							{formatArticleDate(feedItem.published_at)}
+						</span>
+					{/if}
+				</div>
+				<!-- 좋아요 하트 버튼 -->
+				<button
+					onclick={() => {
+						likedStore.likeArticle({
+							url: feedItem.url,
+							title: feedItem.title,
+							snippet: feedItem.snippet ?? null
+						});
+					}}
+					aria-label={likedStore.isLiked(feedItem.url) ? '좋아요 완료' : '좋아요'}
+					class="text-xl transition-colors {likedStore.isLiked(feedItem.url)
+						? 'text-red-500'
+						: 'text-gray-300 hover:text-red-400'}"
+				>
+					{likedStore.isLiked(feedItem.url) ? '♥' : '♡'}
+				</button>
 			</div>
 
 			<h1 class="text-2xl font-bold text-gray-900">{feedItem.title}</h1>
