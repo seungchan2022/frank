@@ -1,0 +1,433 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>회고 — 2026-04-10 ~ 04-11</title>
+  <style>
+    :root {
+      --bg: #0f1117;
+      --surface: #1a1d27;
+      --card: #21242f;
+      --border: #2e3245;
+      --accent: #7c6af7;
+      --accent-soft: #3d3566;
+      --green: #4ade80;
+      --yellow: #facc15;
+      --red: #f87171;
+      --text: #e2e4ed;
+      --muted: #7a7f99;
+      --tag: #2a2d3e;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: 'Pretendard', 'Apple SD Gothic Neo', system-ui, sans-serif;
+      font-size: 15px;
+      line-height: 1.7;
+      padding: 40px 20px 80px;
+    }
+    .wrap { max-width: 720px; margin: 0 auto; }
+
+    .header { margin-bottom: 48px; }
+    .date-label {
+      font-size: 12px;
+      color: var(--muted);
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      margin-bottom: 8px;
+    }
+    h1 {
+      font-size: 28px;
+      font-weight: 700;
+      line-height: 1.3;
+      background: linear-gradient(135deg, #a78bfa, #60a5fa);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+    .subtitle {
+      margin-top: 10px;
+      color: var(--muted);
+      font-size: 14px;
+    }
+
+    .tldr {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-left: 3px solid var(--accent);
+      border-radius: 10px;
+      padding: 20px 24px;
+      margin-bottom: 40px;
+      font-size: 14px;
+      color: #c0c4d8;
+      line-height: 1.8;
+    }
+
+    .section-label {
+      font-size: 11px;
+      color: var(--accent);
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      font-weight: 600;
+      margin-bottom: 20px;
+    }
+
+    .decision {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 24px;
+      margin-bottom: 20px;
+      position: relative;
+      overflow: hidden;
+    }
+    .decision::before {
+      content: '';
+      position: absolute;
+      top: 0; left: 0; right: 0;
+      height: 2px;
+      background: linear-gradient(90deg, var(--accent), transparent);
+    }
+    .decision-num {
+      font-size: 11px;
+      color: var(--muted);
+      font-weight: 600;
+      letter-spacing: 0.08em;
+      margin-bottom: 6px;
+    }
+    .decision h2 {
+      font-size: 16px;
+      font-weight: 700;
+      color: var(--text);
+      margin-bottom: 16px;
+    }
+    .block { margin-bottom: 14px; }
+    .block-label {
+      font-size: 11px;
+      font-weight: 700;
+      color: var(--muted);
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      margin-bottom: 5px;
+    }
+    .block p {
+      font-size: 14px;
+      color: #bcc0d8;
+      line-height: 1.75;
+    }
+    code {
+      background: #1e2535;
+      border-radius: 4px;
+      padding: 1px 6px;
+      font-family: 'SF Mono', 'Fira Code', monospace;
+      font-size: 12px;
+      color: #c4b8ff;
+    }
+
+    .insight {
+      background: var(--accent-soft);
+      border: 1px solid #4d3fa0;
+      border-radius: 8px;
+      padding: 12px 16px;
+      margin-top: 12px;
+      font-size: 13px;
+      color: #c4b8ff;
+      line-height: 1.7;
+    }
+    .insight::before { content: '💡 '; }
+
+    .honest {
+      background: #1e2535;
+      border: 1px solid #2a3350;
+      border-radius: 8px;
+      padding: 12px 16px;
+      margin-top: 12px;
+      font-size: 13px;
+      color: #9ba8c4;
+      line-height: 1.7;
+    }
+
+    .bug {
+      background: #2a1a1a;
+      border: 1px solid #4a2020;
+      border-radius: 8px;
+      padding: 12px 16px;
+      margin-top: 12px;
+      font-size: 13px;
+      color: #f08080;
+      line-height: 1.7;
+    }
+    .bug::before { content: '🐛 버그: '; font-weight: 700; }
+
+    .stats {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 24px;
+      margin-bottom: 40px;
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+      gap: 16px;
+    }
+    .stat { text-align: center; }
+    .stat-val {
+      font-size: 24px;
+      font-weight: 800;
+      color: var(--accent);
+      display: block;
+      line-height: 1.2;
+    }
+    .stat-label {
+      font-size: 11px;
+      color: var(--muted);
+      margin-top: 4px;
+      line-height: 1.4;
+    }
+
+    .next {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 24px;
+    }
+    .next h3 {
+      font-size: 14px;
+      font-weight: 700;
+      color: var(--text);
+      margin-bottom: 14px;
+    }
+    .next ul {
+      list-style: none;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+    .next li {
+      font-size: 13px;
+      color: #9ba8c4;
+      padding-left: 20px;
+      position: relative;
+    }
+    .next li::before {
+      content: '→';
+      position: absolute;
+      left: 0;
+      color: var(--accent);
+    }
+
+    .divider {
+      border: none;
+      border-top: 1px solid var(--border);
+      margin: 40px 0;
+    }
+  </style>
+</head>
+<body>
+<div class="wrap">
+
+  <div class="header">
+    <div class="date-label">Daily Retro · 2026-04-10 ~ 04-11</div>
+    <h1>4개 마일스톤을<br>이틀에 끝낸 날</h1>
+    <p class="subtitle">MVP5 M3 완료 + MVP6 M1 썸네일 + M2 병렬 검색 + M3 태그탭 필터링</p>
+  </div>
+
+  <div class="tldr">
+    이틀 동안 4개 마일스톤을 완료했다. MVP5 M3 즐겨찾기로 MVP5를 마무리하고,
+    이어서 MVP6 M1~M3까지 연속으로 끝냈다.
+    한 마일스톤의 모델이 다음 마일스톤 기반이 되는 순서(M1→M2→M3)를 미리 확정해서
+    재작업 없이 흘렀다. 크게 세 가지 기술 결정이 이번 진행을 만들었다 —
+    이미지 소스 전략 변경, Rust lifetime 실전 해결, 탭 캐시 전략.
+  </div>
+
+  <div class="section-label">결정 · 인사이트</div>
+
+  <!-- Decision 01 -->
+  <div class="decision">
+    <div class="decision-num">DECISION 01</div>
+    <h2>이미지 소스: Tavily images[] → og:image 직접 크롤링</h2>
+
+    <div class="block">
+      <div class="block-label">결정</div>
+      <p>
+        썸네일 이미지를 Tavily가 반환하는 <code>images[]</code> 배열 대신,
+        기사 URL에서 <code>og:image</code>를 직접 크롤링해서 가져오도록 변경했다.
+        병렬 크롤링 + 5초 타임아웃. URL 정규화(http/https·www·trailing slash 통일) 후
+        HashSet dedup으로 중복 기사도 함께 제거.
+      </p>
+    </div>
+
+    <div class="block">
+      <div class="block-label">왜 중요한가</div>
+      <p>
+        Tavily의 <code>images[]</code>는 기사 페이지에 있는 모든 이미지를 반환한다.
+        광고, 아이콘, 버튼 이미지가 섞여서 대표 이미지로 쓸 수 없었다.
+        <code>og:image</code>는 기사 발행자가 직접 지정한 대표 이미지라 품질이 일정하다.
+        크롤링 실패 시 플레이스홀더로 대체하고, 5초 타임아웃으로 느린 사이트를 대응했다.
+      </p>
+    </div>
+
+    <div class="insight">
+      서드파티 API가 반환하는 데이터가 항상 우리가 원하는 형태는 아니다.
+      Tavily가 편의를 위해 제공하는 images[]보다, 원문 사이트에서 직접 가져오는 게
+      품질이 더 높았다. "API가 주는 것"과 "실제 필요한 것"을 구분하는 습관.
+    </div>
+  </div>
+
+  <!-- Decision 02 -->
+  <div class="decision">
+    <div class="decision-num">DECISION 02</div>
+    <h2>Rust join_all lifetime — SearchJob owned 구조체로 해결</h2>
+
+    <div class="block">
+      <div class="block-label">결정</div>
+      <p>
+        병렬 검색(<code>tokio::join_all</code>) 구현 시 <code>&amp;str</code> 대신
+        <code>String</code> 필드를 가지는 <code>SearchJob</code> owned 구조체로 job을 묶었다.
+        <code>SearchJob { tag_name: String, query: String }</code> 형태로,
+        &amp;str 참조는 구조체 어디에도 허용하지 않는다.
+      </p>
+    </div>
+
+    <div class="block">
+      <div class="block-label">왜</div>
+      <p>
+        <code>join_all</code>은 여러 Future를 동시에 실행한다.
+        각 Future가 외부 참조(<code>&amp;str</code>)를 들고 있으면,
+        컴파일러가 lifetime을 보장하지 못해 컴파일 에러가 난다.
+        owned 타입(String)으로 바꾸면 Future가 자기 데이터를 직접 소유해
+        lifetime 문제가 사라진다.
+      </p>
+    </div>
+
+    <div class="insight">
+      Rust에서 비동기 병렬 처리에 참조를 넘기면 이 문제가 반드시 나온다.
+      해결책은 단순하다 — owned 타입으로 바꿔서 Future가 독립적으로 실행되게 하면 된다.
+      <code>Arc</code>로 공유하는 방법도 있지만, 복사 비용이 작은 경우엔 owned가 더 깔끔하다.
+    </div>
+  </div>
+
+  <!-- Decision 03 -->
+  <div class="decision">
+    <div class="decision-num">DECISION 03</div>
+    <h2>iOS scroll to top 구현 → UX 판단으로 롤백</h2>
+
+    <div class="block">
+      <div class="block-label">상황</div>
+      <p>
+        M2 stale-while-revalidate 구현 시 새 데이터 도착 후 자동 scroll to top을 추가했다.
+        커밋까지 했지만, 실제로 써보니 어색했다. 다음 커밋에서 제거했다.
+      </p>
+    </div>
+
+    <div class="block">
+      <div class="block-label">왜 제거했나</div>
+      <p>
+        pull-to-refresh는 완료되면 손이 화면 상단에서 떼어지면서 자연스럽게 위로 돌아온다.
+        여기에 추가로 scroll to top을 하면 이중 동작이 돼서 어색하다.
+        웹은 progress bar + 백그라운드 갱신이라 scroll to top이 유효하지만,
+        iOS pull-to-refresh는 동작 방식이 다르다.
+      </p>
+    </div>
+
+    <div class="honest">
+      구현하고 나서 쓰기 전까지 몰랐다. 짧게 써보고 바로 빼는 게 맞는 흐름이었다.
+      "일단 구현하고 써보면서 결정"이 특히 UX 판단에서는 유효하다.
+    </div>
+  </div>
+
+  <!-- Decision 04 -->
+  <div class="decision">
+    <div class="decision-num">DECISION 04</div>
+    <h2>tagCache 전략 — 탭 전환은 캐시 히트, pull-to-refresh만 무효화</h2>
+
+    <div class="block">
+      <div class="block-label">결정</div>
+      <p>
+        탭 전환 시 캐시가 있으면 재요청 없이 즉시 표시.
+        pull-to-refresh만 현재 탭 캐시를 삭제하고 서버에 재요청.
+        캐시 키: 웹 <code>'all' | uuid.string</code>, iOS <code>"all" | uuid.uuidString</code>.
+      </p>
+    </div>
+
+    <div class="block">
+      <div class="block-label">왜</div>
+      <p>
+        탭 전환마다 서버에 요청하면 네트워크 딜레이로 탭이 끊기는 느낌이 난다.
+        반면 캐시를 영구 유지하면 실제 구독 태그가 바뀌어도 모른다.
+        "수동 새로고침만 갱신"이 중간 지점이다. 초기 로드 시 전체 태그 프리패치로
+        탭 전환을 항상 즉시 응답으로 만들었다.
+      </p>
+    </div>
+
+    <div class="bug">
+      Settings에서 태그 변경 후 저장하면, 이전 캐시가 남아서 이전 태그 결과를 보여줬다.
+      <code>handleSave</code> 후 <code>feedStore.reset()</code>으로 전체 캐시를 무효화해서 해결.
+      캐시 설계 시 "무효화 트리거"를 명시적으로 목록화하는 게 버그를 막는다.
+    </div>
+  </div>
+
+  <!-- Decision 05 -->
+  <div class="decision">
+    <div class="decision-num">DECISION 05</div>
+    <h2>iOS xcconfig <code>://</code> 주석 문제 — Project.swift 직접 하드코딩으로 우회</h2>
+
+    <div class="block">
+      <div class="block-label">문제</div>
+      <p>
+        xcconfig에서 Supabase URL 값을 읽으려 했는데, xcconfig 문법에서
+        <code>://</code>가 줄 주석(<code>//</code>)으로 해석되어 URL이 잘렸다.
+        예: <code>https://xxx.supabase.co</code> → <code>https:</code>로 잘림.
+      </p>
+    </div>
+
+    <div class="block">
+      <div class="block-label">결정</div>
+      <p>
+        Project.swift의 settings 블록에서 직접 값을 주입하도록 전환했다.
+        Config.xcconfig는 .gitignore에 추가. tuist generate 후 project.pbxproj에
+        xcconfig 경로가 반영되도록 커밋까지 포함했다.
+      </p>
+    </div>
+
+    <div class="honest">
+      xcconfig의 주석 파싱 문제는 공식 우회 방법이 없다. URL이 들어가는 값은
+      xcconfig로 관리하기 어렵다. 대안: Project.swift에서 직접 설정하거나,
+      URL에 scheme을 분리한 두 키로 나눠서 조합하는 방법이 있다.
+      이번엔 직접 하드코딩이 가장 단순하고 빠른 선택이었다.
+    </div>
+  </div>
+
+  <hr class="divider" />
+
+  <div class="section-label">숫자</div>
+
+  <div class="stats">
+    <div class="stat">
+      <span class="stat-val">27</span>
+      <div class="stat-label">커밋 수<br>(04-10 ~ 04-11)</div>
+    </div>
+    <div class="stat">
+      <span class="stat-val">4개</span>
+      <div class="stat-label">완료 마일스톤<br>(MVP5 M3 · MVP6 M1~M3)</div>
+    </div>
+    <div class="stat">
+      <span class="stat-val">+27</span>
+      <div class="stat-label">테스트 증가<br>(서버+10 · 웹+9 · iOS+3)</div>
+    </div>
+    <div class="stat">
+      <span class="stat-val">0</span>
+      <div class="stat-label">재작업 건수<br>(M1→M2→M3 순서 효과)</div>
+    </div>
+  </div>
+
+  <div class="next">
+    <h3>다음에 할 것</h3>
+    <ul>
+      <li>MVP6 M4 — 마크다운 렌더링 (LLM 프롬프트 + 웹 svelte-markdown + iOS AttributedString)</li>
+    </ul>
+  </div>
+
+</div>
+</body>
+</html>
