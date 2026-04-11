@@ -101,13 +101,17 @@
 
 ---
 
-## MVP6 — 피드 UX 개선: 썸네일·성능·태그탭·마크다운 (260410~)
+## MVP6 — 피드 UX 개선: 썸네일·성능·태그탭·마크다운 (260410~260411)
 
-> 피드를 실사용 수준으로 끌어올린다. M1 썸네일 → M2 병렬 검색 → M3 태그탭 → M4 마크다운.
+> 기간 2일. M1 썸네일(og:image 크롤링) → M2 병렬 검색(join_all) → M3 태그탭(tagCache) → M4 마크다운(marked/AttributedString). 테스트 서버 185 / 웹 162 / iOS 158.
 
 | 유형 | 파일 | 핵심 내용 |
 |------|------|----------|
 | 로드맵 | [MVP6 로드맵](../progress/260410_MVP6_로드맵.md) | M1~M4 마일스톤, 실행 순서 근거, UX 확정 사항 |
+| 서브태스크 | [M1 썸네일](../progress/260410_MVP6_M1_썸네일.md) | og:image 크롤링, favorites image_url, 중복 제거 |
+| 서브태스크 | [M2 피드성능](../progress/260410_MVP6_M2_서브태스크.md) | join_all SearchJob 패턴, stale-while-revalidate, progress bar |
+| 서브태스크 | [M3 태그탭](../progress/260410_MVP6_M3_서브태스크.md) | tag_id 쿼리 파라미터, tagCache Map/Dict, 프리패치, 클라이언트 필터 제거 |
+| 서브태스크 | [M4 마크다운](../progress/260410_MVP6_M4_서브태스크.md) | exa highlights, marked+prose, AttributedString, 토큰 자동갱신 BF |
 | 회고 | [일일 회고 260410~11](260410_daily_retro.html) | og:image 크롤링 · join_all lifetime · tagCache 전략 · xcconfig 우회 |
 
 ---
@@ -122,8 +126,9 @@
 | MVP2 | 앱으로 뉴스 읽기 | ✅ 완료 |
 | MVP3 | 웹+앱 API 통합 + Apple 로그인 | ✅ 완료 |
 | MVP4 | 부채 해소 + 품질 개선 | ✅ 완료 |
-| MVP5 | 학습 기능 (수집·요약·즐겨찾기 아키텍처 전환) | 🔄 진행 중 |
-| MVP6 | 개인화 (역할 프로필·인사이트·퀴즈·연관 기사) | 💭 미정 |
+| MVP5 | 학습 기능 (수집·요약·즐겨찾기 아키텍처 전환) | ✅ 완료 |
+| MVP6 | 피드 UX 개선 (썸네일·성능·태그탭·마크다운) | ✅ 완료 |
+| MVP7 | 미정 | 💭 미정 |
 
 - MVP1.5, MVP2.5는 역사적 기록으로 유지. 이후 .5 버전 신규 생성 안 함.
 - MVP2.5 부채 10건은 MVP3에서 흡수 해소.
@@ -153,3 +158,6 @@
 | 인증·토큰·저장소 흐름 도식화 (시각 자료) | `260409_개념정리_도식화.html` |
 | MVP3 마일스톤별 흐름 스냅샷 | `mvp3/260408_흐름도.md` |
 | MVP5 DB 스키마 + 온디맨드 요약 흐름 | `../progress/260409_MVP5_로드맵.md` |
+| MVP6 M4 마크다운 렌더러 선택 근거 | `../progress/260410_MVP6_M4_서브태스크.md` |
+| 웹 토큰 만료 자동갱신 구조 (httpOnly 쿠키 우회) | `../progress/260410_MVP6_M4_서브태스크.md` (BF-1) |
+| iOS xcconfig 자동 생성 + DB 에러 경고 | `../progress/260410_MVP6_M4_서브태스크.md` (BF-3) |
