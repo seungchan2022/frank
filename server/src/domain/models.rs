@@ -77,7 +77,7 @@ pub struct LlmResponse {
     pub completion_tokens: i32,
 }
 
-/// MVP7 M1: 사용자 키워드 가중치 (DB 모델 아님 — 서비스 레이어 전달용)
+/// 사용자 키워드 가중치 — 서비스 레이어 전달용 DTO (DB 영속 모델 아님).
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct UserKeywordWeight {
     pub user_id: Uuid,
@@ -85,8 +85,8 @@ pub struct UserKeywordWeight {
     pub weight: i32,
 }
 
-/// MVP7 M1: 퀴즈 문제 (LLM 생성 결과, DB 저장 없음)
-/// answer_index: 보기는 최대 4개이므로 u8 사용 (usize는 플랫폼 의존적)
+/// 퀴즈 문제 — LLM 생성 결과, 직렬화 전달용 DTO.
+/// `answer_index`: 보기는 최대 4개이므로 플랫폼 독립적 u8 사용.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct QuizQuestion {
     pub question: String,
@@ -95,7 +95,7 @@ pub struct QuizQuestion {
     pub explanation: String,
 }
 
-/// MVP7 M1: 개념 정리 항목 (favorites.concepts JSONB 구조)
+/// 개념 정리 항목 — `favorites.concepts` JSONB 배열 요소.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct QuizConcept {
     pub term: String,

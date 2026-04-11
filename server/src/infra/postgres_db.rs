@@ -210,4 +210,54 @@ impl DbPort for PostgresDbAdapter {
 
         Ok(())
     }
+
+    async fn increment_keyword_weights(
+        &self,
+        user_id: Uuid,
+        keywords: Vec<String>,
+    ) -> Result<(), AppError> {
+        for keyword in &keywords {
+            sqlx::query(
+                "INSERT INTO user_keyword_weights (user_id, keyword, weight, updated_at)
+                 VALUES ($1, $2, 1, NOW())
+                 ON CONFLICT (user_id, keyword) DO UPDATE
+                   SET weight = user_keyword_weights.weight + 1, updated_at = NOW()",
+            )
+            .bind(user_id)
+            .bind(keyword)
+            .execute(&self.pool)
+            .await
+            .map_err(|e| AppError::Internal(format!("DB keyword weight upsert failed: {e}")))?;
+        }
+        Ok(())
+    }
+
+    async fn get_top_keywords(&self, user_id: Uuid, limit: u32) -> Result<Vec<String>, AppError> {
+        let rows: Vec<(String,)> = sqlx::query_as(
+            "SELECT keyword FROM user_keyword_weights
+             WHERE user_id = $1
+             ORDER BY weight DESC, updated_at DESC, keyword ASC
+             LIMIT $2",
+        )
+        .bind(user_id)
+        .bind(limit as i64)
+        .fetch_all(&self.pool)
+        .await
+        .map_err(|e| AppError::Internal(format!("DB get_top_keywords failed: {e}")))?;
+
+        Ok(rows.into_iter().map(|(k,)| k).collect())
+    }
+
+    async fn increment_like_count(&self, user_id: Uuid) -> Result<i32, AppError> {
+        let row: Option<(i32,)> = sqlx::query_as(
+            "UPDATE profiles SET like_count = like_count + 1 WHERE id = $1 RETURNING like_count",
+        )
+        .bind(user_id)
+        .fetch_optional(&self.pool)
+        .await
+        .map_err(|e| AppError::Internal(format!("DB increment_like_count failed: {e}")))?;
+
+        row.map(|(c,)| c)
+            .ok_or_else(|| AppError::NotFound("Profile not found".to_string()))
+    }
 }

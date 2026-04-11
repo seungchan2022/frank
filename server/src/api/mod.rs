@@ -1,6 +1,7 @@
 pub mod favorites;
 pub mod feed;
 pub mod health;
+pub mod likes;
 pub mod profile;
 pub mod summarize;
 pub mod tags;

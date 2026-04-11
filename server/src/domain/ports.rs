@@ -40,6 +40,29 @@ pub trait DbPort: Send + Sync {
         user_id: Uuid,
         tag_ids: Vec<Uuid>,
     ) -> impl std::future::Future<Output = Result<(), AppError>> + Send;
+
+    /// MVP7 M2: 키워드 가중치 누적.
+    /// 신규 키워드는 INSERT(weight=1), 기존 키워드는 weight+1.
+    fn increment_keyword_weights(
+        &self,
+        user_id: Uuid,
+        keywords: Vec<String>,
+    ) -> impl std::future::Future<Output = Result<(), AppError>> + Send;
+
+    /// MVP7 M2: 상위 키워드 조회 (weight DESC, updated_at DESC, keyword ASC).
+    /// limit: u32 (usize는 플랫폼 의존)
+    fn get_top_keywords(
+        &self,
+        user_id: Uuid,
+        limit: u32,
+    ) -> impl std::future::Future<Output = Result<Vec<String>, AppError>> + Send;
+
+    /// MVP7 M2: 좋아요 누적 카운트 증가.
+    /// profile row 부재 시 AppError::NotFound 반환.
+    fn increment_like_count(
+        &self,
+        user_id: Uuid,
+    ) -> impl std::future::Future<Output = Result<i32, AppError>> + Send;
 }
 
 /// 검색 폴백 체인 포트 (여러 SearchPort를 순서대로 시도)
@@ -82,6 +105,14 @@ pub trait LlmPort: Send + Sync {
         title: &str,
         content: &str,
     ) -> Pin<Box<dyn Future<Output = Result<LlmResponse, AppError>> + Send + '_>>;
+
+    /// MVP7 M2: 기사 제목/스니펫에서 핵심 키워드 추출.
+    /// snippet은 FeedItem.snippet이 Option이므로 Option<&str>.
+    fn extract_keywords<'a>(
+        &'a self,
+        title: &'a str,
+        snippet: Option<&'a str>,
+    ) -> Pin<Box<dyn Future<Output = Result<Vec<String>, AppError>> + Send + 'a>>;
 }
 
 /// 알림 전송 포트 (iMessage 등)

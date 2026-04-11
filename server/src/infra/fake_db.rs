@@ -15,6 +15,10 @@ pub struct FakeDbAdapter {
     // MVP5 M3에서 favorites 엔드포인트 구현 시 사용
     #[allow(dead_code)]
     favorites: Arc<Mutex<Vec<Favorite>>>,
+    /// MVP7 M2: user_id → (keyword → weight) 인메모리 누적
+    keyword_weights: Arc<Mutex<HashMap<Uuid, HashMap<String, i32>>>>,
+    /// MVP7 M2: user_id → like_count 인메모리 누적
+    like_counts: Arc<Mutex<HashMap<Uuid, i32>>>,
 }
 
 impl Default for FakeDbAdapter {
@@ -48,6 +52,8 @@ impl FakeDbAdapter {
             tags: Arc::new(Mutex::new(tags)),
             user_tags: Arc::new(Mutex::new(Vec::new())),
             favorites: Arc::new(Mutex::new(Vec::new())),
+            keyword_weights: Arc::new(Mutex::new(HashMap::new())),
+            like_counts: Arc::new(Mutex::new(HashMap::new())),
         }
     }
 
@@ -129,6 +135,48 @@ impl DbPort for FakeDbAdapter {
             user_tags.push(UserTag { user_id, tag_id });
         }
         Ok(())
+    }
+
+    async fn increment_keyword_weights(
+        &self,
+        user_id: Uuid,
+        keywords: Vec<String>,
+    ) -> Result<(), AppError> {
+        let mut weights = self.keyword_weights.lock().unwrap();
+        let user_weights = weights.entry(user_id).or_default();
+        for kw in keywords {
+            *user_weights.entry(kw).or_insert(0) += 1;
+        }
+        Ok(())
+    }
+
+    async fn get_top_keywords(&self, user_id: Uuid, limit: u32) -> Result<Vec<String>, AppError> {
+        let weights = self.keyword_weights.lock().unwrap();
+        let user_weights = match weights.get(&user_id) {
+            Some(m) => m,
+            None => return Ok(vec![]),
+        };
+        // weight DESC, keyword ASC (updated_at 없으므로 keyword ASC로 deterministic)
+        let mut entries: Vec<(String, i32)> =
+            user_weights.iter().map(|(k, v)| (k.clone(), *v)).collect();
+        entries.sort_by(|a, b| b.1.cmp(&a.1).then(a.0.cmp(&b.0)));
+        Ok(entries
+            .into_iter()
+            .take(limit as usize)
+            .map(|(k, _)| k)
+            .collect())
+    }
+
+    async fn increment_like_count(&self, user_id: Uuid) -> Result<i32, AppError> {
+        let profiles = self.profiles.lock().unwrap();
+        if !profiles.contains_key(&user_id) {
+            return Err(AppError::NotFound("Profile not found".to_string()));
+        }
+        drop(profiles);
+        let mut counts = self.like_counts.lock().unwrap();
+        let count = counts.entry(user_id).or_insert(0);
+        *count += 1;
+        Ok(*count)
     }
 }
 
@@ -243,5 +291,77 @@ mod tests {
             .unwrap();
         assert_eq!(updated.display_name, Some("Alice".to_string()));
         assert!(!updated.onboarding_completed);
+    }
+
+    // MVP7 M2: keyword weights 테스트
+
+    #[tokio::test]
+    async fn increment_keyword_weights_accumulates() {
+        let db = FakeDbAdapter::new();
+        let user_id = Uuid::new_v4();
+
+        db.increment_keyword_weights(user_id, vec!["iOS".to_string(), "Swift".to_string()])
+            .await
+            .unwrap();
+        db.increment_keyword_weights(user_id, vec!["iOS".to_string()])
+            .await
+            .unwrap();
+
+        let top = db.get_top_keywords(user_id, 10).await.unwrap();
+        // iOS(weight=2)가 첫 번째
+        assert_eq!(top[0], "iOS");
+        assert!(top.contains(&"Swift".to_string()));
+    }
+
+    #[tokio::test]
+    async fn get_top_keywords_respects_limit() {
+        let db = FakeDbAdapter::new();
+        let user_id = Uuid::new_v4();
+
+        db.increment_keyword_weights(
+            user_id,
+            vec!["A".to_string(), "B".to_string(), "C".to_string()],
+        )
+        .await
+        .unwrap();
+
+        let top = db.get_top_keywords(user_id, 2).await.unwrap();
+        assert_eq!(top.len(), 2);
+    }
+
+    #[tokio::test]
+    async fn get_top_keywords_empty_user_returns_empty() {
+        let db = FakeDbAdapter::new();
+        let result = db.get_top_keywords(Uuid::new_v4(), 10).await.unwrap();
+        assert!(result.is_empty());
+    }
+
+    #[tokio::test]
+    async fn increment_like_count_increments() {
+        let db = FakeDbAdapter::new();
+        let user_id = Uuid::new_v4();
+        db.seed_profile(Profile {
+            id: user_id,
+            display_name: None,
+            onboarding_completed: false,
+        });
+
+        let first = db.increment_like_count(user_id).await.unwrap();
+        assert_eq!(first, 1);
+
+        let second = db.increment_like_count(user_id).await.unwrap();
+        assert_eq!(second, 2);
+    }
+
+    #[tokio::test]
+    async fn increment_like_count_missing_profile_returns_not_found() {
+        let db = FakeDbAdapter::new();
+        let result = db.increment_like_count(Uuid::new_v4()).await;
+        assert!(result.is_err());
+        let err_str = result.unwrap_err().to_string();
+        assert!(
+            err_str.contains("not found") || err_str.contains("Not found"),
+            "err: {err_str}"
+        );
     }
 }

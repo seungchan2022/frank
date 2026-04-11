@@ -40,6 +40,9 @@ struct Usage {
     completion_tokens: Option<i32>,
 }
 
+const KEYWORD_EXTRACT_MODEL: &str = "meta-llama/llama-3.3-70b-instruct:free";
+const MAX_KEYWORD_LEN: usize = 100;
+
 const SYSTEM_PROMPT: &str = r#"You are a news analyst for a Korean-speaking audience. Given an article title and content, provide a JSON response with exactly three fields:
 1. "title_ko": 한국어로 번역한 기사 제목 (원문의 핵심을 살리되 한국 독자가 바로 이해할 수 있는 자연스러운 표현)
 2. "summary": 기사 핵심 내용을 한국어로 쉽게 풀어서 설명 (전문 용어는 괄호 안에 원문 병기, 3-5문장). Use limited Markdown in the string value: **bold** for key terms, *italic* for emphasis, - for bullet lists, blank lines between paragraphs.
@@ -62,6 +65,110 @@ impl OpenRouterAdapter {
             model: model.to_string(),
             base_url: base_url.to_string(),
         }
+    }
+}
+
+impl OpenRouterAdapter {
+    /// extract_keywords 전용 내부 helper: LLM 호출 + JSON 파싱 + 정규화
+    async fn call_extract_keywords(
+        &self,
+        title: &str,
+        snippet: Option<&str>,
+    ) -> Result<Vec<String>, AppError> {
+        let user_content = match snippet {
+            Some(s) => format!(
+                "제목: {title}\n스니펫: {s}\n\n핵심 기술 키워드 5개를 JSON으로 반환해줘: {{\"keywords\": [\"키워드1\", \"키워드2\", ...]}}",
+            ),
+            None => format!(
+                "제목: {title}\n\n핵심 기술 키워드 5개를 JSON으로 반환해줘: {{\"keywords\": [\"키워드1\", \"키워드2\", ...]}}",
+            ),
+        };
+
+        let body = serde_json::json!({
+            "model": KEYWORD_EXTRACT_MODEL,
+            "messages": [
+                {
+                    "role": "user",
+                    "content": user_content
+                }
+            ],
+            "temperature": 0.3,
+            "max_tokens": 100,
+            "response_format": { "type": "json_object" },
+            "reasoning": { "exclude": true },
+        });
+
+        let config = RetryConfig::for_llm();
+        let api_key = self.api_key.clone();
+        let url = format!("{}/api/v1/chat/completions", self.base_url);
+
+        let resp = send_with_retry(
+            || {
+                let url = url.clone();
+                let body = body.clone();
+                let api_key = api_key.clone();
+                let client = self.client.clone();
+                async move {
+                    client
+                        .post(&url)
+                        .header("Authorization", format!("Bearer {}", api_key))
+                        .header("Content-Type", "application/json")
+                        .json(&body)
+                }
+            },
+            &config,
+        )
+        .await
+        .map_err(|e| {
+            AppError::Internal(format!("OpenRouter keyword extract request failed: {e}"))
+        })?;
+
+        let status = resp.status();
+        let body_text = read_body_limited(resp, config.max_response_size)
+            .await
+            .map_err(|e| {
+                AppError::Internal(format!("OpenRouter keyword extract read failed: {e}"))
+            })?;
+
+        if !status.is_success() {
+            return Err(AppError::Internal(format!(
+                "OpenRouter keyword extract API error ({status}): {body_text}"
+            )));
+        }
+
+        let chat_resp: ChatResponse = serde_json::from_str(&body_text).map_err(|e| {
+            AppError::Internal(format!("OpenRouter keyword extract parse failed: {e}"))
+        })?;
+
+        let content = chat_resp
+            .choices
+            .first()
+            .map(|c| c.message.content.clone())
+            .ok_or_else(|| {
+                AppError::Internal("OpenRouter keyword extract returned no choices".to_string())
+            })?;
+
+        // {"keywords": [...]} 래퍼 JSON 파싱
+        let parsed: serde_json::Value = serde_json::from_str(&content).map_err(|e| {
+            AppError::Internal(format!(
+                "Keyword extract response is not valid JSON: {e}, content: {content}"
+            ))
+        })?;
+
+        let keywords = parsed["keywords"]
+            .as_array()
+            .ok_or_else(|| {
+                AppError::Internal("Keyword extract response missing 'keywords' array".to_string())
+            })?
+            .iter()
+            .filter_map(|v| v.as_str())
+            .map(|s| s.trim().to_string())
+            .filter(|s| !s.is_empty() && s.len() <= MAX_KEYWORD_LEN)
+            .collect::<std::collections::HashSet<_>>() // 중복 제거
+            .into_iter()
+            .collect::<Vec<_>>();
+
+        Ok(keywords)
     }
 }
 
@@ -189,6 +296,14 @@ impl LlmPort for OpenRouterAdapter {
                 completion_tokens,
             })
         })
+    }
+
+    fn extract_keywords<'a>(
+        &'a self,
+        title: &'a str,
+        snippet: Option<&'a str>,
+    ) -> Pin<Box<dyn Future<Output = Result<Vec<String>, AppError>> + Send + 'a>> {
+        Box::pin(self.call_extract_keywords(title, snippet))
     }
 }
 
@@ -493,5 +608,154 @@ mod tests {
         let resp = result.unwrap();
         assert!(resp.summary.summary.contains("**핵심 내용**"));
         assert!(resp.summary.insight.contains("*매우 중요*"));
+    }
+
+    // extract_keywords 테스트
+
+    fn valid_keyword_response() -> serde_json::Value {
+        serde_json::json!({
+            "choices": [{
+                "message": {
+                    "content": "{\"keywords\": [\"iOS\", \"Swift\", \"SwiftUI\", \"Apple\", \"Xcode\"]}"
+                }
+            }],
+            "model": "meta-llama/llama-3.3-70b-instruct:free",
+            "usage": {"prompt_tokens": 50, "completion_tokens": 30}
+        })
+    }
+
+    #[tokio::test]
+    async fn extract_keywords_success() {
+        let mock_server = MockServer::start().await;
+
+        Mock::given(method("POST"))
+            .and(path("/api/v1/chat/completions"))
+            .respond_with(ResponseTemplate::new(200).set_body_json(valid_keyword_response()))
+            .mount(&mock_server)
+            .await;
+
+        let adapter =
+            OpenRouterAdapter::with_base_url("test-key", "test-model", &mock_server.uri());
+        let result = adapter
+            .extract_keywords("iOS 기사 제목", Some("Swift 관련 스니펫"))
+            .await;
+        assert!(
+            result.is_ok(),
+            "extract_keywords should succeed: {result:?}"
+        );
+        let keywords = result.unwrap();
+        assert!(!keywords.is_empty());
+        assert!(keywords.contains(&"iOS".to_string()));
+    }
+
+    #[tokio::test]
+    async fn extract_keywords_no_snippet() {
+        let mock_server = MockServer::start().await;
+
+        Mock::given(method("POST"))
+            .and(path("/api/v1/chat/completions"))
+            .respond_with(ResponseTemplate::new(200).set_body_json(valid_keyword_response()))
+            .mount(&mock_server)
+            .await;
+
+        let adapter =
+            OpenRouterAdapter::with_base_url("test-key", "test-model", &mock_server.uri());
+        let result = adapter.extract_keywords("title only", None).await;
+        assert!(result.is_ok());
+    }
+
+    #[tokio::test]
+    async fn extract_keywords_filters_too_long() {
+        let mock_server = MockServer::start().await;
+
+        let long_keyword = "a".repeat(101);
+        let response = serde_json::json!({
+            "choices": [{
+                "message": {
+                    "content": format!("{{\"keywords\": [\"valid\", \"{long_keyword}\"]}}")
+                }
+            }],
+            "model": "test-model",
+            "usage": null
+        });
+
+        Mock::given(method("POST"))
+            .and(path("/api/v1/chat/completions"))
+            .respond_with(ResponseTemplate::new(200).set_body_json(response))
+            .mount(&mock_server)
+            .await;
+
+        let adapter =
+            OpenRouterAdapter::with_base_url("test-key", "test-model", &mock_server.uri());
+        let result = adapter.extract_keywords("title", None).await.unwrap();
+        // 100자 초과 키워드는 제거
+        assert!(result.contains(&"valid".to_string()));
+        assert!(!result.iter().any(|k| k.len() > 100));
+    }
+
+    #[tokio::test]
+    async fn extract_keywords_deduplicates() {
+        let mock_server = MockServer::start().await;
+
+        let response = serde_json::json!({
+            "choices": [{
+                "message": {
+                    "content": "{\"keywords\": [\"iOS\", \"iOS\", \"Swift\"]}"
+                }
+            }],
+            "model": "test-model",
+            "usage": null
+        });
+
+        Mock::given(method("POST"))
+            .and(path("/api/v1/chat/completions"))
+            .respond_with(ResponseTemplate::new(200).set_body_json(response))
+            .mount(&mock_server)
+            .await;
+
+        let adapter =
+            OpenRouterAdapter::with_base_url("test-key", "test-model", &mock_server.uri());
+        let result = adapter.extract_keywords("title", None).await.unwrap();
+        // 중복 제거 후 iOS는 1개만
+        let ios_count = result.iter().filter(|k| *k == "iOS").count();
+        assert_eq!(ios_count, 1);
+    }
+
+    #[tokio::test]
+    async fn extract_keywords_missing_keywords_field_returns_error() {
+        let mock_server = MockServer::start().await;
+
+        Mock::given(method("POST"))
+            .and(path("/api/v1/chat/completions"))
+            .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({
+                "choices": [{"message": {"content": "{\"wrong_field\": []}"}}],
+                "model": "test-model",
+                "usage": null
+            })))
+            .mount(&mock_server)
+            .await;
+
+        let adapter =
+            OpenRouterAdapter::with_base_url("test-key", "test-model", &mock_server.uri());
+        let result = adapter.extract_keywords("title", None).await;
+        assert!(result.is_err());
+        assert!(result.unwrap_err().to_string().contains("keywords"));
+    }
+
+    #[tokio::test]
+    async fn extract_keywords_non_2xx_returns_error() {
+        let mock_server = MockServer::start().await;
+
+        Mock::given(method("POST"))
+            .and(path("/api/v1/chat/completions"))
+            .respond_with(ResponseTemplate::new(500).set_body_string("Internal Server Error"))
+            .up_to_n_times(10) // retry 포함
+            .mount(&mock_server)
+            .await;
+
+        let adapter =
+            OpenRouterAdapter::with_base_url("test-key", "test-model", &mock_server.uri());
+        let result = adapter.extract_keywords("title", None).await;
+        assert!(result.is_err());
     }
 }

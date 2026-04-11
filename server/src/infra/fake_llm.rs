@@ -53,6 +53,23 @@ impl LlmPort for FakeLlmAdapter {
             })
         })
     }
+
+    fn extract_keywords<'a>(
+        &'a self,
+        _title: &'a str,
+        _snippet: Option<&'a str>,
+    ) -> Pin<Box<dyn Future<Output = Result<Vec<String>, AppError>> + Send + 'a>> {
+        Box::pin(async move {
+            if self.should_fail {
+                return Err(AppError::Internal("Fake LLM failure".to_string()));
+            }
+            Ok(vec![
+                "iOS".to_string(),
+                "Swift".to_string(),
+                "SwiftUI".to_string(),
+            ])
+        })
+    }
 }
 
 #[cfg(test)]
@@ -91,5 +108,29 @@ mod tests {
         let llm = FakeLlmAdapter::default();
         let result = llm.summarize("Test", "content").await.unwrap();
         assert!(result.summary.title_ko.contains("Test"));
+    }
+
+    #[tokio::test]
+    async fn fake_llm_extract_keywords_returns_fixed_list() {
+        let llm = FakeLlmAdapter::new();
+        let result = llm
+            .extract_keywords("iOS Swift 기사", Some("SwiftUI 관련"))
+            .await
+            .unwrap();
+        assert_eq!(result, vec!["iOS", "Swift", "SwiftUI"]);
+    }
+
+    #[tokio::test]
+    async fn fake_llm_extract_keywords_no_snippet() {
+        let llm = FakeLlmAdapter::new();
+        let result = llm.extract_keywords("title only", None).await.unwrap();
+        assert_eq!(result.len(), 3);
+    }
+
+    #[tokio::test]
+    async fn fake_llm_extract_keywords_failing_returns_error() {
+        let llm = FakeLlmAdapter::failing();
+        let result = llm.extract_keywords("title", None).await;
+        assert!(result.is_err());
     }
 }

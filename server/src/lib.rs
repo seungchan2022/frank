@@ -79,6 +79,8 @@ pub fn create_router<D: DbPort + Clone + 'static>(
             delete(api::favorites::delete_favorite::<D>),
         )
         .route("/me/favorites", get(api::favorites::list_favorites::<D>))
+        // MVP7 M2: POST /me/articles/like — 키워드 추출 + 가중치 누적
+        .route("/me/articles/like", post(api::likes::like_article::<D>))
         .layer(from_fn(middleware::auth::require_auth))
         .layer(Extension(supabase_config));
 
@@ -198,6 +200,19 @@ mod tests {
         // MVP5 M3: GET /me/favorites — 인증 없으면 401
         let server = make_full_app();
         let resp = server.get("/api/me/favorites").await;
+        resp.assert_status_unauthorized();
+    }
+
+    #[tokio::test]
+    async fn post_like_without_auth_returns_401() {
+        // MVP7 M2: POST /me/articles/like — 인증 없으면 401
+        let server = make_full_app();
+        let resp = server
+            .post("/api/me/articles/like")
+            .json(&serde_json::json!({
+                "title": "test article"
+            }))
+            .await;
         resp.assert_status_unauthorized();
     }
 }
