@@ -19,6 +19,9 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 PROJECT_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
 
+# Docker 연결 실패 시 네이티브 모드 fallback 플래그
+USE_NATIVE=false
+
 IOS_WORKSPACE="$PROJECT_ROOT/ios/Frank/Frank.xcworkspace"
 IOS_SCHEME="Frank"
 IOS_BUNDLE_ID="dev.frank.app"
@@ -93,11 +96,49 @@ warn_supabase_dashboard_accounts() {
 }
 
 check_docker() {
-    if ! docker info > /dev/null 2>&1; then
-        log_error "Docker가 실행 중이 아닙니다. Docker Desktop을 시작하세요."
-        exit 1
+    docker info > /dev/null 2>&1
+}
+
+# Docker 사용 불가 시 네이티브 모드로 실행할지 한 번만 묻는다.
+ensure_docker_or_native() {
+    if check_docker; then
+        return 0
     fi
-    log_info "Docker 실행 확인 완료"
+
+    # 이미 네이티브 모드로 결정된 경우 재질문 없이 통과
+    if [ "$USE_NATIVE" = true ]; then
+        return 0
+    fi
+
+    log_error "Docker daemon에 연결할 수 없습니다."
+    echo ""
+    echo -e "${YELLOW}  원인 및 해결 방법:${NC}"
+    echo -e "  • Docker Desktop이 아직 시작 중이라면 잠시 기다린 후 다시 실행하세요."
+    echo -e "  • Docker Desktop 업데이트 후 처음 실패한 경우:"
+    echo -e "    Docker Desktop 메뉴바 고래 아이콘 → Troubleshoot → Reset to factory defaults"
+    echo -e "    (VM 상태를 초기화합니다. 로컬 이미지는 삭제되지만 재빌드로 복구 가능)"
+    echo ""
+    echo -e "${CYAN}  ── 네이티브 모드 fallback ──────────────────────────────────────${NC}"
+    echo -e "  Docker 없이도 로컬 테스트가 가능합니다."
+    echo -e "  아래 두 프로세스를 백그라운드로 직접 실행합니다:"
+    echo -e "    • API 서버: cargo run  → http://localhost:${API_PORT}"
+    echo -e "    • 웹 프론트: npm run dev → http://localhost:5173"
+    echo -e "  (Docker 모드와 동작은 동일하지만 포트가 다를 수 있습니다)"
+    echo ""
+    echo -e "  입력 방법: ${BOLD}y${NC} 또는 ${BOLD}yes${NC} → 네이티브 모드 실행"
+    echo -e "             ${BOLD}n${NC} 또는 Enter  → 실행 취소 (Docker 문제 해결 후 재시도)"
+    echo ""
+    read -r -p "$(echo -e "${YELLOW}[?]${NC} 네이티브 모드로 테스트를 진행하겠습니까? [y/N]: ")" answer
+    case "$answer" in
+        [yY][eE][sS]|[yY])
+            USE_NATIVE=true
+            log_info "네이티브 모드로 전환합니다."
+            ;;
+        *)
+            log_error "실행을 취소합니다. Docker 문제 해결 후 다시 시도하세요."
+            exit 1
+            ;;
+    esac
 }
 
 check_xcode() {
@@ -283,17 +324,60 @@ run_docker_service() {
     log_info "$service 배포 완료 → http://localhost:$port"
 }
 
+run_api_native() {
+    log_section "API 서버 네이티브 실행 (cargo run)"
+    kill_port "$API_PORT"
+
+    set -a
+    # shellcheck disable=SC1091
+    . "$PROJECT_ROOT/server/.env"
+    export ALLOWED_ORIGINS
+    ALLOWED_ORIGINS="$(IFS=','; echo "${LOCAL_ORIGINS[*]}")"
+    set +a
+
+    (cd "$PROJECT_ROOT/server" && cargo run) &
+    log_info "API 서버 시작 대기 중 (최대 30초)..."
+    local i
+    for i in $(seq 1 30); do
+        if curl -sf "http://localhost:${API_PORT}/health" > /dev/null 2>&1; then
+            log_info "API 서버 준비 완료 → http://localhost:${API_PORT}"
+            return 0
+        fi
+        sleep 1
+    done
+    log_warn "API 서버 헬스체크 타임아웃. 아직 컴파일 중일 수 있습니다."
+}
+
+run_front_native() {
+    log_section "웹 프론트 네이티브 실행 (npm run dev)"
+    kill_port 5173
+    FRONT_PORT=5173
+
+    (cd "$PROJECT_ROOT/web" && npm run dev) &
+    sleep 2
+    log_info "웹 프론트 시작 중 → http://localhost:5173"
+    open "http://localhost:5173"
+}
+
 run_api() {
     check_env_files
-    check_docker
-    run_docker_service "server" "$API_PORT"
+    ensure_docker_or_native
+    if [ "$USE_NATIVE" = true ]; then
+        run_api_native
+    else
+        run_docker_service "server" "$API_PORT"
+    fi
 }
 
 run_front() {
     check_env_files
-    check_docker
-    run_docker_service "web" "$FRONT_PORT"
-    open "http://localhost:$FRONT_PORT"
+    ensure_docker_or_native
+    if [ "$USE_NATIVE" = true ]; then
+        run_front_native
+    else
+        run_docker_service "web" "$FRONT_PORT"
+        open "http://localhost:$FRONT_PORT"
+    fi
 }
 
 # ─── Cloudflare 터널 ──────────────────────────────────────────────────────────
@@ -374,6 +458,10 @@ usage() {
   --tunnel              Cloudflare Quick Tunnel 시작 (front 포함 시 유효)
   --simulator=<이름>    iOS 시뮬레이터 이름 (기본: $IOS_SIMULATOR_NAME)
   --help, -h            이 도움말 출력
+
+Docker 연결 실패 시:
+  자동으로 네이티브 모드 실행 여부를 묻습니다.
+  네이티브 모드: API=cargo run (:$API_PORT), 웹=npm run dev (:5173)
 
 예시:
   $0                          # 전체 실행
