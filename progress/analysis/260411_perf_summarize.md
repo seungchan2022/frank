@@ -218,12 +218,34 @@ impl CrawlPort for JinaAdapter {
 
 ---
 
-## 7. 관련 파일
+## 7. 확정 결론
+
+**원칙**: API 교체 시 현재보다 비용이 늘어나면 사용하지 않는다.
+
+### 확정: OpenRouter → Groq 교체
+
+| 항목 | 현재 | 변경 후 |
+|------|------|---------|
+| LLM 서비스 | OpenRouter (`qwen/qwen3.5-plus`) | Groq (`llama-3.3-70b-versatile`) |
+| LLM 비용 (월 1,000회) | ~$2.70 | **$0** (무료 티어) |
+| 응답 속도 | 20~40s | 3~8s |
+| 코드 변경 범위 | — | `infra/groq.rs` 신규 + `main.rs` 1줄 + `.env` |
+
+**변경 시 주의**: `reasoning: { "exclude": true }` 파라미터 제거 필요 (Groq 미지원)
+
+### 보류: Firecrawl → Jina 교체
+
+- 봇 차단 사이트에서 실패율 증가 가능성 — 실제 테스트 후 판단
+- Firecrawl 현재 Free 플랜(500 credits/month) 유지
+
+---
+
+## 8. 관련 파일
 
 | 파일 | 역할 |
 |------|------|
 | `server/src/services/summary_service.rs` | 파이프라인 오케스트레이션, truncation 추가 위치 |
-| `server/src/infra/openrouter.rs` | LLM 어댑터 (모델 교체 또는 Groq 어댑터 신규) |
-| `server/src/infra/firecrawl.rs` | 크롤 어댑터 (Jina로 교체 시 대상) |
-| `server/src/domain/ports/mod.rs` | `CrawlPort` / `LlmPort` 트레이트 정의 |
+| `server/src/infra/openrouter.rs` | 교체 대상 LLM 어댑터 |
+| `server/src/infra/firecrawl.rs` | 크롤 어댑터 (Jina 교체 시 대상, 현재 유지) |
+| `server/src/domain/ports.rs` | `CrawlPort` / `LlmPort` 트레이트 정의 |
 | `ios/.../APISummarizeAdapter.swift` | iOS 요약 호출 (스트리밍 구현 시 변경 대상) |
