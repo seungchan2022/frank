@@ -98,7 +98,9 @@ struct SupabaseAuthAdapter: AuthPort {
     // MARK: - Private
 
     /// 진실의 원천(server `profiles` 테이블)에서 profile fetch.
-    /// server 호출 실패 시(예: 신규 가입 직후 server 동기화 race) Supabase user 기반 minimal profile fallback.
+    /// 네트워크/서버 오류 시 Supabase user 기반 minimal profile fallback.
+    /// - `ProfileAPIError.notFound`: 첫 가입 직후 row 없음 → fallback
+    /// - `URLError` (서버 미실행, 오프라인 등): 개발 중 서버를 띄우지 않아도 앱이 동작하도록 fallback
     /// fallback의 onboardingCompleted는 항상 false (보수적 — 사용자가 onboarding 거치도록 유도).
     private func fetchServerProfile(token: String, fallbackUser: Auth.User) async throws -> Profile {
         do {
@@ -109,6 +111,14 @@ struct SupabaseAuthAdapter: AuthPort {
             )
         } catch ProfileAPIError.notFound {
             // 첫 가입 시 server에 profile row가 아직 없을 수 있음 → fallback
+            return Profile(
+                id: fallbackUser.id,
+                displayName: nil,
+                onboardingCompleted: false
+            )
+        } catch let urlError as URLError {
+            // 서버 미실행(개발 환경) 또는 일시적 네트워크 오류 → fallback
+            Log.app.warning("Profile server unreachable (\(urlError.localizedDescription)) — using Supabase user fallback")
             return Profile(
                 id: fallbackUser.id,
                 displayName: nil,

@@ -50,7 +50,7 @@ struct LoginView: View {
 
                 // 에러 메시지 (버튼 하단 인라인)
                 if let error = feature.error {
-                    Text(error.localizedDescription)
+                    Text(error.koreanDescription)
                         .font(.caption)
                         .foregroundStyle(.red)
                         .multilineTextAlignment(.center)

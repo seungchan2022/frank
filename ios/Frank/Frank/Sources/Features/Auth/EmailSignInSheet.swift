@@ -46,7 +46,7 @@ struct EmailSignInSheet: View {
 
                 if let error = feature.error {
                     Section {
-                        Text(error.localizedDescription)
+                        Text(error.koreanDescription)
                             .font(.caption)
                             .foregroundStyle(.red)
                             .accessibilityAddTraits(.isStaticText)
