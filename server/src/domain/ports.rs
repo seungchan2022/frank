@@ -63,6 +63,13 @@ pub trait DbPort: Send + Sync {
         &self,
         user_id: Uuid,
     ) -> impl std::future::Future<Output = Result<i32, AppError>> + Send;
+
+    /// MVP7 M3: 현재 좋아요 누적 카운트 조회.
+    /// profile row 부재 시 0 반환 (개인화 비활성화로 처리).
+    fn get_like_count(
+        &self,
+        user_id: Uuid,
+    ) -> impl std::future::Future<Output = Result<i32, AppError>> + Send;
 }
 
 /// 검색 폴백 체인 포트 (여러 SearchPort를 순서대로 시도)

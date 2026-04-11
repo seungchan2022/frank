@@ -81,6 +81,8 @@ pub fn create_router<D: DbPort + Clone + 'static>(
         .route("/me/favorites", get(api::favorites::list_favorites::<D>))
         // MVP7 M2: POST /me/articles/like — 키워드 추출 + 가중치 누적
         .route("/me/articles/like", post(api::likes::like_article::<D>))
+        // MVP7 M3: GET /me/articles/related — 연관 기사 검색
+        .route("/me/articles/related", get(api::related::get_related::<D>))
         .layer(from_fn(middleware::auth::require_auth))
         .layer(Extension(supabase_config));
 

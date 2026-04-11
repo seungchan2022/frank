@@ -178,6 +178,11 @@ impl DbPort for FakeDbAdapter {
         *count += 1;
         Ok(*count)
     }
+
+    async fn get_like_count(&self, user_id: Uuid) -> Result<i32, AppError> {
+        let counts = self.like_counts.lock().unwrap();
+        Ok(*counts.get(&user_id).unwrap_or(&0))
+    }
 }
 
 #[cfg(test)]

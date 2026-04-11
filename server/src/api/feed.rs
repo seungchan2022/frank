@@ -83,6 +83,25 @@ pub async fn get_feed<D: DbPort>(
         return Ok(Json(vec![]));
     }
 
+    // MVP7 M3 ST-1: 좋아요 3회 이상일 때만 키워드 개인화 적용
+    // like_count 조회 실패 시 0으로 폴백 (개인화 비활성화)
+    let like_count = state.db.get_like_count(user.id).await.unwrap_or(0);
+    let keyword_suffix = if like_count >= 3 {
+        // 상위 키워드 조회 — 실패 시 빈 Vec으로 폴백
+        let top_keywords = state
+            .db
+            .get_top_keywords(user.id, 3)
+            .await
+            .unwrap_or_default();
+        if top_keywords.is_empty() {
+            String::new()
+        } else {
+            format!(" {}", top_keywords.join(" "))
+        }
+    } else {
+        String::new()
+    };
+
     // (tag_id, tag_name, search_query) tuple로 병렬 검색 잡 표현 — owned String으로 future 캡처
     let jobs: Vec<(uuid::Uuid, String, String)> = filtered_tags
         .iter()
@@ -92,7 +111,7 @@ pub async fn get_feed<D: DbPort>(
                 .copied()
                 .unwrap_or("unknown")
                 .to_string();
-            let search_query = format!("{tag_name} latest news");
+            let search_query = format!("{tag_name} latest news{keyword_suffix}");
             (user_tag.tag_id, tag_name, search_query)
         })
         .collect();
@@ -179,7 +198,7 @@ fn normalize_url(url: &str) -> String {
 
 /// 홈페이지/목록 URL을 판별한다.
 /// path 세그먼트가 1개 이하면 개별 기사가 아닌 것으로 간주.
-fn is_homepage_url(raw_url: &str) -> bool {
+pub(super) fn is_homepage_url(raw_url: &str) -> bool {
     let path = raw_url
         .find("://")
         .and_then(|scheme_end| {
@@ -708,6 +727,109 @@ mod tests {
         resp.assert_status_ok();
         let items: Vec<FeedItemResponse> = resp.json();
         assert!(items.is_empty(), "미구독 tag_id → 빈 결과");
+    }
+
+    /// ST-1: top_keywords가 있으면 search_query에 append
+    #[tokio::test]
+    async fn get_feed_personalizes_query_with_top_keywords() {
+        let db = FakeDbAdapter::new();
+        let user_id = Uuid::new_v4();
+        db.seed_profile(Profile {
+            id: user_id,
+            display_name: None,
+            onboarding_completed: true,
+        });
+
+        let tags = db.get_tags();
+        let tag_a = &tags[0]; // "AI/ML"
+        db.seed_user_tag(user_id, tag_a.id);
+
+        // like_count >= 3 충족 (개인화 활성화 조건)
+        for _ in 0..3 {
+            db.increment_like_count(user_id).await.unwrap();
+        }
+
+        // GPT(weight=2), transformer(weight=1) seed
+        db.increment_keyword_weights(user_id, vec!["GPT".to_string(), "transformer".to_string()])
+            .await
+            .unwrap();
+        db.increment_keyword_weights(user_id, vec!["GPT".to_string()])
+            .await
+            .unwrap();
+
+        // top 3 keywords: GPT(2), transformer(1) → suffix = " GPT transformer"
+        let personalized_query = format!("{} latest news GPT transformer", tag_a.name);
+
+        let mut query_map: HashMap<String, Result<Vec<SearchResult>, String>> = HashMap::new();
+        query_map.insert(
+            personalized_query,
+            Ok(vec![SearchResult {
+                title: "Personalized AI Article".to_string(),
+                url: "https://example.com/news/personalized-ai".to_string(),
+                snippet: None,
+                published_at: None,
+                image_url: None,
+            }]),
+        );
+
+        let state = make_test_state_with_query_map(db, query_map);
+        let app = make_app(state, user_id);
+        let server = TestServer::new(app);
+
+        let resp = server.get("/me/feed").await;
+        resp.assert_status_ok();
+        let items: Vec<FeedItemResponse> = resp.json();
+        assert_eq!(
+            items.len(),
+            1,
+            "personalized query로 검색된 결과가 반환돼야 한다"
+        );
+        assert_eq!(items[0].url, "https://example.com/news/personalized-ai");
+    }
+
+    /// ST-1: top_keywords가 비었으면 기존 쿼리 유지
+    #[tokio::test]
+    async fn get_feed_uses_default_query_when_no_keywords() {
+        let db = FakeDbAdapter::new();
+        let user_id = Uuid::new_v4();
+        db.seed_profile(Profile {
+            id: user_id,
+            display_name: None,
+            onboarding_completed: true,
+        });
+
+        let tags = db.get_tags();
+        let tag_a = &tags[0]; // "AI/ML"
+        db.seed_user_tag(user_id, tag_a.id);
+
+        // keyword 없음 → 기존 쿼리 유지
+        let default_query = format!("{} latest news", tag_a.name);
+
+        let mut query_map: HashMap<String, Result<Vec<SearchResult>, String>> = HashMap::new();
+        query_map.insert(
+            default_query,
+            Ok(vec![SearchResult {
+                title: "Default AI Article".to_string(),
+                url: "https://example.com/news/default-ai".to_string(),
+                snippet: None,
+                published_at: None,
+                image_url: None,
+            }]),
+        );
+
+        let state = make_test_state_with_query_map(db, query_map);
+        let app = make_app(state, user_id);
+        let server = TestServer::new(app);
+
+        let resp = server.get("/me/feed").await;
+        resp.assert_status_ok();
+        let items: Vec<FeedItemResponse> = resp.json();
+        assert_eq!(
+            items.len(),
+            1,
+            "keyword 없으면 기존 쿼리로 검색된 결과가 반환돼야 한다"
+        );
+        assert_eq!(items[0].url, "https://example.com/news/default-ai");
     }
 
     /// S1: 태그 A 쿼리 실패, 태그 B 쿼리 성공 → B 결과만 반환
