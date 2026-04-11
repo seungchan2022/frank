@@ -46,6 +46,10 @@ final class ArticleDetailFeature {
         self.feedItem = feedItem
         self.summarize = summarize
         self.cache = cache
+        // 캐시 히트 시 즉시 done 상태로 시작 — 즐겨찾기에서 진입 시 버튼 없이 요약 바로 표시
+        if let cached = cache.get(feedItem.url.absoluteString) {
+            self.phase = .done(cached)
+        }
     }
 
     // MARK: - Actions
