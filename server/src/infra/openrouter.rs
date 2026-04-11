@@ -42,10 +42,10 @@ struct Usage {
 
 const SYSTEM_PROMPT: &str = r#"You are a news analyst for a Korean-speaking audience. Given an article title and content, provide a JSON response with exactly three fields:
 1. "title_ko": 한국어로 번역한 기사 제목 (원문의 핵심을 살리되 한국 독자가 바로 이해할 수 있는 자연스러운 표현)
-2. "summary": 기사 핵심 내용을 한국어로 쉽게 풀어서 설명 (전문 용어는 괄호 안에 원문 병기, 3-5문장)
-3. "insight": 이 기사가 왜 중요한지, 독자에게 어떤 의미인지 한국어로 분석 (2-3문장)
+2. "summary": 기사 핵심 내용을 한국어로 쉽게 풀어서 설명 (전문 용어는 괄호 안에 원문 병기, 3-5문장). Use limited Markdown in the string value: **bold** for key terms, *italic* for emphasis, - for bullet lists, blank lines between paragraphs.
+3. "insight": 이 기사가 왜 중요한지, 독자에게 어떤 의미인지 한국어로 분석 (2-3문장). Use limited Markdown in the string value: **bold** for key terms, *italic* for emphasis.
 
-Respond ONLY with valid JSON, no markdown or extra text."#;
+Respond ONLY with valid JSON. Do NOT use Markdown outside of the string values (no code blocks, no headings, no tables)."#;
 
 impl OpenRouterAdapter {
     pub fn new(api_key: &str, model: &str) -> Self {
@@ -448,5 +448,50 @@ mod tests {
             OpenRouterAdapter::with_base_url("test-key", "test-model", "http://127.0.0.1:1");
         let result = adapter.summarize("Title", "Content").await;
         assert!(result.is_err());
+    }
+
+    #[test]
+    fn system_prompt_contains_markdown_instructions() {
+        assert!(
+            SYSTEM_PROMPT.contains("**bold**"),
+            "SYSTEM_PROMPT must instruct LLM to use bold markdown"
+        );
+        assert!(
+            SYSTEM_PROMPT.contains("*italic*"),
+            "SYSTEM_PROMPT must instruct LLM to use italic markdown"
+        );
+        assert!(
+            SYSTEM_PROMPT.contains("- for bullet"),
+            "SYSTEM_PROMPT must instruct LLM to use bullet list markdown"
+        );
+    }
+
+    #[tokio::test]
+    async fn markdown_in_summary_and_insight_parses_correctly() {
+        let mock_server = MockServer::start().await;
+
+        let markdown_response = serde_json::json!({
+            "choices": [{
+                "message": {
+                    "content": "{\"title_ko\": \"AI 혁신\", \"summary\": \"**핵심 내용**: AI가 발전했습니다.\\n- 첫 번째 항목\\n- 두 번째 항목\", \"insight\": \"이 기사는 *매우 중요*합니다. **주목**할 필요가 있습니다.\"}"
+                }
+            }],
+            "model": "test-model",
+            "usage": {"prompt_tokens": 100, "completion_tokens": 80}
+        });
+
+        Mock::given(method("POST"))
+            .and(path("/api/v1/chat/completions"))
+            .respond_with(ResponseTemplate::new(200).set_body_json(markdown_response))
+            .mount(&mock_server)
+            .await;
+
+        let adapter =
+            OpenRouterAdapter::with_base_url("test-key", "test-model", &mock_server.uri());
+        let result = adapter.summarize("AI 기사", "내용").await;
+        assert!(result.is_ok());
+        let resp = result.unwrap();
+        assert!(resp.summary.summary.contains("**핵심 내용**"));
+        assert!(resp.summary.insight.contains("*매우 중요*"));
     }
 }

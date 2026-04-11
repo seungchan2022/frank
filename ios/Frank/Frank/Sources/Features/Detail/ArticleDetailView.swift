@@ -72,13 +72,12 @@ extension ArticleDetailView {
     private var snippetSection: some View {
         if let snippet = feedItem.snippet {
             VStack(alignment: .leading, spacing: 8) {
-                Text("원문 리드")
+                Text("기사 소개")
                     .font(.subheadline)
                     .fontWeight(.bold)
                     .foregroundStyle(.secondary)
 
                 Text(snippet)
-                    .font(.body)
             }
 
             Divider()
@@ -216,8 +215,7 @@ extension ArticleDetailView {
                         .fontWeight(.bold)
                         .foregroundStyle(.secondary)
 
-                    Text(result.summary)
-                        .font(.body)
+                    markdownText(result.summary)
                 }
 
                 VStack(alignment: .leading, spacing: 8) {
@@ -226,8 +224,7 @@ extension ArticleDetailView {
                         .fontWeight(.bold)
                         .foregroundStyle(.secondary)
 
-                    Text(result.insight)
-                        .font(.body)
+                    markdownText(result.insight)
                         .foregroundStyle(.secondary)
                 }
             }
@@ -242,4 +239,18 @@ extension ArticleDetailView {
             EmptyView()
         }
     }
+}
+
+// MARK: - Markdown Helper
+
+/// 마크다운 텍스트를 AttributedString으로 렌더링.
+/// 파싱 실패 시 plain text로 fallback.
+private func markdownText(_ text: String) -> Text {
+    if let attributed = try? AttributedString(
+        markdown: text,
+        options: .init(interpretedSyntax: .full)
+    ) {
+        return Text(attributed)
+    }
+    return Text(text)
 }

@@ -22,7 +22,7 @@ struct ExaResponse {
 struct ExaResult {
     title: Option<String>,
     url: String,
-    text: Option<String>,
+    highlights: Option<Vec<String>>,
     #[serde(rename = "publishedDate")]
     published_date: Option<String>,
 }
@@ -58,7 +58,10 @@ impl SearchPort for ExaAdapter {
                 "query": query,
                 "numResults": max_results,
                 "contents": {
-                    "text": true
+                    "highlights": {
+                        "numSentences": 3,
+                        "highlightsPerUrl": 1
+                    }
                 }
             });
 
@@ -104,7 +107,20 @@ impl SearchPort for ExaAdapter {
                 .map(|r| SearchResult {
                     title: r.title.unwrap_or_default(),
                     url: r.url,
-                    snippet: r.text,
+                    snippet: r.highlights
+                        .and_then(|h| h.into_iter().next())
+                        .map(|s| {
+                            // 마크다운 헤더(#) 제거 후 공백 정리, 300자 제한
+                            let cleaned = s
+                                .lines()
+                                .filter(|l| !l.trim_start().starts_with('#'))
+                                .collect::<Vec<_>>()
+                                .join(" ")
+                                .split_whitespace()
+                                .collect::<Vec<_>>()
+                                .join(" ");
+                            cleaned.chars().take(300).collect::<String>()
+                        }),
                     published_at: r.published_date,
                     image_url: None, // Exa API는 image_url 미제공
                 })
@@ -138,7 +154,7 @@ mod tests {
             .and(path("/search"))
             .respond_with(
                 ResponseTemplate::new(200).set_body_json(serde_json::json!({
-                    "results": [{"title": "Test", "url": "https://example.com", "text": "snippet", "publishedDate": null}]
+                    "results": [{"title": "Test", "url": "https://example.com", "highlights": ["snippet"], "publishedDate": null}]
                 })),
             )
             .mount(&mock_server)
@@ -212,7 +228,7 @@ mod tests {
         Mock::given(method("POST"))
             .and(path("/search"))
             .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({
-                "results": [{"title": null, "url": "https://example.com", "text": "content", "publishedDate": null}]
+                "results": [{"title": null, "url": "https://example.com", "highlights": ["content"], "publishedDate": null}]
             })))
             .mount(&mock_server)
             .await;
@@ -230,7 +246,7 @@ mod tests {
             .and(path("/search"))
             .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({
                 "results": [
-                    {"title": "Article 1", "url": "https://a.com", "text": "snippet 1", "publishedDate": "2026-01-01"}
+                    {"title": "Article 1", "url": "https://a.com", "highlights": ["snippet 1"], "publishedDate": "2026-01-01"}
                 ]
             })))
             .mount(&mock_server)

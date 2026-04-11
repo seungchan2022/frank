@@ -42,8 +42,8 @@ impl LlmPort for FakeLlmAdapter {
             Ok(LlmResponse {
                 summary: LlmSummary {
                     title_ko: format!("[한국어] {title}"),
-                    summary: format!("[요약] {title}에 대한 테스트 요약입니다."),
-                    insight: format!("[인사이트] {title}에 대한 테스트 분석입니다."),
+                    summary: format!("**핵심**: {title}에 대한 테스트 요약입니다.\n- 첫 번째 항목\n- 두 번째 항목"),
+                    insight: format!("*중요*: {title}에 대한 **테스트 분석**입니다."),
                 },
                 model: "fake-model".to_string(),
                 prompt_tokens: 100,
@@ -64,6 +64,8 @@ mod tests {
         assert!(result.summary.summary.contains("AI News"));
         assert!(result.summary.insight.contains("AI News"));
         assert!(result.summary.title_ko.contains("AI News"));
+        assert!(result.summary.summary.contains("**핵심**"), "summary should contain markdown bold");
+        assert!(result.summary.insight.contains("*중요*"), "insight should contain markdown italic");
         assert_eq!(result.model, "fake-model");
         assert_eq!(result.prompt_tokens, 100);
         assert_eq!(result.completion_tokens, 50);

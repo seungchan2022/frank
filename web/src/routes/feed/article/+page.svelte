@@ -7,6 +7,7 @@
 	import { favoritesStore } from '$lib/stores/favoritesStore.svelte';
 	import { formatArticleDate } from '$lib/utils/article';
 	import Header from '$lib/components/Header.svelte';
+	import { marked } from 'marked';
 	import type { SummaryResult } from '$lib/types/summary';
 	import type { ArticlePageState } from './+page';
 
@@ -127,10 +128,10 @@
 			</div>
 		</div>
 
-		<!-- 원문 리드 -->
+		<!-- 기사 소개 -->
 		{#if feedItem.snippet}
 			<div class="mb-6 rounded-lg border border-gray-200 bg-white p-6">
-				<h2 class="mb-2 text-sm font-semibold tracking-wide text-gray-500 uppercase">원문 리드</h2>
+				<h2 class="mb-2 text-sm font-semibold tracking-wide text-gray-500 uppercase">기사 소개</h2>
 				<p class="text-sm leading-relaxed text-gray-600">{feedItem.snippet}</p>
 			</div>
 		{/if}
@@ -157,11 +158,11 @@
 				<div class="space-y-4">
 					<div>
 						<h3 class="mb-2 text-sm font-semibold text-gray-500 uppercase tracking-wide">요약</h3>
-						<p class="text-sm leading-relaxed text-gray-700">{phase.result.summary}</p>
+						<div class="prose prose-sm max-w-none text-gray-700">{@html marked(phase.result.summary)}</div>
 					</div>
 					<div>
 						<h3 class="mb-2 text-sm font-semibold text-gray-500 uppercase tracking-wide">인사이트</h3>
-						<p class="text-sm leading-relaxed text-gray-600">{phase.result.insight}</p>
+						<div class="prose prose-sm max-w-none text-gray-600">{@html marked(phase.result.insight)}</div>
 					</div>
 				</div>
 			{:else if phase.tag === 'failed'}
