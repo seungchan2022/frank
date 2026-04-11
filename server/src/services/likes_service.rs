@@ -4,6 +4,7 @@ use crate::domain::error::AppError;
 use crate::domain::ports::{DbPort, LlmPort};
 
 /// 좋아요 처리 결과
+#[derive(Debug)]
 pub struct LikeResult {
     pub keywords: Vec<String>,
     pub total_likes: i32,
@@ -28,16 +29,21 @@ where
     D: DbPort + ?Sized,
     L: LlmPort + ?Sized,
 {
-    // 1. 키워드 추출
+    // 1. 키워드 추출 — 실패(rate limit 등) 시 빈 배열로 폴백하여 좋아요 카운트는 유지
     let keywords = llm
         .extract_keywords(title, snippet)
         .await
-        .map_err(|e| AppError::Internal(format!("keyword extraction failed: {e}")))?;
+        .unwrap_or_else(|e| {
+            tracing::warn!(error = %e, "keyword extraction failed, skipping keyword update");
+            vec![]
+        });
 
-    // 2. 키워드 가중치 누적
-    db.increment_keyword_weights(user_id, keywords.clone())
-        .await
-        .map_err(|e| AppError::Internal(format!("keyword weight update failed: {e}")))?;
+    // 2. 키워드 가중치 누적 (빈 배열이면 no-op)
+    if !keywords.is_empty() {
+        db.increment_keyword_weights(user_id, keywords.clone())
+            .await
+            .map_err(|e| AppError::Internal(format!("keyword weight update failed: {e}")))?;
+    }
 
     // 3. 좋아요 카운트 증가
     let total_likes = db
@@ -114,13 +120,17 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn process_like_llm_failure_returns_error() {
+    async fn process_like_llm_failure_falls_back_to_empty_keywords() {
+        // LLM 실패(rate limit 등) 시 keywords=[] 로 폴백하여 좋아요 카운트는 정상 처리
         let user_id = Uuid::new_v4();
         let db = make_db_with_profile(user_id);
         let llm = FakeLlmAdapter::failing();
 
         let result = process_like(user_id, "title", None, &db, &llm).await;
-        assert!(result.is_err());
+        assert!(result.is_ok(), "LLM 실패 시에도 500 아닌 정상 처리: {result:?}");
+        let result = result.unwrap();
+        assert!(result.keywords.is_empty(), "키워드 추출 실패 시 빈 배열 반환");
+        assert_eq!(result.total_likes, 1, "좋아요 카운트는 정상 증가");
     }
 
     #[tokio::test]
