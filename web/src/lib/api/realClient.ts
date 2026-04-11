@@ -49,12 +49,53 @@ class ApiError extends Error {
 	}
 }
 
+// 401(토큰 만료) 수신 시 SvelteKit 서버 경유로 토큰 갱신.
+// httpOnly 쿠키는 client JS에서 접근 불가이므로 서버 엔드포인트를 경유한다.
+async function tryRefreshToken(): Promise<boolean> {
+	try {
+		const res = await fetch('/api/auth/token');
+		if (!res.ok) return false;
+		const data = (await res.json()) as { token: string | null };
+		if (data.token) {
+			currentAccessToken = data.token;
+			return true;
+		}
+		return false;
+	} catch {
+		return false;
+	}
+}
+
 async function request<T>(path: string, init: RequestInit = {}): Promise<T> {
 	const headers = authHeaders();
 	const response = await fetch(`${API_BASE}${path}`, {
 		...init,
 		headers: { ...headers, ...(init.headers ?? {}) }
 	});
+
+	// 401 수신 시 토큰 갱신 후 1회 재시도
+	if (response.status === 401) {
+		const refreshed = await tryRefreshToken();
+		if (refreshed) {
+			const retryHeaders = authHeaders();
+			const retryResponse = await fetch(`${API_BASE}${path}`, {
+				...init,
+				headers: { ...retryHeaders, ...(init.headers ?? {}) }
+			});
+			if (!retryResponse.ok) {
+				const body = (await retryResponse.json().catch(() => null)) as {
+					error?: string;
+				} | null;
+				throw new ApiError(
+					body?.error ?? `Request failed (${retryResponse.status})`,
+					retryResponse.status
+				);
+			}
+			const text = await retryResponse.text();
+			return (text ? JSON.parse(text) : (undefined as unknown)) as T;
+		}
+	}
+
 	if (!response.ok) {
 		const body = (await response.json().catch(() => null)) as { error?: string } | null;
 		throw new ApiError(

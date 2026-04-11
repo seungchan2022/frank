@@ -304,3 +304,55 @@ describe('RealApiClient: 에러 처리', () => {
 		await expect(realApiClient.saveMyTags([])).resolves.toBeUndefined();
 	});
 });
+
+describe('RealApiClient: 토큰 만료 자동 갱신', () => {
+	it('401 수신 시 /api/auth/token 호출 후 재시도 성공', async () => {
+		const fetchMock = globalThis.fetch as unknown as ReturnType<typeof vi.fn>;
+		const tags = [{ id: '1', name: 'AI', category: 'Tech' }];
+
+		fetchMock
+			.mockResolvedValueOnce(jsonResponse({ error: 'Invalid or expired token' }, 401))
+			.mockResolvedValueOnce(jsonResponse({ token: 'new.jwt.token' })) // /api/auth/token
+			.mockResolvedValueOnce(jsonResponse(tags)); // 재시도
+
+		const result = await realApiClient.fetchTags();
+		expect(result).toEqual(tags);
+
+		const calls = fetchMock.mock.calls;
+		expect(calls).toHaveLength(3);
+		expect(calls[1][0]).toBe('/api/auth/token');
+		const retryHeaders = (calls[2][1] as RequestInit).headers as Record<string, string>;
+		expect(retryHeaders.Authorization).toBe('Bearer new.jwt.token');
+	});
+
+	it('401 후 토큰 갱신 실패(서버 401) 시 원래 에러 throw', async () => {
+		const fetchMock = globalThis.fetch as unknown as ReturnType<typeof vi.fn>;
+
+		fetchMock
+			.mockResolvedValueOnce(jsonResponse({ error: 'Invalid or expired token' }, 401))
+			.mockResolvedValueOnce(jsonResponse({ token: null }, 401)); // 갱신 실패
+
+		await expect(realApiClient.fetchTags()).rejects.toThrow('Invalid or expired token');
+	});
+
+	it('401 후 토큰 갱신 성공해도 재시도 실패 시 에러 throw', async () => {
+		const fetchMock = globalThis.fetch as unknown as ReturnType<typeof vi.fn>;
+
+		fetchMock
+			.mockResolvedValueOnce(jsonResponse({ error: 'Invalid or expired token' }, 401))
+			.mockResolvedValueOnce(jsonResponse({ token: 'new.jwt.token' }))
+			.mockResolvedValueOnce(jsonResponse({ error: 'Forbidden' }, 403)); // 재시도 실패
+
+		await expect(realApiClient.fetchTags()).rejects.toThrow('Forbidden');
+	});
+
+	it('401 후 /api/auth/token 네트워크 오류 시 원래 에러 throw', async () => {
+		const fetchMock = globalThis.fetch as unknown as ReturnType<typeof vi.fn>;
+
+		fetchMock
+			.mockResolvedValueOnce(jsonResponse({ error: 'Invalid or expired token' }, 401))
+			.mockRejectedValueOnce(new Error('network error')); // /api/auth/token 실패
+
+		await expect(realApiClient.fetchTags()).rejects.toThrow('Invalid or expired token');
+	});
+});
