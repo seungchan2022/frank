@@ -3,6 +3,7 @@ import Foundation
 @testable import Frank
 
 @Suite("Port Contract Tests")
+@MainActor
 struct PortContractTests {
 
     // MARK: - AuthPort

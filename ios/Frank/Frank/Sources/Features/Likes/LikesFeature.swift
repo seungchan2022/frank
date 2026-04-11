@@ -36,25 +36,25 @@ final class LikesFeature {
 
     // MARK: - Actions
 
-    /// 기사 좋아요 처리 (fire-and-forget).
+    /// 기사 좋아요 처리.
     /// - 이미 liked url이면 즉시 반환 (중복 방지).
-    /// - likedUrls 즉시 추가 → 백그라운드에서 API 호출.
-    /// - API 실패해도 UI 롤백 없음 (이벤트 누적 모델).
-    func like(feedItem: FeedItem) {
+    /// - API 성공 시 likedUrls 추가 + lastKeywords 업데이트.
+    /// - API 실패 시 error 설정 (likedUrls 변경 없음).
+    func like(feedItem: FeedItem) async {
         let urlString = feedItem.url.absoluteString
 
         // 중복 방지
         guard !likedUrls.contains(urlString) else { return }
 
-        // 즉시 UI 반영
-        likedUrls.insert(urlString)
-
-        // 백그라운드 API 호출
-        Task {
-            _ = try? await likes.likeArticle(
+        do {
+            let result = try await likes.likeArticle(
                 title: feedItem.title,
                 snippet: feedItem.snippet
             )
+            likedUrls.insert(urlString)
+            lastKeywords = result.keywords
+        } catch {
+            self.error = error.localizedDescription
         }
     }
 

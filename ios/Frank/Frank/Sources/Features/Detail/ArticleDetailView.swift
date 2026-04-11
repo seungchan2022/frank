@@ -2,15 +2,19 @@ import SwiftUI
 
 /// MVP5 M3: ArticleDetailView — 온디맨드 요약 + 즐겨찾기 토글 UI.
 /// MVP7 M2: LikesFeature 주입 — 헤더 하트 버튼.
+/// MVP7 M3: RelatedArticlesView 하단 추가 — 연관 기사 표시.
 /// - 요약하기 버튼: idle/loading/done/failed 상태에 따라 UI 전환
 /// - 즐겨찾기 버튼: isLiked 상태에 따라 채워진/빈 하트 아이콘
 /// - 좋아요 버튼: LikesFeature 공유 (FeedView와 상태 동기화)
+/// - 연관 기사: RelatedFeature 지역 인스턴스로 관리
 struct ArticleDetailView: View {
     let feedItem: FeedItem
     let favoritesFeature: FavoritesFeature
     let likesFeature: LikesFeature
     private let summarizePort: any SummarizePort
+    private let relatedPort: any RelatedPort
     @State private var feature: ArticleDetailFeature
+    @State private var relatedFeature: RelatedFeature
     @State private var favoriteLoading: Bool = false
 
     @State private var showSafari = false
@@ -19,13 +23,16 @@ struct ArticleDetailView: View {
         feedItem: FeedItem,
         summarize: any SummarizePort,
         favoritesFeature: FavoritesFeature,
-        likesFeature: LikesFeature
+        likesFeature: LikesFeature,
+        related: any RelatedPort = MockRelatedAdapter()
     ) {
         self.feedItem = feedItem
         self.favoritesFeature = favoritesFeature
         self.likesFeature = likesFeature
         self.summarizePort = summarize
+        self.relatedPort = related
         self._feature = State(initialValue: ArticleDetailFeature(feedItem: feedItem, summarize: summarize))
+        self._relatedFeature = State(initialValue: RelatedFeature(related: related))
     }
 
     var body: some View {
@@ -43,6 +50,14 @@ struct ArticleDetailView: View {
                 }
                 actionButtons
                 summarySection
+                Divider()
+                RelatedArticlesView(
+                    feature: relatedFeature,
+                    summarize: summarizePort,
+                    favoritesFeature: favoritesFeature,
+                    likesFeature: likesFeature,
+                    nextRelated: MockRelatedAdapter()
+                )
             }
             .padding(.horizontal, 20)
             .padding(.vertical, 16)
@@ -50,6 +65,9 @@ struct ArticleDetailView: View {
         .navigationBarTitleDisplayMode(.inline)
         .sheet(isPresented: $showSafari) {
             SafariView(url: feedItem.url)
+        }
+        .task {
+            await relatedFeature.load(title: feedItem.title, snippet: feedItem.snippet)
         }
     }
 }
@@ -68,7 +86,7 @@ extension ArticleDetailView {
 
                 // 좋아요 하트 버튼
                 Button {
-                    likesFeature.like(feedItem: feedItem) 
+                    Task { await likesFeature.like(feedItem: feedItem) }
                 } label: {
                     Image(
                         systemName: likesFeature.isLiked(feedItem.url.absoluteString) ? "heart.fill" : "heart"

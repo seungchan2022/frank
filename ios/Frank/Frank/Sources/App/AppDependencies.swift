@@ -9,6 +9,8 @@ final class AppDependencies {
     let summarize: any SummarizePort
     let favorites: any FavoritesPort
     let likes: any LikesPort
+    /// MVP7 M3: 연관 기사 조회 포트
+    let related: any RelatedPort
 
     init(
         auth: any AuthPort,
@@ -16,7 +18,8 @@ final class AppDependencies {
         article: any ArticlePort,
         summarize: any SummarizePort,
         favorites: any FavoritesPort,
-        likes: any LikesPort
+        likes: any LikesPort,
+        related: any RelatedPort
     ) {
         self.auth = auth
         self.tag = tag
@@ -24,6 +27,7 @@ final class AppDependencies {
         self.summarize = summarize
         self.favorites = favorites
         self.likes = likes
+        self.related = related
     }
 
     static func live() -> AppDependencies {
@@ -57,7 +61,8 @@ final class AppDependencies {
                 session: summarizeSession
             ),
             favorites: APIFavoritesAdapter(auth: authAdapter, serverConfig: serverConfig),
-            likes: APILikesAdapter(auth: authAdapter, serverConfig: serverConfig)
+            likes: APILikesAdapter(auth: authAdapter, serverConfig: serverConfig),
+            related: APIRelatedAdapter(auth: authAdapter, serverConfig: serverConfig)
         )
     }
 
@@ -77,7 +82,8 @@ final class AppDependencies {
             article: MockArticleAdapter(),
             summarize: MockSummarizeAdapter(),
             favorites: MockFavoritesAdapter(),
-            likes: MockLikesAdapter()
+            likes: MockLikesAdapter(),
+            related: MockRelatedAdapter()
         )
     }
 }
