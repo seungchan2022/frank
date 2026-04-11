@@ -77,7 +77,10 @@ final class ArticleDetailFeature {
     // MARK: - Private
 
     private func errorMessage(from error: Error) -> String {
-        if let apiError = error as? APISummarizeError, apiError == .timeout {
+        let isTimeout =
+            (error as? APISummarizeError) == .timeout ||
+            (error as? URLError)?.code == .timedOut
+        if isTimeout {
             return "요약 요청이 시간을 초과했습니다. 다시 시도해주세요."
         }
         return "요약을 불러오지 못했습니다. 다시 시도해주세요."

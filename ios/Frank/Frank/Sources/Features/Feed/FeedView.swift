@@ -3,14 +3,18 @@ import SwiftUI
 /// MVP5 M1: FeedView — ephemeral 피드 표시.
 /// collectAndRefresh 버튼 제거. pull-to-refresh = API 재호출.
 /// NavigationLink value: String (FeedItem.id = url absoluteString 기반).
+/// MVP7 M2: LikesFeature 주입 — 카드별 하트 버튼 + 상세 공유.
 struct FeedView: View {
     let feature: FeedFeature
     let summarize: any SummarizePort
     let favoritesFeature: FavoritesFeature
+    let likesFeature: LikesFeature
     var onSettingsTapped: (() -> Void)?
 
+    @State private var navigationPath = NavigationPath()
+
     var body: some View {
-        NavigationStack {
+        NavigationStack(path: $navigationPath) {
             VStack(spacing: 0) {
                 TagChipBarView(
                     tags: feature.tags,
@@ -39,7 +43,12 @@ struct FeedView: View {
             }
             .navigationDestination(for: String.self) { urlString in
                 if let item = feature.articles.first(where: { $0.id == urlString }) {
-                    ArticleDetailView(feedItem: item, summarize: summarize, favoritesFeature: favoritesFeature)
+                    ArticleDetailView(
+                        feedItem: item,
+                        summarize: summarize,
+                        favoritesFeature: favoritesFeature,
+                        likesFeature: likesFeature
+                    )
                 }
             }
             .task {
@@ -91,10 +100,27 @@ struct FeedView: View {
     private var articleList: some View {
         List {
             ForEach(feature.articles) { item in
-                NavigationLink(value: item.id) {
-                    ArticleCardView(article: item)
-                }
-                .buttonStyle(.plain)
+                // NavigationLink 대신 onTapGesture + overlay 분리:
+                // List 내 NavigationLink는 전체 row 터치를 가져가
+                // 오버레이 Button 탭도 동시에 발동하는 버그가 있음.
+                ArticleCardView(article: item)
+                    .contentShape(Rectangle())
+                    .onTapGesture {
+                        navigationPath.append(item.id)
+                    }
+                    .overlay(alignment: .bottomTrailing) {
+                        Button {
+                            likesFeature.like(feedItem: item)
+                        } label: {
+                            Image(systemName: likesFeature.isLiked(item.url.absoluteString) ? "heart.fill" : "heart")
+                                .foregroundStyle(likesFeature.isLiked(item.url.absoluteString) ? .red : .gray)
+                                .font(.system(size: 18))
+                                .padding(8)
+                        }
+                        .buttonStyle(.plain)
+                        .accessibilityLabel(likesFeature.isLiked(item.url.absoluteString) ? "좋아요 완료" : "좋아요")
+                    }
+                    .listRowInsets(EdgeInsets())
             }
         }
         .listStyle(.plain)

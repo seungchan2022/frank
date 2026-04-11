@@ -72,16 +72,19 @@ struct OnboardingContainerView: View {
 }
 
 /// MVP5 M3: MainTabView — 피드 탭 + 스크랩 탭.
-/// FavoritesFeature는 여기서 1개 생성 → 양쪽 탭에 공유.
+/// FavoritesFeature + LikesFeature는 여기서 1개씩 생성 → 양쪽 탭에 공유.
 struct MainTabView: View {
     let authFeature: AuthFeature
     let dependencies: AppDependencies
     @State private var favoritesFeature: FavoritesFeature
+    /// MVP7 M2: LikesFeature 루트 소유 — FeedView + ArticleDetailView 공유
+    @State private var likesFeature: LikesFeature
 
     init(dependencies: AppDependencies, authFeature: AuthFeature) {
         self.authFeature = authFeature
         self.dependencies = dependencies
         self._favoritesFeature = State(initialValue: FavoritesFeature(favorites: dependencies.favorites))
+        self._likesFeature = State(initialValue: LikesFeature(likes: dependencies.likes))
     }
 
     var body: some View {
@@ -89,7 +92,8 @@ struct MainTabView: View {
             FeedContainerView(
                 dependencies: dependencies,
                 authFeature: authFeature,
-                favoritesFeature: favoritesFeature
+                favoritesFeature: favoritesFeature,
+                likesFeature: likesFeature
             )
             .tabItem {
                 Label("피드", systemImage: "newspaper.fill")
@@ -97,7 +101,8 @@ struct MainTabView: View {
 
             FavoritesContainerView(
                 feature: favoritesFeature,
-                summarize: dependencies.summarize
+                summarize: dependencies.summarize,
+                likesFeature: likesFeature
             )
             .tabItem {
                 Label("스크랩", systemImage: "bookmark.fill")
@@ -110,13 +115,20 @@ struct FeedContainerView: View {
     let authFeature: AuthFeature
     let dependencies: AppDependencies
     let favoritesFeature: FavoritesFeature
+    let likesFeature: LikesFeature
     @State private var feedFeature: FeedFeature
     @State private var settingsFeature: SettingsFeature?
 
-    init(dependencies: AppDependencies, authFeature: AuthFeature, favoritesFeature: FavoritesFeature) {
+    init(
+        dependencies: AppDependencies,
+        authFeature: AuthFeature,
+        favoritesFeature: FavoritesFeature,
+        likesFeature: LikesFeature
+    ) {
         self.authFeature = authFeature
         self.dependencies = dependencies
         self.favoritesFeature = favoritesFeature
+        self.likesFeature = likesFeature
         self._feedFeature = State(initialValue: FeedFeature(
             article: dependencies.article,
             tag: dependencies.tag
@@ -128,6 +140,7 @@ struct FeedContainerView: View {
             feature: feedFeature,
             summarize: dependencies.summarize,
             favoritesFeature: favoritesFeature,
+            likesFeature: likesFeature,
             onSettingsTapped: {
                 settingsFeature = SettingsFeature(tag: dependencies.tag, auth: dependencies.auth)
             }
@@ -144,8 +157,9 @@ struct FeedContainerView: View {
 struct FavoritesContainerView: View {
     let feature: FavoritesFeature
     let summarize: any SummarizePort
+    let likesFeature: LikesFeature
 
     var body: some View {
-        FavoritesView(feature: feature, summarize: summarize)
+        FavoritesView(feature: feature, summarize: summarize, likesFeature: likesFeature)
     }
 }

@@ -1,20 +1,29 @@
 import SwiftUI
 
 /// MVP5 M3: ArticleDetailView — 온디맨드 요약 + 즐겨찾기 토글 UI.
+/// MVP7 M2: LikesFeature 주입 — 헤더 하트 버튼.
 /// - 요약하기 버튼: idle/loading/done/failed 상태에 따라 UI 전환
 /// - 즐겨찾기 버튼: isLiked 상태에 따라 채워진/빈 하트 아이콘
+/// - 좋아요 버튼: LikesFeature 공유 (FeedView와 상태 동기화)
 struct ArticleDetailView: View {
     let feedItem: FeedItem
     let favoritesFeature: FavoritesFeature
+    let likesFeature: LikesFeature
     private let summarizePort: any SummarizePort
     @State private var feature: ArticleDetailFeature
     @State private var favoriteLoading: Bool = false
 
     @State private var showSafari = false
 
-    init(feedItem: FeedItem, summarize: any SummarizePort, favoritesFeature: FavoritesFeature) {
+    init(
+        feedItem: FeedItem,
+        summarize: any SummarizePort,
+        favoritesFeature: FavoritesFeature,
+        likesFeature: LikesFeature
+    ) {
         self.feedItem = feedItem
         self.favoritesFeature = favoritesFeature
+        self.likesFeature = likesFeature
         self.summarizePort = summarize
         self._feature = State(initialValue: ArticleDetailFeature(feedItem: feedItem, summarize: summarize))
     }
@@ -50,9 +59,29 @@ struct ArticleDetailView: View {
 extension ArticleDetailView {
     private var headerSection: some View {
         VStack(alignment: .leading, spacing: 8) {
-            Text(feedItem.title)
-                .font(.title2)
-                .fontWeight(.bold)
+            // 제목 + 좋아요 버튼 행
+            HStack(alignment: .top, spacing: 8) {
+                Text(feedItem.title)
+                    .font(.title2)
+                    .fontWeight(.bold)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+
+                // 좋아요 하트 버튼
+                Button {
+                    likesFeature.like(feedItem: feedItem) 
+                } label: {
+                    Image(
+                        systemName: likesFeature.isLiked(feedItem.url.absoluteString) ? "heart.fill" : "heart"
+                    )
+                    .foregroundStyle(
+                        likesFeature.isLiked(feedItem.url.absoluteString) ? .red : .secondary
+                    )
+                    .font(.system(size: 22))
+                }
+                .accessibilityLabel(
+                    likesFeature.isLiked(feedItem.url.absoluteString) ? "좋아요 완료" : "좋아요"
+                )
+            }
 
             HStack(spacing: 4) {
                 Text(feedItem.source)

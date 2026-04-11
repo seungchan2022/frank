@@ -5,6 +5,7 @@ import SwiftUI
 struct FavoritesView: View {
     let feature: FavoritesFeature
     let summarize: any SummarizePort
+    let likesFeature: LikesFeature
 
     var body: some View {
         NavigationStack {
@@ -124,7 +125,8 @@ struct FavoritesView: View {
             ArticleDetailView(
                 feedItem: feedItem,
                 summarize: summarize,
-                favoritesFeature: feature
+                favoritesFeature: feature,
+                likesFeature: likesFeature
             )
         }
     }

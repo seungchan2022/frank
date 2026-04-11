@@ -2,8 +2,8 @@ import Testing
 import Foundation
 @testable import Frank
 
-/// MVP7 M1: APISummarizeAdapter — POST /api/me/summarize 검증
-/// 타임아웃 120초 URLSession 주입 확인
+/// APISummarizeAdapter — POST /api/me/summarize 검증
+/// 타임아웃 70초, URLSession 주입 패턴 확인
 @Suite("APISummarizeAdapter Tests", .serialized)
 struct APISummarizeAdapterTests {
 

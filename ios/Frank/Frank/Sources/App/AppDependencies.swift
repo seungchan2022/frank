@@ -8,19 +8,22 @@ final class AppDependencies {
     let article: any ArticlePort
     let summarize: any SummarizePort
     let favorites: any FavoritesPort
+    let likes: any LikesPort
 
     init(
         auth: any AuthPort,
         tag: any TagPort,
         article: any ArticlePort,
         summarize: any SummarizePort,
-        favorites: any FavoritesPort
+        favorites: any FavoritesPort,
+        likes: any LikesPort
     ) {
         self.auth = auth
         self.tag = tag
         self.article = article
         self.summarize = summarize
         self.favorites = favorites
+        self.likes = likes
     }
 
     static func live() -> AppDependencies {
@@ -40,12 +43,21 @@ final class AppDependencies {
             serverConfig: serverConfig
         )
 
+        // 요약 요청 전용 URLSession — 일반 요청과 세션 분리 (테스트 주입 지원)
+        // 실제 타임아웃은 APISummarizeAdapter 내부 URLRequest.timeoutInterval(70초)이 결정
+        let summarizeSession = URLSession(configuration: .default)
+
         return AppDependencies(
             auth: authAdapter,
             tag: APITagAdapter(auth: authAdapter, serverConfig: serverConfig),
             article: APIArticleAdapter(auth: authAdapter, serverConfig: serverConfig),
-            summarize: APISummarizeAdapter(auth: authAdapter, serverConfig: serverConfig),
-            favorites: APIFavoritesAdapter(auth: authAdapter, serverConfig: serverConfig)
+            summarize: APISummarizeAdapter(
+                auth: authAdapter,
+                serverConfig: serverConfig,
+                session: summarizeSession
+            ),
+            favorites: APIFavoritesAdapter(auth: authAdapter, serverConfig: serverConfig),
+            likes: APILikesAdapter(auth: authAdapter, serverConfig: serverConfig)
         )
     }
 
@@ -64,7 +76,8 @@ final class AppDependencies {
             tag: MockTagAdapter(),
             article: MockArticleAdapter(),
             summarize: MockSummarizeAdapter(),
-            favorites: MockFavoritesAdapter()
+            favorites: MockFavoritesAdapter(),
+            likes: MockLikesAdapter()
         )
     }
 }
