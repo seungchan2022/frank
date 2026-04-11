@@ -85,7 +85,14 @@
 
 | 유형 | 파일 | 핵심 내용 |
 |------|------|----------|
-| 로드맵 | [MVP4 로드맵](../progress/milestones/frank/_roadmap.md) | M1~M5 마일스톤, DoD, 의존성 그래프 |
+| 비전 | [MVP4 비전](mvp4/_vision.md) | 부채 해소 동기, MVP4 진입 기준, 완료 기준 |
+| 발견 | [MVP4 Discovery](mvp4/_discovery.md) | 내부 부채 분석, 우선순위 결정 근거 |
+| 로드맵 | [MVP4 로드맵](mvp4/_roadmap.md) | M1~M5 마일스톤, DoD, 의존성 그래프 |
+| 마일스톤 | [M1 서버인프라](mvp4/M1_서버인프라.md) | LLM 복귀 + Apple Secret 만료 관리 |
+| 마일스톤 | [M2 iOS UX개선](mvp4/M2_iOS_UX개선.md) | 요약 timeout + 로그인 인라인 에러 |
+| 마일스톤 | [M3 웹 UX개선](mvp4/M3_웹_UX개선.md) | 요약 timeout UX 웹 버전 |
+| 마일스톤 | [M4 iOS 테스트인프라](mvp4/M4_iOS_테스트인프라.md) | UITest 4개 + coverage.sh + Mock 주입 인프라 |
+| 마일스톤 | [M5 데이터품질](mvp4/M5_데이터품질.md) | 태그 stale 해소 + Supabase 조사 |
 | 회고 | [일일 회고 260409](260409_daily_retro.html) | 마일스톤 범위 정의 원칙 + 멘토 발표 + 나선형 학습 전환 |
 
 ---
@@ -96,7 +103,10 @@
 
 | 유형 | 파일 | 핵심 내용 |
 |------|------|----------|
-| 로드맵 | [MVP5 로드맵](../progress/260409_MVP5_로드맵.md) | M1~M3 마일스톤, DB 스키마 재설계, 온디맨드 요약 흐름 |
+| 로드맵 | [MVP5 로드맵](mvp5/260409_MVP5_로드맵.md) | M1~M3 마일스톤, DB 스키마 재설계, 온디맨드 요약 흐름 |
+| 서브태스크 | [M1 피드 아키텍처 전환](mvp5/260409_MVP5_M1_피드아키텍처전환.md) | FeedPort 분리, SearchPort·SummarizePort 독립, DB 스키마 재설계 |
+| 서브태스크 | [M2 디테일+온디맨드 요약](mvp5/260409_MVP5_M2_서브태스크.md) | ArticleDetail, SummarizePort 세션 캐시, 웹+iOS 연동 |
+| 서브태스크 | [M3 즐겨찾기+스크랩 목록](mvp5/260409_MVP5_M3_서브태스크.md) | FavoritesPort, /me/favorites CRUD, 웹+iOS 즐겨찾기 UI |
 | 회고 | [일일 회고 260409 후반](260409b_daily_retro.html) | 아키텍처 대전환 · SummarizePort 세션 캐시 · 나선형 개념 정리 |
 
 ---
@@ -107,11 +117,11 @@
 
 | 유형 | 파일 | 핵심 내용 |
 |------|------|----------|
-| 로드맵 | [MVP6 로드맵](../progress/260410_MVP6_로드맵.md) | M1~M4 마일스톤, 실행 순서 근거, UX 확정 사항 |
-| 서브태스크 | [M1 썸네일](../progress/260410_MVP6_M1_썸네일.md) | og:image 크롤링, favorites image_url, 중복 제거 |
-| 서브태스크 | [M2 피드성능](../progress/260410_MVP6_M2_서브태스크.md) | join_all SearchJob 패턴, stale-while-revalidate, progress bar |
-| 서브태스크 | [M3 태그탭](../progress/260410_MVP6_M3_서브태스크.md) | tag_id 쿼리 파라미터, tagCache Map/Dict, 프리패치, 클라이언트 필터 제거 |
-| 서브태스크 | [M4 마크다운](../progress/260410_MVP6_M4_서브태스크.md) | exa highlights, marked+prose, AttributedString, 토큰 자동갱신 BF |
+| 로드맵 | [MVP6 로드맵](mvp6/260410_MVP6_로드맵.md) | M1~M4 마일스톤, 실행 순서 근거, UX 확정 사항 |
+| 서브태스크 | [M1 썸네일](mvp6/260410_MVP6_M1_썸네일.md) | og:image 크롤링, favorites image_url, 중복 제거 |
+| 서브태스크 | [M2 피드성능](mvp6/260410_MVP6_M2_서브태스크.md) | join_all SearchJob 패턴, stale-while-revalidate, progress bar |
+| 서브태스크 | [M3 태그탭](mvp6/260410_MVP6_M3_서브태스크.md) | tag_id 쿼리 파라미터, tagCache Map/Dict, 프리패치, 클라이언트 필터 제거 |
+| 서브태스크 | [M4 마크다운](mvp6/260410_MVP6_M4_서브태스크.md) | exa highlights, marked+prose, AttributedString, 토큰 자동갱신 BF |
 | 회고 | [일일 회고 260410~11](260410_daily_retro.html) | og:image 크롤링 · join_all lifetime · tagCache 전략 · xcconfig 우회 |
 
 ---
@@ -157,7 +167,10 @@
 | 전체 흐름도 + 개념 정리 (최신) | `260408_개념정리.md` |
 | 인증·토큰·저장소 흐름 도식화 (시각 자료) | `260409_개념정리_도식화.html` |
 | MVP3 마일스톤별 흐름 스냅샷 | `mvp3/260408_흐름도.md` |
-| MVP5 DB 스키마 + 온디맨드 요약 흐름 | `../progress/260409_MVP5_로드맵.md` |
-| MVP6 M4 마크다운 렌더러 선택 근거 | `../progress/260410_MVP6_M4_서브태스크.md` |
-| 웹 토큰 만료 자동갱신 구조 (httpOnly 쿠키 우회) | `../progress/260410_MVP6_M4_서브태스크.md` (BF-1) |
-| iOS xcconfig 자동 생성 + DB 에러 경고 | `../progress/260410_MVP6_M4_서브태스크.md` (BF-3) |
+| MVP4 부채 해소 전체 현황 | `mvp4/_roadmap.md` |
+| MVP4 UITest + coverage 인프라 | `mvp4/M4_iOS_테스트인프라.md` |
+| MVP5 DB 스키마 + 온디맨드 요약 흐름 | `mvp5/260409_MVP5_로드맵.md` |
+| MVP5 FeedPort·SearchPort·SummarizePort 분리 | `mvp5/260409_MVP5_M1_피드아키텍처전환.md` |
+| MVP6 M4 마크다운 렌더러 선택 근거 | `mvp6/260410_MVP6_M4_서브태스크.md` |
+| 웹 토큰 만료 자동갱신 구조 (httpOnly 쿠키 우회) | `mvp6/260410_MVP6_M4_서브태스크.md` (BF-1) |
+| iOS xcconfig 자동 생성 + DB 에러 경고 | `mvp6/260410_MVP6_M4_서브태스크.md` (BF-3) |
