@@ -225,6 +225,14 @@ run_ios() {
     log_info "Tuist 프로젝트 재생성 중..."
     (cd "$PROJECT_ROOT/ios/Frank" && ~/.tuist/Versions/4.31.0/tuist generate --no-open)
 
+    # tuist generate 시마다 DerivedData 해시가 달라져 stale 디렉토리가 누적된다.
+    # 최신 1개만 남기고 나머지를 삭제해 SourceKit-LSP 인덱싱 오탐을 방지한다.
+    local derived_data_dir="$HOME/Library/Developer/Xcode/DerivedData"
+    ls -dt "$derived_data_dir"/Frank-* 2>/dev/null | tail -n +2 | while IFS= read -r d; do
+        log_info "  stale DerivedData 삭제: $(basename "$d")"
+        rm -rf "$d"
+    done
+
     # 이미 부팅된 동일 이름 시뮬레이터 UDID 우선 사용
     # (같은 이름이 여러 개 있을 때 잘못된 기기를 선택하는 문제 방지)
     local sim_udid=""
@@ -277,6 +285,7 @@ for runtime, devices in data.get('devices', {}).items():
     xcrun simctl install "$sim_udid" \
         "$IOS_DERIVED_DATA/Build/Products/Debug-iphonesimulator/Frank.app"
     xcrun simctl launch "$sim_udid" "$IOS_BUNDLE_ID"
+    open -a Simulator
 
     log_info "Frank 앱 실행 완료 ($IOS_SIMULATOR_NAME / $sim_udid)"
 }
@@ -354,8 +363,17 @@ run_front_native() {
     FRONT_PORT=5173
 
     (cd "$PROJECT_ROOT/web" && npm run dev) &
-    sleep 2
-    log_info "웹 프론트 시작 중 → http://localhost:5173"
+    log_info "웹 프론트 시작 대기 중..."
+    local i
+    for i in $(seq 1 20); do
+        if curl -sf "http://localhost:5173" > /dev/null 2>&1; then
+            log_info "웹 프론트 준비 완료 → http://localhost:5173"
+            open "http://localhost:5173"
+            return 0
+        fi
+        sleep 1
+    done
+    log_warn "웹 프론트 헬스체크 타임아웃. 브라우저를 수동으로 열어주세요: http://localhost:5173"
     open "http://localhost:5173"
 }
 
