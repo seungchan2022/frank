@@ -1,5 +1,6 @@
-// feed/article/+page.svelte 테스트 (MVP5 M2)
+// feed/article/+page.svelte 테스트 (MVP5 M2 + MVP7 M3)
 // SummaryPhase 전환, 캐시 히트/미스, API 성공/실패 검증.
+// MVP7 M3: 연관 기사 섹션 렌더링 검증 추가.
 
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { render, screen, cleanup, fireEvent, waitFor } from '@testing-library/svelte';
@@ -34,6 +35,10 @@ vi.mock('$lib/stores/summaryCache.svelte', () => ({
 	}
 }));
 
+// ── fetch mock (연관 기사 API) ────────────────────────────────────────────
+const mockFetch = vi.fn<() => Promise<Response>>();
+vi.stubGlobal('fetch', mockFetch);
+
 import ArticlePage from '../+page.svelte';
 
 const sampleFeedItem: FeedItem = {
@@ -49,10 +54,26 @@ function makeProps(feedItem: FeedItem = sampleFeedItem) {
 	return { data: { fallbackItem: feedItem } };
 }
 
+const sampleRelatedItems: FeedItem[] = [
+	{
+		title: '연관 기사 A',
+		url: 'https://example.com/related-a',
+		snippet: '연관 내용 A',
+		source: 'RelatedSource',
+		published_at: null,
+		tag_id: null
+	}
+];
+
 beforeEach(() => {
 	vi.clearAllMocks();
 	mockCacheGet.mockReturnValue(undefined);
 	mockSummarize.mockResolvedValue({ summary: 'Mock 요약', insight: 'Mock 인사이트' });
+	// 기본: 연관 기사 빈 배열 반환
+	mockFetch.mockResolvedValue({
+		ok: true,
+		json: async () => []
+	} as Response);
 });
 
 afterEach(() => {
@@ -213,5 +234,63 @@ describe('feed/article/+page.svelte — MVP5 M2', () => {
 
 		// done 상태 후 handleSummarize 재호출 시 추가 API 호출 없음
 		expect(mockSummarize).toHaveBeenCalledTimes(1);
+	});
+});
+
+// ── MVP7 M3: 연관 기사 섹션 ─────────────────────────────────────────────────
+
+describe('feed/article/+page.svelte — 연관 기사 섹션 (MVP7 M3)', () => {
+	it('연관 기사 로딩 후 목록 렌더링', async () => {
+		mockFetch.mockResolvedValue({
+			ok: true,
+			json: async () => sampleRelatedItems
+		} as Response);
+
+		render(ArticlePage, makeProps());
+
+		await waitFor(() => {
+			expect(screen.getByText('연관 기사 A')).toBeTruthy();
+		});
+	});
+
+	it('연관 기사 섹션 제목 표시', async () => {
+		mockFetch.mockResolvedValue({
+			ok: true,
+			json: async () => sampleRelatedItems
+		} as Response);
+
+		render(ArticlePage, makeProps());
+
+		await waitFor(() => {
+			expect(screen.getByText('연관 기사')).toBeTruthy();
+		});
+	});
+
+	it('빈 결과 시 연관 기사 섹션 미표시', async () => {
+		mockFetch.mockResolvedValue({
+			ok: true,
+			json: async () => []
+		} as Response);
+
+		render(ArticlePage, makeProps());
+
+		// 충분히 기다린 후에도 "연관 기사" 섹션 없어야 함
+		await waitFor(() => {
+			expect(screen.queryByText('연관 기사')).toBeNull();
+		});
+	});
+
+	it('API 에러 시 섹션 미표시', async () => {
+		mockFetch.mockResolvedValue({
+			ok: false,
+			status: 500,
+			json: async () => ({ error: '서버 오류' })
+		} as Response);
+
+		render(ArticlePage, makeProps());
+
+		await waitFor(() => {
+			expect(screen.queryByText('연관 기사')).toBeNull();
+		});
 	});
 });
