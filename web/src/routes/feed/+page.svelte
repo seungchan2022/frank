@@ -46,7 +46,10 @@
 		const params = new URLSearchParams({
 			url: item.url,
 			title: item.title,
-			source: item.source
+			source: item.source,
+			...(item.snippet ? { snippet: item.snippet } : {}),
+			...(item.published_at ? { published_at: item.published_at } : {}),
+			...(item.tag_id ? { tag_id: item.tag_id } : {})
 		});
 		const path = `/feed/article?${params.toString()}`;
 		goto(path, { state: { feedItem: JSON.parse(JSON.stringify(item)) } });

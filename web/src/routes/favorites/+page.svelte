@@ -29,7 +29,10 @@
 		const params = new URLSearchParams({
 			url: fav.url,
 			title: fav.title,
-			source: fav.source
+			source: fav.source,
+			...(fav.snippet ? { snippet: fav.snippet } : {}),
+			...(fav.publishedAt ? { published_at: fav.publishedAt } : {}),
+			...(fav.tagId ? { tag_id: fav.tagId } : {})
 		});
 		goto(`/feed/article?${params.toString()}`, {
 			state: {
