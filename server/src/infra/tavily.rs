@@ -5,12 +5,9 @@ use serde::Deserialize;
 use crate::domain::error::AppError;
 use crate::domain::models::SearchResult;
 use crate::domain::ports::SearchPort;
-use crate::infra::http_utils::{RetryConfig, read_body_limited, send_with_retry};
-
-/// og:image 크롤링에 읽을 최대 바이트 (64KB — <head>는 항상 이 안에 있음)
-const OG_IMAGE_READ_LIMIT: usize = 64 * 1024;
-/// og:image 크롤링 타임아웃 (초)
-const OG_IMAGE_TIMEOUT_SECS: u64 = 5;
+use crate::infra::http_utils::{
+    OG_IMAGE_TIMEOUT_SECS, RetryConfig, fetch_og_image, read_body_limited, send_with_retry,
+};
 
 #[derive(Debug, Clone)]
 pub struct TavilyAdapter {
@@ -138,78 +135,10 @@ impl SearchPort for TavilyAdapter {
     }
 }
 
-// MARK: - og:image 크롤링
-
-/// 기사 URL에서 og:image 메타태그를 추출한다.
-/// 실패(타임아웃, 봇 차단, 파싱 불가)하면 None 반환 — 피드 로딩에 영향 없음.
-async fn fetch_og_image(client: &Client, article_url: &str) -> Option<String> {
-    let resp = client.get(article_url).send().await.ok()?;
-    if !resp.status().is_success() {
-        return None;
-    }
-
-    // 최대 64KB만 읽어 파싱 (og:image는 항상 <head> 안에 있음)
-    let bytes = resp.bytes().await.ok()?;
-    let html = std::str::from_utf8(&bytes[..bytes.len().min(OG_IMAGE_READ_LIMIT)]).ok()?;
-
-    extract_og_image(html)
-}
-
-/// HTML에서 og:image content 값을 추출한다.
-/// `<meta property="og:image" content="URL">` 및
-/// `<meta content="URL" property="og:image">` 두 순서를 모두 처리한다.
-fn extract_og_image(html: &str) -> Option<String> {
-    let lower = html.to_lowercase();
-    let mut search_from = 0;
-
-    while let Some(rel_pos) = lower[search_from..].find("<meta") {
-        let tag_start = search_from + rel_pos;
-        let tag_end = lower[tag_start..]
-            .find('>')
-            .map(|p| tag_start + p + 1)
-            .unwrap_or(lower.len());
-
-        let tag = &html[tag_start..tag_end];
-        let tag_lower = &lower[tag_start..tag_end];
-
-        if tag_lower.contains("og:image")
-            && let Some(url) = extract_attr(tag, "content")
-            && url.starts_with("http")
-        {
-            return Some(url);
-        }
-
-        search_from = tag_end;
-        if search_from >= lower.len() {
-            break;
-        }
-    }
-
-    None
-}
-
-/// HTML 태그에서 지정한 속성값을 추출한다. 큰따옴표·작은따옴표 모두 처리.
-fn extract_attr(tag: &str, attr: &str) -> Option<String> {
-    let lower = tag.to_lowercase();
-    let search = format!("{attr}=");
-    let pos = lower.find(&search)?;
-    let after = &tag[pos + search.len()..];
-
-    if let Some(rest) = after.strip_prefix('"') {
-        let end = rest.find('"')?;
-        Some(rest[..end].to_string())
-    } else if let Some(rest) = after.strip_prefix('\'') {
-        let end = rest.find('\'')?;
-        Some(rest[..end].to_string())
-    } else {
-        let end = after.find(|c: char| c.is_whitespace() || c == '>' || c == '/')?;
-        Some(after[..end].to_string())
-    }
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::infra::http_utils::extract_og_image;
     use wiremock::matchers::{method, path};
     use wiremock::{Mock, MockServer, ResponseTemplate};
 

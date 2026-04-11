@@ -1,14 +1,19 @@
+use futures::future::join_all;
 use reqwest::Client;
 use serde::Deserialize;
 
 use crate::domain::error::AppError;
 use crate::domain::models::SearchResult;
 use crate::domain::ports::SearchPort;
-use crate::infra::http_utils::{RetryConfig, read_body_limited, send_with_retry};
+use crate::infra::http_utils::{
+    OG_IMAGE_TIMEOUT_SECS, RetryConfig, fetch_og_image, read_body_limited, send_with_retry,
+};
 
 #[derive(Debug, Clone)]
 pub struct ExaAdapter {
     client: Client,
+    /// og:image 크롤링 전용 클라이언트 (짧은 타임아웃)
+    crawl_client: Client,
     api_key: String,
     base_url: String,
 }
@@ -38,6 +43,11 @@ impl ExaAdapter {
                 .timeout(std::time::Duration::from_secs(30))
                 .build()
                 .expect("Failed to build HTTP client"),
+            crawl_client: Client::builder()
+                .timeout(std::time::Duration::from_secs(OG_IMAGE_TIMEOUT_SECS))
+                .user_agent("Mozilla/5.0 (compatible; FrankBot/1.0)")
+                .build()
+                .expect("Failed to build crawl client"),
             api_key: api_key.to_string(),
             base_url: base_url.to_string(),
         }
@@ -101,28 +111,35 @@ impl SearchPort for ExaAdapter {
             let data: ExaResponse = serde_json::from_str(&body)
                 .map_err(|e| AppError::Internal(format!("Exa parse failed: {e}")))?;
 
+            // 각 기사 URL에서 og:image 병렬 크롤링
+            let crawl_futures: Vec<_> = data
+                .results
+                .iter()
+                .map(|r| fetch_og_image(&self.crawl_client, &r.url))
+                .collect();
+            let image_urls: Vec<Option<String>> = join_all(crawl_futures).await;
+
             Ok(data
                 .results
                 .into_iter()
-                .map(|r| SearchResult {
+                .zip(image_urls)
+                .map(|(r, image_url)| SearchResult {
                     title: r.title.unwrap_or_default(),
                     url: r.url,
-                    snippet: r.highlights
-                        .and_then(|h| h.into_iter().next())
-                        .map(|s| {
-                            // 마크다운 헤더(#) 제거 후 공백 정리, 300자 제한
-                            let cleaned = s
-                                .lines()
-                                .filter(|l| !l.trim_start().starts_with('#'))
-                                .collect::<Vec<_>>()
-                                .join(" ")
-                                .split_whitespace()
-                                .collect::<Vec<_>>()
-                                .join(" ");
-                            cleaned.chars().take(300).collect::<String>()
-                        }),
+                    snippet: r.highlights.and_then(|h| h.into_iter().next()).map(|s| {
+                        // 마크다운 헤더(#) 제거 후 공백 정리, 300자 제한
+                        let cleaned = s
+                            .lines()
+                            .filter(|l| !l.trim_start().starts_with('#'))
+                            .collect::<Vec<_>>()
+                            .join(" ")
+                            .split_whitespace()
+                            .collect::<Vec<_>>()
+                            .join(" ");
+                        cleaned.chars().take(300).collect::<String>()
+                    }),
                     published_at: r.published_date,
-                    image_url: None, // Exa API는 image_url 미제공
+                    image_url,
                 })
                 .collect())
         })
@@ -259,5 +276,76 @@ mod tests {
         assert_eq!(results[0].url, "https://a.com");
         assert_eq!(results[0].snippet, Some("snippet 1".to_string()));
         assert_eq!(results[0].published_at, Some("2026-01-01".to_string()));
+    }
+
+    #[tokio::test]
+    async fn search_results_include_og_image() {
+        let mock_server = MockServer::start().await;
+
+        // Exa 검색 응답 — mock_server URL 반환
+        Mock::given(method("POST"))
+            .and(path("/search"))
+            .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({
+                "results": [
+                    {
+                        "title": "Article 1",
+                        "url": format!("{}/article1", mock_server.uri()),
+                        "highlights": ["snippet 1"],
+                        "publishedDate": "2026-01-01"
+                    }
+                ]
+            })))
+            .mount(&mock_server)
+            .await;
+
+        // article1 페이지 — og:image 포함
+        Mock::given(method("GET"))
+            .and(path("/article1"))
+            .respond_with(ResponseTemplate::new(200).set_body_string(
+                r#"<html><head><meta property="og:image" content="https://cdn.example.com/thumb.jpg" /></head></html>"#,
+            ))
+            .mount(&mock_server)
+            .await;
+
+        let adapter = ExaAdapter::with_base_url("test-key", &mock_server.uri());
+        let results = adapter.search("test", 5).await.unwrap();
+
+        assert_eq!(results.len(), 1);
+        assert_eq!(
+            results[0].image_url,
+            Some("https://cdn.example.com/thumb.jpg".to_string())
+        );
+    }
+
+    #[tokio::test]
+    async fn og_image_none_when_crawl_fails() {
+        let mock_server = MockServer::start().await;
+
+        Mock::given(method("POST"))
+            .and(path("/search"))
+            .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({
+                "results": [
+                    {
+                        "title": "Blocked",
+                        "url": format!("{}/blocked", mock_server.uri()),
+                        "highlights": ["snippet"],
+                        "publishedDate": null
+                    }
+                ]
+            })))
+            .mount(&mock_server)
+            .await;
+
+        // 크롤링 차단 (403)
+        Mock::given(method("GET"))
+            .and(path("/blocked"))
+            .respond_with(ResponseTemplate::new(403))
+            .mount(&mock_server)
+            .await;
+
+        let adapter = ExaAdapter::with_base_url("test-key", &mock_server.uri());
+        let results = adapter.search("test", 5).await.unwrap();
+
+        assert_eq!(results[0].image_url, None);
     }
 }

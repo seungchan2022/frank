@@ -1,8 +1,80 @@
-use reqwest::{RequestBuilder, Response, StatusCode};
+use reqwest::{Client, RequestBuilder, Response, StatusCode};
 use std::future::Future;
 use std::time::Duration;
 
 use crate::domain::error::AppError;
+
+/// og:image 크롤링에 읽을 최대 바이트 (64KB — <head>는 항상 이 안에 있음)
+pub const OG_IMAGE_READ_LIMIT: usize = 64 * 1024;
+/// og:image 크롤링 타임아웃 (초)
+pub const OG_IMAGE_TIMEOUT_SECS: u64 = 5;
+
+/// 기사 URL에서 og:image 메타태그를 추출한다.
+/// 실패(타임아웃, 봇 차단, 파싱 불가)하면 None 반환 — 피드 로딩에 영향 없음.
+pub async fn fetch_og_image(client: &Client, article_url: &str) -> Option<String> {
+    let resp = client.get(article_url).send().await.ok()?;
+    if !resp.status().is_success() {
+        return None;
+    }
+
+    // 최대 64KB만 읽어 파싱 (og:image는 항상 <head> 안에 있음)
+    let bytes = resp.bytes().await.ok()?;
+    let html = std::str::from_utf8(&bytes[..bytes.len().min(OG_IMAGE_READ_LIMIT)]).ok()?;
+
+    extract_og_image(html)
+}
+
+/// HTML에서 og:image content 값을 추출한다.
+/// `<meta property="og:image" content="URL">` 및
+/// `<meta content="URL" property="og:image">` 두 순서를 모두 처리한다.
+pub fn extract_og_image(html: &str) -> Option<String> {
+    let lower = html.to_lowercase();
+    let mut search_from = 0;
+
+    while let Some(rel_pos) = lower[search_from..].find("<meta") {
+        let tag_start = search_from + rel_pos;
+        let tag_end = lower[tag_start..]
+            .find('>')
+            .map(|p| tag_start + p + 1)
+            .unwrap_or(lower.len());
+
+        let tag = &html[tag_start..tag_end];
+        let tag_lower = &lower[tag_start..tag_end];
+
+        if tag_lower.contains("og:image")
+            && let Some(url) = extract_attr(tag, "content")
+            && url.starts_with("http")
+        {
+            return Some(url);
+        }
+
+        search_from = tag_end;
+        if search_from >= lower.len() {
+            break;
+        }
+    }
+
+    None
+}
+
+/// HTML 태그에서 지정한 속성값을 추출한다. 큰따옴표·작은따옴표 모두 처리.
+pub fn extract_attr(tag: &str, attr: &str) -> Option<String> {
+    let lower = tag.to_lowercase();
+    let search = format!("{attr}=");
+    let pos = lower.find(&search)?;
+    let after = &tag[pos + search.len()..];
+
+    if let Some(rest) = after.strip_prefix('"') {
+        let end = rest.find('"')?;
+        Some(rest[..end].to_string())
+    } else if let Some(rest) = after.strip_prefix('\'') {
+        let end = rest.find('\'')?;
+        Some(rest[..end].to_string())
+    } else {
+        let end = after.find(|c: char| c.is_whitespace() || c == '>' || c == '/')?;
+        Some(after[..end].to_string())
+    }
+}
 
 /// HTTP retry + size-limit 설정
 #[derive(Debug, Clone)]
@@ -555,5 +627,67 @@ mod tests {
 
         assert!(result.is_err());
         assert!(result.unwrap_err().to_string().contains("too large"));
+    }
+
+    // MARK: - og:image 파싱 단위 테스트
+
+    #[test]
+    fn og_image_standard_order() {
+        let html =
+            r#"<head><meta property="og:image" content="https://example.com/img.jpg" /></head>"#;
+        assert_eq!(
+            extract_og_image(html),
+            Some("https://example.com/img.jpg".to_string())
+        );
+    }
+
+    #[test]
+    fn og_image_reversed_attr_order() {
+        let html =
+            r#"<head><meta content="https://example.com/img.jpg" property="og:image" /></head>"#;
+        assert_eq!(
+            extract_og_image(html),
+            Some("https://example.com/img.jpg".to_string())
+        );
+    }
+
+    #[test]
+    fn og_image_not_present() {
+        let html = r#"<head><meta property="og:title" content="Hello" /></head>"#;
+        assert_eq!(extract_og_image(html), None);
+    }
+
+    #[test]
+    fn og_image_relative_url_ignored() {
+        let html = r#"<head><meta property="og:image" content="/img/thumb.jpg" /></head>"#;
+        assert_eq!(extract_og_image(html), None);
+    }
+
+    #[tokio::test]
+    async fn fetch_og_image_success() {
+        let mock_server = MockServer::start().await;
+        let client = Client::builder()
+            .timeout(std::time::Duration::from_secs(5))
+            .build()
+            .unwrap();
+
+        Mock::given(method("GET"))
+            .and(path("/article"))
+            .respond_with(ResponseTemplate::new(200).set_body_string(
+                r#"<html><head><meta property="og:image" content="https://cdn.example.com/img.jpg" /></head></html>"#,
+            ))
+            .mount(&mock_server)
+            .await;
+
+        let url = format!("{}/article", mock_server.uri());
+        let result = fetch_og_image(&client, &url).await;
+        assert_eq!(result, Some("https://cdn.example.com/img.jpg".to_string()));
+    }
+
+    #[tokio::test]
+    async fn fetch_og_image_returns_none_on_error() {
+        let client = Client::new();
+        let result = fetch_og_image(&client, "http://127.0.0.1:1/article").await;
+        assert_eq!(result, None);
     }
 }
