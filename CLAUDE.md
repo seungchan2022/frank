@@ -53,6 +53,7 @@ scripts/deploy.sh --target=api --tunnel   # API + Cloudflare 터널
 | iOS | `ios/Frank/` | Swift Testing | **90% 이상** |
 
 - 새 기능 구현 시 반드시 테스트 먼저 작성 (TDD)
+- **TDD 순서 엄수**: 실패 테스트 작성 → 구현 → 통과 확인. 구현 후 테스트 추가 금지
 - 커버리지 90% 미만으로 떨어뜨리는 커밋 금지
 - 인프라 초기화 코드는 통합 테스트 영역으로 제외 허용
 
@@ -110,6 +111,10 @@ frank/
 ## 커밋/브랜치 규칙
 
 Git hooks + settings.json deny로 기계적 강제됨. 상세: `rules/sub/git.md` 참조.
+
+- **feature 브랜치 필수**: 모든 작업은 `feature/작업명` 브랜치에서 시작. main 직접 커밋은 hook이 차단
+- **커밋 본문 필수**: 제목 한 줄로 끝내지 않는다. 변경 이유·범위를 3~4줄로 작성
+- **커밋 단위**: feat/fix/test/docs/chore 작업 단위별 분리. 여러 목적의 변경을 하나로 묶지 않음
 
 ## 워크플로우
 
