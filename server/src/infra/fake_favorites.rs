@@ -120,6 +120,7 @@ impl FavoritesPort for FakeFavoritesAdapter {
                 liked_at: Some(now),
                 created_at: Some(now),
                 image_url: item.image_url.clone(),
+                concepts: None,
             };
 
             guard.1.push(key.clone());
@@ -190,6 +191,7 @@ mod tests {
             liked_at: None,
             created_at: None,
             image_url: None,
+            concepts: None,
         }
     }
 

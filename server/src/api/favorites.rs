@@ -60,6 +60,7 @@ pub async fn add_favorite<D: DbPort>(
         liked_at: None,
         created_at: None,
         image_url: body.image_url,
+        concepts: None,
     };
 
     let favorite = state.favorites.add_favorite(user.id, &item).await?;

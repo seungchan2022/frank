@@ -1,14 +1,19 @@
 import Foundation
 
 /// Rust API 서버 POST /api/me/summarize 호출 어댑터.
-/// 서버 측 30초 타임아웃 포함 — 클라이언트는 35초 여유 설정.
+///
+/// 요약 요청은 서버 측에서 크롤링 + LLM 처리가 포함되어 오래 걸릴 수 있어,
+/// 타임아웃을 기본 요청(30초)보다 훨씬 긴 120초로 설정한다.
+/// 피드/즐겨찾기 등 일반 요청과 분리해 URLSession을 별도 주입한다.
 struct APISummarizeAdapter: SummarizePort {
     private let auth: any AuthPort
     private let serverURL: URL
+    private let session: URLSession
 
-    init(auth: any AuthPort, serverConfig: ServerConfig) {
+    init(auth: any AuthPort, serverConfig: ServerConfig, session: URLSession = .shared) {
         self.auth = auth
         self.serverURL = serverConfig.url
+        self.session = session
     }
 
     func summarize(url: String, title: String) async throws -> SummaryResult {
@@ -22,10 +27,11 @@ struct APISummarizeAdapter: SummarizePort {
         request.httpMethod = "POST"
         request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
-        request.timeoutInterval = 35
+        // MVP7 M1: 요약 요청 타임아웃 70초 (서버 60초 + 10초 여유 — 서버 정상 에러 응답 보장)
+        request.timeoutInterval = 70
         request.httpBody = try JSONEncoder().encode(SummarizeRequestBody(url: url, title: title))
 
-        let (data, response) = try await URLSession.shared.data(for: request)
+        let (data, response) = try await session.data(for: request)
 
         guard let http = response as? HTTPURLResponse else {
             throw APISummarizeError.invalidResponse

@@ -51,6 +51,7 @@
 		6B7AC349A30C98AC28576721 /* HTTPTypes.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 78ACB19B20D01B71F42D1516 /* HTTPTypes.framework */; };
 		6FBF44F30EDFCD8403D8AAA3 /* MockSummarizePort.swift in Sources */ = {isa = PBXBuildFile; fileRef = 660460EA8592D4950DAA75C5 /* MockSummarizePort.swift */; };
 		7314065C4F6F2EF7ACAB6CA8 /* MockArticleAdapter.swift in Sources */ = {isa = PBXBuildFile; fileRef = 446040A4F0FA3C5A5500E67C /* MockArticleAdapter.swift */; };
+		733F018EF0344CE55D718426 /* APISummarizeAdapterTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = DB009F3A4E7FD109B1FDA442 /* APISummarizeAdapterTests.swift */; };
 		742297D17FE783F794113FDF /* MockArticlePort.swift in Sources */ = {isa = PBXBuildFile; fileRef = FF2F2E636DB425812FD112C1 /* MockArticlePort.swift */; };
 		751E1260C333946B79278260 /* Router.swift in Sources */ = {isa = PBXBuildFile; fileRef = FD6338E8603D4CDCE1DA2F9C /* Router.swift */; };
 		75C486C6844B432E399C9AF3 /* MockCollectPort.swift in Sources */ = {isa = PBXBuildFile; fileRef = B6E93B93AD191011384FF9EB /* MockCollectPort.swift */; };
@@ -269,6 +270,7 @@
 		D83742F9EF70BD08019DDD1E /* Crypto.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; includeInIndex = 0; path = Crypto.framework; sourceTree = BUILT_PRODUCTS_DIR; };
 		DA9F24C8B9D930AAAAC31C39 /* FrankUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = FrankUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		DAA4C61DF400FCC984E0E407 /* ArticleCardView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ArticleCardView.swift; sourceTree = "<group>"; };
+		DB009F3A4E7FD109B1FDA442 /* APISummarizeAdapterTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = APISummarizeAdapterTests.swift; sourceTree = "<group>"; };
 		E2C4689C15CA8A3617A3DECF /* MockAuthAdapter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MockAuthAdapter.swift; sourceTree = "<group>"; };
 		E3F4D1213640C861090521BE /* Profile.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Profile.swift; sourceTree = "<group>"; };
 		E6D8F122DE384BD754AD57FF /* SummarizePort.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SummarizePort.swift; sourceTree = "<group>"; };
@@ -370,6 +372,7 @@
 			isa = PBXGroup;
 			children = (
 				68C8BDCCAAAFEFCDBC52F7E7 /* APIArticleAdapterTests.swift */,
+				DB009F3A4E7FD109B1FDA442 /* APISummarizeAdapterTests.swift */,
 				57AF27B9006A98A1914B2CB8 /* APITagAdapterTests.swift */,
 				B705CC844472B4768A163478 /* ProfileAPITests.swift */,
 			);
@@ -859,6 +862,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				A64392E4FB9F436A5F025192 /* APIArticleAdapterTests.swift in Sources */,
+				733F018EF0344CE55D718426 /* APISummarizeAdapterTests.swift in Sources */,
 				955FFDECCD1BB94A50671F52 /* APITagAdapterTests.swift in Sources */,
 				B0F8289F3E132CE277D4E8AC /* ProfileAPITests.swift in Sources */,
 				042155DC53831EC7FC61BF5D /* ArticleCardViewTests.swift in Sources */,

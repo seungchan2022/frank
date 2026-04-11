@@ -28,10 +28,11 @@ impl FakeCrawlAdapter {
 
     /// tokio::time::sleep으로 지연하는 어댑터.
     /// `tokio::time::pause()` + `advance()` 타임아웃 테스트용.
+    /// MVP7 M1: SUMMARIZE_TIMEOUT_SECS(60)보다 충분히 길게 설정 (120s).
     pub fn sleeping() -> Self {
         Self {
             should_fail: false,
-            sleep_secs: Some(60),
+            sleep_secs: Some(120),
         }
     }
 }

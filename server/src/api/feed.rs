@@ -620,9 +620,7 @@ mod tests {
         let server = TestServer::new(app);
 
         // tag_id=tag_a.id 로 요청 → tag_a 결과만
-        let resp = server
-            .get(&format!("/me/feed?tag_id={}", tag_a.id))
-            .await;
+        let resp = server.get(&format!("/me/feed?tag_id={}", tag_a.id)).await;
         resp.assert_status_ok();
         let items: Vec<FeedItemResponse> = resp.json();
         assert_eq!(items.len(), 1, "tag_id 필터 시 해당 태그 결과만 반환");

@@ -214,9 +214,9 @@ mod tests {
             }
         });
 
-        // 30초 타임아웃 초과 → 핸들러가 AppError::Timeout → 504 반환
+        // MVP7 M1: 60초 타임아웃 초과 → 핸들러가 AppError::Timeout → 504 반환
         tokio::task::yield_now().await;
-        tokio::time::advance(Duration::from_secs(31)).await;
+        tokio::time::advance(Duration::from_secs(61)).await;
 
         let resp = task.await.unwrap();
         resp.assert_status(axum::http::StatusCode::GATEWAY_TIMEOUT);

@@ -8,12 +8,13 @@ use crate::domain::error::AppError;
 use crate::domain::models::LlmResponse;
 use crate::domain::ports::{CrawlPort, FavoritesPort, LlmPort};
 
-const SUMMARIZE_TIMEOUT_SECS: u64 = 30;
+/// MVP7 M1: 60초로 증가 (OpenRouter HTTP timeout 60초와 일치)
+const SUMMARIZE_TIMEOUT_SECS: u64 = 60;
 
 /// URL 크롤링 + LLM 요약 오케스트레이션.
 ///
 /// - SSRF 방어: url_jail::validate로 private IP / loopback / cloud metadata 차단
-/// - 타임아웃: crawl + LLM 전체를 30초로 제한 → AppError::Timeout
+/// - 타임아웃: crawl + LLM 전체를 60초로 제한 → AppError::Timeout
 /// - favorites 업데이트: url이 favorites에 없어도 에러 없음 (0행 업데이트)
 /// - favorites 업데이트 실패 시: warn 로그만 남기고 요약 결과 정상 반환
 pub async fn summarize<C, L, F>(
@@ -34,7 +35,7 @@ where
         .await
         .map_err(|e| AppError::BadRequest(format!("URL not allowed: {e}")))?;
 
-    // crawl + LLM 전체를 30초 타임아웃으로 감싸기
+    // crawl + LLM 전체를 60초 타임아웃으로 감싸기
     let result = timeout(Duration::from_secs(SUMMARIZE_TIMEOUT_SECS), async {
         let content = crawl
             .scrape(url)
@@ -49,7 +50,7 @@ where
         Ok::<LlmResponse, AppError>(response)
     })
     .await
-    .map_err(|_| AppError::Timeout("요약 요청이 시간을 초과했습니다 (30초)".to_string()))??;
+    .map_err(|_| AppError::Timeout("요약 요청이 시간을 초과했습니다 (60초)".to_string()))??;
 
     // favorites DB 업데이트 (실패해도 사용자 응답에 영향 없음)
     if let Err(e) = favorites
@@ -227,8 +228,8 @@ mod tests {
             }
         });
 
-        // 30초 타임아웃 초과
-        tokio::time::advance(Duration::from_secs(31)).await;
+        // MVP7 M1: 60초 타임아웃 초과
+        tokio::time::advance(Duration::from_secs(61)).await;
 
         let result = task.await.unwrap();
         assert!(matches!(result, Err(AppError::Timeout(_))));
