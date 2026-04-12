@@ -14,7 +14,8 @@ struct AppDependenciesTests {
             favorites: MockFavoritesPort(),
             likes: MockLikesPort(),
             related: MockRelatedPort(),
-            quiz: MockQuizPort()
+            quiz: MockQuizPort(),
+            wrongAnswer: MockWrongAnswerPort()
         )
 
         #expect(deps.auth is MockAuthPort)
@@ -25,5 +26,6 @@ struct AppDependenciesTests {
         #expect(deps.likes is MockLikesPort)
         #expect(deps.related is MockRelatedPort)
         #expect(deps.quiz is MockQuizPort)
+        #expect(deps.wrongAnswer is MockWrongAnswerPort)
     }
 }

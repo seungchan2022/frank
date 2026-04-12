@@ -33,7 +33,8 @@ final class MockFavoritesPort: FavoritesPort, @unchecked Sendable {
             insight: insight,
             likedAt: now,
             createdAt: now,
-            imageUrl: item.imageUrl?.absoluteString
+            imageUrl: item.imageUrl?.absoluteString,
+            quizCompleted: false
         )
         store[fav.url] = fav
         insertOrder.append(fav.url)
@@ -52,6 +53,15 @@ final class MockFavoritesPort: FavoritesPort, @unchecked Sendable {
         if shouldFail { throw MockFavoritesError.generic }
         // 삽입 역순 (created_at DESC 모사)
         return insertOrder.reversed().compactMap { store[$0] }
+    }
+
+    var markQuizCompletedCallCount = 0
+    var markedQuizUrls: [String] = []
+
+    func markQuizCompleted(url: String) async throws {
+        markQuizCompletedCallCount += 1
+        if shouldFail { throw MockFavoritesError.generic }
+        markedQuizUrls.append(url)
     }
 }
 

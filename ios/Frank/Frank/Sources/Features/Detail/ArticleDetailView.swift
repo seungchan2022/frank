@@ -18,22 +18,26 @@ struct ArticleDetailView: View {
     @State private var favoriteLoading: Bool = false
     @State private var showQuiz = false
     @State private var showSafari = false
-    @State private var summarizeLoadingText = "요약 중…"
-    @State private var quizLoadingText = "퀴즈 생성 중…"
 
     init(
         feedItem: FeedItem,
         summarize: any SummarizePort,
         favoritesFeature: FavoritesFeature,
         likesFeature: LikesFeature,
-        quiz: any QuizPort
+        quiz: any QuizPort,
+        wrongAnswer: any WrongAnswerPort = MockWrongAnswerAdapter(),
+        favorites: any FavoritesPort = MockFavoritesAdapter()
     ) {
         self.feedItem = feedItem
         self.favoritesFeature = favoritesFeature
         self.likesFeature = likesFeature
         self.summarizePort = summarize
         self._feature = State(initialValue: ArticleDetailFeature(feedItem: feedItem, summarize: summarize))
-        self._quizFeature = State(initialValue: QuizFeature(quiz: quiz))
+        self._quizFeature = State(initialValue: QuizFeature(
+            quiz: quiz,
+            wrongAnswer: wrongAnswer,
+            favorites: favorites
+        ))
     }
 
     var body: some View {
@@ -65,6 +69,12 @@ struct ArticleDetailView: View {
                 onClose: {
                     showQuiz = false
                     quizFeature.reset()
+                },
+                onWrongAnswer: { question, userIndex in
+                    quizFeature.saveWrongAnswer(question: question, userIndex: userIndex)
+                },
+                onQuizCompleted: {
+                    quizFeature.markQuizCompleted()
                 }
             )
         }
@@ -172,7 +182,7 @@ extension ArticleDetailView {
         case .idle, .done:
             Button {
                 Task {
-                    await quizFeature.generateQuiz(url: feedItem.url.absoluteString)
+                    await quizFeature.generateQuiz(url: feedItem.url.absoluteString, title: feedItem.title)
                 }
             } label: {
                 HStack {
@@ -185,19 +195,7 @@ extension ArticleDetailView {
             .tint(.indigo)
 
         case .loading:
-            HStack {
-                ProgressView()
-                    .padding(.trailing, 4)
-                Text(quizLoadingText)
-                    .foregroundStyle(.secondary)
-            }
-            .frame(maxWidth: .infinity)
-            .padding(.vertical, 10)
-            .task(id: "quiz-loading") {
-                quizLoadingText = "퀴즈 생성 중…"
-                try? await Task.sleep(for: .seconds(8))
-                quizLoadingText = "마무리 중…"
-            }
+            LoadingTextView(initial: "퀴즈 생성 중…", after: "마무리 중…")
 
         case .failed(let message):
             VStack(spacing: 6) {
@@ -206,7 +204,7 @@ extension ArticleDetailView {
                     .foregroundStyle(.red)
                 Button {
                     Task {
-                        await quizFeature.generateQuiz(url: feedItem.url.absoluteString)
+                        await quizFeature.generateQuiz(url: feedItem.url.absoluteString, title: feedItem.title)
                     }
                 } label: {
                     HStack {
@@ -271,19 +269,7 @@ extension ArticleDetailView {
             .buttonStyle(.borderedProminent)
 
         case .loading:
-            HStack {
-                ProgressView()
-                    .padding(.trailing, 4)
-                Text(summarizeLoadingText)
-                    .foregroundStyle(.secondary)
-            }
-            .frame(maxWidth: .infinity)
-            .padding(.vertical, 10)
-            .task(id: "summarize-loading") {
-                summarizeLoadingText = "요약 중…"
-                try? await Task.sleep(for: .seconds(8))
-                summarizeLoadingText = "마무리 중…"
-            }
+            LoadingTextView(initial: "요약 중…", after: "마무리 중…")
 
         case .done:
             Button {

@@ -17,7 +17,8 @@ struct MockFavoritesAdapter: FavoritesPort {
             insight: insight,
             likedAt: now,
             createdAt: now,
-            imageUrl: item.imageUrl?.absoluteString
+            imageUrl: item.imageUrl?.absoluteString,
+            quizCompleted: false
         )
     }
 
@@ -27,5 +28,9 @@ struct MockFavoritesAdapter: FavoritesPort {
 
     func listFavorites() async throws -> [FavoriteItem] {
         return []
+    }
+
+    func markQuizCompleted(url: String) async throws {
+        // Mock: no-op
     }
 }

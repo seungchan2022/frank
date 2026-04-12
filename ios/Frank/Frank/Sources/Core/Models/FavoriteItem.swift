@@ -19,6 +19,9 @@ struct FavoriteItem: Codable, Identifiable, Equatable, Hashable, Sendable {
     /// MVP6 M1: 썸네일 이미지 URL 문자열 (없으면 nil)
     let imageUrl: String?
 
+    /// MVP8 M3: 퀴즈 완료 여부 (한 번이라도 퀴즈를 풀었으면 true)
+    let quizCompleted: Bool
+
     enum CodingKeys: String, CodingKey {
         case id
         case userId = "user_id"
@@ -33,5 +36,6 @@ struct FavoriteItem: Codable, Identifiable, Equatable, Hashable, Sendable {
         case likedAt = "liked_at"
         case createdAt = "created_at"
         case imageUrl = "image_url"
+        case quizCompleted = "quiz_completed"
     }
 }

@@ -13,6 +13,8 @@ final class AppDependencies {
     let related: any RelatedPort
     /// MVP8 M2: 퀴즈 포트 — ArticleDetailView에 직접 주입 (Mock 기본값 제거 버그 수정)
     let quiz: any QuizPort
+    /// MVP8 M3: 오답 아카이빙 포트
+    let wrongAnswer: any WrongAnswerPort
 
     init(
         auth: any AuthPort,
@@ -22,7 +24,8 @@ final class AppDependencies {
         favorites: any FavoritesPort,
         likes: any LikesPort,
         related: any RelatedPort,
-        quiz: any QuizPort
+        quiz: any QuizPort,
+        wrongAnswer: any WrongAnswerPort
     ) {
         self.auth = auth
         self.tag = tag
@@ -32,6 +35,7 @@ final class AppDependencies {
         self.likes = likes
         self.related = related
         self.quiz = quiz
+        self.wrongAnswer = wrongAnswer
     }
 
     static func live() -> AppDependencies {
@@ -67,7 +71,8 @@ final class AppDependencies {
             favorites: APIFavoritesAdapter(auth: authAdapter, serverConfig: serverConfig),
             likes: APILikesAdapter(auth: authAdapter, serverConfig: serverConfig),
             related: APIRelatedAdapter(auth: authAdapter, serverConfig: serverConfig),
-            quiz: APIQuizAdapter(auth: authAdapter, serverConfig: serverConfig)
+            quiz: APIQuizAdapter(auth: authAdapter, serverConfig: serverConfig),
+            wrongAnswer: APIWrongAnswerAdapter(auth: authAdapter, serverConfig: serverConfig)
         )
     }
 
@@ -89,7 +94,8 @@ final class AppDependencies {
             favorites: MockFavoritesAdapter(),
             likes: MockLikesAdapter(),
             related: MockRelatedAdapter(),
-            quiz: MockQuizAdapter()
+            quiz: MockQuizAdapter(),
+            wrongAnswer: MockWrongAnswerAdapter()
         )
     }
 }

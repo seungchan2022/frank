@@ -7,12 +7,18 @@ import SwiftUI
 struct QuizView: View {
     let questions: [QuizQuestion]
     let onClose: () -> Void
+    /// MVP8 M3: 오답 발생 시 호출 (fire-and-forget)
+    var onWrongAnswer: ((QuizQuestion, Int) -> Void)? = nil
+    /// MVP8 M3: 퀴즈 완료 시 호출 (중복 방지는 내부에서 처리)
+    var onQuizCompleted: (() -> Void)? = nil
 
     @State private var currentIndex = 0
     @State private var selectedIndex: Int? = nil
     @State private var confirmed = false
     @State private var score = 0
     @State private var finished = false
+    /// 퀴즈 완료 마킹 중복 방지 플래그
+    @State private var quizCompletedMarked = false
 
     private var currentQuestion: QuizQuestion? {
         guard currentIndex < questions.count else { return nil }
@@ -79,7 +85,12 @@ struct QuizView: View {
             if selectedIndex != nil && !confirmed {
                 Button("확인") {
                     guard let selected = selectedIndex else { return }
-                    if selected == question.answerIndex { score += 1 }
+                    if selected == question.answerIndex {
+                        score += 1
+                    } else {
+                        // 오답 시 fire-and-forget 저장
+                        onWrongAnswer?(question, selected)
+                    }
                     confirmed = true
                 }
                 .buttonStyle(.borderedProminent)
@@ -214,6 +225,11 @@ struct QuizView: View {
     private func nextQuestion() {
         if currentIndex + 1 >= questions.count {
             finished = true
+            // 퀴즈 완료 시 1회만 마킹
+            if !quizCompletedMarked {
+                quizCompletedMarked = true
+                onQuizCompleted?()
+            }
         } else {
             currentIndex += 1
             selectedIndex = nil

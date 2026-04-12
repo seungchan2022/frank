@@ -5,11 +5,13 @@ import SwiftUI
 /// ArticleDetailView 하단에 삽입.
 /// RelatedFeature를 주입받아 로딩/에러/빈 결과/목록 상태를 표시.
 /// 각 아이템 탭 시 ArticleDetailView로 네비게이션 (지역 인스턴스 사용).
+/// MVP8 M2: quiz 포트 주입 추가 — MockQuizAdapter 하드코딩 제거.
 struct RelatedArticlesView: View {
     let feature: RelatedFeature
     let summarize: any SummarizePort
     let favoritesFeature: FavoritesFeature
     let likesFeature: LikesFeature
+    let quiz: any QuizPort
     /// 연관 기사에서 또 다른 연관 기사 탐색 시 사용할 포트.
     /// 무한 중첩 방지를 위해 MockRelatedAdapter(빈 결과) 전달 가능.
     let nextRelated: any RelatedPort
@@ -75,7 +77,7 @@ struct RelatedArticlesView: View {
                         summarize: summarize,
                         favoritesFeature: favoritesFeature,
                         likesFeature: likesFeature,
-                        quiz: MockQuizAdapter()
+                        quiz: quiz
                     )
                 } label: {
                     ArticleCardView(article: item)

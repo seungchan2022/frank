@@ -100,9 +100,39 @@ struct APIFavoritesAdapter: FavoritesPort {
 
         return try jsonDecoder.decode([FavoriteItem].self, from: data)
     }
+
+    /// MVP8 M3: 퀴즈 완료 마킹 — POST /api/me/favorites/quiz/done
+    func markQuizCompleted(url: String) async throws {
+        let token = try await auth.getAccessToken()
+
+        guard let requestURL = URL(string: "/api/me/favorites/quiz/done", relativeTo: serverURL) else {
+            throw APIFavoritesError.invalidURL
+        }
+
+        var request = URLRequest(url: requestURL)
+        request.httpMethod = "POST"
+        request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        request.httpBody = try JSONEncoder().encode(QuizDoneBody(url: url))
+
+        let (_, response) = try await URLSession.shared.data(for: request)
+
+        guard let http = response as? HTTPURLResponse else {
+            throw APIFavoritesError.invalidResponse
+        }
+
+        guard (200...299).contains(http.statusCode) else {
+            if http.statusCode == 401 { throw APIFavoritesError.unauthorized }
+            throw APIFavoritesError.httpError(statusCode: http.statusCode)
+        }
+    }
 }
 
-// MARK: - Request Body
+// MARK: - Request Bodies
+
+private struct QuizDoneBody: Encodable {
+    let url: String
+}
 
 private struct AddFavoriteBody: Encodable {
     let title: String

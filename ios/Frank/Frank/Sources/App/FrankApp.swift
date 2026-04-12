@@ -103,7 +103,9 @@ struct MainTabView: View {
                 feature: favoritesFeature,
                 summarize: dependencies.summarize,
                 likesFeature: likesFeature,
-                quiz: dependencies.quiz
+                quiz: dependencies.quiz,
+                wrongAnswer: dependencies.wrongAnswer,
+                favorites: dependencies.favorites
             )
             .tabItem {
                 Label("스크랩", systemImage: "bookmark.fill")
@@ -161,8 +163,17 @@ struct FavoritesContainerView: View {
     let summarize: any SummarizePort
     let likesFeature: LikesFeature
     let quiz: any QuizPort
+    let wrongAnswer: any WrongAnswerPort
+    let favorites: any FavoritesPort
 
     var body: some View {
-        FavoritesView(feature: feature, summarize: summarize, likesFeature: likesFeature, quiz: quiz)
+        FavoritesView(
+            feature: feature,
+            summarize: summarize,
+            likesFeature: likesFeature,
+            quiz: quiz,
+            wrongAnswer: wrongAnswer,
+            favorites: favorites
+        )
     }
 }

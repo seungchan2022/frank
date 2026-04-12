@@ -3,94 +3,101 @@ import SwiftUI
 /// MVP5 M3: FavoritesView — 스크랩 목록 탭.
 /// step-5 L 반영: FavoriteItem.summary/insight → SummarySessionCache에 주입
 /// MVP8 M2: RelatedPort 제거, QuizPort 주입 — ArticleDetailView로 퀴즈 포트 전달.
+/// MVP8 M3: WrongAnswerPort + FavoritesPort 주입 — QuizFeature에 전달.
+///           세그먼트 탭 ("기사" / "오답 노트") + quizCompleted 배지 + WrongAnswersFeature 통합.
 struct FavoritesView: View {
     let feature: FavoritesFeature
     let summarize: any SummarizePort
     let likesFeature: LikesFeature
     let quiz: any QuizPort
+    let wrongAnswer: any WrongAnswerPort
+    let favorites: any FavoritesPort
+
+    @State private var selectedTab: FavoritesTab = .articles
+    @State private var wrongAnswersFeature: WrongAnswersFeature
+
+    init(
+        feature: FavoritesFeature,
+        summarize: any SummarizePort,
+        likesFeature: LikesFeature,
+        quiz: any QuizPort,
+        wrongAnswer: any WrongAnswerPort,
+        favorites: any FavoritesPort
+    ) {
+        self.feature = feature
+        self.summarize = summarize
+        self.likesFeature = likesFeature
+        self.quiz = quiz
+        self.wrongAnswer = wrongAnswer
+        self.favorites = favorites
+        self._wrongAnswersFeature = State(initialValue: WrongAnswersFeature(wrongAnswer: wrongAnswer))
+    }
 
     var body: some View {
         NavigationStack {
-            content
-                .navigationTitle("스크랩")
-                .task { await feature.loadFavorites() }
-                .overlay(alignment: .bottom) {
-                    if let errorMsg = feature.operationError {
-                        operationErrorBanner(message: errorMsg)
+            VStack(spacing: 0) {
+                // 세그먼트 컨트롤
+                Picker("탭", selection: $selectedTab) {
+                    ForEach(FavoritesTab.allCases) { tab in
+                        Text(tab.title).tag(tab)
                     }
                 }
+                .pickerStyle(.segmented)
+                .padding(.horizontal, 16)
+                .padding(.vertical, 10)
+
+                Divider()
+
+                // 탭별 콘텐츠
+                switch selectedTab {
+                case .articles:
+                    articlesContent
+                case .wrongAnswers:
+                    wrongAnswersContent
+                }
+            }
+            .navigationTitle("스크랩")
+            .task { await feature.loadFavorites() }
+            .task(id: selectedTab) {
+                if selectedTab == .wrongAnswers {
+                    await wrongAnswersFeature.load()
+                }
+            }
+            .overlay(alignment: .bottom) {
+                if let errorMsg = feature.operationError {
+                    operationErrorBanner(message: errorMsg)
+                }
+            }
+            .overlay(alignment: .bottom) {
+                if let errorMsg = wrongAnswersFeature.deleteError {
+                    operationErrorBanner(message: errorMsg)
+                        .onTapGesture { wrongAnswersFeature.clearDeleteError() }
+                }
+            }
         }
     }
 
+    // MARK: - 기사 탭
+
     @ViewBuilder
-    private var content: some View {
+    private var articlesContent: some View {
         switch feature.phase {
         case .loading:
             loadingView
 
         case .failed(let message):
-            errorView(message: message)
+            errorView(message: message) {
+                Task { await feature.loadFavorites() }
+            }
 
         case .idle, .done:
             if feature.items.isEmpty && feature.hasLoaded {
-                emptyView
+                articlesEmptyView
             } else {
                 itemList
             }
         }
     }
-
-    // MARK: - Loading
-
-    private var loadingView: some View {
-        VStack(spacing: 12) {
-            ProgressView()
-            Text("불러오는 중...")
-                .font(.caption)
-                .foregroundStyle(.secondary)
-        }
-        .frame(maxWidth: .infinity, maxHeight: .infinity)
-    }
-
-    // MARK: - Error
-
-    private func errorView(message: String) -> some View {
-        VStack(spacing: 12) {
-            Image(systemName: "exclamationmark.triangle")
-                .font(.largeTitle)
-                .foregroundStyle(.orange)
-            Text(message)
-                .font(.body)
-                .foregroundStyle(.secondary)
-                .multilineTextAlignment(.center)
-            Button("다시 시도") {
-                Task { await feature.loadFavorites() }
-            }
-            .buttonStyle(.bordered)
-        }
-        .frame(maxWidth: .infinity, maxHeight: .infinity)
-        .padding()
-    }
-
-    // MARK: - Empty
-
-    private var emptyView: some View {
-        VStack(spacing: 12) {
-            Image(systemName: "star")
-                .font(.system(size: 48))
-                .foregroundStyle(.yellow)
-            Text("즐겨찾기한 기사가 없습니다")
-                .font(.headline)
-            Text("피드에서 기사를 읽고 즐겨찾기를 추가해보세요.")
-                .font(.caption)
-                .foregroundStyle(.secondary)
-                .multilineTextAlignment(.center)
-        }
-        .frame(maxWidth: .infinity, maxHeight: .infinity)
-        .padding()
-    }
-
-    // MARK: - List
 
     private var itemList: some View {
         List(feature.items) { item in
@@ -129,15 +136,115 @@ struct FavoritesView: View {
                 summarize: summarize,
                 favoritesFeature: feature,
                 likesFeature: likesFeature,
-                quiz: quiz
+                quiz: quiz,
+                wrongAnswer: wrongAnswer,
+                favorites: favorites
             )
         }
     }
 
+    // MARK: - 오답 노트 탭
+
+    @ViewBuilder
+    private var wrongAnswersContent: some View {
+        switch wrongAnswersFeature.phase {
+        case .idle, .loading:
+            loadingView
+
+        case .failed(let message):
+            errorView(message: message) {
+                Task { await wrongAnswersFeature.load() }
+            }
+
+        case .done:
+            if wrongAnswersFeature.items.isEmpty {
+                wrongAnswersEmptyView
+            } else {
+                wrongAnswersList
+            }
+        }
+    }
+
+    private var wrongAnswersList: some View {
+        List {
+            ForEach(wrongAnswersFeature.items) { item in
+                WrongAnswerRow(item: item)
+                    .swipeActions(edge: .trailing) {
+                        Button(role: .destructive) {
+                            Task { await wrongAnswersFeature.delete(id: item.id) }
+                        } label: {
+                            Label("삭제", systemImage: "trash")
+                        }
+                    }
+            }
+        }
+        .listStyle(.plain)
+    }
+
+    // MARK: - Empty States
+
+    private var articlesEmptyView: some View {
+        VStack(spacing: 12) {
+            Image(systemName: "star")
+                .font(.system(size: 48))
+                .foregroundStyle(.yellow)
+            Text("즐겨찾기한 기사가 없습니다")
+                .font(.headline)
+            Text("피드에서 기사를 읽고 즐겨찾기를 추가해보세요.")
+                .font(.caption)
+                .foregroundStyle(.secondary)
+                .multilineTextAlignment(.center)
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .padding()
+    }
+
+    private var wrongAnswersEmptyView: some View {
+        VStack(spacing: 12) {
+            Image(systemName: "checkmark.seal")
+                .font(.system(size: 48))
+                .foregroundStyle(.indigo)
+            Text("오답이 없습니다")
+                .font(.headline)
+            Text("퀴즈를 풀고 틀린 문제를 여기서 복습해보세요.")
+                .font(.caption)
+                .foregroundStyle(.secondary)
+                .multilineTextAlignment(.center)
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .padding()
+    }
+
+    // MARK: - Shared Views
+
+    private var loadingView: some View {
+        VStack(spacing: 12) {
+            ProgressView()
+            Text("불러오는 중...")
+                .font(.caption)
+                .foregroundStyle(.secondary)
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+    }
+
+    private func errorView(message: String, retry: @escaping () -> Void) -> some View {
+        VStack(spacing: 12) {
+            Image(systemName: "exclamationmark.triangle")
+                .font(.largeTitle)
+                .foregroundStyle(.orange)
+            Text(message)
+                .font(.body)
+                .foregroundStyle(.secondary)
+                .multilineTextAlignment(.center)
+            Button("다시 시도", action: retry)
+                .buttonStyle(.bordered)
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .padding()
+    }
+
     // MARK: - Operation Error Banner
 
-    /// add/remove 변이 실패 시 화면 하단에 표시하는 인라인 에러 배너.
-    /// 탭하면 dismiss.
     private func operationErrorBanner(message: String) -> some View {
         Text(message)
             .font(.footnote)
@@ -164,6 +271,22 @@ struct FavoritesView: View {
     }
 }
 
+// MARK: - Tab Model
+
+enum FavoritesTab: String, CaseIterable, Identifiable {
+    case articles
+    case wrongAnswers
+
+    var id: String { rawValue }
+
+    var title: String {
+        switch self {
+        case .articles: return "기사"
+        case .wrongAnswers: return "오답 노트"
+        }
+    }
+}
+
 /// 즐겨찾기 목록 행 뷰 — MVP6 M1: ArticleCardView와 동일한 썸네일 레이아웃.
 struct FavoriteRowView: View {
     let item: FavoriteItem
@@ -187,10 +310,20 @@ struct FavoriteRowView: View {
                         Text("·")
                         Text(ArticleCardView.relativeTimeText(createdAt))
                     }
+                    Spacer()
                     if item.summary != nil {
-                        Spacer()
                         Image(systemName: "text.quote")
                             .foregroundStyle(.indigo)
+                    }
+                    if item.quizCompleted {
+                        Text("퀴즈 ✓")
+                            .font(.caption2)
+                            .fontWeight(.semibold)
+                            .foregroundStyle(.white)
+                            .padding(.horizontal, 6)
+                            .padding(.vertical, 2)
+                            .background(Color.indigo)
+                            .clipShape(Capsule())
                     }
                 }
                 .font(.caption)
