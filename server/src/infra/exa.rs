@@ -32,6 +32,58 @@ struct ExaResult {
     published_date: Option<String>,
 }
 
+/// MVP8 M1: snippet 정제 함수.
+/// 1. 마크다운 헤더(# 시작 행) 제거
+/// 2. HTML 태그(<...>) 제거 — 문자 단위 파싱
+/// 3. URL 토큰(http:// / https:// 시작) 제거
+/// 4. 이메일 토큰(@ 포함) 제거
+/// 5. 공백 정리
+/// 6. 200자 단어 경계 절단 (초과 시 … 추가)
+pub fn clean_snippet(s: &str) -> String {
+    // 1. 마크다운 헤더 제거 + 줄 수집
+    let lines: Vec<&str> = s
+        .lines()
+        .filter(|l| !l.trim_start().starts_with('#'))
+        .collect();
+
+    let raw = lines.join(" ");
+
+    // 2. HTML 태그 제거 (문자 단위 파싱)
+    let mut no_html = String::with_capacity(raw.len());
+    let mut in_tag = false;
+    for ch in raw.chars() {
+        match ch {
+            '<' => in_tag = true,
+            '>' => in_tag = false,
+            _ if !in_tag => no_html.push(ch),
+            _ => {}
+        }
+    }
+
+    // 3, 4. URL/이메일 토큰 제거 + 공백 정리
+    let cleaned: Vec<&str> = no_html
+        .split_whitespace()
+        .filter(|token| {
+            !token.starts_with("http://") && !token.starts_with("https://") && !token.contains('@')
+        })
+        .collect();
+
+    let joined = cleaned.join(" ");
+
+    // 6. 200자 단어 경계 절단
+    if joined.chars().count() <= 200 {
+        return joined;
+    }
+
+    // 200자 이하에서 마지막 공백 찾기
+    let cutoff: String = joined.chars().take(200).collect();
+    if let Some(last_space) = cutoff.rfind(' ') {
+        format!("{}…", &cutoff[..last_space])
+    } else {
+        format!("{}…", cutoff)
+    }
+}
+
 impl ExaAdapter {
     pub fn new(api_key: &str) -> Self {
         Self::with_base_url(api_key, "https://api.exa.ai")
@@ -126,18 +178,10 @@ impl SearchPort for ExaAdapter {
                 .map(|(r, image_url)| SearchResult {
                     title: r.title.unwrap_or_default(),
                     url: r.url,
-                    snippet: r.highlights.and_then(|h| h.into_iter().next()).map(|s| {
-                        // 마크다운 헤더(#) 제거 후 공백 정리, 300자 제한
-                        let cleaned = s
-                            .lines()
-                            .filter(|l| !l.trim_start().starts_with('#'))
-                            .collect::<Vec<_>>()
-                            .join(" ")
-                            .split_whitespace()
-                            .collect::<Vec<_>>()
-                            .join(" ");
-                        cleaned.chars().take(300).collect::<String>()
-                    }),
+                    snippet: r
+                        .highlights
+                        .and_then(|h| h.into_iter().next())
+                        .map(|s| clean_snippet(&s)),
                     published_at: r.published_date,
                     image_url,
                 })
@@ -155,6 +199,78 @@ mod tests {
     use super::*;
     use wiremock::matchers::{method, path};
     use wiremock::{Mock, MockServer, ResponseTemplate};
+
+    // --- clean_snippet 단위 테스트 ---
+
+    #[test]
+    fn clean_snippet_removes_markdown_headers() {
+        let input = "# 제목\n## 소제목\n본문 내용입니다.";
+        let result = clean_snippet(input);
+        assert!(!result.contains('#'));
+        assert!(result.contains("본문 내용입니다."));
+    }
+
+    #[test]
+    fn clean_snippet_removes_html_tags() {
+        let input = "<p>본문</p> <a href='https://example.com'>링크</a>";
+        let result = clean_snippet(input);
+        assert!(!result.contains('<'));
+        assert!(!result.contains('>'));
+        assert!(result.contains("본문"));
+    }
+
+    #[test]
+    fn clean_snippet_removes_urls() {
+        let input = "기사 내용 https://example.com/article 이후 텍스트";
+        let result = clean_snippet(input);
+        assert!(!result.contains("https://"));
+        assert!(result.contains("기사 내용"));
+        assert!(result.contains("이후 텍스트"));
+    }
+
+    #[test]
+    fn clean_snippet_removes_http_urls() {
+        let input = "기사 http://example.com 내용";
+        let result = clean_snippet(input);
+        assert!(!result.contains("http://"));
+    }
+
+    #[test]
+    fn clean_snippet_removes_emails() {
+        let input = "문의: contact@example.com 또는 test@test.org";
+        let result = clean_snippet(input);
+        assert!(!result.contains('@'));
+        assert!(result.contains("문의:"));
+    }
+
+    #[test]
+    fn clean_snippet_word_boundary_cut_at_200() {
+        // 200자를 초과하는 입력 — 단어 경계에서 절단
+        let words: Vec<String> = (0..50).map(|i| format!("word{i}")).collect();
+        let input = words.join(" ");
+        let result = clean_snippet(&input);
+        assert!(result.chars().count() <= 204); // 200 + "…" (1char) + 여유
+        assert!(result.ends_with('…') || result.chars().count() <= 200);
+    }
+
+    #[test]
+    fn clean_snippet_short_input_unchanged() {
+        let input = "짧은 텍스트";
+        let result = clean_snippet(input);
+        assert_eq!(result, "짧은 텍스트");
+    }
+
+    #[test]
+    fn clean_snippet_cleans_combined() {
+        let input = "# 헤더\n<b>굵은</b> 텍스트 https://url.com 그리고 email@test.com 이후";
+        let result = clean_snippet(input);
+        assert!(!result.contains('#'));
+        assert!(!result.contains('<'));
+        assert!(!result.contains("https://"));
+        assert!(!result.contains('@'));
+        assert!(result.contains("굵은"));
+        assert!(result.contains("텍스트"));
+    }
 
     #[tokio::test]
     async fn retry_on_retryable_status() {
