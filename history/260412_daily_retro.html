@@ -1,0 +1,405 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>회고 — 2026-04-12</title>
+  <style>
+    :root {
+      --bg: #0f1117;
+      --surface: #1a1d27;
+      --card: #21242f;
+      --border: #2e3245;
+      --accent: #7c6af7;
+      --accent-soft: #3d3566;
+      --green: #4ade80;
+      --yellow: #facc15;
+      --red: #f87171;
+      --text: #e2e4ed;
+      --muted: #7a7f99;
+      --tag: #2a2d3e;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: 'Pretendard', 'Apple SD Gothic Neo', system-ui, sans-serif;
+      font-size: 15px;
+      line-height: 1.7;
+      padding: 40px 20px 80px;
+    }
+    .wrap { max-width: 720px; margin: 0 auto; }
+
+    .header { margin-bottom: 48px; }
+    .date-label {
+      font-size: 12px;
+      color: var(--muted);
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      margin-bottom: 8px;
+    }
+    h1 {
+      font-size: 28px;
+      font-weight: 700;
+      line-height: 1.3;
+      background: linear-gradient(135deg, #a78bfa, #60a5fa);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+    .subtitle {
+      margin-top: 10px;
+      color: var(--muted);
+      font-size: 14px;
+    }
+
+    .tldr {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-left: 3px solid var(--accent);
+      border-radius: 10px;
+      padding: 20px 24px;
+      margin-bottom: 40px;
+      font-size: 14px;
+      color: #c0c4d8;
+      line-height: 1.8;
+    }
+
+    .section-label {
+      font-size: 11px;
+      color: var(--accent);
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      font-weight: 600;
+      margin-bottom: 20px;
+    }
+
+    .decision {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 24px;
+      margin-bottom: 20px;
+      position: relative;
+      overflow: hidden;
+    }
+    .decision::before {
+      content: '';
+      position: absolute;
+      top: 0; left: 0; right: 0;
+      height: 2px;
+      background: linear-gradient(90deg, var(--accent), transparent);
+    }
+    .decision-num {
+      font-size: 11px;
+      color: var(--muted);
+      font-weight: 600;
+      letter-spacing: 0.08em;
+      margin-bottom: 6px;
+    }
+    .decision h2 {
+      font-size: 16px;
+      font-weight: 700;
+      color: var(--text);
+      margin-bottom: 16px;
+    }
+    .block { margin-bottom: 14px; }
+    .block-label {
+      font-size: 11px;
+      font-weight: 700;
+      color: var(--muted);
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      margin-bottom: 5px;
+    }
+    .block p {
+      font-size: 14px;
+      color: #bcc0d8;
+      line-height: 1.75;
+    }
+    code {
+      background: #1e2535;
+      border-radius: 4px;
+      padding: 1px 6px;
+      font-family: 'SF Mono', 'Fira Code', monospace;
+      font-size: 12px;
+      color: #c4b8ff;
+    }
+
+    .insight {
+      background: var(--accent-soft);
+      border: 1px solid #4d3fa0;
+      border-radius: 8px;
+      padding: 12px 16px;
+      margin-top: 12px;
+      font-size: 13px;
+      color: #c4b8ff;
+      line-height: 1.7;
+    }
+    .insight::before { content: '💡 '; }
+
+    .honest {
+      background: #1e2535;
+      border: 1px solid #2a3350;
+      border-radius: 8px;
+      padding: 12px 16px;
+      margin-top: 12px;
+      font-size: 13px;
+      color: #9ba8c4;
+      line-height: 1.7;
+    }
+
+    .bug {
+      background: #2a1a1a;
+      border: 1px solid #4a2020;
+      border-radius: 8px;
+      padding: 12px 16px;
+      margin-top: 12px;
+      font-size: 13px;
+      color: #f08080;
+      line-height: 1.7;
+    }
+    .bug::before { content: '🐛 버그: '; font-weight: 700; }
+
+    .stats {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 24px;
+      margin-bottom: 40px;
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+      gap: 16px;
+    }
+    .stat { text-align: center; }
+    .stat-val {
+      font-size: 24px;
+      font-weight: 800;
+      color: var(--accent);
+      display: block;
+      line-height: 1.2;
+    }
+    .stat-label {
+      font-size: 11px;
+      color: var(--muted);
+      margin-top: 4px;
+      line-height: 1.4;
+    }
+
+    .next {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 24px;
+    }
+    .next h3 {
+      font-size: 14px;
+      font-weight: 700;
+      color: var(--text);
+      margin-bottom: 14px;
+    }
+    .next ul {
+      list-style: none;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+    .next li {
+      font-size: 13px;
+      color: #9ba8c4;
+      padding-left: 20px;
+      position: relative;
+    }
+    .next li::before {
+      content: '→';
+      position: absolute;
+      left: 0;
+      color: var(--accent);
+    }
+
+    .divider {
+      border: none;
+      border-top: 1px solid var(--border);
+      margin: 40px 0;
+    }
+  </style>
+</head>
+<body>
+<div class="wrap">
+
+  <div class="header">
+    <div class="date-label">Daily Retro · 2026-04-12</div>
+    <h1>슬슬 앱의 방향성에 맞는<br>기능을 추가하고 기획한 날</h1>
+    <p class="subtitle">MVP7 M3 전체 완료 — 피드 개인화 + 연관 기사 + 버그픽스 (5커밋 · 31파일 · +1487줄)</p>
+  </div>
+
+  <div class="tldr">
+    M2가 좋아요 데이터를 모으는 단계였다면, M3는 그 데이터를 실제로 써먹기 시작한 첫 번째 단계다.
+    피드 쿼리 보강, 연관 기사 엔드포인트, LikesFeature 비관적 업데이트, LLM soft fail,
+    그리고 cross-tag 키워드 오염 버그까지 5개 커밋으로 M3를 닫았다.
+    기술보다 큰 과제는 따로 있었다 — 앱이 어디로 가야 하는지 문서로 먼저 명확히 잡는 것.
+    구현하고 나서야 "이 방향이 아닌 것 같다"는 느낌이 오는 루프가 오늘도 있었다.
+  </div>
+
+  <div class="section-label">결정 · 인사이트</div>
+
+  <!-- Decision 01 -->
+  <div class="decision">
+    <div class="decision-num">DECISION 01</div>
+    <h2>M3의 진짜 의미 — "수집"에서 "활용"으로의 전환</h2>
+
+    <div class="block">
+      <div class="block-label">결정</div>
+      <p>
+        M2는 좋아요 → 키워드 추출 → <code>user_keyword_weights</code> 누적이라는 데이터 수집 파이프라인이었다.
+        M3에서 처음으로 그 데이터를 피드 검색 쿼리에 실제로 주입했다.
+        <code>like_count >= 3</code> threshold를 넘으면 상위 3개 키워드가 Tavily 검색 쿼리에 추가된다.
+        API 시그니처는 그대로, 서버 내부 로직만 바뀐다.
+      </p>
+    </div>
+
+    <div class="block">
+      <div class="block-label">왜 중요한가</div>
+      <p>
+        사용자가 무엇을 좋아하는지 모으기만 하는 앱과,
+        그것을 반영해서 경험을 바꾸는 앱은 다르다.
+        M3는 Frank가 단순 뉴스 피드에서 개인화 피드로 넘어가는 첫 번째 커밋이다.
+        기술적으로는 단순한 쿼리 보강이지만, 제품 방향에서는 큰 전환점이다.
+      </p>
+    </div>
+
+    <div class="insight">
+      개인화는 "추천 알고리즘"이 아니라 "사용자가 준 시그널을 어디에 쓰느냐"의 문제다.
+      좋아요 3회라는 단순한 threshold로도 피드 결과가 달라지기 시작한다.
+      복잡한 ML 모델 없이, 사용자 행동 데이터를 검색 쿼리에 직접 연결하는 것만으로
+      개인화의 첫 단계는 달성할 수 있다.
+    </div>
+  </div>
+
+  <!-- Decision 02 -->
+  <div class="decision">
+    <div class="decision-num">DECISION 02</div>
+    <h2>tag_id 지정 피드에서 키워드 boost 제거 — 전체 피드에만 적용</h2>
+
+    <div class="block">
+      <div class="block-label">문제</div>
+      <p>
+        처음 구현에서 피드 개인화 boost가 전체 피드(<code>tag_id=None</code>)뿐 아니라
+        특정 태그를 선택한 피드(<code>tag_id=xxx</code>)에도 적용됐다.
+        iOS 구독 A 태그를 보는데, B 태그를 좋아요하며 추출된 키워드가 쿼리에 섞이는 상황.
+      </p>
+    </div>
+
+    <div class="block">
+      <div class="block-label">결정</div>
+      <p>
+        <code>tag_id</code>가 지정된 요청에는 키워드 boost를 적용하지 않는다.
+        전체 피드 조회(tag_id = None)에만 boost를 적용해, 다른 태그 키워드가 섞이지 않도록 경계를 명확히 했다.
+        다음 MVP에서 <code>user_keyword_weights</code>에 <code>tag_id</code> 컬럼을 추가하면
+        "키워드가 유래된 태그에만 boost" 라는 더 정확한 버전으로 업그레이드할 수 있다.
+      </p>
+    </div>
+
+    <div class="bug">
+      특정 태그를 선택했는데 다른 태그 기사가 섞여 나오는 오염 버그.
+      피드 개인화 로직이 scope 없이 전역으로 동작했던 게 원인.
+      <code>tag_id.is_some()</code> 체크 한 줄로 해결됐지만, 찾는 데 시간이 걸렸다 —
+      "개인화 적용 시 어떤 조건에서 어느 범위에 적용되는가"를 설계 단계에서 명확히 해두지 않아서.
+    </div>
+  </div>
+
+  <!-- Decision 03 -->
+  <div class="decision">
+    <div class="decision-num">DECISION 03</div>
+    <h2>LikesFeature fire-and-forget → 비관적 업데이트 전환</h2>
+
+    <div class="block">
+      <div class="block-label">결정</div>
+      <p>
+        좋아요 탭 즉시 <code>likedUrls</code>에 추가(낙관적)하던 방식을
+        API 성공 후에만 상태를 업데이트하는 비관적 업데이트로 바꿨다.
+        실패 시 <code>error</code>가 설정되고 <code>likedUrls</code>는 변경되지 않는다.
+        TDD 테스트 명세가 비관적 업데이트를 전제하고 있어서, 테스트 통과 요건이기도 했다.
+      </p>
+    </div>
+
+    <div class="block">
+      <div class="block-label">왜</div>
+      <p>
+        낙관적 업데이트는 네트워크 실패 시 UI 상태와 서버 상태가 어긋난다.
+        좋아요는 서버에 키워드 가중치를 누적하는 작업이라, 실패했는데 하트가 채워지면 혼란스럽다.
+        비관적 업데이트는 응답 지연이 있지만, 상태 일관성을 보장한다.
+      </p>
+    </div>
+
+    <div class="honest">
+      낙관적 vs 비관적 업데이트는 "빠른 피드백"과 "상태 일관성" 사이의 트레이드오프다.
+      좋아요처럼 서버 사이드 효과(가중치 누적)가 중요한 경우엔 비관적이 맞다.
+      단순 UI 상태만 바꾸는 경우라면 낙관적이 더 나을 수 있다.
+    </div>
+  </div>
+
+  <!-- Decision 04 -->
+  <div class="decision">
+    <div class="decision-num">DECISION 04</div>
+    <h2>앱 방향과 문서의 선후관계 — 구현 후에야 보이는 것들</h2>
+
+    <div class="block">
+      <div class="block-label">관찰</div>
+      <p>
+        오늘 가장 힘들었던 건 코드가 아니라 방향 설정이었다.
+        문서를 먼저 명확히 잡아야 구현이 그대로 흘러가는데,
+        앱이 어디로 가야 하는지가 탐색 중인 상태라 문서를 먼저 확정하기가 어렵다.
+        구현하고 나서야 "연관 기사가 원래 의도와 다르게 됐다"는 걸 알게 되는 루프가 반복됐다.
+      </p>
+    </div>
+
+    <div class="block">
+      <div class="block-label">현재 상태</div>
+      <p>
+        M3의 연관 기사는 "기사 상세 하단 — 현재 기사 title+snippet+키워드 기반 유사 기사"로 구현됐지만,
+        원래 의도는 "사용자 취향 기반 추천 섹션(기사 상세와 무관)"이었다.
+        기능은 동작하지만 제품 개념이 다르다. 다음 MVP에서 재설계 대상으로 이미 문서에 적어뒀다.
+      </p>
+    </div>
+
+    <div class="insight">
+      탐색 단계에서 "문서 → 구현" 순서를 강제하기보다,
+      "구현 → 불일치 발견 → 문서 갱신"을 빠르게 반복하는 게 현실적이다.
+      중요한 건 불일치를 발견했을 때 바로 문서에 남기는 것 —
+      오늘 M3 서브태스크 문서의 "알려진 한계" 섹션이 그 역할을 했다.
+    </div>
+  </div>
+
+  <hr class="divider" />
+
+  <div class="section-label">숫자</div>
+
+  <div class="stats">
+    <div class="stat">
+      <span class="stat-val">5</span>
+      <div class="stat-label">커밋 수<br>(M3 전체)</div>
+    </div>
+    <div class="stat">
+      <span class="stat-val">31</span>
+      <div class="stat-label">변경 파일<br>(+1487 / -38 라인)</div>
+    </div>
+    <div class="stat">
+      <span class="stat-val">+79</span>
+      <div class="stat-label">테스트 증가<br>(서버+42 · 웹+15 · iOS+22)</div>
+    </div>
+    <div class="stat">
+      <span class="stat-val">M3</span>
+      <div class="stat-label">완료 마일스톤<br>(MVP7 M1~M3 누적)</div>
+    </div>
+  </div>
+
+  <div class="next">
+    <h3>다음에 할 것</h3>
+    <ul>
+      <li>MVP7 M4 — 퀴즈 (LlmPort.generate_quiz → 서버 엔드포인트 → 웹 + iOS 퀴즈 화면)</li>
+    </ul>
+  </div>
+
+</div>
+</body>
+</html>
