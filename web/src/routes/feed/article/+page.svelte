@@ -42,6 +42,21 @@
 	let summarizeLoadingText = $state('요약 중…');
 	let quizLoadingText = $state('퀴즈 생성 중…');
 
+	/** 로딩 여부에 따라 텍스트를 8s 후 "마무리 중…"으로 전환. $effect 내에서 사용. */
+	function makeLoadingTextEffect(
+		isLoading: () => boolean,
+		setter: (v: string) => void,
+		initial: string,
+		delayMs = 8000
+	) {
+		if (!isLoading()) {
+			setter(initial);
+			return;
+		}
+		const timer = setTimeout(() => setter('마무리 중…'), delayMs);
+		return () => clearTimeout(timer);
+	}
+
 	$effect(() => {
 		if (!auth.isAuthenticated) {
 			goto('/login');
@@ -63,29 +78,21 @@
 		}
 	});
 
-	// 요약 로딩 텍스트: 8s 후 "마무리 중…"으로 전환
-	$effect(() => {
-		if (phase.tag !== 'loading') {
-			summarizeLoadingText = '요약 중…';
-			return;
-		}
-		const timer = setTimeout(() => {
-			summarizeLoadingText = '마무리 중…';
-		}, 8000);
-		return () => clearTimeout(timer);
-	});
-
-	// 퀴즈 로딩 텍스트: 8s 후 "마무리 중…"으로 전환
-	$effect(() => {
-		if (quizPhase !== 'loading') {
-			quizLoadingText = '퀴즈 생성 중…';
-			return;
-		}
-		const timer = setTimeout(() => {
-			quizLoadingText = '마무리 중…';
-		}, 8000);
-		return () => clearTimeout(timer);
-	});
+	// 요약/퀴즈 로딩 텍스트: 8s 후 "마무리 중…"으로 전환
+	$effect(() =>
+		makeLoadingTextEffect(
+			() => phase.tag === 'loading',
+			(v) => (summarizeLoadingText = v),
+			'요약 중…'
+		)
+	);
+	$effect(() =>
+		makeLoadingTextEffect(
+			() => quizPhase === 'loading',
+			(v) => (quizLoadingText = v),
+			'퀴즈 생성 중…'
+		)
+	);
 
 	async function handleSummarize() {
 		// 중복 호출 방지
@@ -318,6 +325,8 @@
 {#if quizQuestions !== null}
 	<QuizModal
 		questions={quizQuestions}
+		articleUrl={feedItem?.url}
+		articleTitle={feedItem?.title}
 		onClose={() => { quizQuestions = null; }}
 	/>
 {/if}

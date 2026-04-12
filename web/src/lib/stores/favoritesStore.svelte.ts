@@ -77,6 +77,15 @@ function isLiked(url: string): boolean {
 }
 
 /**
+ * MVP8 M3: 퀴즈 완료 처리 (로컬 상태 업데이트).
+ * 서버 API 호출은 QuizModal에서 수행 후 이 함수 호출.
+ * Svelte 5 반응성 규칙: 새 배열 할당.
+ */
+function markQuizCompleted(url: string): void {
+	favorites = favorites.map((f) => (f.url === url ? { ...f, quizCompleted: true } : f));
+}
+
+/**
  * 상태 완전 초기화 (로그아웃 등 세션 전환 시).
  */
 function reset(): void {
@@ -107,5 +116,6 @@ export const favoritesStore = {
 	loadFavorites,
 	addFavorite,
 	removeFavorite,
+	markQuizCompleted,
 	reset
 };

@@ -15,6 +15,8 @@ export interface Favorite {
 	createdAt: string;
 	/// MVP6 M1: 썸네일 이미지 URL (없으면 null)
 	imageUrl?: string | null;
+	/// MVP8 M3: 퀴즈 완료 여부 (한 번이라도 퀴즈를 풀었으면 true)
+	quizCompleted?: boolean;
 }
 
 /// POST /me/favorites 요청 바디.

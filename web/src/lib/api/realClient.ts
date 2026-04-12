@@ -18,6 +18,7 @@ import type {
 } from './types';
 import type { SummaryResult } from '$lib/types/summary';
 import type { Favorite } from '$lib/types/favorite';
+import type { WrongAnswer, SaveWrongAnswerBody } from '$lib/types/quiz';
 
 const API_BASE = (import.meta.env.VITE_RUST_API_URL ?? 'http://localhost:8080').replace(/\/$/, '');
 
@@ -207,6 +208,32 @@ export const realApiClient: ApiClient = {
 	async listFavorites(): Promise<Favorite[]> {
 		const raw = await request<Record<string, unknown>[]>('/api/me/favorites');
 		return raw.map(snakeToCamelFavorite);
+	},
+
+	async markQuizDone(url: string): Promise<void> {
+		await request<void>('/api/me/favorites/quiz/done', {
+			method: 'POST',
+			body: JSON.stringify({ url })
+		});
+	},
+
+	async saveWrongAnswer(body: SaveWrongAnswerBody): Promise<WrongAnswer> {
+		const raw = await request<Record<string, unknown>>('/api/me/quiz/wrong-answers', {
+			method: 'POST',
+			body: JSON.stringify(body)
+		});
+		return snakeToCamelWrongAnswer(raw);
+	},
+
+	async listWrongAnswers(): Promise<WrongAnswer[]> {
+		const raw = await request<Record<string, unknown>[]>('/api/me/quiz/wrong-answers');
+		return raw.map(snakeToCamelWrongAnswer);
+	},
+
+	async deleteWrongAnswer(id: string): Promise<void> {
+		await request<void>(`/api/me/quiz/wrong-answers/${encodeURIComponent(id)}`, {
+			method: 'DELETE'
+		});
 	}
 };
 
@@ -225,6 +252,23 @@ function snakeToCamelFavorite(raw: Record<string, unknown>): Favorite {
 		insight: (raw.insight as string | null) ?? null,
 		likedAt: (raw.liked_at as string | null) ?? null,
 		createdAt: raw.created_at as string,
-		imageUrl: (raw.image_url as string | null) ?? null
+		imageUrl: (raw.image_url as string | null) ?? null,
+		quizCompleted: (raw.quiz_completed as boolean | null) ?? false
+	};
+}
+
+/// 서버 snake_case 응답 → WrongAnswer camelCase 변환.
+function snakeToCamelWrongAnswer(raw: Record<string, unknown>): WrongAnswer {
+	return {
+		id: raw.id as string,
+		userId: raw.user_id as string,
+		articleUrl: raw.article_url as string,
+		articleTitle: raw.article_title as string,
+		question: raw.question as string,
+		options: raw.options as string[],
+		correctIndex: raw.correct_index as number,
+		userIndex: raw.user_index as number,
+		explanation: (raw.explanation as string | null) ?? null,
+		createdAt: raw.created_at as string
 	};
 }

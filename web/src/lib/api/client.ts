@@ -14,6 +14,7 @@ import type {
 } from './types';
 import type { SummaryResult } from '$lib/types/summary';
 import type { Favorite } from '$lib/types/favorite';
+import type { WrongAnswer, SaveWrongAnswerBody } from '$lib/types/quiz';
 
 export interface ApiClient {
 	// Tags
@@ -44,4 +45,12 @@ export interface ApiClient {
 	addFavorite(item: FeedItem, summary?: string, insight?: string): Promise<Favorite>;
 	deleteFavorite(url: string): Promise<void>;
 	listFavorites(): Promise<Favorite[]>;
+
+	// Quiz Completion (MVP8 M3)
+	markQuizDone(url: string): Promise<void>;
+
+	// Wrong Answers (MVP8 M3)
+	saveWrongAnswer(body: SaveWrongAnswerBody): Promise<WrongAnswer>;
+	listWrongAnswers(): Promise<WrongAnswer[]>;
+	deleteWrongAnswer(id: string): Promise<void>;
 }

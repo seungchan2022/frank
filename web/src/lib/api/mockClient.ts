@@ -15,6 +15,7 @@ import type {
 } from './types';
 import type { SummaryResult } from '$lib/types/summary';
 import type { Favorite } from '$lib/types/favorite';
+import type { WrongAnswer, SaveWrongAnswerBody } from '$lib/types/quiz';
 import articlesFixture from './__fixtures__/articles.json';
 import tagsFixture from './__fixtures__/tags.json';
 import profileFixture from './__fixtures__/profile.json';
@@ -162,8 +163,44 @@ export const mockApiClient: ApiClient = {
 
 	async listFavorites(): Promise<Favorite[]> {
 		return delay([...mockFavorites]);
+	},
+
+	async markQuizDone(url: string): Promise<void> {
+		mockFavorites = mockFavorites.map((f) =>
+			f.url === url ? { ...f, quizCompleted: true } : f
+		);
+		return delay(undefined);
+	},
+
+	async saveWrongAnswer(body: SaveWrongAnswerBody): Promise<WrongAnswer> {
+		const now = new Date().toISOString();
+		const wa: WrongAnswer = {
+			id: crypto.randomUUID(),
+			userId: profile.id,
+			articleUrl: body.article_url,
+			articleTitle: body.article_title,
+			question: body.question,
+			options: body.options,
+			correctIndex: body.correct_index,
+			userIndex: body.user_index,
+			explanation: body.explanation,
+			createdAt: now
+		};
+		mockWrongAnswers = [wa, ...mockWrongAnswers];
+		return delay({ ...wa });
+	},
+
+	async listWrongAnswers(): Promise<WrongAnswer[]> {
+		return delay([...mockWrongAnswers]);
+	},
+
+	async deleteWrongAnswer(id: string): Promise<void> {
+		mockWrongAnswers = mockWrongAnswers.filter((wa) => wa.id !== id);
+		return delay(undefined);
 	}
 };
 
 // 인메모리 즐겨찾기 스토어
 let mockFavorites: Favorite[] = [];
+// 인메모리 오답 스토어
+let mockWrongAnswers: WrongAnswer[] = [];

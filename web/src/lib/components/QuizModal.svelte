@@ -1,18 +1,26 @@
 <script lang="ts">
+	import { apiClient } from '$lib/api';
+	import { favoritesStore } from '$lib/stores/favoritesStore.svelte';
 	import type { QuizQuestion } from '$lib/types/quiz';
 
 	interface Props {
 		questions: QuizQuestion[];
 		onClose: () => void;
+		/// MVP8 M3: 오답 저장 및 퀴즈 완료 마킹에 필요.
+		/// 없으면 fire-and-forget 호출을 건너뜀 (하위 호환).
+		articleUrl?: string;
+		articleTitle?: string;
 	}
 
-	let { questions, onClose }: Props = $props();
+	let { questions, onClose, articleUrl, articleTitle }: Props = $props();
 
 	let currentIndex = $state(0);
 	let selectedIndex = $state<number | null>(null);
 	let confirmed = $state(false);
 	let score = $state(0);
 	let finished = $state(false);
+	/// 퀴즈 완료 마킹 중복 방지 플래그
+	let quizCompletedMarked = $state(false);
 
 	const currentQuestion = $derived(questions[currentIndex]);
 	const isCorrect = $derived(
@@ -26,8 +34,26 @@
 
 	function confirm() {
 		if (selectedIndex === null || confirmed) return;
-		if (selectedIndex === currentQuestion.answer_index) {
+		const correct = selectedIndex === currentQuestion.answer_index;
+		if (correct) {
 			score += 1;
+		} else if (articleUrl && articleTitle) {
+			// 오답 발생 시 fire-and-forget 저장
+			const q = currentQuestion;
+			const uIdx = selectedIndex;
+			void apiClient
+				.saveWrongAnswer({
+					article_url: articleUrl,
+					article_title: articleTitle,
+					question: q.question,
+					options: q.options,
+					correct_index: q.answer_index,
+					user_index: uIdx,
+					explanation: q.explanation ?? null
+				})
+				.catch(() => {
+					// fire-and-forget: 실패해도 퀴즈 진행 차단 안 함
+				});
 		}
 		confirmed = true;
 	}
@@ -35,6 +61,18 @@
 	function nextQuestion() {
 		if (currentIndex + 1 >= questions.length) {
 			finished = true;
+			// 마지막 문제 완료 시 퀴즈 완료 마킹 (중복 방지)
+			if (!quizCompletedMarked && articleUrl) {
+				quizCompletedMarked = true;
+				void apiClient
+					.markQuizDone(articleUrl)
+					.then(() => {
+						favoritesStore.markQuizCompleted(articleUrl);
+					})
+					.catch(() => {
+						// fire-and-forget: 실패해도 UI 차단 안 함
+					});
+			}
 		} else {
 			currentIndex += 1;
 			selectedIndex = null;
