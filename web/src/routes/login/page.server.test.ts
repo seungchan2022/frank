@@ -86,7 +86,7 @@ describe('actions.signin', () => {
 
 		expect(result).toMatchObject({
 			status: 400,
-			data: { error: 'Invalid login credentials', email: 'a@b.com' }
+			data: { error: '이메일 또는 비밀번호가 틀렸어요.', email: 'a@b.com' }
 		});
 	});
 
@@ -122,7 +122,7 @@ describe('actions.signup', () => {
 	});
 
 	it('실패 시 fail 400', async () => {
-		mockSignUp.mockResolvedValue({ error: { message: 'Already exists' } });
+		mockSignUp.mockResolvedValue({ error: { message: 'User already registered' } });
 
 		const result = await actions.signup({
 			// @ts-expect-error
@@ -132,7 +132,7 @@ describe('actions.signup', () => {
 
 		expect(result).toMatchObject({
 			status: 400,
-			data: { error: 'Already exists', signUp: true }
+			data: { error: '이미 가입된 이메일이에요. 로그인을 시도해보세요.', signUp: true }
 		});
 	});
 
