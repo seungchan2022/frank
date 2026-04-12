@@ -4,6 +4,7 @@ pub mod health;
 pub mod likes;
 pub mod profile;
 pub mod quiz;
+pub mod quiz_wrong_answers;
 pub mod related;
 pub mod summarize;
 pub mod tags;
@@ -11,7 +12,8 @@ pub mod tags;
 use std::sync::Arc;
 
 use crate::domain::ports::{
-    CrawlPort, DbPort, FavoritesPort, LlmPort, NotificationPort, SearchChainPort,
+    CrawlPort, DbPort, FavoritesPort, LlmPort, NotificationPort, QuizWrongAnswerPort,
+    SearchChainPort,
 };
 
 #[derive(Clone)]
@@ -22,6 +24,7 @@ pub struct AppState<D: DbPort> {
     pub crawl: Arc<dyn CrawlPort>,
     pub notifier: Arc<dyn NotificationPort>,
     pub favorites: Arc<dyn FavoritesPort>,
+    pub quiz_wrong_answers: Arc<dyn QuizWrongAnswerPort>,
 }
 
 impl<D: DbPort + std::fmt::Debug> std::fmt::Debug for AppState<D> {
@@ -33,6 +36,7 @@ impl<D: DbPort + std::fmt::Debug> std::fmt::Debug for AppState<D> {
             .field("crawl", &"<dyn CrawlPort>")
             .field("notifier", &"<dyn NotificationPort>")
             .field("favorites", &"<dyn FavoritesPort>")
+            .field("quiz_wrong_answers", &"<dyn QuizWrongAnswerPort>")
             .finish()
     }
 }
@@ -45,6 +49,7 @@ mod tests {
     use crate::infra::fake_favorites::FakeFavoritesAdapter;
     use crate::infra::fake_llm::FakeLlmAdapter;
     use crate::infra::fake_notification::FakeNotificationAdapter;
+    use crate::infra::fake_quiz_wrong_answers::FakeQuizWrongAnswerAdapter;
     use crate::infra::fake_search::FakeSearchAdapter;
     use crate::infra::search_chain::SearchFallbackChain;
 
@@ -63,6 +68,7 @@ mod tests {
             crawl: Arc::new(FakeCrawlAdapter::new()),
             notifier: Arc::new(FakeNotificationAdapter::new()),
             favorites: Arc::new(FakeFavoritesAdapter::new()),
+            quiz_wrong_answers: Arc::new(FakeQuizWrongAnswerAdapter::new()),
         };
 
         let debug_str = format!("{:?}", state);

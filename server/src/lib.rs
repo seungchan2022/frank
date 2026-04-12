@@ -14,7 +14,10 @@ use axum::{Extension, Router};
 use tower_http::cors::CorsLayer;
 
 use api::AppState;
-use domain::ports::{CrawlPort, DbPort, FavoritesPort, LlmPort, NotificationPort, SearchChainPort};
+use domain::ports::{
+    CrawlPort, DbPort, FavoritesPort, LlmPort, NotificationPort, QuizWrongAnswerPort,
+    SearchChainPort,
+};
 use middleware::auth::SupabaseConfig;
 
 /// 웹/iOS 클라이언트용 CORS 레이어.
@@ -41,6 +44,7 @@ fn build_cors_layer() -> CorsLayer {
         .allow_credentials(true)
 }
 
+#[allow(clippy::too_many_arguments)]
 pub fn create_router<D: DbPort + Clone + 'static>(
     db: D,
     supabase_config: SupabaseConfig,
@@ -49,6 +53,7 @@ pub fn create_router<D: DbPort + Clone + 'static>(
     crawl: Arc<dyn CrawlPort>,
     notifier: Arc<dyn NotificationPort>,
     favorites: Arc<dyn FavoritesPort>,
+    quiz_wrong_answers: Arc<dyn QuizWrongAnswerPort>,
 ) -> Router {
     let state = AppState {
         db,
@@ -57,6 +62,7 @@ pub fn create_router<D: DbPort + Clone + 'static>(
         crawl,
         notifier,
         favorites,
+        quiz_wrong_answers,
     };
 
     let auth_routes = Router::new()
@@ -84,9 +90,21 @@ pub fn create_router<D: DbPort + Clone + 'static>(
         // MVP7 M3: GET /me/articles/related — 연관 기사 검색
         .route("/me/articles/related", get(api::related::get_related::<D>))
         // MVP7 M4: POST /me/favorites/quiz — 즐겨찾기 기사 퀴즈 생성
+        .route("/me/favorites/quiz", post(api::quiz::generate_quiz::<D>))
+        // MVP8 M1: POST /me/favorites/quiz/done — 퀴즈 완료 마킹
         .route(
-            "/me/favorites/quiz",
-            post(api::quiz::generate_quiz::<D>),
+            "/me/favorites/quiz/done",
+            post(api::quiz::mark_quiz_done::<D>),
+        )
+        // MVP8 M1: quiz wrong answers CRUD
+        .route(
+            "/me/quiz/wrong-answers",
+            post(api::quiz_wrong_answers::save_wrong_answer::<D>)
+                .get(api::quiz_wrong_answers::list_wrong_answers::<D>),
+        )
+        .route(
+            "/me/quiz/wrong-answers/{id}",
+            delete(api::quiz_wrong_answers::delete_wrong_answer::<D>),
         )
         .layer(from_fn(middleware::auth::require_auth))
         .layer(Extension(supabase_config));
@@ -113,6 +131,7 @@ mod tests {
     use crate::infra::fake_favorites::FakeFavoritesAdapter;
     use crate::infra::fake_llm::FakeLlmAdapter;
     use crate::infra::fake_notification::FakeNotificationAdapter;
+    use crate::infra::fake_quiz_wrong_answers::FakeQuizWrongAnswerAdapter;
     use crate::infra::fake_search::FakeSearchAdapter;
     use crate::infra::search_chain::SearchFallbackChain;
     use crate::middleware::auth::SupabaseConfig;
@@ -134,6 +153,7 @@ mod tests {
             Arc::new(FakeCrawlAdapter::new()),
             Arc::new(FakeNotificationAdapter::new()),
             Arc::new(FakeFavoritesAdapter::new()),
+            Arc::new(FakeQuizWrongAnswerAdapter::new()),
         );
         TestServer::new(router)
     }

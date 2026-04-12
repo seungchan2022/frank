@@ -61,6 +61,7 @@ mod tests {
     use crate::infra::fake_favorites::FakeFavoritesAdapter;
     use crate::infra::fake_llm::FakeLlmAdapter;
     use crate::infra::fake_notification::FakeNotificationAdapter;
+    use crate::infra::fake_quiz_wrong_answers::FakeQuizWrongAnswerAdapter;
     use crate::infra::fake_search::FakeSearchAdapter;
     use crate::infra::search_chain::SearchFallbackChain;
     use crate::middleware::auth::AuthUser;
@@ -92,6 +93,7 @@ mod tests {
             },
             notifier: Arc::new(FakeNotificationAdapter::new()),
             favorites: Arc::new(FakeFavoritesAdapter::new()),
+            quiz_wrong_answers: Arc::new(FakeQuizWrongAnswerAdapter::new()),
         }
     }
 
@@ -190,6 +192,7 @@ mod tests {
             crawl: Arc::new(FakeCrawlAdapter::sleeping()),
             notifier: Arc::new(FakeNotificationAdapter::new()),
             favorites: Arc::new(FakeFavoritesAdapter::new()),
+            quiz_wrong_answers: Arc::new(FakeQuizWrongAnswerAdapter::new()),
         }
     }
 

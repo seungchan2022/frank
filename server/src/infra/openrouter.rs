@@ -357,16 +357,12 @@ impl LlmPort for OpenRouterAdapter {
                 &config,
             )
             .await
-            .map_err(|e| {
-                AppError::Internal(format!("OpenRouter quiz request failed: {e}"))
-            })?;
+            .map_err(|e| AppError::Internal(format!("OpenRouter quiz request failed: {e}")))?;
 
             let status = resp.status();
             let body_text = read_body_limited(resp, config.max_response_size)
                 .await
-                .map_err(|e| {
-                    AppError::Internal(format!("OpenRouter quiz read failed: {e}"))
-                })?;
+                .map_err(|e| AppError::Internal(format!("OpenRouter quiz read failed: {e}")))?;
 
             if !status.is_success() {
                 return Err(AppError::Internal(format!(
@@ -374,9 +370,8 @@ impl LlmPort for OpenRouterAdapter {
                 )));
             }
 
-            let chat_resp: ChatResponse = serde_json::from_str(&body_text).map_err(|e| {
-                AppError::Internal(format!("OpenRouter quiz parse failed: {e}"))
-            })?;
+            let chat_resp: ChatResponse = serde_json::from_str(&body_text)
+                .map_err(|e| AppError::Internal(format!("OpenRouter quiz parse failed: {e}")))?;
 
             let content_str = chat_resp
                 .choices
@@ -431,7 +426,10 @@ impl LlmPort for OpenRouterAdapter {
                 })
                 .collect::<Vec<_>>();
 
-            Ok(QuizResult { concepts, questions })
+            Ok(QuizResult {
+                concepts,
+                questions,
+            })
         })
     }
 }

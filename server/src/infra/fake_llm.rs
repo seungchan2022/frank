@@ -166,7 +166,10 @@ mod tests {
     #[tokio::test]
     async fn fake_llm_generate_quiz_returns_result() {
         let llm = FakeLlmAdapter::new();
-        let result = llm.generate_quiz("테스트 제목", "테스트 내용").await.unwrap();
+        let result = llm
+            .generate_quiz("테스트 제목", "테스트 내용")
+            .await
+            .unwrap();
         assert_eq!(result.concepts.len(), 1);
         assert_eq!(result.concepts[0].term, "테스트 용어");
         assert_eq!(result.questions.len(), 1);

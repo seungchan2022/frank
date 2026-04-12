@@ -61,6 +61,7 @@ pub async fn add_favorite<D: DbPort>(
         created_at: None,
         image_url: body.image_url,
         concepts: None,
+        quiz_completed: false,
     };
 
     let favorite = state.favorites.add_favorite(user.id, &item).await?;
@@ -108,6 +109,7 @@ mod tests {
     use crate::infra::fake_favorites::FakeFavoritesAdapter;
     use crate::infra::fake_llm::FakeLlmAdapter;
     use crate::infra::fake_notification::FakeNotificationAdapter;
+    use crate::infra::fake_quiz_wrong_answers::FakeQuizWrongAnswerAdapter;
     use crate::infra::fake_search::FakeSearchAdapter;
     use crate::infra::search_chain::SearchFallbackChain;
     use crate::middleware::auth::AuthUser;
@@ -129,6 +131,7 @@ mod tests {
             crawl: Arc::new(FakeCrawlAdapter::new()),
             notifier: Arc::new(FakeNotificationAdapter::new()),
             favorites: Arc::new(favorites),
+            quiz_wrong_answers: Arc::new(FakeQuizWrongAnswerAdapter::new()),
         };
 
         Router::new()

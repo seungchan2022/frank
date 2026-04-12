@@ -127,9 +127,15 @@ mod tests {
         let llm = FakeLlmAdapter::failing();
 
         let result = process_like(user_id, "title", None, &db, &llm).await;
-        assert!(result.is_ok(), "LLM 실패 시에도 500 아닌 정상 처리: {result:?}");
+        assert!(
+            result.is_ok(),
+            "LLM 실패 시에도 500 아닌 정상 처리: {result:?}"
+        );
         let result = result.unwrap();
-        assert!(result.keywords.is_empty(), "키워드 추출 실패 시 빈 배열 반환");
+        assert!(
+            result.keywords.is_empty(),
+            "키워드 추출 실패 시 빈 배열 반환"
+        );
         assert_eq!(result.total_likes, 1, "좋아요 카운트는 정상 증가");
     }
 

@@ -17,9 +17,31 @@ pub struct QuizRequest {
     url: String,
 }
 
+#[derive(Debug, Deserialize)]
+pub struct QuizDoneRequest {
+    url: String,
+}
+
 #[derive(Debug, Serialize, Deserialize)]
 pub struct QuizResponse {
     pub questions: Vec<QuizQuestion>,
+}
+
+/// POST /me/favorites/quiz/done
+/// 퀴즈 완료 마킹 — favorites.quiz_completed = true.
+/// url이 favorites에 없어도 204 반환 (no-op).
+pub async fn mark_quiz_done<D: DbPort>(
+    Extension(state): Extension<AppState<D>>,
+    Extension(user): Extension<AuthUser>,
+    Json(body): Json<QuizDoneRequest>,
+) -> Result<StatusCode, AppError> {
+    let url = body.url.trim().to_string();
+    if url.is_empty() {
+        return Err(AppError::BadRequest("url must not be empty".to_string()));
+    }
+
+    state.favorites.mark_quiz_completed(user.id, &url).await?;
+    Ok(StatusCode::NO_CONTENT)
 }
 
 /// POST /me/favorites/quiz
@@ -36,13 +58,9 @@ pub async fn generate_quiz<D: DbPort>(
         return Err(AppError::BadRequest("url must not be empty".to_string()));
     }
 
-    let questions = quiz_service::generate_quiz(
-        user.id,
-        &url,
-        state.favorites.as_ref(),
-        state.llm.as_ref(),
-    )
-    .await?;
+    let questions =
+        quiz_service::generate_quiz(user.id, &url, state.favorites.as_ref(), state.llm.as_ref())
+            .await?;
 
     Ok((StatusCode::OK, Json(QuizResponse { questions })))
 }
@@ -57,9 +75,11 @@ mod tests {
     use crate::infra::fake_favorites::FakeFavoritesAdapter;
     use crate::infra::fake_llm::FakeLlmAdapter;
     use crate::infra::fake_notification::FakeNotificationAdapter;
+    use crate::infra::fake_quiz_wrong_answers::FakeQuizWrongAnswerAdapter;
     use crate::infra::fake_search::FakeSearchAdapter;
     use crate::infra::search_chain::SearchFallbackChain;
     use axum::Router;
+    use axum::http::StatusCode;
     use axum::routing::post;
     use axum_test::TestServer;
     use chrono::Utc;
@@ -82,14 +102,16 @@ mod tests {
             crawl: Arc::new(FakeCrawlAdapter::new()),
             notifier: Arc::new(FakeNotificationAdapter::new()),
             favorites: Arc::new(favorites),
+            quiz_wrong_answers: Arc::new(FakeQuizWrongAnswerAdapter::new()),
         }
     }
 
     fn make_app(state: AppState<FakeDbAdapter>, user_id: Uuid) -> Router {
         Router::new()
+            .route("/me/favorites/quiz", post(generate_quiz::<FakeDbAdapter>))
             .route(
-                "/me/favorites/quiz",
-                post(generate_quiz::<FakeDbAdapter>),
+                "/me/favorites/quiz/done",
+                post(mark_quiz_done::<FakeDbAdapter>),
             )
             .layer(Extension(state))
             .layer(Extension(AuthUser { id: user_id }))
@@ -111,8 +133,64 @@ mod tests {
             created_at: Some(Utc::now()),
             image_url: None,
             concepts: None,
+            quiz_completed: false,
         }
     }
+
+    // --- mark_quiz_done 테스트 ---
+
+    #[tokio::test]
+    async fn mark_quiz_done_returns_204() {
+        let db = FakeDbAdapter::new();
+        let user_id = Uuid::new_v4();
+        let favorites = FakeFavoritesAdapter::new();
+        let url = "https://example.com/article";
+        let item = make_favorite(user_id, url);
+        favorites.add_favorite(user_id, &item).await.unwrap();
+
+        let state = make_test_state(db, favorites);
+        let app = make_app(state, user_id);
+        let server = TestServer::new(app);
+
+        let resp = server
+            .post("/me/favorites/quiz/done")
+            .json(&serde_json::json!({ "url": url }))
+            .await;
+        resp.assert_status(StatusCode::NO_CONTENT);
+    }
+
+    #[tokio::test]
+    async fn mark_quiz_done_empty_url_returns_400() {
+        let db = FakeDbAdapter::new();
+        let user_id = Uuid::new_v4();
+        let state = make_test_state(db, FakeFavoritesAdapter::new());
+        let app = make_app(state, user_id);
+        let server = TestServer::new(app);
+
+        let resp = server
+            .post("/me/favorites/quiz/done")
+            .json(&serde_json::json!({ "url": "" }))
+            .await;
+        resp.assert_status_bad_request();
+    }
+
+    #[tokio::test]
+    async fn mark_quiz_done_nonexistent_url_is_noop() {
+        // favorites에 없는 url이어도 204 반환 (no-op)
+        let db = FakeDbAdapter::new();
+        let user_id = Uuid::new_v4();
+        let state = make_test_state(db, FakeFavoritesAdapter::new());
+        let app = make_app(state, user_id);
+        let server = TestServer::new(app);
+
+        let resp = server
+            .post("/me/favorites/quiz/done")
+            .json(&serde_json::json!({ "url": "https://not-in-favorites.com" }))
+            .await;
+        resp.assert_status(StatusCode::NO_CONTENT);
+    }
+
+    // --- generate_quiz 테스트 ---
 
     #[tokio::test]
     async fn generate_quiz_returns_questions() {

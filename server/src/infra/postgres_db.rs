@@ -262,12 +262,11 @@ impl DbPort for PostgresDbAdapter {
     }
 
     async fn get_like_count(&self, user_id: Uuid) -> Result<i32, AppError> {
-        let row: Option<(i32,)> =
-            sqlx::query_as("SELECT like_count FROM profiles WHERE id = $1")
-                .bind(user_id)
-                .fetch_optional(&self.pool)
-                .await
-                .map_err(|e| AppError::Internal(format!("DB get_like_count failed: {e}")))?;
+        let row: Option<(i32,)> = sqlx::query_as("SELECT like_count FROM profiles WHERE id = $1")
+            .bind(user_id)
+            .fetch_optional(&self.pool)
+            .await
+            .map_err(|e| AppError::Internal(format!("DB get_like_count failed: {e}")))?;
 
         Ok(row.map(|(c,)| c).unwrap_or(0))
     }

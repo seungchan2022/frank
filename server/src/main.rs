@@ -8,6 +8,7 @@ use server::infra::imessage::{ImessageAdapter, LogOnlyNotificationAdapter};
 use server::infra::openrouter::OpenRouterAdapter;
 use server::infra::postgres_db::PostgresDbAdapter;
 use server::infra::postgres_favorites::PostgresFavoritesAdapter;
+use server::infra::postgres_quiz_wrong_answers::PostgresQuizWrongAnswerAdapter;
 use server::infra::search_chain::SearchFallbackChain;
 use server::infra::tavily::TavilyAdapter;
 use server::middleware::auth::SupabaseConfig;
@@ -59,6 +60,9 @@ async fn main() {
     let favorites: Arc<dyn server::domain::ports::FavoritesPort> =
         Arc::new(PostgresFavoritesAdapter::new(pool.clone()));
 
+    let quiz_wrong_answers: Arc<dyn server::domain::ports::QuizWrongAnswerPort> =
+        Arc::new(PostgresQuizWrongAnswerAdapter::new(pool.clone()));
+
     // iMessage 알림: IMESSAGE_RECIPIENT 환경변수가 설정된 경우만 활성화
     let notifier: Arc<dyn server::domain::ports::NotificationPort> =
         match std::env::var("IMESSAGE_RECIPIENT") {
@@ -81,6 +85,7 @@ async fn main() {
         crawl,
         notifier,
         favorites,
+        quiz_wrong_answers,
     );
 
     let addr = format!("0.0.0.0:{}", config.port);

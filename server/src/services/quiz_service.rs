@@ -76,6 +76,7 @@ mod tests {
             created_at: Some(Utc::now()),
             image_url: None,
             concepts: None,
+            quiz_completed: false,
         }
     }
 
