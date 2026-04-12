@@ -33,16 +33,19 @@ cd web && npm run test
 cd server && cargo build --release
 cd web && npm run build
 
-# 로컬 실행
-cd server && cargo run                     # :8080
-cd web && npm run dev                      # :5173
-
-# 통합 배포 (iOS + API + 웹 프론트)
-scripts/deploy.sh                          # 전체 실행
-scripts/deploy.sh --target=ios            # iOS 시뮬레이터만
-scripts/deploy.sh --target=api,front      # API + 웹 프론트만
-scripts/deploy.sh --target=api --tunnel   # API + Cloudflare 터널
+# 통합 배포 (iOS + API + 웹 프론트) — 반드시 이 스크립트 사용
+scripts/deploy.sh                                    # 전체 실행 (브라우저 + 시뮬레이터 자동 오픈)
+scripts/deploy.sh --target=ios                       # iOS 시뮬레이터만
+scripts/deploy.sh --target=api,front                 # API + 웹 프론트만 (브라우저 자동 오픈)
+scripts/deploy.sh --target=api,front --native        # Docker 없이 네이티브 모드 (브라우저 자동 오픈)
+scripts/deploy.sh --target=api --tunnel              # API + Cloudflare 터널
 ```
+
+> **⚠️ 직접 실행 절대 금지**: `cargo run`, `npm run dev`를 개별 실행하면 브라우저/시뮬레이터가 열리지 않는다.
+> 항상 `scripts/deploy.sh`를 사용하고, Docker가 없으면 `--native` 플래그를 추가한다.
+>
+> **수동 테스트 시 필수**: 브라우저 + iOS 시뮬레이터를 **둘 다** 열어야 한다.
+> Docker 없는 경우: `scripts/deploy.sh --native` (타겟 생략 = ios + api + front 전체 실행)
 
 ## 테스트 커버리지 기준 (90%)
 

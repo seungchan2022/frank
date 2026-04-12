@@ -473,6 +473,7 @@ usage() {
 
 옵션:
   --target=ios,front    지정한 타겟만 실행 (,로 복수 지정)
+  --native              Docker 없이 네이티브 모드 강제 실행 (프롬프트 없음)
   --tunnel              Cloudflare Quick Tunnel 시작 (front 포함 시 유효)
   --simulator=<이름>    iOS 시뮬레이터 이름 (기본: $IOS_SIMULATOR_NAME)
   --help, -h            이 도움말 출력
@@ -480,12 +481,14 @@ usage() {
 Docker 연결 실패 시:
   자동으로 네이티브 모드 실행 여부를 묻습니다.
   네이티브 모드: API=cargo run (:$API_PORT), 웹=npm run dev (:5173)
+  프롬프트 없이 강제: --native 플래그 사용
 
 예시:
-  $0                          # 전체 실행
-  $0 --target=api,front       # 백엔드+프론트만
-  $0 --target=ios             # iOS만
-  $0 --target=api --tunnel    # API + 터널
+  $0                               # 전체 실행
+  $0 --target=api,front            # 백엔드+프론트만
+  $0 --target=api,front --native   # Docker 없이 네이티브 모드로 즉시 실행
+  $0 --target=ios                  # iOS만
+  $0 --target=api --tunnel         # API + 터널
 EOF
 }
 
@@ -498,6 +501,7 @@ main() {
             --target=*)  targets_raw="${arg#--target=}" ;;
             --simulator=*) IOS_SIMULATOR_NAME="${arg#--simulator=}" ;;
             --tunnel)    use_tunnel=true ;;
+            --native)    USE_NATIVE=true ;;
             --help|-h)   usage; exit 0 ;;
             *)
                 log_error "알 수 없는 옵션: $arg"
