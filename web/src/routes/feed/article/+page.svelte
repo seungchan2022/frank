@@ -8,9 +8,11 @@
 	import { likedStore } from '$lib/stores/liked.svelte';
 	import { formatArticleDate } from '$lib/utils/article';
 	import Header from '$lib/components/Header.svelte';
+	import QuizModal from '$lib/components/QuizModal.svelte';
 	import { marked } from 'marked';
 	import type { SummaryResult } from '$lib/types/summary';
 	import type { FeedItem } from '$lib/types/article';
+	import type { QuizQuestion } from '$lib/types/quiz';
 	import type { ArticlePageState } from './+page';
 
 	const auth = getAuth();
@@ -33,6 +35,12 @@
 
 	let phase = $state<SummaryPhase>({ tag: 'idle' });
 	let favoriteLoading = $state(false);
+
+	// 퀴즈 상태
+	type QuizPhase = 'idle' | 'loading' | 'error';
+	let quizPhase = $state<QuizPhase>('idle');
+	let quizQuestions = $state<QuizQuestion[] | null>(null);
+	let quizError = $state<string | null>(null);
 
 	$effect(() => {
 		if (!auth.isAuthenticated) {
@@ -113,6 +121,34 @@
 		});
 		const path = `/feed/article?${params.toString()}`;
 		goto(path, { state: { feedItem: JSON.parse(JSON.stringify(item)) } });
+	}
+
+	async function handleQuiz() {
+		if (quizPhase === 'loading') return;
+		quizPhase = 'loading';
+		quizError = null;
+		try {
+			const res = await fetch('/api/favorites/quiz', {
+				method: 'POST',
+				headers: { 'Content-Type': 'application/json' },
+				body: JSON.stringify({ url: feedItem.url })
+			});
+			const data = await res.json();
+			if (!res.ok) {
+				if (res.status === 503) {
+					quizError = '퀴즈 생성에 실패했습니다. 잠시 후 다시 시도해주세요.';
+				} else {
+					quizError = (data as { error?: string })?.error ?? '퀴즈를 불러오지 못했습니다.';
+				}
+				quizPhase = 'error';
+				return;
+			}
+			quizQuestions = (data as { questions: QuizQuestion[] }).questions;
+			quizPhase = 'idle';
+		} catch {
+			quizError = '네트워크 오류가 발생했습니다.';
+			quizPhase = 'error';
+		}
 	}
 
 	async function handleFavoriteToggle() {
@@ -288,5 +324,41 @@
 				{/if}
 			</button>
 		</div>
+
+		<!-- 퀴즈 버튼 (즐겨찾기한 기사만 표시) -->
+		{#if favoritesStore.isLiked(feedItem.url)}
+			<div class="mt-3">
+				<button
+					onclick={handleQuiz}
+					disabled={quizPhase === 'loading'}
+					class={[
+						'w-full rounded-lg border border-indigo-300 bg-indigo-50 px-4 py-2 text-sm font-medium text-indigo-700 transition-colors',
+						quizPhase === 'loading'
+							? 'cursor-not-allowed opacity-50'
+							: 'hover:bg-indigo-100'
+					].join(' ')}
+				>
+					{#if quizPhase === 'loading'}
+						<span class="flex items-center justify-center gap-2">
+							<span class="h-4 w-4 animate-spin rounded-full border-2 border-indigo-600 border-t-transparent"></span>
+							퀴즈 생성 중...
+						</span>
+					{:else}
+						🧠 퀴즈 풀기
+					{/if}
+				</button>
+				{#if quizPhase === 'error' && quizError}
+					<p class="mt-1 text-xs text-red-600">{quizError}</p>
+				{/if}
+			</div>
+		{/if}
 	</main>
 </div>
+
+<!-- 퀴즈 모달 -->
+{#if quizQuestions !== null}
+	<QuizModal
+		questions={quizQuestions}
+		onClose={() => { quizQuestions = null; }}
+	/>
+{/if}
