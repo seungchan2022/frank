@@ -103,7 +103,7 @@ struct MainTabView: View {
                 feature: favoritesFeature,
                 summarize: dependencies.summarize,
                 likesFeature: likesFeature,
-                related: dependencies.related
+                quiz: dependencies.quiz
             )
             .tabItem {
                 Label("스크랩", systemImage: "bookmark.fill")
@@ -142,7 +142,7 @@ struct FeedContainerView: View {
             summarize: dependencies.summarize,
             favoritesFeature: favoritesFeature,
             likesFeature: likesFeature,
-            related: dependencies.related,
+            quiz: dependencies.quiz,
             onSettingsTapped: {
                 settingsFeature = SettingsFeature(tag: dependencies.tag, auth: dependencies.auth)
             }
@@ -160,9 +160,9 @@ struct FavoritesContainerView: View {
     let feature: FavoritesFeature
     let summarize: any SummarizePort
     let likesFeature: LikesFeature
-    let related: any RelatedPort
+    let quiz: any QuizPort
 
     var body: some View {
-        FavoritesView(feature: feature, summarize: summarize, likesFeature: likesFeature, related: related)
+        FavoritesView(feature: feature, summarize: summarize, likesFeature: likesFeature, quiz: quiz)
     }
 }

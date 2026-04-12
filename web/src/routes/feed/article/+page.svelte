@@ -11,7 +11,6 @@
 	import QuizModal from '$lib/components/QuizModal.svelte';
 	import { marked } from 'marked';
 	import type { SummaryResult } from '$lib/types/summary';
-	import type { FeedItem } from '$lib/types/article';
 	import type { QuizQuestion } from '$lib/types/quiz';
 	import type { ArticlePageState } from './+page';
 
@@ -22,9 +21,6 @@
 	const feedItem = $derived(
 		(page.state as Partial<ArticlePageState>).feedItem ?? data.fallbackItem
 	);
-
-	// 연관 기사 상태
-	let relatedItems = $state<FeedItem[]>([]);
 
 	// 요약 상태: idle | loading | done | failed
 	type SummaryPhase =
@@ -41,6 +37,10 @@
 	let quizPhase = $state<QuizPhase>('idle');
 	let quizQuestions = $state<QuizQuestion[] | null>(null);
 	let quizError = $state<string | null>(null);
+
+	// 타이머 기반 로딩 텍스트 (8s 간격 전환)
+	let summarizeLoadingText = $state('요약 중…');
+	let quizLoadingText = $state('퀴즈 생성 중…');
 
 	$effect(() => {
 		if (!auth.isAuthenticated) {
@@ -61,6 +61,30 @@
 		if (auth.isAuthenticated) {
 			favoritesStore.loadFavorites(auth.user?.id);
 		}
+	});
+
+	// 요약 로딩 텍스트: 8s 후 "마무리 중…"으로 전환
+	$effect(() => {
+		if (phase.tag !== 'loading') {
+			summarizeLoadingText = '요약 중…';
+			return;
+		}
+		const timer = setTimeout(() => {
+			summarizeLoadingText = '마무리 중…';
+		}, 8000);
+		return () => clearTimeout(timer);
+	});
+
+	// 퀴즈 로딩 텍스트: 8s 후 "마무리 중…"으로 전환
+	$effect(() => {
+		if (quizPhase !== 'loading') {
+			quizLoadingText = '퀴즈 생성 중…';
+			return;
+		}
+		const timer = setTimeout(() => {
+			quizLoadingText = '마무리 중…';
+		}, 8000);
+		return () => clearTimeout(timer);
 	});
 
 	async function handleSummarize() {
@@ -84,43 +108,6 @@
 				e instanceof Error ? e.message : '요약을 불러오지 못했습니다. 다시 시도해주세요.';
 			phase = { tag: 'failed', message };
 		}
-	}
-
-	// 연관 기사 로드
-	async function loadRelatedArticles(item: FeedItem) {
-		const params = new URLSearchParams();
-		if (item.title) params.set('title', item.title);
-		if (item.snippet) params.set('snippet', item.snippet);
-
-		try {
-			const res = await fetch(`/api/related?${params.toString()}`);
-			if (!res.ok) return;
-			const data = await res.json();
-			if (Array.isArray(data)) {
-				relatedItems = data as FeedItem[];
-			}
-		} catch {
-			// 실패해도 조용히 무시 — 연관 기사는 보조 기능
-		}
-	}
-
-	$effect(() => {
-		if (feedItem.title || feedItem.snippet) {
-			loadRelatedArticles(feedItem);
-		}
-	});
-
-	function navigateToArticle(item: FeedItem) {
-		const params = new URLSearchParams({
-			url: item.url,
-			title: item.title,
-			source: item.source,
-			...(item.snippet ? { snippet: item.snippet } : {}),
-			...(item.published_at ? { published_at: item.published_at } : {}),
-			...(item.tag_id ? { tag_id: item.tag_id } : {})
-		});
-		const path = `/feed/article?${params.toString()}`;
-		goto(path, { state: { feedItem: JSON.parse(JSON.stringify(item)) } });
 	}
 
 	async function handleQuiz() {
@@ -232,9 +219,9 @@
 			</div>
 		{/if}
 
-		<!-- 요약 섹션 -->
+		<!-- AI 요약 및 인사이트 섹션 -->
 		<div class="rounded-lg border border-gray-200 bg-white p-6">
-			<h2 class="mb-4 text-base font-semibold text-gray-800">AI 요약</h2>
+			<h2 class="mb-4 text-base font-semibold text-gray-800">AI 요약 및 인사이트</h2>
 
 			{#if phase.tag === 'idle'}
 				<button
@@ -248,17 +235,17 @@
 					<div
 						class="h-5 w-5 animate-spin rounded-full border-2 border-indigo-600 border-t-transparent"
 					></div>
-					<span class="text-sm">요약 중... (최대 30초)</span>
+					<span class="text-sm">{summarizeLoadingText}</span>
 				</div>
 			{:else if phase.tag === 'done'}
-				<div class="space-y-4">
+				<div class="space-y-6">
 					<div>
-						<h3 class="mb-2 text-sm font-semibold text-gray-500 uppercase tracking-wide">요약</h3>
-						<div class="prose prose-sm max-w-none text-gray-700">{@html marked(phase.result.summary)}</div>
+						<h3 class="mb-3 text-xs font-semibold tracking-widest text-gray-400 uppercase">요약</h3>
+						<div class="prose prose-base max-w-none leading-relaxed text-gray-700">{@html marked(phase.result.summary)}</div>
 					</div>
-					<div>
-						<h3 class="mb-2 text-sm font-semibold text-gray-500 uppercase tracking-wide">인사이트</h3>
-						<div class="prose prose-sm max-w-none text-gray-600">{@html marked(phase.result.insight)}</div>
+					<div class="border-t border-gray-100 pt-6">
+						<h3 class="mb-3 text-xs font-semibold tracking-widest text-gray-400 uppercase">인사이트</h3>
+						<div class="prose prose-base max-w-none leading-relaxed text-gray-600">{@html marked(phase.result.insight)}</div>
 					</div>
 				</div>
 			{:else if phase.tag === 'failed'}
@@ -273,34 +260,6 @@
 				</div>
 			{/if}
 		</div>
-
-		<!-- 연관 기사 -->
-		{#if relatedItems.length > 0}
-			<div class="mt-6 rounded-lg border border-gray-200 bg-white p-6">
-				<h2 class="mb-4 text-base font-semibold text-gray-800">연관 기사</h2>
-				<ul class="space-y-3">
-					{#each relatedItems as item (item.url)}
-						<li>
-							<button
-								onclick={() => navigateToArticle(item)}
-								class="w-full rounded-lg border border-gray-100 bg-gray-50 p-3 text-left hover:bg-gray-100 transition-colors"
-							>
-								<p class="text-sm font-medium text-gray-800 line-clamp-2">{item.title}</p>
-								{#if item.snippet}
-									<p class="mt-1 text-xs text-gray-500 line-clamp-2">{item.snippet}</p>
-								{/if}
-								<div class="mt-1 flex items-center gap-2">
-									<span class="text-xs text-gray-400">{item.source}</span>
-									{#if item.published_at}
-										<span class="text-xs text-gray-400">{formatArticleDate(item.published_at)}</span>
-									{/if}
-								</div>
-							</button>
-						</li>
-					{/each}
-				</ul>
-			</div>
-		{/if}
 
 		<!-- 즐겨찾기 -->
 		<div class="mt-4">
@@ -341,7 +300,7 @@
 					{#if quizPhase === 'loading'}
 						<span class="flex items-center justify-center gap-2">
 							<span class="h-4 w-4 animate-spin rounded-full border-2 border-indigo-600 border-t-transparent"></span>
-							퀴즈 생성 중...
+							{quizLoadingText}
 						</span>
 					{:else}
 						🧠 퀴즈 풀기

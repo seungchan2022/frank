@@ -2,12 +2,12 @@ import SwiftUI
 
 /// MVP5 M3: FavoritesView — 스크랩 목록 탭.
 /// step-5 L 반영: FavoriteItem.summary/insight → SummarySessionCache에 주입
-/// MVP7 M3: RelatedPort 주입 — ArticleDetailView로 연관 기사 전달.
+/// MVP8 M2: RelatedPort 제거, QuizPort 주입 — ArticleDetailView로 퀴즈 포트 전달.
 struct FavoritesView: View {
     let feature: FavoritesFeature
     let summarize: any SummarizePort
     let likesFeature: LikesFeature
-    let related: any RelatedPort
+    let quiz: any QuizPort
 
     var body: some View {
         NavigationStack {
@@ -129,7 +129,7 @@ struct FavoritesView: View {
                 summarize: summarize,
                 favoritesFeature: feature,
                 likesFeature: likesFeature,
-                related: related
+                quiz: quiz
             )
         }
     }

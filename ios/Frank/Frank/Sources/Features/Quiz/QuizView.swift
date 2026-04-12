@@ -10,6 +10,7 @@ struct QuizView: View {
 
     @State private var currentIndex = 0
     @State private var selectedIndex: Int? = nil
+    @State private var confirmed = false
     @State private var score = 0
     @State private var finished = false
 
@@ -74,8 +75,20 @@ struct QuizView: View {
                 }
             }
 
-            // 해설 (선택 후)
-            if let selected = selectedIndex {
+            // 확인 버튼 (선택 후, 확인 전)
+            if selectedIndex != nil && !confirmed {
+                Button("확인") {
+                    guard let selected = selectedIndex else { return }
+                    if selected == question.answerIndex { score += 1 }
+                    confirmed = true
+                }
+                .buttonStyle(.borderedProminent)
+                .tint(.indigo)
+                .frame(maxWidth: .infinity)
+            }
+
+            // 해설 + 다음 버튼 (확인 후)
+            if confirmed, let selected = selectedIndex {
                 explanationView(question: question, selectedIndex: selected)
 
                 Button(currentIndex + 1 >= questions.count ? "결과 보기" : "다음 문제") {
@@ -94,15 +107,11 @@ struct QuizView: View {
     @ViewBuilder
     private func optionButton(option: String, index: Int, question: QuizQuestion) -> some View {
         let isSelected = selectedIndex == index
-        let isAnswered = selectedIndex != nil
         let isAnswer = index == question.answerIndex
 
         Button {
-            guard selectedIndex == nil else { return }
+            guard !confirmed else { return } // 확인 후에는 변경 불가
             selectedIndex = index
-            if index == question.answerIndex {
-                score += 1
-            }
         } label: {
             HStack {
                 Text("\(String(UnicodeScalar(65 + index)!)).")
@@ -115,30 +124,30 @@ struct QuizView: View {
             }
             .padding()
             .background(
-                isAnswered
+                confirmed
                     ? (isAnswer
                         ? Color.green.opacity(0.15)
                         : (isSelected ? Color.red.opacity(0.15) : Color(.systemGray6)))
-                    : Color(.systemGray6)
+                    : (isSelected ? Color.indigo.opacity(0.12) : Color(.systemGray6))
             )
             .foregroundStyle(
-                isAnswered
+                confirmed
                     ? (isAnswer ? .green : (isSelected ? .red : Color(.label)))
-                    : Color(.label)
+                    : (isSelected ? Color.indigo : Color(.label))
             )
             .clipShape(RoundedRectangle(cornerRadius: 10))
             .overlay(
                 RoundedRectangle(cornerRadius: 10)
                     .stroke(
-                        isAnswered
+                        confirmed
                             ? (isAnswer ? Color.green : (isSelected ? Color.red : Color(.systemGray4)))
-                            : Color(.systemGray4),
+                            : (isSelected ? Color.indigo : Color(.systemGray4)),
                         lineWidth: 1
                     )
             )
         }
         .buttonStyle(.plain)
-        .disabled(isAnswered)
+        .disabled(confirmed)
     }
 
     @ViewBuilder
@@ -208,6 +217,7 @@ struct QuizView: View {
         } else {
             currentIndex += 1
             selectedIndex = nil
+            confirmed = false
         }
     }
 }

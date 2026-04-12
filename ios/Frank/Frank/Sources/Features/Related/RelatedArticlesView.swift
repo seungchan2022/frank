@@ -75,7 +75,7 @@ struct RelatedArticlesView: View {
                         summarize: summarize,
                         favoritesFeature: favoritesFeature,
                         likesFeature: likesFeature,
-                        related: nextRelated
+                        quiz: MockQuizAdapter()
                     )
                 } label: {
                     ArticleCardView(article: item)

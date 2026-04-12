@@ -2,42 +2,37 @@ import SwiftUI
 
 /// MVP5 M3: ArticleDetailView — 온디맨드 요약 + 즐겨찾기 토글 UI.
 /// MVP7 M2: LikesFeature 주입 — 헤더 하트 버튼.
-/// MVP7 M3: RelatedArticlesView 하단 추가 — 연관 기사 표시.
 /// MVP7 M4: QuizFeature 주입 — 즐겨찾기 기사에서 퀴즈 버튼 표시.
+/// MVP8 M2: 연관 기사 섹션 제거 (RelatedFeature 제거). QuizPort 기본값 제거 — AppDependencies 통해 주입.
 /// - 요약하기 버튼: idle/loading/done/failed 상태에 따라 UI 전환
 /// - 즐겨찾기 버튼: isLiked 상태에 따라 채워진/빈 하트 아이콘
 /// - 좋아요 버튼: LikesFeature 공유 (FeedView와 상태 동기화)
-/// - 연관 기사: RelatedFeature 지역 인스턴스로 관리
 /// - 퀴즈 버튼: 즐겨찾기 상태일 때만 표시, QuizFeature로 관리
 struct ArticleDetailView: View {
     let feedItem: FeedItem
     let favoritesFeature: FavoritesFeature
     let likesFeature: LikesFeature
     private let summarizePort: any SummarizePort
-    private let relatedPort: any RelatedPort
     @State private var feature: ArticleDetailFeature
-    @State private var relatedFeature: RelatedFeature
     @State private var quizFeature: QuizFeature
     @State private var favoriteLoading: Bool = false
     @State private var showQuiz = false
-
     @State private var showSafari = false
+    @State private var summarizeLoadingText = "요약 중…"
+    @State private var quizLoadingText = "퀴즈 생성 중…"
 
     init(
         feedItem: FeedItem,
         summarize: any SummarizePort,
         favoritesFeature: FavoritesFeature,
         likesFeature: LikesFeature,
-        related: any RelatedPort = MockRelatedAdapter(),
-        quiz: any QuizPort = MockQuizAdapter()
+        quiz: any QuizPort
     ) {
         self.feedItem = feedItem
         self.favoritesFeature = favoritesFeature
         self.likesFeature = likesFeature
         self.summarizePort = summarize
-        self.relatedPort = related
         self._feature = State(initialValue: ArticleDetailFeature(feedItem: feedItem, summarize: summarize))
-        self._relatedFeature = State(initialValue: RelatedFeature(related: related))
         self._quizFeature = State(initialValue: QuizFeature(quiz: quiz))
     }
 
@@ -56,14 +51,6 @@ struct ArticleDetailView: View {
                 }
                 actionButtons
                 summarySection
-                Divider()
-                RelatedArticlesView(
-                    feature: relatedFeature,
-                    summarize: summarizePort,
-                    favoritesFeature: favoritesFeature,
-                    likesFeature: likesFeature,
-                    nextRelated: MockRelatedAdapter()
-                )
             }
             .padding(.horizontal, 20)
             .padding(.vertical, 16)
@@ -85,9 +72,6 @@ struct ArticleDetailView: View {
             if case .done = newPhase {
                 showQuiz = true
             }
-        }
-        .task {
-            await relatedFeature.load(title: feedItem.title, snippet: feedItem.snippet)
         }
     }
 }
@@ -204,11 +188,16 @@ extension ArticleDetailView {
             HStack {
                 ProgressView()
                     .padding(.trailing, 4)
-                Text("퀴즈 생성 중...")
+                Text(quizLoadingText)
                     .foregroundStyle(.secondary)
             }
             .frame(maxWidth: .infinity)
             .padding(.vertical, 10)
+            .task(id: "quiz-loading") {
+                quizLoadingText = "퀴즈 생성 중…"
+                try? await Task.sleep(for: .seconds(8))
+                quizLoadingText = "마무리 중…"
+            }
 
         case .failed(let message):
             VStack(spacing: 6) {
@@ -285,11 +274,16 @@ extension ArticleDetailView {
             HStack {
                 ProgressView()
                     .padding(.trailing, 4)
-                Text("요약 중...")
+                Text(summarizeLoadingText)
                     .foregroundStyle(.secondary)
             }
             .frame(maxWidth: .infinity)
             .padding(.vertical, 10)
+            .task(id: "summarize-loading") {
+                summarizeLoadingText = "요약 중…"
+                try? await Task.sleep(for: .seconds(8))
+                summarizeLoadingText = "마무리 중…"
+            }
 
         case .done:
             Button {
@@ -328,25 +322,39 @@ extension ArticleDetailView {
     private var summarySection: some View {
         switch feature.phase {
         case .done(let result):
-            VStack(alignment: .leading, spacing: 16) {
+            VStack(alignment: .leading, spacing: 20) {
                 Divider()
 
-                VStack(alignment: .leading, spacing: 8) {
+                Text("AI 요약 및 인사이트")
+                    .font(.headline)
+                    .fontWeight(.semibold)
+
+                VStack(alignment: .leading, spacing: 10) {
                     Text("요약")
-                        .font(.subheadline)
-                        .fontWeight(.bold)
+                        .font(.caption)
+                        .fontWeight(.semibold)
                         .foregroundStyle(.secondary)
+                        .kerning(1.2)
+                        .textCase(.uppercase)
 
                     markdownText(result.summary)
+                        .font(.body)
+                        .lineSpacing(4)
                 }
 
-                VStack(alignment: .leading, spacing: 8) {
+                Divider()
+
+                VStack(alignment: .leading, spacing: 10) {
                     Text("인사이트")
-                        .font(.subheadline)
-                        .fontWeight(.bold)
+                        .font(.caption)
+                        .fontWeight(.semibold)
                         .foregroundStyle(.secondary)
+                        .kerning(1.2)
+                        .textCase(.uppercase)
 
                     markdownText(result.insight)
+                        .font(.body)
+                        .lineSpacing(4)
                         .foregroundStyle(.secondary)
                 }
             }

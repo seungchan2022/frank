@@ -4,13 +4,13 @@ import SwiftUI
 /// collectAndRefresh 버튼 제거. pull-to-refresh = API 재호출.
 /// NavigationLink value: String (FeedItem.id = url absoluteString 기반).
 /// MVP7 M2: LikesFeature 주입 — 카드별 하트 버튼 + 상세 공유.
-/// MVP7 M3: RelatedPort 주입 — ArticleDetailView로 연관 기사 전달.
+/// MVP8 M2: RelatedPort 제거, QuizPort 주입 — ArticleDetailView로 퀴즈 포트 전달.
 struct FeedView: View {
     let feature: FeedFeature
     let summarize: any SummarizePort
     let favoritesFeature: FavoritesFeature
     let likesFeature: LikesFeature
-    let related: any RelatedPort
+    let quiz: any QuizPort
     var onSettingsTapped: (() -> Void)?
 
     @State private var navigationPath = NavigationPath()
@@ -50,7 +50,7 @@ struct FeedView: View {
                         summarize: summarize,
                         favoritesFeature: favoritesFeature,
                         likesFeature: likesFeature,
-                        related: related
+                        quiz: quiz
                     )
                 }
             }

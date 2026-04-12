@@ -10,6 +10,7 @@
 
 	let currentIndex = $state(0);
 	let selectedIndex = $state<number | null>(null);
+	let confirmed = $state(false);
 	let score = $state(0);
 	let finished = $state(false);
 
@@ -19,11 +20,16 @@
 	);
 
 	function selectOption(index: number) {
-		if (selectedIndex !== null) return; // 이미 선택됨
+		if (confirmed) return; // 확인 후에는 변경 불가
 		selectedIndex = index;
-		if (index === currentQuestion.answer_index) {
+	}
+
+	function confirm() {
+		if (selectedIndex === null || confirmed) return;
+		if (selectedIndex === currentQuestion.answer_index) {
 			score += 1;
 		}
+		confirmed = true;
 	}
 
 	function nextQuestion() {
@@ -32,6 +38,7 @@
 		} else {
 			currentIndex += 1;
 			selectedIndex = null;
+			confirmed = false;
 		}
 	}
 </script>
@@ -110,18 +117,22 @@
 						<li>
 							<button
 								onclick={() => selectOption(i)}
-								disabled={selectedIndex !== null}
+								disabled={confirmed}
 								class={[
 									'w-full rounded-lg border px-4 py-3 text-left text-sm transition-colors',
-									selectedIndex === null
+									!confirmed && selectedIndex === null
 										? 'border-gray-200 bg-white hover:border-indigo-300 hover:bg-indigo-50'
-										: selectedIndex === i
-											? i === currentQuestion.answer_index
-												? 'border-green-400 bg-green-50 text-green-800'
-												: 'border-red-400 bg-red-50 text-red-800'
-											: i === currentQuestion.answer_index
-												? 'border-green-400 bg-green-50 text-green-800'
-												: 'border-gray-200 bg-white text-gray-400'
+										: !confirmed && selectedIndex === i
+											? 'border-indigo-400 bg-indigo-50 text-indigo-800'
+											: confirmed
+												? selectedIndex === i
+													? i === currentQuestion.answer_index
+														? 'border-green-400 bg-green-50 text-green-800'
+														: 'border-red-400 bg-red-50 text-red-800'
+													: i === currentQuestion.answer_index
+														? 'border-green-400 bg-green-50 text-green-800'
+														: 'border-gray-200 bg-white text-gray-400'
+												: 'border-gray-200 bg-white'
 								].join(' ')}
 							>
 								<span class="font-medium mr-2">{String.fromCharCode(65 + i)}.</span>
@@ -131,8 +142,18 @@
 					{/each}
 				</ul>
 
-				<!-- 해설 (선택 후 표시) -->
-				{#if selectedIndex !== null}
+				<!-- 확인 버튼 (선택 후, 확인 전) -->
+				{#if selectedIndex !== null && !confirmed}
+					<button
+						onclick={confirm}
+						class="w-full rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-700"
+					>
+						확인
+					</button>
+				{/if}
+
+				<!-- 해설 + 다음 버튼 (확인 후 표시) -->
+				{#if confirmed}
 					<div
 						class={[
 							'rounded-lg border p-3 mb-4 text-sm',
