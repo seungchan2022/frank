@@ -121,6 +121,7 @@ impl FavoritesPort for FakeFavoritesAdapter {
                 created_at: Some(now),
                 image_url: item.image_url.clone(),
                 concepts: None,
+                quiz_completed: item.quiz_completed,
             };
 
             guard.1.push(key.clone());
@@ -209,6 +210,26 @@ impl FavoritesPort for FakeFavoritesAdapter {
             Ok(())
         })
     }
+
+    fn mark_quiz_completed<'a>(
+        &'a self,
+        user_id: Uuid,
+        url: &'a str,
+    ) -> Pin<Box<dyn Future<Output = Result<(), AppError>> + Send + 'a>> {
+        let url = url.to_string();
+        Box::pin(async move {
+            if self.should_fail {
+                return Err(AppError::Internal(FAKE_FAIL_MSG.to_string()));
+            }
+
+            let mut guard = self.store.lock().unwrap();
+            if let Some(fav) = guard.0.get_mut(&(user_id, url)) {
+                fav.quiz_completed = true;
+            }
+
+            Ok(())
+        })
+    }
 }
 
 #[cfg(test)]
@@ -232,6 +253,7 @@ mod tests {
             created_at: None,
             image_url: None,
             concepts: None,
+            quiz_completed: false,
         }
     }
 
@@ -408,18 +430,20 @@ mod tests {
         item.user_id = user_id;
         adapter.add_favorite(user_id, &item).await.unwrap();
 
-        let concepts = vec![
-            crate::domain::models::QuizConcept {
-                term: "Swift".to_string(),
-                explanation: "애플 프로그래밍 언어".to_string(),
-            },
-        ];
+        let concepts = vec![crate::domain::models::QuizConcept {
+            term: "Swift".to_string(),
+            explanation: "애플 프로그래밍 언어".to_string(),
+        }];
         adapter
             .update_favorite_concepts(user_id, url, concepts)
             .await
             .unwrap();
 
-        let fav = adapter.get_favorite_by_url(user_id, url).await.unwrap().unwrap();
+        let fav = adapter
+            .get_favorite_by_url(user_id, url)
+            .await
+            .unwrap()
+            .unwrap();
         assert!(fav.concepts.is_some());
     }
 

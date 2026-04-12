@@ -58,6 +58,38 @@ pub struct Favorite {
     pub image_url: Option<String>,
     /// MVP7 M1: 퀴즈 생성 후 저장되는 개념 정리 JSON (없으면 None)
     pub concepts: Option<serde_json::Value>,
+    /// MVP8 M1: 퀴즈를 한 번이라도 완료하면 true
+    pub quiz_completed: bool,
+}
+
+/// MVP8 M1: quiz_wrong_answers 테이블 모델.
+/// 사용자가 틀린 퀴즈 문항 1건.
+/// UNIQUE (user_id, article_url, question)
+#[derive(Debug, Clone, Serialize, Deserialize, sqlx::FromRow)]
+pub struct QuizWrongAnswer {
+    pub id: Uuid,
+    pub user_id: Uuid,
+    pub article_url: String,
+    pub article_title: String,
+    pub question: String,
+    pub options: serde_json::Value, // ["보기A","보기B","보기C","보기D"]
+    pub correct_index: i32,
+    pub user_index: i32,
+    pub explanation: Option<String>,
+    pub created_at: DateTime<Utc>,
+}
+
+/// MVP8 M1: 오답 저장 파라미터 DTO.
+/// API 요청 → 서비스 레이어 전달용.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct SaveWrongAnswerParams {
+    pub article_url: String,
+    pub article_title: String,
+    pub question: String,
+    pub options: Vec<String>,
+    pub correct_index: i32,
+    pub user_index: i32,
+    pub explanation: Option<String>,
 }
 
 /// LLM 요약 결과

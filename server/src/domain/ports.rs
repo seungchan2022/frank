@@ -4,7 +4,10 @@ use std::pin::Pin;
 use uuid::Uuid;
 
 use super::error::AppError;
-use super::models::{Favorite, LlmResponse, Profile, QuizConcept, QuizResult, SearchResult, Tag, UserTag};
+use super::models::{
+    Favorite, LlmResponse, Profile, QuizConcept, QuizResult, QuizWrongAnswer,
+    SaveWrongAnswerParams, SearchResult, Tag, UserTag,
+};
 
 /// DB 접근 포트 (Supabase REST API 또는 sqlx)
 /// MVP5 M1: articles 관련 메서드 제거 — 피드는 검색 API 직접 호출, DB 저장 없음
@@ -184,5 +187,38 @@ pub trait FavoritesPort: Send + Sync {
         user_id: Uuid,
         url: &'a str,
         concepts: Vec<QuizConcept>,
+    ) -> Pin<Box<dyn Future<Output = Result<(), AppError>> + Send + 'a>>;
+
+    /// MVP8 M1: favorites.quiz_completed = true 업데이트.
+    /// url이 favorites에 없으면 0행 업데이트 (에러 없음).
+    fn mark_quiz_completed<'a>(
+        &'a self,
+        user_id: Uuid,
+        url: &'a str,
+    ) -> Pin<Box<dyn Future<Output = Result<(), AppError>> + Send + 'a>>;
+}
+
+/// MVP8 M1: 오답 저장/조회/삭제 포트.
+/// dyn compatible을 위해 boxed future 사용.
+pub trait QuizWrongAnswerPort: Send + Sync {
+    /// 오답 1건 저장 (중복 시 덮어쓰기: ON CONFLICT DO UPDATE).
+    fn save<'a>(
+        &'a self,
+        user_id: Uuid,
+        params: SaveWrongAnswerParams,
+    ) -> Pin<Box<dyn Future<Output = Result<QuizWrongAnswer, AppError>> + Send + 'a>>;
+
+    /// 오답 목록 조회 (created_at DESC).
+    fn list(
+        &self,
+        user_id: Uuid,
+    ) -> Pin<Box<dyn Future<Output = Result<Vec<QuizWrongAnswer>, AppError>> + Send + '_>>;
+
+    /// 오답 1건 삭제 (본인 데이터만 — WHERE id = $1 AND user_id = $2).
+    /// 존재하지 않는 id여도 Ok(()) 반환 (no-op).
+    fn delete<'a>(
+        &'a self,
+        user_id: Uuid,
+        id: Uuid,
     ) -> Pin<Box<dyn Future<Output = Result<(), AppError>> + Send + 'a>>;
 }

@@ -120,14 +120,12 @@ impl FavoritesPort for PostgresFavoritesAdapter {
         url: &'a str,
     ) -> Pin<Box<dyn Future<Output = Result<Option<Favorite>, AppError>> + Send + 'a>> {
         Box::pin(async move {
-            sqlx::query_as::<_, Favorite>(
-                "SELECT * FROM favorites WHERE user_id = $1 AND url = $2",
-            )
-            .bind(user_id)
-            .bind(url)
-            .fetch_optional(&self.pool)
-            .await
-            .map_err(|e| AppError::Internal(format!("favorites get by url failed: {e}")))
+            sqlx::query_as::<_, Favorite>("SELECT * FROM favorites WHERE user_id = $1 AND url = $2")
+                .bind(user_id)
+                .bind(url)
+                .fetch_optional(&self.pool)
+                .await
+                .map_err(|e| AppError::Internal(format!("favorites get by url failed: {e}")))
         })
     }
 
@@ -141,15 +139,36 @@ impl FavoritesPort for PostgresFavoritesAdapter {
             let concepts_value = serde_json::to_value(&concepts)
                 .map_err(|e| AppError::Internal(format!("concepts serialize failed: {e}")))?;
 
+            sqlx::query("UPDATE favorites SET concepts = $1 WHERE user_id = $2 AND url = $3")
+                .bind(concepts_value)
+                .bind(user_id)
+                .bind(url)
+                .execute(&self.pool)
+                .await
+                .map_err(|e| {
+                    AppError::Internal(format!("favorites concepts update failed: {e}"))
+                })?;
+
+            Ok(())
+        })
+    }
+
+    fn mark_quiz_completed<'a>(
+        &'a self,
+        user_id: Uuid,
+        url: &'a str,
+    ) -> Pin<Box<dyn Future<Output = Result<(), AppError>> + Send + 'a>> {
+        Box::pin(async move {
             sqlx::query(
-                "UPDATE favorites SET concepts = $1 WHERE user_id = $2 AND url = $3",
+                "UPDATE favorites SET quiz_completed = true WHERE user_id = $1 AND url = $2",
             )
-            .bind(concepts_value)
             .bind(user_id)
             .bind(url)
             .execute(&self.pool)
             .await
-            .map_err(|e| AppError::Internal(format!("favorites concepts update failed: {e}")))?;
+            .map_err(|e| {
+                AppError::Internal(format!("favorites mark_quiz_completed failed: {e}"))
+            })?;
 
             Ok(())
         })
