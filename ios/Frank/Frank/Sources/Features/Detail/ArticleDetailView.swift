@@ -3,10 +3,12 @@ import SwiftUI
 /// MVP5 M3: ArticleDetailView — 온디맨드 요약 + 즐겨찾기 토글 UI.
 /// MVP7 M2: LikesFeature 주입 — 헤더 하트 버튼.
 /// MVP7 M3: RelatedArticlesView 하단 추가 — 연관 기사 표시.
+/// MVP7 M4: QuizFeature 주입 — 즐겨찾기 기사에서 퀴즈 버튼 표시.
 /// - 요약하기 버튼: idle/loading/done/failed 상태에 따라 UI 전환
 /// - 즐겨찾기 버튼: isLiked 상태에 따라 채워진/빈 하트 아이콘
 /// - 좋아요 버튼: LikesFeature 공유 (FeedView와 상태 동기화)
 /// - 연관 기사: RelatedFeature 지역 인스턴스로 관리
+/// - 퀴즈 버튼: 즐겨찾기 상태일 때만 표시, QuizFeature로 관리
 struct ArticleDetailView: View {
     let feedItem: FeedItem
     let favoritesFeature: FavoritesFeature
@@ -15,7 +17,9 @@ struct ArticleDetailView: View {
     private let relatedPort: any RelatedPort
     @State private var feature: ArticleDetailFeature
     @State private var relatedFeature: RelatedFeature
+    @State private var quizFeature: QuizFeature
     @State private var favoriteLoading: Bool = false
+    @State private var showQuiz = false
 
     @State private var showSafari = false
 
@@ -24,7 +28,8 @@ struct ArticleDetailView: View {
         summarize: any SummarizePort,
         favoritesFeature: FavoritesFeature,
         likesFeature: LikesFeature,
-        related: any RelatedPort = MockRelatedAdapter()
+        related: any RelatedPort = MockRelatedAdapter(),
+        quiz: any QuizPort = MockQuizAdapter()
     ) {
         self.feedItem = feedItem
         self.favoritesFeature = favoritesFeature
@@ -33,6 +38,7 @@ struct ArticleDetailView: View {
         self.relatedPort = related
         self._feature = State(initialValue: ArticleDetailFeature(feedItem: feedItem, summarize: summarize))
         self._relatedFeature = State(initialValue: RelatedFeature(related: related))
+        self._quizFeature = State(initialValue: QuizFeature(quiz: quiz))
     }
 
     var body: some View {
@@ -65,6 +71,20 @@ struct ArticleDetailView: View {
         .navigationBarTitleDisplayMode(.inline)
         .sheet(isPresented: $showSafari) {
             SafariView(url: feedItem.url)
+        }
+        .sheet(isPresented: $showQuiz) {
+            QuizView(
+                questions: quizFeature.questions,
+                onClose: {
+                    showQuiz = false
+                    quizFeature.reset()
+                }
+            )
+        }
+        .onChange(of: quizFeature.phase) { _, newPhase in
+            if case .done = newPhase {
+                showQuiz = true
+            }
         }
         .task {
             await relatedFeature.load(title: feedItem.title, snippet: feedItem.snippet)
@@ -154,6 +174,61 @@ extension ArticleDetailView {
 
             // 즐겨찾기 토글 버튼
             favoriteButton
+
+            // 퀴즈 버튼 (즐겨찾기 상태일 때만 표시)
+            if favoritesFeature.isLiked(feedItem.url.absoluteString) {
+                quizButton
+            }
+        }
+    }
+
+    @ViewBuilder
+    private var quizButton: some View {
+        switch quizFeature.phase {
+        case .idle, .done:
+            Button {
+                Task {
+                    await quizFeature.generateQuiz(url: feedItem.url.absoluteString)
+                }
+            } label: {
+                HStack {
+                    Image(systemName: "brain.head.profile")
+                    Text("퀴즈 풀기")
+                }
+                .frame(maxWidth: .infinity)
+            }
+            .buttonStyle(.bordered)
+            .tint(.indigo)
+
+        case .loading:
+            HStack {
+                ProgressView()
+                    .padding(.trailing, 4)
+                Text("퀴즈 생성 중...")
+                    .foregroundStyle(.secondary)
+            }
+            .frame(maxWidth: .infinity)
+            .padding(.vertical, 10)
+
+        case .failed(let message):
+            VStack(spacing: 6) {
+                Text(message)
+                    .font(.caption)
+                    .foregroundStyle(.red)
+                Button {
+                    Task {
+                        await quizFeature.generateQuiz(url: feedItem.url.absoluteString)
+                    }
+                } label: {
+                    HStack {
+                        Image(systemName: "arrow.clockwise")
+                        Text("다시 시도")
+                    }
+                    .frame(maxWidth: .infinity)
+                }
+                .buttonStyle(.bordered)
+                .tint(.orange)
+            }
         }
     }
 

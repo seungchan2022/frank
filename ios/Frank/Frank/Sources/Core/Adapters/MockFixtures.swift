@@ -101,6 +101,29 @@ enum MockFixtures {
         snippet: "An article without a tag for testing edge cases."
     )
 
+    // MARK: - QuizQuestion fixtures (MVP7 M4)
+
+    static let quizQuestions: [QuizQuestion] = [
+        QuizQuestion(
+            question: "Swift의 주요 특징은?",
+            options: ["타입 안전성", "동적 타입", "가비지 컬렉션", "싱글 스레드"],
+            answerIndex: 0,
+            explanation: "Swift는 타입 안전성을 강조하는 언어입니다."
+        ),
+        QuizQuestion(
+            question: "SwiftUI에서 상태를 관리하는 property wrapper는?",
+            options: ["@Binding", "@State", "@ObservedObject", "@Published"],
+            answerIndex: 1,
+            explanation: "@State는 뷰 로컬 상태를 관리합니다."
+        ),
+        QuizQuestion(
+            question: "Combine 프레임워크의 Publisher가 아닌 것은?",
+            options: ["Just", "Future", "Subject", "Observer"],
+            answerIndex: 3,
+            explanation: "Observer는 Combine의 Publisher가 아닙니다."
+        )
+    ]
+
     // MARK: - Helpers
 
     private static func parseDate(_ iso: String) -> Date {

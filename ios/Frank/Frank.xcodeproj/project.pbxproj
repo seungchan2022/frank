@@ -7,12 +7,14 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		0196CBE766798AE9DA5D3CFE /* MockQuizAdapter.swift in Sources */ = {isa = PBXBuildFile; fileRef = ED5BDAD7F3E1D18846B9064D /* MockQuizAdapter.swift */; };
 		01BAB05FA005E9D3AA8697E0 /* LoginView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D4AC4EDEB8F09628412C3FFA /* LoginView.swift */; };
 		042155DC53831EC7FC61BF5D /* ArticleCardViewTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 57A31EFDD95A91480A5907A3 /* ArticleCardViewTests.swift */; };
 		05DFE5129A9382F05AAD4A0F /* SplashView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 47AA9B157D520F495E5AA1EF /* SplashView.swift */; };
 		09BEAD83B7C998C35B189C4F /* SupabaseArticleAdapter.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8B8C9188EF336D34BB89EE36 /* SupabaseArticleAdapter.swift */; };
 		0BB6F2BB1432D2DA8BDB6103 /* SafariView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 90DA53CBC6C4EFBAA745F69F /* SafariView.swift */; };
 		0C36F9ADFD4DB0B794F9C085 /* OnboardingView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5E49311320F5E610ADDDB120 /* OnboardingView.swift */; };
+		0C898D0C8686D1670156D066 /* APIQuizAdapter.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5B0C2BDC4D4DF59689D42FFE /* APIQuizAdapter.swift */; };
 		0D605153EEC2C90E4A0E6C5C /* OnboardingFeature.swift in Sources */ = {isa = PBXBuildFile; fileRef = 93F54DF7DCED80A2596E6F4E /* OnboardingFeature.swift */; };
 		1488D0923B78634521B53B5F /* HTTPTestHelpers.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5AA2B5624033D1998914D0CF /* HTTPTestHelpers.swift */; };
 		15F7C6EA892E30BD6227421A /* APICollectAdapter.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1C78A6AC2CF221B1E567A348 /* APICollectAdapter.swift */; };
@@ -44,11 +46,13 @@
 		527F34FE6024A28DA5A75CEE /* XCTestDynamicOverlay.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = E8015A7E829FCD30E0F18482 /* XCTestDynamicOverlay.framework */; };
 		52DD9C96D32A278DDB993735 /* CrossFeatureFlowUITest.swift in Sources */ = {isa = PBXBuildFile; fileRef = FE4500A81F7D0FCAF50285F6 /* CrossFeatureFlowUITest.swift */; };
 		5362080661815BAAE104038B /* TagManagementView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 066C8C806186AFA7AED0388A /* TagManagementView.swift */; };
+		55A059D92412DE987BE10826 /* MockQuizPort.swift in Sources */ = {isa = PBXBuildFile; fileRef = 08D9DEB7254ACCE4E3258C85 /* MockQuizPort.swift */; };
 		5952CDFE1742602FDB16BFE8 /* RelatedFeature.swift in Sources */ = {isa = PBXBuildFile; fileRef = B03A19D96FB079A6C3A8E712 /* RelatedFeature.swift */; };
 		5B6B72E4ADCB5684D1B1B5FC /* MockFavoritesAdapter.swift in Sources */ = {isa = PBXBuildFile; fileRef = 84113DC12A87B8BF37D245B8 /* MockFavoritesAdapter.swift */; };
 		61CEB8FAC3319E627739C20D /* MockLikesPort.swift in Sources */ = {isa = PBXBuildFile; fileRef = F3DA3E4B4E1980D0F95D7BAF /* MockLikesPort.swift */; };
 		637962145B103DCA14570A3D /* SupabaseConfig.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3FBC962A1B724B58B707DD59 /* SupabaseConfig.swift */; };
 		64845C3A810AB8B5911E87FD /* MockAuthPort.swift in Sources */ = {isa = PBXBuildFile; fileRef = C4D19D7D52140EDDBD5446FB /* MockAuthPort.swift */; };
+		64F05915561686927DE53105 /* QuizView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5CAFE379E8147E389B6D4293 /* QuizView.swift */; };
 		66A7F3C8964B89BB7A013073 /* AuthFlowUITest.swift in Sources */ = {isa = PBXBuildFile; fileRef = C096BCCBE247FCB12D3140FB /* AuthFlowUITest.swift */; };
 		674C8F17C8D9E39E53A426BE /* SettingsFeature.swift in Sources */ = {isa = PBXBuildFile; fileRef = 732D2C2F99540B8095CC304E /* SettingsFeature.swift */; };
 		692906C80B86515B6CF2960B /* ArticleCardView.swift in Sources */ = {isa = PBXBuildFile; fileRef = DAA4C61DF400FCC984E0E407 /* ArticleCardView.swift */; };
@@ -63,6 +67,7 @@
 		75CAD4C21FA8379DEF6686E5 /* AppDependenciesTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 43FAB80D5C15DDCF5C41F6D8 /* AppDependenciesTests.swift */; };
 		7E42E94FE7DA2A4117BA3A98 /* SummarizePort.swift in Sources */ = {isa = PBXBuildFile; fileRef = E6D8F122DE384BD754AD57FF /* SummarizePort.swift */; };
 		80635B5B70FD98A6EF07D4C5 /* Clocks.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = EB0DD21ECF33383D24DB0B37 /* Clocks.framework */; };
+		817A6B8532FE3E72AE147744 /* QuizFeatureTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = EF195791F5286C4CD565AF66 /* QuizFeatureTests.swift */; };
 		8203E8CD3B8D455325E2B205 /* EmptyStateViewTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8429B953E1AB5732169EDA8D /* EmptyStateViewTests.swift */; };
 		8316111EFDB100B0898BE682 /* APIRelatedAdapter.swift in Sources */ = {isa = PBXBuildFile; fileRef = DF512A197DD1D267B507EC70 /* APIRelatedAdapter.swift */; };
 		832BE4F1B64364995A089C9C /* LikesFeature.swift in Sources */ = {isa = PBXBuildFile; fileRef = 332C224CF63649B0D27CEE68 /* LikesFeature.swift */; };
@@ -71,6 +76,7 @@
 		89105517C9190EABEEB58596 /* MockSummarizeAdapter.swift in Sources */ = {isa = PBXBuildFile; fileRef = 009988E3919D55ECF3941DB7 /* MockSummarizeAdapter.swift */; };
 		89866A0548AF16D6F0B43510 /* ArticleDetailFeature.swift in Sources */ = {isa = PBXBuildFile; fileRef = ED671A0ED94834053997DFD6 /* ArticleDetailFeature.swift */; };
 		89ECE118B4127333933B8BEC /* Functions.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = B9BF2E25340D6CE132DDBBD4 /* Functions.framework */; };
+		8B989BB895BFF8755AAD27E1 /* QuizPort.swift in Sources */ = {isa = PBXBuildFile; fileRef = 08A30E426C4576C05308000B /* QuizPort.swift */; };
 		8D295DF472EE4D23C74BC20C /* AuthFeature.swift in Sources */ = {isa = PBXBuildFile; fileRef = BD36781A45AF6DB6F8BBA8E1 /* AuthFeature.swift */; };
 		8E52AAEDB63027742C029C9B /* FavoritesView.swift in Sources */ = {isa = PBXBuildFile; fileRef = BF38FE942A61107648097352 /* FavoritesView.swift */; };
 		91A1BB91D96FD7BED4BAFF17 /* ArticlePort.swift in Sources */ = {isa = PBXBuildFile; fileRef = 51B78558CD59C61117F18399 /* ArticlePort.swift */; };
@@ -113,6 +119,7 @@
 		E0DE86A38E3DA5E9614F7A0F /* LikesFeatureTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = C587B4378133545CEB0CA50D /* LikesFeatureTests.swift */; };
 		E13A6B3587F8F45A013D3BEF /* MockCollectAdapter.swift in Sources */ = {isa = PBXBuildFile; fileRef = B8C79FF8A647953DC0442911 /* MockCollectAdapter.swift */; };
 		E305ED7371C5459D0FA93AE6 /* SupabaseAuthAdapter.swift in Sources */ = {isa = PBXBuildFile; fileRef = BAC60D4EA727E7864817E811 /* SupabaseAuthAdapter.swift */; };
+		E38C9B08CFE55A1D76E0A067 /* QuizFeature.swift in Sources */ = {isa = PBXBuildFile; fileRef = 28B888DE8327DF2B8BC88BA9 /* QuizFeature.swift */; };
 		E7FC87E933151795ACF4ACF4 /* swift-crypto_Crypto.bundle in Resources */ = {isa = PBXBuildFile; fileRef = 37670072226AC2A91EA7B29D /* swift-crypto_Crypto.bundle */; };
 		EEA26527AD4BDA0077F02385 /* ConcurrencyExtras.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 7D6276E6E0B9671FF485B31D /* ConcurrencyExtras.framework */; };
 		EF35D89DB6C8FED572946AFA /* ArticleDetailView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 422E0913EBB2C180FD1E036F /* ArticleDetailView.swift */; };
@@ -192,6 +199,8 @@
 		05A15B55BAA63D4848A0355C /* AppleSignInHelper.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppleSignInHelper.swift; sourceTree = "<group>"; };
 		066C8C806186AFA7AED0388A /* TagManagementView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TagManagementView.swift; sourceTree = "<group>"; };
 		06BD04D7B055B322E3865BEC /* APILikesAdapter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = APILikesAdapter.swift; sourceTree = "<group>"; };
+		08A30E426C4576C05308000B /* QuizPort.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = QuizPort.swift; sourceTree = "<group>"; };
+		08D9DEB7254ACCE4E3258C85 /* MockQuizPort.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MockQuizPort.swift; sourceTree = "<group>"; };
 		0949836956EA8C7AB729B454 /* Logger.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Logger.swift; sourceTree = "<group>"; };
 		0AE828DEA72FF568B1362F37 /* OnboardingFeatureTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OnboardingFeatureTests.swift; sourceTree = "<group>"; };
 		0BF09471B52675119013B536 /* LikesPort.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LikesPort.swift; sourceTree = "<group>"; };
@@ -202,6 +211,7 @@
 		12E7761FF75A3377EF8D821C /* MockFixtures.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MockFixtures.swift; sourceTree = "<group>"; };
 		1C78A6AC2CF221B1E567A348 /* APICollectAdapter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = APICollectAdapter.swift; sourceTree = "<group>"; };
 		2869495357228CE0C0D76A58 /* SettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsView.swift; sourceTree = "<group>"; };
+		28B888DE8327DF2B8BC88BA9 /* QuizFeature.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = QuizFeature.swift; sourceTree = "<group>"; };
 		2AFC566AE82B4C60F3E26AB4 /* MockLikesAdapter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MockLikesAdapter.swift; sourceTree = "<group>"; };
 		2D9C2BEE2748078EA4D9C314 /* FeedFeature.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FeedFeature.swift; sourceTree = "<group>"; };
 		2E263E898F6D5800C26DF0E6 /* APIArticleAdapter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = APIArticleAdapter.swift; sourceTree = "<group>"; };
@@ -228,6 +238,8 @@
 		57A31EFDD95A91480A5907A3 /* ArticleCardViewTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ArticleCardViewTests.swift; sourceTree = "<group>"; };
 		57AF27B9006A98A1914B2CB8 /* APITagAdapterTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = APITagAdapterTests.swift; sourceTree = "<group>"; };
 		5AA2B5624033D1998914D0CF /* HTTPTestHelpers.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HTTPTestHelpers.swift; sourceTree = "<group>"; };
+		5B0C2BDC4D4DF59689D42FFE /* APIQuizAdapter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = APIQuizAdapter.swift; sourceTree = "<group>"; };
+		5CAFE379E8147E389B6D4293 /* QuizView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = QuizView.swift; sourceTree = "<group>"; };
 		5E49311320F5E610ADDDB120 /* OnboardingView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OnboardingView.swift; sourceTree = "<group>"; };
 		5F7283E4CAEE1ACCF50173CF /* FrankTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = FrankTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		63A97D01A3235A7A6B855EFD /* FeedView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FeedView.swift; sourceTree = "<group>"; };
@@ -303,9 +315,11 @@
 		E910979DCC81EFEA39CBEAFD /* ArticleFilter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ArticleFilter.swift; sourceTree = "<group>"; };
 		EB0DD21ECF33383D24DB0B37 /* Clocks.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; includeInIndex = 0; path = Clocks.framework; sourceTree = BUILT_PRODUCTS_DIR; };
 		EB8DDF05C2814294A438BC72 /* LoginFlowUITest.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LoginFlowUITest.swift; sourceTree = "<group>"; };
+		ED5BDAD7F3E1D18846B9064D /* MockQuizAdapter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MockQuizAdapter.swift; sourceTree = "<group>"; };
 		ED671A0ED94834053997DFD6 /* ArticleDetailFeature.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ArticleDetailFeature.swift; sourceTree = "<group>"; };
 		EE4527C03F473DDEDFA17A0C /* MockTagPort.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MockTagPort.swift; sourceTree = "<group>"; };
 		EEC784286BBC209A404AB018 /* PortContractTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PortContractTests.swift; sourceTree = "<group>"; };
+		EF195791F5286C4CD565AF66 /* QuizFeatureTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = QuizFeatureTests.swift; sourceTree = "<group>"; };
 		F105B33D24EF46FFD0CBD474 /* Supabase.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; includeInIndex = 0; path = Supabase.framework; sourceTree = BUILT_PRODUCTS_DIR; };
 		F3DA3E4B4E1980D0F95D7BAF /* MockLikesPort.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MockLikesPort.swift; sourceTree = "<group>"; };
 		F9DFAAB732849E70B2B05605 /* IssueReportingPackageSupport.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; includeInIndex = 0; path = IssueReportingPackageSupport.framework; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -359,6 +373,7 @@
 			children = (
 				4029BE27491D61DDD144966D /* Favorites */,
 				0B3C2C444FA6267A1EB1AE83 /* Likes */,
+				D5B86F9A650DA7ECFC34521D /* Quiz */,
 				0BC86AB9643791D242475EB1 /* Related */,
 				43FAB80D5C15DDCF5C41F6D8 /* AppDependenciesTests.swift */,
 				9EDBC1042DA502AA7D20D7D7 /* AppleSignInHelperTests.swift */,
@@ -588,6 +603,15 @@
 			path = Frank;
 			sourceTree = "<group>";
 		};
+		8F3FBE209202B489019EE5D3 /* Quiz */ = {
+			isa = PBXGroup;
+			children = (
+				28B888DE8327DF2B8BC88BA9 /* QuizFeature.swift */,
+				5CAFE379E8147E389B6D4293 /* QuizView.swift */,
+			);
+			path = Quiz;
+			sourceTree = "<group>";
+		};
 		939A9C510981E0A03D9F4123 /* Components */ = {
 			isa = PBXGroup;
 			children = (
@@ -628,6 +652,7 @@
 				618240EF17AECB10175F1D75 /* Feed */,
 				E5AE3C7EC5535C47FE211F34 /* Likes */,
 				2275070C1C36E7C8B583A464 /* Onboarding */,
+				8F3FBE209202B489019EE5D3 /* Quiz */,
 				F2469F1A239C3CFD1C8C5A3F /* Related */,
 				B0D09EA854EEE905DD852A02 /* Settings */,
 			);
@@ -650,6 +675,7 @@
 				FCECD344DC6F839CF9A42C87 /* CollectPort.swift */,
 				CD0D171577CFA11B9845E3F0 /* FavoritesPort.swift */,
 				0BF09471B52675119013B536 /* LikesPort.swift */,
+				08A30E426C4576C05308000B /* QuizPort.swift */,
 				DE8D4272AF5269B1460B0A80 /* RelatedPort.swift */,
 				E6D8F122DE384BD754AD57FF /* SummarizePort.swift */,
 				9D056DE8B30EF660F5AA41E4 /* TagPort.swift */,
@@ -664,6 +690,7 @@
 				1C78A6AC2CF221B1E567A348 /* APICollectAdapter.swift */,
 				7099B012C0C5456159BE5307 /* APIFavoritesAdapter.swift */,
 				06BD04D7B055B322E3865BEC /* APILikesAdapter.swift */,
+				5B0C2BDC4D4DF59689D42FFE /* APIQuizAdapter.swift */,
 				DF512A197DD1D267B507EC70 /* APIRelatedAdapter.swift */,
 				720DC18823D55953B383CABF /* APISummarizeAdapter.swift */,
 				A9683C6B43DA974DCE5DD999 /* APITagAdapter.swift */,
@@ -673,6 +700,7 @@
 				84113DC12A87B8BF37D245B8 /* MockFavoritesAdapter.swift */,
 				12E7761FF75A3377EF8D821C /* MockFixtures.swift */,
 				2AFC566AE82B4C60F3E26AB4 /* MockLikesAdapter.swift */,
+				ED5BDAD7F3E1D18846B9064D /* MockQuizAdapter.swift */,
 				B6257A7287A5C739EF5FFBC8 /* MockRelatedAdapter.swift */,
 				009988E3919D55ECF3941DB7 /* MockSummarizeAdapter.swift */,
 				BE18C30FA4C00548C0738301 /* MockTagAdapter.swift */,
@@ -716,11 +744,20 @@
 				B6E93B93AD191011384FF9EB /* MockCollectPort.swift */,
 				97D2F20BEC9CED65537E2308 /* MockFavoritesPort.swift */,
 				F3DA3E4B4E1980D0F95D7BAF /* MockLikesPort.swift */,
+				08D9DEB7254ACCE4E3258C85 /* MockQuizPort.swift */,
 				63F6378DE2C052198799CD6B /* MockRelatedPort.swift */,
 				660460EA8592D4950DAA75C5 /* MockSummarizePort.swift */,
 				EE4527C03F473DDEDFA17A0C /* MockTagPort.swift */,
 			);
 			path = Mocks;
+			sourceTree = "<group>";
+		};
+		D5B86F9A650DA7ECFC34521D /* Quiz */ = {
+			isa = PBXGroup;
+			children = (
+				EF195791F5286C4CD565AF66 /* QuizFeatureTests.swift */,
+			);
+			path = Quiz;
 			sourceTree = "<group>";
 		};
 		D82A81B85D6964C01D451A33 /* ArticleCard */ = {
@@ -949,6 +986,7 @@
 				E0DE86A38E3DA5E9614F7A0F /* LikesFeatureTests.swift in Sources */,
 				A0AB4B1A8CD1C4B0891EAB70 /* OnboardingFeatureTests.swift in Sources */,
 				D59B52177ABC739480991469 /* PortContractTests.swift in Sources */,
+				817A6B8532FE3E72AE147744 /* QuizFeatureTests.swift in Sources */,
 				3F44A323F3D189F3EFB33AFB /* RelatedFeatureTests.swift in Sources */,
 				BC690A7AACBE0A5ED04A3815 /* RouterTests.swift in Sources */,
 				B78E36AC158110DDDE250C4E /* SettingsFeatureTests.swift in Sources */,
@@ -959,6 +997,7 @@
 				75C486C6844B432E399C9AF3 /* MockCollectPort.swift in Sources */,
 				F0793185012593295E59B9E8 /* MockFavoritesPort.swift in Sources */,
 				61CEB8FAC3319E627739C20D /* MockLikesPort.swift in Sources */,
+				55A059D92412DE987BE10826 /* MockQuizPort.swift in Sources */,
 				B7F84DA9AB0AED596D6401A2 /* MockRelatedPort.swift in Sources */,
 				6FBF44F30EDFCD8403D8AAA3 /* MockSummarizePort.swift in Sources */,
 				B9F9F2EB75367AF82A357583 /* MockTagPort.swift in Sources */,
@@ -984,6 +1023,7 @@
 				15F7C6EA892E30BD6227421A /* APICollectAdapter.swift in Sources */,
 				1DBF69225BB9FC0D6CE6997E /* APIFavoritesAdapter.swift in Sources */,
 				F088E21BE93A38D804A03254 /* APILikesAdapter.swift in Sources */,
+				0C898D0C8686D1670156D066 /* APIQuizAdapter.swift in Sources */,
 				8316111EFDB100B0898BE682 /* APIRelatedAdapter.swift in Sources */,
 				BC396954C2A50980DA1D2953 /* APISummarizeAdapter.swift in Sources */,
 				932F5AD8F02643F8D985525E /* APITagAdapter.swift in Sources */,
@@ -993,6 +1033,7 @@
 				5B6B72E4ADCB5684D1B1B5FC /* MockFavoritesAdapter.swift in Sources */,
 				D5F057949A5571E2210F3249 /* MockFixtures.swift in Sources */,
 				ACC3B3A438DE09D1D98AD832 /* MockLikesAdapter.swift in Sources */,
+				0196CBE766798AE9DA5D3CFE /* MockQuizAdapter.swift in Sources */,
 				15FA0E915BB7EB7CE4F2E948 /* MockRelatedAdapter.swift in Sources */,
 				89105517C9190EABEEB58596 /* MockSummarizeAdapter.swift in Sources */,
 				DBF6F8BF5CB7CC94961AAC3E /* MockTagAdapter.swift in Sources */,
@@ -1015,6 +1056,7 @@
 				D8F6E0EA0ECA0820ED120A65 /* CollectPort.swift in Sources */,
 				D67F94F76A3F1C7FF5365670 /* FavoritesPort.swift in Sources */,
 				25DB794FC66C379A2B3D44F0 /* LikesPort.swift in Sources */,
+				8B989BB895BFF8755AAD27E1 /* QuizPort.swift in Sources */,
 				BE13167E5F98BB5C18DC1600 /* RelatedPort.swift in Sources */,
 				7E42E94FE7DA2A4117BA3A98 /* SummarizePort.swift in Sources */,
 				DBF91D58C91370D2108AC200 /* TagPort.swift in Sources */,
@@ -1032,6 +1074,8 @@
 				832BE4F1B64364995A089C9C /* LikesFeature.swift in Sources */,
 				0D605153EEC2C90E4A0E6C5C /* OnboardingFeature.swift in Sources */,
 				0C36F9ADFD4DB0B794F9C085 /* OnboardingView.swift in Sources */,
+				E38C9B08CFE55A1D76E0A067 /* QuizFeature.swift in Sources */,
+				64F05915561686927DE53105 /* QuizView.swift in Sources */,
 				84E6001800BCF72238DB7C6E /* RelatedArticlesView.swift in Sources */,
 				5952CDFE1742602FDB16BFE8 /* RelatedFeature.swift in Sources */,
 				674C8F17C8D9E39E53A426BE /* SettingsFeature.swift in Sources */,
