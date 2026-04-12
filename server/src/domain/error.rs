@@ -20,6 +20,9 @@ pub enum AppError {
 
     #[error("Conflict: {0}")]
     Conflict(String),
+
+    #[error("Service unavailable: {0}")]
+    ServiceUnavailable(String),
 }
 
 impl IntoResponse for AppError {
@@ -37,6 +40,10 @@ impl IntoResponse for AppError {
             }
             AppError::Timeout(msg) => (StatusCode::GATEWAY_TIMEOUT, msg.clone()),
             AppError::Conflict(msg) => (StatusCode::CONFLICT, msg.clone()),
+            AppError::ServiceUnavailable(msg) => {
+                tracing::warn!(detail = %msg, "service unavailable");
+                (StatusCode::SERVICE_UNAVAILABLE, msg.clone())
+            }
         };
 
         let body = serde_json::json!({ "error": message });
@@ -101,6 +108,19 @@ mod tests {
     fn conflict_body_contains_message() {
         let body = extract_body(AppError::Conflict("duplicate favorite".to_string()));
         assert_eq!(body, serde_json::json!({"error": "duplicate favorite"}));
+    }
+
+    #[test]
+    fn service_unavailable_returns_503() {
+        let err = AppError::ServiceUnavailable("LLM 실패".to_string());
+        let resp = err.into_response();
+        assert_eq!(resp.status(), StatusCode::SERVICE_UNAVAILABLE);
+    }
+
+    #[test]
+    fn service_unavailable_body_contains_message() {
+        let body = extract_body(AppError::ServiceUnavailable("퀴즈 생성 실패".to_string()));
+        assert_eq!(body, serde_json::json!({"error": "퀴즈 생성 실패"}));
     }
 
     #[test]

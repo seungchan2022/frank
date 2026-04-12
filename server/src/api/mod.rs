@@ -3,6 +3,7 @@ pub mod feed;
 pub mod health;
 pub mod likes;
 pub mod profile;
+pub mod quiz;
 pub mod related;
 pub mod summarize;
 pub mod tags;

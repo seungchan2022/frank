@@ -5,7 +5,7 @@ use sqlx::PgPool;
 use uuid::Uuid;
 
 use crate::domain::error::AppError;
-use crate::domain::models::Favorite;
+use crate::domain::models::{Favorite, QuizConcept};
 use crate::domain::ports::FavoritesPort;
 
 /// PostgreSQL 기반 FavoritesAdapter.
@@ -111,6 +111,47 @@ impl FavoritesPort for PostgresFavoritesAdapter {
             .fetch_all(&self.pool)
             .await
             .map_err(|e| AppError::Internal(format!("favorites list failed: {e}")))
+        })
+    }
+
+    fn get_favorite_by_url<'a>(
+        &'a self,
+        user_id: Uuid,
+        url: &'a str,
+    ) -> Pin<Box<dyn Future<Output = Result<Option<Favorite>, AppError>> + Send + 'a>> {
+        Box::pin(async move {
+            sqlx::query_as::<_, Favorite>(
+                "SELECT * FROM favorites WHERE user_id = $1 AND url = $2",
+            )
+            .bind(user_id)
+            .bind(url)
+            .fetch_optional(&self.pool)
+            .await
+            .map_err(|e| AppError::Internal(format!("favorites get by url failed: {e}")))
+        })
+    }
+
+    fn update_favorite_concepts<'a>(
+        &'a self,
+        user_id: Uuid,
+        url: &'a str,
+        concepts: Vec<QuizConcept>,
+    ) -> Pin<Box<dyn Future<Output = Result<(), AppError>> + Send + 'a>> {
+        Box::pin(async move {
+            let concepts_value = serde_json::to_value(&concepts)
+                .map_err(|e| AppError::Internal(format!("concepts serialize failed: {e}")))?;
+
+            sqlx::query(
+                "UPDATE favorites SET concepts = $1 WHERE user_id = $2 AND url = $3",
+            )
+            .bind(concepts_value)
+            .bind(user_id)
+            .bind(url)
+            .execute(&self.pool)
+            .await
+            .map_err(|e| AppError::Internal(format!("favorites concepts update failed: {e}")))?;
+
+            Ok(())
         })
     }
 }

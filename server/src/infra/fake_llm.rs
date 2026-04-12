@@ -2,7 +2,7 @@ use std::future::Future;
 use std::pin::Pin;
 
 use crate::domain::error::AppError;
-use crate::domain::models::{LlmResponse, LlmSummary};
+use crate::domain::models::{LlmResponse, LlmSummary, QuizConcept, QuizQuestion, QuizResult};
 use crate::domain::ports::LlmPort;
 
 #[derive(Debug, Clone)]
@@ -70,6 +70,35 @@ impl LlmPort for FakeLlmAdapter {
             ])
         })
     }
+
+    fn generate_quiz<'a>(
+        &'a self,
+        _title: &'a str,
+        _content: &'a str,
+    ) -> Pin<Box<dyn Future<Output = Result<QuizResult, AppError>> + Send + 'a>> {
+        Box::pin(async move {
+            if self.should_fail {
+                return Err(AppError::Internal("Fake LLM failure".to_string()));
+            }
+            Ok(QuizResult {
+                concepts: vec![QuizConcept {
+                    term: "테스트 용어".to_string(),
+                    explanation: "테스트 설명입니다.".to_string(),
+                }],
+                questions: vec![QuizQuestion {
+                    question: "테스트 질문?".to_string(),
+                    options: vec![
+                        "A".to_string(),
+                        "B".to_string(),
+                        "C".to_string(),
+                        "D".to_string(),
+                    ],
+                    answer_index: 0,
+                    explanation: "테스트 해설입니다.".to_string(),
+                }],
+            })
+        })
+    }
 }
 
 #[cfg(test)]
@@ -131,6 +160,24 @@ mod tests {
     async fn fake_llm_extract_keywords_failing_returns_error() {
         let llm = FakeLlmAdapter::failing();
         let result = llm.extract_keywords("title", None).await;
+        assert!(result.is_err());
+    }
+
+    #[tokio::test]
+    async fn fake_llm_generate_quiz_returns_result() {
+        let llm = FakeLlmAdapter::new();
+        let result = llm.generate_quiz("테스트 제목", "테스트 내용").await.unwrap();
+        assert_eq!(result.concepts.len(), 1);
+        assert_eq!(result.concepts[0].term, "테스트 용어");
+        assert_eq!(result.questions.len(), 1);
+        assert_eq!(result.questions[0].options.len(), 4);
+        assert_eq!(result.questions[0].answer_index, 0);
+    }
+
+    #[tokio::test]
+    async fn fake_llm_generate_quiz_failing_returns_error() {
+        let llm = FakeLlmAdapter::failing();
+        let result = llm.generate_quiz("title", "content").await;
         assert!(result.is_err());
     }
 }

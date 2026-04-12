@@ -7,7 +7,7 @@ use chrono::Utc;
 use uuid::Uuid;
 
 use crate::domain::error::AppError;
-use crate::domain::models::Favorite;
+use crate::domain::models::{Favorite, QuizConcept};
 use crate::domain::ports::FavoritesPort;
 
 /// should_fail 시 반환할 에러 메시지 상수.
@@ -167,6 +167,46 @@ impl FavoritesPort for FakeFavoritesAdapter {
                 .collect();
             items.reverse();
             Ok(items)
+        })
+    }
+
+    fn get_favorite_by_url<'a>(
+        &'a self,
+        user_id: Uuid,
+        url: &'a str,
+    ) -> Pin<Box<dyn Future<Output = Result<Option<Favorite>, AppError>> + Send + 'a>> {
+        let url = url.to_string();
+        Box::pin(async move {
+            if self.should_fail {
+                return Err(AppError::Internal(FAKE_FAIL_MSG.to_string()));
+            }
+
+            let guard = self.store.lock().unwrap();
+            Ok(guard.0.get(&(user_id, url)).cloned())
+        })
+    }
+
+    fn update_favorite_concepts<'a>(
+        &'a self,
+        user_id: Uuid,
+        url: &'a str,
+        concepts: Vec<QuizConcept>,
+    ) -> Pin<Box<dyn Future<Output = Result<(), AppError>> + Send + 'a>> {
+        let url = url.to_string();
+        Box::pin(async move {
+            if self.should_fail {
+                return Err(AppError::Internal(FAKE_FAIL_MSG.to_string()));
+            }
+
+            let concepts_value = serde_json::to_value(&concepts)
+                .map_err(|e| AppError::Internal(format!("concepts serialize failed: {e}")))?;
+
+            let mut guard = self.store.lock().unwrap();
+            if let Some(fav) = guard.0.get_mut(&(user_id, url)) {
+                fav.concepts = Some(concepts_value);
+            }
+
+            Ok(())
         })
     }
 }
@@ -331,5 +371,66 @@ mod tests {
         let list = adapter.list_favorites(user1).await.unwrap();
         assert_eq!(list.len(), 1);
         assert_eq!(list[0].url, "https://user1.com");
+    }
+
+    #[tokio::test]
+    async fn get_favorite_by_url_returns_favorite() {
+        let adapter = FakeFavoritesAdapter::new();
+        let user_id = Uuid::new_v4();
+        let url = "https://example.com/article";
+        let mut item = make_favorite(url);
+        item.user_id = user_id;
+        adapter.add_favorite(user_id, &item).await.unwrap();
+
+        let result = adapter.get_favorite_by_url(user_id, url).await.unwrap();
+        assert!(result.is_some());
+        assert_eq!(result.unwrap().url, url);
+    }
+
+    #[tokio::test]
+    async fn get_favorite_by_url_returns_none_when_not_found() {
+        let adapter = FakeFavoritesAdapter::new();
+        let user_id = Uuid::new_v4();
+
+        let result = adapter
+            .get_favorite_by_url(user_id, "https://not-exist.com")
+            .await
+            .unwrap();
+        assert!(result.is_none());
+    }
+
+    #[tokio::test]
+    async fn update_favorite_concepts_sets_concepts() {
+        let adapter = FakeFavoritesAdapter::new();
+        let user_id = Uuid::new_v4();
+        let url = "https://example.com/article";
+        let mut item = make_favorite(url);
+        item.user_id = user_id;
+        adapter.add_favorite(user_id, &item).await.unwrap();
+
+        let concepts = vec![
+            crate::domain::models::QuizConcept {
+                term: "Swift".to_string(),
+                explanation: "애플 프로그래밍 언어".to_string(),
+            },
+        ];
+        adapter
+            .update_favorite_concepts(user_id, url, concepts)
+            .await
+            .unwrap();
+
+        let fav = adapter.get_favorite_by_url(user_id, url).await.unwrap().unwrap();
+        assert!(fav.concepts.is_some());
+    }
+
+    #[tokio::test]
+    async fn update_favorite_concepts_no_row_is_noop() {
+        let adapter = FakeFavoritesAdapter::new();
+        let user_id = Uuid::new_v4();
+
+        let result = adapter
+            .update_favorite_concepts(user_id, "https://not-exist.com", vec![])
+            .await;
+        assert!(result.is_ok());
     }
 }

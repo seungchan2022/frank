@@ -4,7 +4,7 @@ use std::pin::Pin;
 use uuid::Uuid;
 
 use super::error::AppError;
-use super::models::{Favorite, LlmResponse, Profile, SearchResult, Tag, UserTag};
+use super::models::{Favorite, LlmResponse, Profile, QuizConcept, QuizResult, SearchResult, Tag, UserTag};
 
 /// DB 접근 포트 (Supabase REST API 또는 sqlx)
 /// MVP5 M1: articles 관련 메서드 제거 — 피드는 검색 API 직접 호출, DB 저장 없음
@@ -120,6 +120,13 @@ pub trait LlmPort: Send + Sync {
         title: &'a str,
         snippet: Option<&'a str>,
     ) -> Pin<Box<dyn Future<Output = Result<Vec<String>, AppError>> + Send + 'a>>;
+
+    /// MVP7 M4: 기사 제목/내용에서 개념 정리 + 객관식 퀴즈 3문제 생성.
+    fn generate_quiz<'a>(
+        &'a self,
+        title: &'a str,
+        content: &'a str,
+    ) -> Pin<Box<dyn Future<Output = Result<QuizResult, AppError>> + Send + 'a>>;
 }
 
 /// 알림 전송 포트 (iMessage 등)
@@ -161,4 +168,21 @@ pub trait FavoritesPort: Send + Sync {
         &self,
         user_id: Uuid,
     ) -> Pin<Box<dyn Future<Output = Result<Vec<Favorite>, AppError>> + Send + '_>>;
+
+    /// MVP7 M4: (user_id, url)로 즐겨찾기 단건 조회.
+    /// 존재하지 않으면 Ok(None) 반환.
+    fn get_favorite_by_url<'a>(
+        &'a self,
+        user_id: Uuid,
+        url: &'a str,
+    ) -> Pin<Box<dyn Future<Output = Result<Option<Favorite>, AppError>> + Send + 'a>>;
+
+    /// MVP7 M4: favorites.concepts 컬럼 업데이트.
+    /// url이 favorites에 없으면 0행 업데이트 (에러 없음).
+    fn update_favorite_concepts<'a>(
+        &'a self,
+        user_id: Uuid,
+        url: &'a str,
+        concepts: Vec<QuizConcept>,
+    ) -> Pin<Box<dyn Future<Output = Result<(), AppError>> + Send + 'a>>;
 }

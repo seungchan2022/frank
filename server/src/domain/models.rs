@@ -102,6 +102,13 @@ pub struct QuizConcept {
     pub explanation: String,
 }
 
+/// 퀴즈 생성 결과 — concepts + questions 묶음.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct QuizResult {
+    pub concepts: Vec<QuizConcept>,
+    pub questions: Vec<QuizQuestion>,
+}
+
 /// 웹서치 결과 (피드 생성 전 중간 모델)
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct SearchResult {

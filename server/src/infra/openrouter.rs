@@ -5,7 +5,7 @@ use reqwest::Client;
 use serde::Deserialize;
 
 use crate::domain::error::AppError;
-use crate::domain::models::{LlmResponse, LlmSummary};
+use crate::domain::models::{LlmResponse, LlmSummary, QuizConcept, QuizQuestion, QuizResult};
 use crate::domain::ports::LlmPort;
 use crate::infra::http_utils::{RetryConfig, read_body_limited, send_with_retry};
 
@@ -304,6 +304,135 @@ impl LlmPort for OpenRouterAdapter {
         snippet: Option<&'a str>,
     ) -> Pin<Box<dyn Future<Output = Result<Vec<String>, AppError>> + Send + 'a>> {
         Box::pin(self.call_extract_keywords(title, snippet))
+    }
+
+    fn generate_quiz<'a>(
+        &'a self,
+        title: &'a str,
+        content: &'a str,
+    ) -> Pin<Box<dyn Future<Output = Result<QuizResult, AppError>> + Send + 'a>> {
+        let title = title.to_string();
+        let content = content.to_string();
+
+        Box::pin(async move {
+            let user_content = format!(
+                "다음 기사에서 아래 두 가지를 JSON으로만 반환해줘 (다른 텍스트 없이):\n\
+                1. \"concepts\": 핵심 기술 개념 3~5개. 각 항목은 {{ \"term\": \"용어\", \"explanation\": \"한국어 설명 1~2문장\" }}\n\
+                2. \"questions\": 이해도 확인 객관식 문제 3개. 각 항목은 {{ \"question\": \"질문\", \"options\": [\"A\",\"B\",\"C\",\"D\"], \"answer_index\": 0, \"explanation\": \"해설\" }}\n\n\
+                제목: {title}\n내용: {content}",
+            );
+
+            let body = serde_json::json!({
+                "model": self.model,
+                "messages": [
+                    {
+                        "role": "user",
+                        "content": user_content
+                    }
+                ],
+                "temperature": 0.3,
+                "max_tokens": 1200,
+                "response_format": { "type": "json_object" },
+                "reasoning": { "exclude": true },
+            });
+
+            let config = RetryConfig::for_llm();
+            let api_key = self.api_key.clone();
+            let url = format!("{}/api/v1/chat/completions", self.base_url);
+
+            let resp = send_with_retry(
+                || {
+                    let url = url.clone();
+                    let body = body.clone();
+                    let api_key = api_key.clone();
+                    let client = self.client.clone();
+                    async move {
+                        client
+                            .post(&url)
+                            .header("Authorization", format!("Bearer {}", api_key))
+                            .header("Content-Type", "application/json")
+                            .json(&body)
+                    }
+                },
+                &config,
+            )
+            .await
+            .map_err(|e| {
+                AppError::Internal(format!("OpenRouter quiz request failed: {e}"))
+            })?;
+
+            let status = resp.status();
+            let body_text = read_body_limited(resp, config.max_response_size)
+                .await
+                .map_err(|e| {
+                    AppError::Internal(format!("OpenRouter quiz read failed: {e}"))
+                })?;
+
+            if !status.is_success() {
+                return Err(AppError::Internal(format!(
+                    "OpenRouter quiz API error ({status}): {body_text}"
+                )));
+            }
+
+            let chat_resp: ChatResponse = serde_json::from_str(&body_text).map_err(|e| {
+                AppError::Internal(format!("OpenRouter quiz parse failed: {e}"))
+            })?;
+
+            let content_str = chat_resp
+                .choices
+                .first()
+                .map(|c| c.message.content.clone())
+                .ok_or_else(|| {
+                    AppError::Internal("OpenRouter quiz returned no choices".to_string())
+                })?;
+
+            let parsed: serde_json::Value = serde_json::from_str(&content_str).map_err(|e| {
+                AppError::Internal(format!(
+                    "Quiz response is not valid JSON: {e}, content: {content_str}"
+                ))
+            })?;
+
+            // concepts 파싱
+            let concepts = parsed["concepts"]
+                .as_array()
+                .ok_or_else(|| {
+                    AppError::Internal("Quiz response missing 'concepts' array".to_string())
+                })?
+                .iter()
+                .filter_map(|v| {
+                    let term = v["term"].as_str()?.to_string();
+                    let explanation = v["explanation"].as_str()?.to_string();
+                    Some(QuizConcept { term, explanation })
+                })
+                .collect::<Vec<_>>();
+
+            // questions 파싱
+            let questions = parsed["questions"]
+                .as_array()
+                .ok_or_else(|| {
+                    AppError::Internal("Quiz response missing 'questions' array".to_string())
+                })?
+                .iter()
+                .filter_map(|v| {
+                    let question = v["question"].as_str()?.to_string();
+                    let options = v["options"]
+                        .as_array()?
+                        .iter()
+                        .filter_map(|o| o.as_str().map(|s| s.to_string()))
+                        .collect::<Vec<_>>();
+                    let answer_index = v["answer_index"].as_u64()? as u8;
+                    let explanation = v["explanation"].as_str()?.to_string();
+                    Some(QuizQuestion {
+                        question,
+                        options,
+                        answer_index,
+                        explanation,
+                    })
+                })
+                .collect::<Vec<_>>();
+
+            Ok(QuizResult { concepts, questions })
+        })
     }
 }
 
@@ -756,6 +885,101 @@ mod tests {
         let adapter =
             OpenRouterAdapter::with_base_url("test-key", "test-model", &mock_server.uri());
         let result = adapter.extract_keywords("title", None).await;
+        assert!(result.is_err());
+    }
+
+    // generate_quiz 테스트
+
+    fn valid_quiz_response() -> serde_json::Value {
+        serde_json::json!({
+            "choices": [{
+                "message": {
+                    "content": "{\"concepts\": [{\"term\": \"Swift\", \"explanation\": \"애플 언어\"}], \"questions\": [{\"question\": \"질문?\", \"options\": [\"A\",\"B\",\"C\",\"D\"], \"answer_index\": 0, \"explanation\": \"해설\"}]}"
+                }
+            }],
+            "model": "test-model",
+            "usage": {"prompt_tokens": 100, "completion_tokens": 200}
+        })
+    }
+
+    #[tokio::test]
+    async fn generate_quiz_success() {
+        let mock_server = MockServer::start().await;
+
+        Mock::given(method("POST"))
+            .and(path("/api/v1/chat/completions"))
+            .respond_with(ResponseTemplate::new(200).set_body_json(valid_quiz_response()))
+            .mount(&mock_server)
+            .await;
+
+        let adapter =
+            OpenRouterAdapter::with_base_url("test-key", "test-model", &mock_server.uri());
+        let result = adapter.generate_quiz("테스트 제목", "테스트 내용").await;
+        assert!(result.is_ok(), "generate_quiz should succeed: {result:?}");
+        let quiz = result.unwrap();
+        assert_eq!(quiz.concepts.len(), 1);
+        assert_eq!(quiz.concepts[0].term, "Swift");
+        assert_eq!(quiz.questions.len(), 1);
+        assert_eq!(quiz.questions[0].options.len(), 4);
+        assert_eq!(quiz.questions[0].answer_index, 0);
+    }
+
+    #[tokio::test]
+    async fn generate_quiz_missing_concepts_returns_error() {
+        let mock_server = MockServer::start().await;
+
+        Mock::given(method("POST"))
+            .and(path("/api/v1/chat/completions"))
+            .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({
+                "choices": [{"message": {"content": "{\"questions\": []}"}}],
+                "model": "test-model",
+                "usage": null
+            })))
+            .mount(&mock_server)
+            .await;
+
+        let adapter =
+            OpenRouterAdapter::with_base_url("test-key", "test-model", &mock_server.uri());
+        let result = adapter.generate_quiz("title", "content").await;
+        assert!(result.is_err());
+        assert!(result.unwrap_err().to_string().contains("concepts"));
+    }
+
+    #[tokio::test]
+    async fn generate_quiz_missing_questions_returns_error() {
+        let mock_server = MockServer::start().await;
+
+        Mock::given(method("POST"))
+            .and(path("/api/v1/chat/completions"))
+            .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({
+                "choices": [{"message": {"content": "{\"concepts\": []}"}}],
+                "model": "test-model",
+                "usage": null
+            })))
+            .mount(&mock_server)
+            .await;
+
+        let adapter =
+            OpenRouterAdapter::with_base_url("test-key", "test-model", &mock_server.uri());
+        let result = adapter.generate_quiz("title", "content").await;
+        assert!(result.is_err());
+        assert!(result.unwrap_err().to_string().contains("questions"));
+    }
+
+    #[tokio::test]
+    async fn generate_quiz_non_2xx_returns_error() {
+        let mock_server = MockServer::start().await;
+
+        Mock::given(method("POST"))
+            .and(path("/api/v1/chat/completions"))
+            .respond_with(ResponseTemplate::new(503).set_body_string("Service Unavailable"))
+            .up_to_n_times(10)
+            .mount(&mock_server)
+            .await;
+
+        let adapter =
+            OpenRouterAdapter::with_base_url("test-key", "test-model", &mock_server.uri());
+        let result = adapter.generate_quiz("title", "content").await;
         assert!(result.is_err());
     }
 }

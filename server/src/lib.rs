@@ -83,6 +83,11 @@ pub fn create_router<D: DbPort + Clone + 'static>(
         .route("/me/articles/like", post(api::likes::like_article::<D>))
         // MVP7 M3: GET /me/articles/related — 연관 기사 검색
         .route("/me/articles/related", get(api::related::get_related::<D>))
+        // MVP7 M4: POST /me/favorites/quiz — 즐겨찾기 기사 퀴즈 생성
+        .route(
+            "/me/favorites/quiz",
+            post(api::quiz::generate_quiz::<D>),
+        )
         .layer(from_fn(middleware::auth::require_auth))
         .layer(Extension(supabase_config));
 
