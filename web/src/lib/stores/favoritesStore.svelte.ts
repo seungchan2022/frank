@@ -86,6 +86,13 @@ function markQuizCompleted(url: string): void {
 }
 
 /**
+ * MVP9 M2: 해당 기사의 퀴즈 완료 여부 확인.
+ */
+function isQuizCompleted(url: string): boolean {
+	return favorites.some((f) => f.url === url && f.quizCompleted);
+}
+
+/**
  * 상태 완전 초기화 (로그아웃 등 세션 전환 시).
  */
 function reset(): void {
@@ -113,6 +120,7 @@ export const favoritesStore = {
 		return error;
 	},
 	isLiked,
+	isQuizCompleted,
 	loadFavorites,
 	addFavorite,
 	removeFavorite,

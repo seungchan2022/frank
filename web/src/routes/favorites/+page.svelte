@@ -21,6 +21,12 @@
 	let wrongAnswersError = $state<string | null>(null);
 	let wrongAnswersLoaded = $state(false);
 
+	/// MVP9 M2: 기사별 오답 시트 상태
+	let showWrongAnswerSheet = $state(false);
+	let sheetWrongAnswers = $state<WrongAnswer[]>([]);
+	let sheetLoading = $state(false);
+	let sheetArticleUrl = $state('');
+
 	$effect(() => {
 		if (!auth.isAuthenticated) {
 			goto('/login');
@@ -96,6 +102,37 @@
 
 	function handleRetry() {
 		favoritesStore.loadFavorites(auth.user?.id);
+	}
+
+	/// MVP9 M2: 기사별 오답 시트 열기
+	async function openWrongAnswerSheet(articleUrl: string) {
+		showWrongAnswerSheet = true;
+		sheetArticleUrl = articleUrl;
+		if (!wrongAnswersLoaded) {
+			sheetLoading = true;
+			try {
+				wrongAnswers = await apiClient.listWrongAnswers();
+				wrongAnswersLoaded = true;
+			} catch {
+				// 로드 실패해도 시트는 열림 (빈 상태로 표시)
+			} finally {
+				sheetLoading = false;
+			}
+		}
+		sheetWrongAnswers = wrongAnswers.filter((wa) => wa.articleUrl === articleUrl);
+	}
+
+	/// MVP9 M2: 오답 시트 닫기
+	function closeWrongAnswerSheet() {
+		showWrongAnswerSheet = false;
+		sheetWrongAnswers = [];
+		sheetArticleUrl = '';
+	}
+
+	/// MVP9 M2: 퀴즈 다시 풀기 — 기사 상세 페이지로 이동 (퀴즈 모달이 거기서 열림)
+	function retryQuiz(fav: Favorite, event: MouseEvent) {
+		event.stopPropagation();
+		goToArticle(fav);
 	}
 </script>
 
@@ -174,68 +211,89 @@
 				<!-- 기사 목록 -->
 				<div class="space-y-3">
 					{#each favoritesStore.favorites as fav (fav.id)}
-						<div class="group flex items-stretch rounded-lg border border-gray-200 bg-white transition-shadow hover:shadow-md">
-							<button
-								onclick={() => goToArticle(fav)}
-								class="min-w-0 flex-1 p-4 text-left"
-							>
-								<div class="flex items-start gap-3">
-									<!-- 썸네일 영역 (72×72) -->
-									<div class="h-18 w-18 flex-shrink-0">
-										{#if fav.imageUrl}
-											<img
-												src={fav.imageUrl}
-												alt=""
-												class="h-18 w-18 rounded-lg object-cover"
-												onerror={(e) => {
-													const el = e.currentTarget as HTMLImageElement;
-													el.style.display = 'none';
-													el.nextElementSibling?.classList.remove('hidden');
-												}}
-											/>
-											<div class="hidden h-18 w-18 rounded-lg bg-gray-200"></div>
-										{:else}
-											<div class="h-18 w-18 rounded-lg bg-gray-200"></div>
-										{/if}
-									</div>
+						<div class="group rounded-lg border border-gray-200 bg-white transition-shadow hover:shadow-md">
+							<!-- 상단: 기사 정보 + 즐겨찾기 해제 -->
+							<div class="flex items-stretch">
+								<button
+									onclick={() => goToArticle(fav)}
+									class="min-w-0 flex-1 p-4 text-left"
+								>
+									<div class="flex items-start gap-3">
+										<!-- 썸네일 영역 (72×72) -->
+										<div class="h-18 w-18 flex-shrink-0">
+											{#if fav.imageUrl}
+												<img
+													src={fav.imageUrl}
+													alt=""
+													class="h-18 w-18 rounded-lg object-cover"
+													onerror={(e) => {
+														const el = e.currentTarget as HTMLImageElement;
+														el.style.display = 'none';
+														el.nextElementSibling?.classList.remove('hidden');
+													}}
+												/>
+												<div class="hidden h-18 w-18 rounded-lg bg-gray-200"></div>
+											{:else}
+												<div class="h-18 w-18 rounded-lg bg-gray-200"></div>
+											{/if}
+										</div>
 
-									<!-- 텍스트 영역 -->
-									<div class="min-w-0 flex-1">
-										<div class="mb-1 flex items-start gap-2">
-											<h2 class="line-clamp-2 text-sm font-semibold text-gray-900 group-hover:text-indigo-700 flex-1">
-												{fav.title}
-											</h2>
-											{#if fav.quizCompleted}
-												<!-- 퀴즈 완료 배지 -->
-												<span
-													class="flex-shrink-0 rounded-full bg-indigo-100 px-2 py-0.5 text-xs font-medium text-indigo-700"
-													title="퀴즈 완료"
-												>
-													퀴즈 ✓
+										<!-- 텍스트 영역 -->
+										<div class="min-w-0 flex-1">
+											<div class="mb-1 flex items-start gap-2">
+												<h2 class="line-clamp-2 text-sm font-semibold text-gray-900 group-hover:text-indigo-700 flex-1">
+													{fav.title}
+												</h2>
+												{#if fav.quizCompleted}
+													<!-- 퀴즈 완료 배지 -->
+													<span
+														class="flex-shrink-0 rounded-full bg-indigo-100 px-2 py-0.5 text-xs font-medium text-indigo-700"
+														title="퀴즈 완료"
+													>
+														퀴즈 ✓
+													</span>
+												{/if}
+											</div>
+											<div class="flex flex-wrap items-center gap-2 text-xs text-gray-400">
+												<span class="inline-block rounded bg-gray-100 px-2 py-0.5 font-medium text-gray-600">
+													{fav.source}
 												</span>
-											{/if}
-										</div>
-										<div class="flex flex-wrap items-center gap-2 text-xs text-gray-400">
-											<span class="inline-block rounded bg-gray-100 px-2 py-0.5 font-medium text-gray-600">
-												{fav.source}
-											</span>
-											{#if fav.createdAt}
-												<span>스크랩: {formatArticleDate(fav.createdAt)}</span>
-											{/if}
-											{#if fav.summary}
-												<span class="text-indigo-500">✨ 요약 있음</span>
-											{/if}
+												{#if fav.createdAt}
+													<span>스크랩: {formatArticleDate(fav.createdAt)}</span>
+												{/if}
+												{#if fav.summary}
+													<span class="text-indigo-500">✨ 요약 있음</span>
+												{/if}
+											</div>
 										</div>
 									</div>
+								</button>
+								<button
+									onclick={(e) => handleRemoveFavorite(fav.url, e)}
+									class="flex-shrink-0 px-4 text-yellow-400 transition-colors hover:bg-red-50 hover:text-red-500"
+									title="즐겨찾기 해제"
+								>
+									★
+								</button>
+							</div>
+
+							<!-- 하단: MVP9 M2 퀴즈 버튼 재설계 -->
+							{#if fav.quizCompleted}
+								<div class="flex gap-2 border-t border-gray-100 px-4 py-2">
+									<button
+										onclick={(e) => retryQuiz(fav, e)}
+										class="rounded-md border border-indigo-200 bg-indigo-50 px-3 py-1.5 text-xs font-medium text-indigo-700 transition-colors hover:bg-indigo-100"
+									>
+										↺ 다시 풀기
+									</button>
+									<button
+										onclick={(e) => { e.stopPropagation(); void openWrongAnswerSheet(fav.url); }}
+										class="rounded-md border border-gray-200 bg-gray-50 px-3 py-1.5 text-xs font-medium text-gray-600 transition-colors hover:bg-gray-100"
+									>
+										오답 보기
+									</button>
 								</div>
-							</button>
-							<button
-								onclick={(e) => handleRemoveFavorite(fav.url, e)}
-								class="flex-shrink-0 px-4 text-yellow-400 transition-colors hover:bg-red-50 hover:text-red-500"
-								title="즐겨찾기 해제"
-							>
-								★
-							</button>
+							{/if}
 						</div>
 					{/each}
 				</div>
@@ -279,3 +337,70 @@
 		{/if}
 	</main>
 </div>
+
+<!-- MVP9 M2: 기사별 오답 시트 모달 -->
+{#if showWrongAnswerSheet}
+	<div
+		class="fixed inset-0 z-50 flex items-end justify-center bg-black/40 p-4"
+		role="dialog"
+		aria-modal="true"
+		aria-label="오답 보기"
+	>
+		<div class="w-full max-w-lg rounded-xl bg-white shadow-xl">
+			<!-- 헤더 -->
+			<div class="flex items-center justify-between border-b border-gray-100 px-5 py-4">
+				<h2 class="text-base font-semibold text-gray-900">오답 보기</h2>
+				<button
+					onclick={closeWrongAnswerSheet}
+					aria-label="닫기"
+					class="text-gray-400 hover:text-gray-600"
+				>
+					✕
+				</button>
+			</div>
+
+			<!-- 본문 -->
+			<div class="max-h-[60vh] overflow-y-auto p-5">
+				{#if sheetLoading}
+					<div class="space-y-3">
+						{#each [1, 2] as i (i)}
+							<div class="animate-pulse rounded-lg border border-gray-200 bg-gray-50 p-4">
+								<div class="mb-2 h-4 w-2/3 rounded bg-gray-200"></div>
+								<div class="h-4 w-full rounded bg-gray-200"></div>
+							</div>
+						{/each}
+					</div>
+				{:else if sheetWrongAnswers.length === 0}
+					<div class="py-8 text-center">
+						<p class="text-3xl">🎯</p>
+						<p class="mt-3 text-sm font-medium text-gray-700">이 기사의 오답 기록이 없어요</p>
+						<p class="mt-1 text-xs text-gray-500">퀴즈를 다시 풀어보세요.</p>
+					</div>
+				{:else}
+					<div class="space-y-3">
+						{#each sheetWrongAnswers as wa (wa.id)}
+							<!-- 읽기 전용 — 삭제 버튼 없이 WrongAnswerCard 내용 인라인 표시 -->
+							<div class="rounded-lg border border-red-100 bg-white p-4 shadow-sm">
+								<p class="mb-2 text-xs font-medium text-gray-400 line-clamp-1">{wa.articleTitle}</p>
+								<p class="mb-3 text-sm font-semibold text-gray-900 leading-snug">{wa.question}</p>
+								<div class="mb-3 space-y-1">
+									<div class="flex items-start gap-2 text-xs">
+										<span class="flex-shrink-0 rounded bg-red-100 px-1.5 py-0.5 font-medium text-red-700">내 답</span>
+										<span class="text-gray-600">{wa.options[wa.userIndex]}</span>
+									</div>
+									<div class="flex items-start gap-2 text-xs">
+										<span class="flex-shrink-0 rounded bg-green-100 px-1.5 py-0.5 font-medium text-green-700">정답</span>
+										<span class="text-gray-600">{wa.options[wa.correctIndex]}</span>
+									</div>
+								</div>
+								{#if wa.explanation}
+									<p class="text-xs text-gray-500 leading-relaxed">{wa.explanation}</p>
+								{/if}
+							</div>
+						{/each}
+					</div>
+				{/if}
+			</div>
+		</div>
+	</div>
+{/if}

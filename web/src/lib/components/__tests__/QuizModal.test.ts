@@ -1,4 +1,5 @@
 // MVP8 M3: QuizModal — 오답 저장 + 퀴즈 완료 마킹 단위 테스트
+// MVP9 M2: 세션 오답 인라인 표시 로직 테스트 추가.
 // apiClient와 favoritesStore를 mock하여 사이드이펙트 검증.
 
 import { describe, it, expect, vi, beforeEach } from 'vitest';
@@ -196,5 +197,139 @@ describe('QuizModal: 퀴즈 완료 마킹', () => {
 		nextQuestion();
 
 		expect(mockMarkQuizDone).not.toHaveBeenCalled();
+	});
+});
+
+// ─── MVP9 M2: 세션 오답 인라인 표시 ──────────────────────────────────────────
+
+/**
+ * 세션 오답 누적 로직을 순수 함수로 추출하여 테스트.
+ * confirm() 시 오답이면 sessionWrongAnswers에 추가되는지 검증.
+ */
+function makeSessionWrongLogic(
+	articleUrl: string | undefined,
+	articleTitle: string | undefined,
+	questions: QuizQuestion[]
+) {
+	let currentIndex = 0;
+	let selectedIndex: number | null = null;
+	let score = 0;
+	let confirmed = false;
+	let sessionWrongAnswers: Array<{ question: QuizQuestion; userIndex: number }> = [];
+
+	return {
+		selectOption(i: number) {
+			if (!confirmed) selectedIndex = i;
+		},
+		confirm() {
+			if (selectedIndex === null || confirmed) return;
+			const q = questions[currentIndex];
+			const correct = selectedIndex === q.answer_index;
+			if (correct) {
+				score += 1;
+			} else {
+				// 세션 오답 누적 (MVP9 M2)
+				sessionWrongAnswers = [...sessionWrongAnswers, { question: q, userIndex: selectedIndex }];
+				if (articleUrl && articleTitle) {
+					const uIdx = selectedIndex;
+					void mockSaveWrongAnswer({
+						article_url: articleUrl,
+						article_title: articleTitle,
+						question: q.question,
+						options: q.options,
+						correct_index: q.answer_index,
+						user_index: uIdx,
+						explanation: q.explanation ?? null
+					}).catch(() => {});
+				}
+			}
+			confirmed = true;
+		},
+		nextQuestion() {
+			if (currentIndex + 1 < questions.length) {
+				currentIndex += 1;
+				selectedIndex = null;
+				confirmed = false;
+			}
+		},
+		reset() {
+			currentIndex = 0;
+			selectedIndex = null;
+			score = 0;
+			confirmed = false;
+			sessionWrongAnswers = [];
+		},
+		get score() {
+			return score;
+		},
+		get sessionWrongAnswers() {
+			return sessionWrongAnswers;
+		}
+	};
+}
+
+describe('QuizModal: 세션 오답 인라인 표시 (MVP9 M2)', () => {
+	it('오답 시 sessionWrongAnswers에 누적됨', () => {
+		const logic = makeSessionWrongLogic('https://article.com', '테스트 기사', mockQuestions);
+		logic.selectOption(1); // 오답 (answer_index=0)
+		logic.confirm();
+
+		expect(logic.sessionWrongAnswers).toHaveLength(1);
+		expect(logic.sessionWrongAnswers[0].question).toEqual(mockQuestions[0]);
+		expect(logic.sessionWrongAnswers[0].userIndex).toBe(1);
+	});
+
+	it('정답 시 sessionWrongAnswers에 추가 안 됨', () => {
+		const logic = makeSessionWrongLogic('https://article.com', '테스트 기사', mockQuestions);
+		logic.selectOption(0); // 정답 (answer_index=0)
+		logic.confirm();
+
+		expect(logic.sessionWrongAnswers).toHaveLength(0);
+	});
+
+	it('여러 문제 오답 시 누적됨', () => {
+		const logic = makeSessionWrongLogic('https://article.com', '테스트 기사', mockQuestions);
+		// 1번째 문제 오답
+		logic.selectOption(1); // 오답
+		logic.confirm();
+		logic.nextQuestion();
+		// 2번째 문제 오답
+		logic.selectOption(0); // 오답 (answer_index=1)
+		logic.confirm();
+
+		expect(logic.sessionWrongAnswers).toHaveLength(2);
+	});
+
+	it('reset() 시 sessionWrongAnswers가 초기화됨', () => {
+		const logic = makeSessionWrongLogic('https://article.com', '테스트 기사', mockQuestions);
+		logic.selectOption(1); // 오답
+		logic.confirm();
+		expect(logic.sessionWrongAnswers).toHaveLength(1);
+
+		logic.reset();
+		expect(logic.sessionWrongAnswers).toHaveLength(0);
+	});
+
+	it('articleUrl 없어도 세션 오답은 누적됨', () => {
+		const logic = makeSessionWrongLogic(undefined, undefined, mockQuestions);
+		logic.selectOption(1); // 오답
+		logic.confirm();
+
+		// 세션 오답은 로컬 상태이므로 articleUrl 무관하게 누적
+		expect(logic.sessionWrongAnswers).toHaveLength(1);
+		// 하지만 API 호출은 없음
+		expect(mockSaveWrongAnswer).not.toHaveBeenCalled();
+	});
+
+	it('오답 없을 때 sessionWrongAnswers.length === 0 (완벽 상태)', () => {
+		const logic = makeSessionWrongLogic('https://article.com', '테스트 기사', mockQuestions);
+		logic.selectOption(0); // 정답
+		logic.confirm();
+		logic.nextQuestion();
+		logic.selectOption(1); // 정답 (answer_index=1)
+		logic.confirm();
+
+		expect(logic.sessionWrongAnswers).toHaveLength(0);
+		expect(logic.score).toBe(2);
 	});
 });

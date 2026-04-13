@@ -21,6 +21,8 @@
 	let finished = $state(false);
 	/// 퀴즈 완료 마킹 중복 방지 플래그
 	let quizCompletedMarked = $state(false);
+	/// MVP9 M2: 세션 오답 인라인 표시 — 이번 세션에서 틀린 문제 누적
+	let sessionWrongAnswers = $state<Array<{ question: QuizQuestion; userIndex: number }>>([]);
 
 	const currentQuestion = $derived(questions[currentIndex]);
 	const isCorrect = $derived(
@@ -37,23 +39,27 @@
 		const correct = selectedIndex === currentQuestion.answer_index;
 		if (correct) {
 			score += 1;
-		} else if (articleUrl && articleTitle) {
-			// 오답 발생 시 fire-and-forget 저장
+		} else {
+			// MVP9 M2: 세션 오답 누적 (로컬 — articleUrl 무관)
 			const q = currentQuestion;
 			const uIdx = selectedIndex;
-			void apiClient
-				.saveWrongAnswer({
-					article_url: articleUrl,
-					article_title: articleTitle,
-					question: q.question,
-					options: q.options,
-					correct_index: q.answer_index,
-					user_index: uIdx,
-					explanation: q.explanation ?? null
-				})
-				.catch(() => {
-					// fire-and-forget: 실패해도 퀴즈 진행 차단 안 함
-				});
+			sessionWrongAnswers = [...sessionWrongAnswers, { question: q, userIndex: uIdx }];
+			if (articleUrl && articleTitle) {
+				// 오답 발생 시 fire-and-forget 저장
+				void apiClient
+					.saveWrongAnswer({
+						article_url: articleUrl,
+						article_title: articleTitle,
+						question: q.question,
+						options: q.options,
+						correct_index: q.answer_index,
+						user_index: uIdx,
+						explanation: q.explanation ?? null
+					})
+					.catch(() => {
+						// fire-and-forget: 실패해도 퀴즈 진행 차단 안 함
+					});
+			}
 		}
 		confirmed = true;
 	}
@@ -91,29 +97,65 @@
 	<div class="w-full max-w-lg rounded-xl bg-white shadow-xl">
 		{#if finished}
 			<!-- 최종 점수 화면 -->
-			<div class="p-6 text-center">
-				<div class="mb-4 text-5xl">
-					{#if score === questions.length}
-						🎉
-					{:else if score >= questions.length / 2}
-						👍
-					{:else}
-						📚
+			<div class="p-6">
+				<div class="mb-4 text-center">
+					<div class="mb-4 text-5xl">
+						{#if score === questions.length}
+							🎉
+						{:else if score >= questions.length / 2}
+							👍
+						{:else}
+							📚
+						{/if}
+					</div>
+					<h2 class="mb-2 text-xl font-bold text-gray-900">퀴즈 완료!</h2>
+					<p class="mb-2 text-3xl font-bold text-indigo-600">
+						{score} / {questions.length}
+					</p>
+					{#if sessionWrongAnswers.length > 0}
+						<p class="mb-4 text-sm text-gray-500">
+							{#if score >= questions.length / 2}
+								잘 이해했습니다. 틀린 문제를 다시 확인해보세요.
+							{:else}
+								기사를 다시 읽고 복습해보세요.
+							{/if}
+						</p>
 					{/if}
 				</div>
-				<h2 class="mb-2 text-xl font-bold text-gray-900">퀴즈 완료!</h2>
-				<p class="mb-6 text-3xl font-bold text-indigo-600">
-					{score} / {questions.length}
-				</p>
-				<p class="mb-6 text-sm text-gray-500">
-					{#if score === questions.length}
-						완벽합니다! 기사 내용을 완전히 이해했습니다.
-					{:else if score >= questions.length / 2}
-						잘 이해했습니다. 틀린 문제를 다시 확인해보세요.
-					{:else}
-						기사를 다시 읽고 복습해보세요.
-					{/if}
-				</p>
+
+				<!-- MVP9 M2: 세션 오답 인라인 표시 -->
+				{#if sessionWrongAnswers.length === 0}
+					<div class="mb-4 rounded-lg border border-green-200 bg-green-50 p-3 text-center">
+						<p class="text-sm font-semibold text-green-700">완벽! 모두 맞혔어요 🎯</p>
+					</div>
+				{:else}
+					<div class="mb-4">
+						<p class="mb-2 text-xs font-semibold text-gray-500 uppercase tracking-wide">
+							이번 세션 오답 {sessionWrongAnswers.length}개
+						</p>
+						<div class="space-y-3 max-h-64 overflow-y-auto">
+							{#each sessionWrongAnswers as item, i (i)}
+								<div class="rounded-lg border border-red-100 bg-red-50 p-3 text-sm">
+									<p class="mb-2 font-medium text-gray-800 leading-snug">{item.question.question}</p>
+									<div class="space-y-1">
+										<div class="flex items-start gap-2 text-xs">
+											<span class="flex-shrink-0 rounded bg-red-200 px-1.5 py-0.5 font-medium text-red-800">내 답</span>
+											<span class="text-gray-600">{item.question.options[item.userIndex]}</span>
+										</div>
+										<div class="flex items-start gap-2 text-xs">
+											<span class="flex-shrink-0 rounded bg-green-200 px-1.5 py-0.5 font-medium text-green-800">정답</span>
+											<span class="text-gray-600">{item.question.options[item.question.answer_index]}</span>
+										</div>
+									</div>
+									{#if item.question.explanation}
+										<p class="mt-2 text-xs text-gray-500 leading-relaxed">{item.question.explanation}</p>
+									{/if}
+								</div>
+							{/each}
+						</div>
+					</div>
+				{/if}
+
 				<button
 					onclick={onClose}
 					class="w-full rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-700"

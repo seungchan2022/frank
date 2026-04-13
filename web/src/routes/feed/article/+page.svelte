@@ -18,6 +18,7 @@
 	}
 	import type { SummaryResult } from '$lib/types/summary';
 	import type { QuizQuestion } from '$lib/types/quiz';
+	import type { WrongAnswer } from '$lib/types/quiz';
 	import type { ArticlePageState } from './+page';
 
 	const auth = getAuth();
@@ -43,6 +44,11 @@
 	let quizPhase = $state<QuizPhase>('idle');
 	let quizQuestions = $state<QuizQuestion[] | null>(null);
 	let quizError = $state<string | null>(null);
+
+	// MVP9 M2: 오답 보기 시트 상태
+	let showWrongAnswerSheet = $state(false);
+	let sheetWrongAnswers = $state<WrongAnswer[]>([]);
+	let sheetLoading = $state(false);
 
 	// 타이머 기반 로딩 텍스트 (8s 간격 전환)
 	let summarizeLoadingText = $state('요약 중…');
@@ -148,6 +154,20 @@
 		} catch {
 			quizError = '네트워크 오류가 발생했습니다.';
 			quizPhase = 'error';
+		}
+	}
+
+	// MVP9 M2: 오답 보기 시트 열기
+	async function openWrongAnswerSheet() {
+		showWrongAnswerSheet = true;
+		sheetLoading = true;
+		try {
+			const all = await apiClient.listWrongAnswers();
+			sheetWrongAnswers = all.filter((wa) => wa.articleUrl === feedItem.url);
+		} catch {
+			sheetWrongAnswers = [];
+		} finally {
+			sheetLoading = false;
 		}
 	}
 
@@ -306,28 +326,54 @@
 		<!-- 퀴즈 버튼 (즐겨찾기한 기사만 표시) -->
 		{#if favoritesStore.isLiked(feedItem.url)}
 			<div class="mt-3">
-				<button
-					onclick={handleQuiz}
-					disabled={quizPhase === 'loading'}
-					class={[
-						'w-full rounded-lg border border-indigo-300 bg-indigo-50 px-4 py-2 text-sm font-medium text-indigo-700 transition-colors',
-						quizPhase === 'loading'
-							? 'cursor-not-allowed opacity-50'
-							: 'hover:bg-indigo-100'
-					].join(' ')}
-				>
-					{#if quizPhase === 'loading'}
-						<span class="flex items-center justify-center gap-2">
-							<span class={[
-								'h-4 w-4 animate-spin rounded-full border-2 border-t-transparent',
-								quizLoadingText === '마무리 중…' ? 'border-orange-500' : 'border-indigo-600'
-							].join(' ')}></span>
-							<span class={quizLoadingText === '마무리 중…' ? 'text-orange-500' : ''}>{quizLoadingText}</span>
-						</span>
-					{:else}
-						🧠 퀴즈 풀기
-					{/if}
-				</button>
+				{#if favoritesStore.isQuizCompleted(feedItem.url)}
+					<!-- MVP9 M2: 퀴즈 완료 후 버튼 재설계 -->
+					<div class="flex gap-2">
+						<button
+							onclick={handleQuiz}
+							disabled={quizPhase === 'loading'}
+							class="flex-1 rounded-lg border border-indigo-300 bg-indigo-50 px-4 py-2 text-sm font-medium text-indigo-700 transition-colors hover:bg-indigo-100 disabled:cursor-not-allowed disabled:opacity-50"
+						>
+							{#if quizPhase === 'loading'}
+								<span class="flex items-center justify-center gap-2">
+									<span class="h-4 w-4 animate-spin rounded-full border-2 border-t-transparent border-indigo-600"></span>
+									{quizLoadingText}
+								</span>
+							{:else}
+								↺ 다시 풀기
+							{/if}
+						</button>
+						<button
+							onclick={openWrongAnswerSheet}
+							class="flex-1 rounded-lg border border-gray-300 bg-gray-50 px-4 py-2 text-sm font-medium text-gray-600 transition-colors hover:bg-gray-100"
+						>
+							오답 보기
+						</button>
+					</div>
+				{:else}
+					<button
+						onclick={handleQuiz}
+						disabled={quizPhase === 'loading'}
+						class={[
+							'w-full rounded-lg border border-indigo-300 bg-indigo-50 px-4 py-2 text-sm font-medium text-indigo-700 transition-colors',
+							quizPhase === 'loading'
+								? 'cursor-not-allowed opacity-50'
+								: 'hover:bg-indigo-100'
+						].join(' ')}
+					>
+						{#if quizPhase === 'loading'}
+							<span class="flex items-center justify-center gap-2">
+								<span class={[
+									'h-4 w-4 animate-spin rounded-full border-2 border-t-transparent',
+									quizLoadingText === '마무리 중…' ? 'border-orange-500' : 'border-indigo-600'
+								].join(' ')}></span>
+								<span class={quizLoadingText === '마무리 중…' ? 'text-orange-500' : ''}>{quizLoadingText}</span>
+							</span>
+						{:else}
+							🧠 퀴즈 풀기
+						{/if}
+					</button>
+				{/if}
 				{#if quizPhase === 'error' && quizError}
 					<p class="mt-1 text-xs text-red-600">{quizError}</p>
 				{/if}
@@ -344,4 +390,55 @@
 		articleTitle={feedItem?.title}
 		onClose={() => { quizQuestions = null; }}
 	/>
+{/if}
+
+<!-- MVP9 M2: 오답 보기 시트 -->
+{#if showWrongAnswerSheet}
+	<div
+		class="fixed inset-0 z-50 flex items-end justify-center bg-black/40"
+		role="dialog"
+		aria-modal="true"
+		aria-label="오답 보기"
+	>
+		<div class="w-full max-w-lg rounded-t-2xl bg-white shadow-xl">
+			<div class="flex items-center justify-between border-b border-gray-100 px-5 py-4">
+				<h2 class="text-base font-semibold text-gray-900">오답 보기</h2>
+				<button
+					onclick={() => { showWrongAnswerSheet = false; sheetWrongAnswers = []; }}
+					class="text-gray-400 hover:text-gray-600"
+					aria-label="닫기"
+				>✕</button>
+			</div>
+			<div class="max-h-96 overflow-y-auto p-4">
+				{#if sheetLoading}
+					<div class="flex justify-center py-8">
+						<span class="h-6 w-6 animate-spin rounded-full border-2 border-indigo-600 border-t-transparent"></span>
+					</div>
+				{:else if sheetWrongAnswers.length === 0}
+					<p class="py-8 text-center text-sm text-gray-400">이 기사의 오답 기록이 없어요</p>
+				{:else}
+					<div class="space-y-3">
+						{#each sheetWrongAnswers as wa (wa.id)}
+							<div class="rounded-lg border border-red-100 bg-red-50 p-3 text-sm">
+								<p class="mb-2 font-medium text-gray-800">{wa.question}</p>
+								<div class="space-y-1">
+									<div class="flex items-start gap-2 text-xs">
+										<span class="flex-shrink-0 rounded bg-red-200 px-1.5 py-0.5 font-medium text-red-800">내 답</span>
+										<span class="text-gray-600">{wa.options[wa.userIndex]}</span>
+									</div>
+									<div class="flex items-start gap-2 text-xs">
+										<span class="flex-shrink-0 rounded bg-green-200 px-1.5 py-0.5 font-medium text-green-800">정답</span>
+										<span class="text-gray-600">{wa.options[wa.correctIndex]}</span>
+									</div>
+								</div>
+								{#if wa.explanation}
+									<p class="mt-2 text-xs text-gray-500">{wa.explanation}</p>
+								{/if}
+							</div>
+						{/each}
+					</div>
+				{/if}
+			</div>
+		</div>
+	</div>
 {/if}
