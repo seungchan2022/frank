@@ -4,8 +4,8 @@ use server::config::AppConfig;
 use server::domain::ports::SearchChainPort;
 use server::infra::exa::ExaAdapter;
 use server::infra::firecrawl::FirecrawlAdapter;
+use server::infra::groq::GroqAdapter;
 use server::infra::imessage::{ImessageAdapter, LogOnlyNotificationAdapter};
-use server::infra::openrouter::OpenRouterAdapter;
 use server::infra::postgres_db::PostgresDbAdapter;
 use server::infra::postgres_favorites::PostgresFavoritesAdapter;
 use server::infra::postgres_quiz_wrong_answers::PostgresQuizWrongAnswerAdapter;
@@ -44,10 +44,7 @@ async fn main() {
         Box::new(FirecrawlAdapter::new(&config.firecrawl_api_key)),
     ]));
 
-    let llm = Arc::new(OpenRouterAdapter::new(
-        &config.openrouter_api_key,
-        &config.llm_model,
-    ));
+    let llm = Arc::new(GroqAdapter::new(&config.groq_api_key));
 
     let supabase_config = SupabaseConfig {
         url: config.supabase_url.clone(),

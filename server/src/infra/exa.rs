@@ -32,26 +32,15 @@ struct ExaResult {
     published_date: Option<String>,
 }
 
-/// MVP8 M1: snippet 정제 함수.
-/// 1. 마크다운 헤더(# 시작 행) 제거
-/// 2. HTML 태그(<...>) 제거 — 문자 단위 파싱
-/// 3. URL 토큰(http:// / https:// 시작) 제거
-/// 4. 이메일 토큰(@ 포함) 제거
-/// 5. 공백 정리
-/// 6. 200자 단어 경계 절단 (초과 시 … 추가)
+/// MVP9 M1: snippet 정제 함수.
+/// 1. HTML 태그(<...>) 제거 — 문자 단위 파싱
+/// 2. 줄바꿈·연속 공백 정리
+/// 3. 300자 문장 경계 절단 (마침표/느낌표/물음표 기준, 초과 시 단어 경계로 폴백)
 pub fn clean_snippet(s: &str) -> String {
-    // 1. 마크다운 헤더 제거 + 줄 수집
-    let lines: Vec<&str> = s
-        .lines()
-        .filter(|l| !l.trim_start().starts_with('#'))
-        .collect();
-
-    let raw = lines.join(" ");
-
-    // 2. HTML 태그 제거 (문자 단위 파싱)
-    let mut no_html = String::with_capacity(raw.len());
+    // 1. HTML 태그 제거 (문자 단위 파싱)
+    let mut no_html = String::with_capacity(s.len());
     let mut in_tag = false;
-    for ch in raw.chars() {
+    for ch in s.chars() {
         match ch {
             '<' => in_tag = true,
             '>' => in_tag = false,
@@ -60,29 +49,31 @@ pub fn clean_snippet(s: &str) -> String {
         }
     }
 
-    // 3, 4. URL/이메일 토큰 제거 + 공백 정리
-    let cleaned: Vec<&str> = no_html
-        .split_whitespace()
-        .filter(|token| {
-            !token.starts_with("http://") && !token.starts_with("https://") && !token.contains('@')
-        })
-        .collect();
+    // 2. 줄바꿈 → 공백, 연속 공백 정리
+    let normalized: String = no_html.split_whitespace().collect::<Vec<_>>().join(" ");
 
-    let joined = cleaned.join(" ");
-
-    // 6. 200자 단어 경계 절단
-    if joined.chars().count() <= 200 {
-        return joined;
+    // 3. 300자 이하면 그대로 반환
+    if normalized.chars().count() <= 300 {
+        return normalized;
     }
 
-    // 200자 이하에서 마지막 공백 찾기
-    let cutoff: String = joined.chars().take(200).collect();
-    if let Some(last_space) = cutoff.rfind(' ') {
-        format!("{}…", &cutoff[..last_space])
+    // 4. 300자 이내에서 문장 경계로 절단
+    let cutoff: String = normalized.chars().take(300).collect();
+
+    // 마지막 문장 종결 부호 위치 (바이트 인덱스)
+    if let Some(pos) = cutoff.rfind(['.', '!', '?']) {
+        // 종결 부호 포함하여 반환 (ASCII 단일 바이트)
+        cutoff[..pos + 1].to_string()
     } else {
-        format!("{}…", cutoff)
+        // 문장 경계 없으면 단어 경계로 폴백
+        if let Some(last_space) = cutoff.rfind(' ') {
+            cutoff[..last_space].to_string()
+        } else {
+            cutoff
+        }
     }
 }
+
 
 impl ExaAdapter {
     pub fn new(api_key: &str) -> Self {
@@ -203,73 +194,56 @@ mod tests {
     // --- clean_snippet 단위 테스트 ---
 
     #[test]
-    fn clean_snippet_removes_markdown_headers() {
-        let input = "# 제목\n## 소제목\n본문 내용입니다.";
-        let result = clean_snippet(input);
-        assert!(!result.contains('#'));
-        assert!(result.contains("본문 내용입니다."));
-    }
-
-    #[test]
     fn clean_snippet_removes_html_tags() {
         let input = "<p>본문</p> <a href='https://example.com'>링크</a>";
         let result = clean_snippet(input);
         assert!(!result.contains('<'));
         assert!(!result.contains('>'));
         assert!(result.contains("본문"));
+        assert!(result.contains("링크"));
     }
 
     #[test]
-    fn clean_snippet_removes_urls() {
-        let input = "기사 내용 https://example.com/article 이후 텍스트";
+    fn clean_snippet_normalizes_whitespace() {
+        let input = "첫째 줄\n둘째 줄\n\n셋째 줄";
         let result = clean_snippet(input);
-        assert!(!result.contains("https://"));
-        assert!(result.contains("기사 내용"));
-        assert!(result.contains("이후 텍스트"));
-    }
-
-    #[test]
-    fn clean_snippet_removes_http_urls() {
-        let input = "기사 http://example.com 내용";
-        let result = clean_snippet(input);
-        assert!(!result.contains("http://"));
-    }
-
-    #[test]
-    fn clean_snippet_removes_emails() {
-        let input = "문의: contact@example.com 또는 test@test.org";
-        let result = clean_snippet(input);
-        assert!(!result.contains('@'));
-        assert!(result.contains("문의:"));
-    }
-
-    #[test]
-    fn clean_snippet_word_boundary_cut_at_200() {
-        // 200자를 초과하는 입력 — 단어 경계에서 절단
-        let words: Vec<String> = (0..50).map(|i| format!("word{i}")).collect();
-        let input = words.join(" ");
-        let result = clean_snippet(&input);
-        assert!(result.chars().count() <= 204); // 200 + "…" (1char) + 여유
-        assert!(result.ends_with('…') || result.chars().count() <= 200);
+        assert!(!result.contains('\n'));
+        assert!(result.contains("첫째 줄"));
+        assert!(result.contains("셋째 줄"));
     }
 
     #[test]
     fn clean_snippet_short_input_unchanged() {
-        let input = "짧은 텍스트";
+        let input = "짧은 텍스트입니다.";
         let result = clean_snippet(input);
-        assert_eq!(result, "짧은 텍스트");
+        assert_eq!(result, "짧은 텍스트입니다.");
     }
 
     #[test]
-    fn clean_snippet_cleans_combined() {
-        let input = "# 헤더\n<b>굵은</b> 텍스트 https://url.com 그리고 email@test.com 이후";
+    fn clean_snippet_cuts_at_sentence_boundary() {
+        // 300자 초과 시 마침표 기준으로 절단
+        let long = "첫 번째 문장입니다. ".repeat(20); // 300자 초과
+        let result = clean_snippet(&long);
+        assert!(result.chars().count() <= 300);
+        assert!(result.ends_with('.'), "문장 경계로 절단되어야 함: {result}");
+    }
+
+    #[test]
+    fn clean_snippet_sentence_boundary_no_ellipsis() {
+        // 문장 경계 절단 시 "…" 없어야 함
+        let sentences = "Apple이 새로운 AI 기능을 발표했다. 이번 발표에서 iOS 업데이트가 포함됐다. 사용자 경험 개선이 핵심이다. ".repeat(5);
+        let result = clean_snippet(&sentences);
+        assert!(!result.ends_with('…'), "문장 경계 절단 시 … 없어야 함");
+        assert!(result.ends_with('.'), "마침표로 끝나야 함");
+    }
+
+    #[test]
+    fn clean_snippet_normal_text_preserved() {
+        let input = "Apple이 새로운 AI 기능을 iOS 18에 추가했다. 이 기능은 사용자 경험을 크게 개선할 것으로 예상된다.";
         let result = clean_snippet(input);
-        assert!(!result.contains('#'));
-        assert!(!result.contains('<'));
-        assert!(!result.contains("https://"));
-        assert!(!result.contains('@'));
-        assert!(result.contains("굵은"));
-        assert!(result.contains("텍스트"));
+        assert!(result.contains("Apple이"));
+        assert!(result.contains("iOS 18"));
+        assert!(result.contains("AI 기능"));
     }
 
     #[tokio::test]

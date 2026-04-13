@@ -5,6 +5,7 @@ use serde::Deserialize;
 use crate::domain::error::AppError;
 use crate::domain::models::SearchResult;
 use crate::domain::ports::SearchPort;
+use crate::infra::exa::clean_snippet;
 use crate::infra::http_utils::{
     OG_IMAGE_TIMEOUT_SECS, RetryConfig, fetch_og_image, read_body_limited, send_with_retry,
 };
@@ -68,6 +69,7 @@ impl SearchPort for TavilyAdapter {
                 "max_results": max_results,
                 "search_depth": "advanced",
                 "include_answer": false,
+                "time_range": "week",
             });
 
             let config = RetryConfig::for_search();
@@ -122,7 +124,7 @@ impl SearchPort for TavilyAdapter {
                 .map(|(r, image_url)| SearchResult {
                     title: r.title,
                     url: r.url,
-                    snippet: r.content,
+                    snippet: r.content.map(|s| clean_snippet(&s)),
                     published_at: r.published_date,
                     image_url,
                 })
@@ -139,7 +141,7 @@ impl SearchPort for TavilyAdapter {
 mod tests {
     use super::*;
     use crate::infra::http_utils::extract_og_image;
-    use wiremock::matchers::{method, path};
+    use wiremock::matchers::{body_partial_json, method, path};
     use wiremock::{Mock, MockServer, ResponseTemplate};
 
     // MARK: - og:image 파싱 단위 테스트
@@ -303,5 +305,62 @@ mod tests {
             Some("https://cdn.example.com/thumb.jpg".to_string())
         );
         assert_eq!(results[1].image_url, None);
+    }
+
+    // MARK: - ST-2: time_range 파라미터 검증
+
+    #[tokio::test]
+    async fn search_request_includes_time_range_week() {
+        let mock_server = MockServer::start().await;
+
+        Mock::given(method("POST"))
+            .and(path("/search"))
+            .and(body_partial_json(serde_json::json!({
+                "time_range": "week"
+            })))
+            .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({
+                "results": [{"title": "Test", "url": "https://example.com", "content": "snippet", "published_date": null}]
+            })))
+            .mount(&mock_server)
+            .await;
+
+        let adapter = TavilyAdapter::with_base_url("test-key", &mock_server.uri());
+        let result = adapter.search("test query", 5).await;
+        assert!(
+            result.is_ok(),
+            "time_range: week 파라미터 포함 요청이 성공해야 함"
+        );
+        assert_eq!(result.unwrap().len(), 1);
+    }
+
+    #[tokio::test]
+    async fn tavily_null_snippet_remains_none() {
+        let mock_server = MockServer::start().await;
+
+        Mock::given(method("POST"))
+            .and(path("/search"))
+            .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({
+                "results": [
+                    {
+                        "title": "No Snippet",
+                        "url": "https://example.com/no-snippet",
+                        "content": null,
+                        "published_date": null
+                    }
+                ]
+            })))
+            .mount(&mock_server)
+            .await;
+
+        Mock::given(method("GET"))
+            .and(path("/no-snippet"))
+            .respond_with(ResponseTemplate::new(403))
+            .mount(&mock_server)
+            .await;
+
+        let adapter = TavilyAdapter::with_base_url("test-key", &mock_server.uri());
+        let results = adapter.search("test", 5).await.unwrap();
+
+        assert_eq!(results[0].snippet, None, "null content는 None으로 유지");
     }
 }
