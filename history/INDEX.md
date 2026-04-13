@@ -147,8 +147,8 @@
 
 | 유형 | 파일 | 핵심 내용 |
 |------|------|----------|
-| 로드맵 | [MVP8 로드맵](../progress/260412_MVP8_로드맵.md) | M1~M3 마일스톤, 오답 아카이빙·퀴즈 배지·UX 개선, DB 스키마 확정 |
-| 회고 | [일일 회고 260413](../progress/260413_retro.html) | iOS Swift 버그 발견 경위, 마일스톤 분리 기준, Known Issues 정책, 확인 버튼 UX, 연관 기사 제거 |
+| 로드맵 | [MVP8 로드맵](mvp8/260412_MVP8_로드맵.md) | M1~M3 마일스톤, 오답 아카이빙·퀴즈 배지·UX 개선, DB 스키마 확정 |
+| 회고 | [일일 회고 260413](260413_retro.html) | iOS Swift 버그 발견 경위, 마일스톤 분리 기준, Known Issues 정책, 확인 버튼 UX, 연관 기사 제거, M2/M3 QA 결과 |
 
 ---
 
@@ -205,6 +205,7 @@
 | 퀴즈 생성 엔드포인트 설계 (body url, 503 처리) | `mvp7/260412_MVP7_M4_서브태스크.md` |
 | 피드 개인화 threshold + cross-tag 오염 수정 | `mvp7/260412_MVP7_M3_서브태스크.md` |
 | OpenRouter 키워드 추출 + 가중치 저장 흐름 | `mvp7/260411_MVP7_M2_서브태스크.md` |
-| MVP8 오답 아카이빙·퀴즈 배지·UX 개선 전체 설계 | `progress/260412_MVP8_로드맵.md` |
-| iOS AppDependencies quiz 포트 누락 버그 | `progress/260413_retro.md` |
-| snippet 정제 코드 필터링 선택 근거 + Known Issues | `progress/260413_retro.md` |
+| MVP8 오답 아카이빙·퀴즈 배지·UX 개선 전체 설계 | `mvp8/260412_MVP8_로드맵.md` |
+| iOS AppDependencies quiz 포트 누락 버그 | `260413_retro.md` |
+| snippet 정제 코드 필터링 선택 근거 + Known Issues | `260413_retro.md` |
+| MVP8 M2/M3 QA 결과 + 타이포그래피·로딩 색상 수정 경위 | `260413_retro.md` |
