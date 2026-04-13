@@ -10,6 +10,12 @@
 	import Header from '$lib/components/Header.svelte';
 	import QuizModal from '$lib/components/QuizModal.svelte';
 	import { marked } from 'marked';
+
+	/** 마크다운 텍스트 전처리 — 단일 줄바꿈을 이중 줄바꿈으로 변환해 문단 간격 확보. */
+	function renderMarkdown(text: string): string {
+		const processed = text.replace(/([^\n])\n([^\n])/g, '$1\n\n$2');
+		return marked(processed) as string;
+	}
 	import type { SummaryResult } from '$lib/types/summary';
 	import type { QuizQuestion } from '$lib/types/quiz';
 	import type { ArticlePageState } from './+page';
@@ -238,21 +244,27 @@
 					✨ 요약하기
 				</button>
 			{:else if phase.tag === 'loading'}
-				<div class="flex items-center gap-3 py-4 text-gray-500">
+				<div class="flex items-center gap-3 py-4">
 					<div
-						class="h-5 w-5 animate-spin rounded-full border-2 border-indigo-600 border-t-transparent"
+						class={[
+							'h-5 w-5 animate-spin rounded-full border-2 border-t-transparent',
+							summarizeLoadingText === '마무리 중…' ? 'border-orange-500' : 'border-indigo-600'
+						].join(' ')}
 					></div>
-					<span class="text-sm">{summarizeLoadingText}</span>
+					<span class={[
+						'text-sm',
+						summarizeLoadingText === '마무리 중…' ? 'text-orange-500' : 'text-indigo-600'
+					].join(' ')}>{summarizeLoadingText}</span>
 				</div>
 			{:else if phase.tag === 'done'}
 				<div class="space-y-6">
 					<div>
 						<h3 class="mb-3 text-xs font-semibold tracking-widest text-gray-400 uppercase">요약</h3>
-						<div class="prose prose-base max-w-none leading-relaxed text-gray-700">{@html marked(phase.result.summary)}</div>
+						<div class="prose prose-base max-w-none leading-relaxed text-gray-700 [&_p]:mb-4 [&_p:last-child]:mb-0">{@html renderMarkdown(phase.result.summary)}</div>
 					</div>
 					<div class="border-t border-gray-100 pt-6">
 						<h3 class="mb-3 text-xs font-semibold tracking-widest text-gray-400 uppercase">인사이트</h3>
-						<div class="prose prose-base max-w-none leading-relaxed text-gray-600">{@html marked(phase.result.insight)}</div>
+						<div class="prose prose-base max-w-none leading-relaxed text-gray-600 [&_p]:mb-4 [&_p:last-child]:mb-0">{@html renderMarkdown(phase.result.insight)}</div>
 					</div>
 				</div>
 			{:else if phase.tag === 'failed'}
@@ -306,8 +318,11 @@
 				>
 					{#if quizPhase === 'loading'}
 						<span class="flex items-center justify-center gap-2">
-							<span class="h-4 w-4 animate-spin rounded-full border-2 border-indigo-600 border-t-transparent"></span>
-							{quizLoadingText}
+							<span class={[
+								'h-4 w-4 animate-spin rounded-full border-2 border-t-transparent',
+								quizLoadingText === '마무리 중…' ? 'border-orange-500' : 'border-indigo-600'
+							].join(' ')}></span>
+							<span class={quizLoadingText === '마무리 중…' ? 'text-orange-500' : ''}>{quizLoadingText}</span>
 						</span>
 					{:else}
 						🧠 퀴즈 풀기

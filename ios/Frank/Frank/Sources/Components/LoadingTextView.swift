@@ -13,6 +13,7 @@ struct LoadingTextView: View {
     let delay: TimeInterval
 
     @State private var text: String
+    @State private var isAfter = false
 
     init(initial: String, after: String, delay: TimeInterval = 8) {
         self.initial = initial
@@ -24,16 +25,19 @@ struct LoadingTextView: View {
     var body: some View {
         HStack {
             ProgressView()
+                .tint(isAfter ? .orange : .indigo)
                 .padding(.trailing, 4)
             Text(text)
-                .foregroundStyle(.secondary)
+                .foregroundStyle(isAfter ? AnyShapeStyle(.orange) : AnyShapeStyle(.indigo))
         }
         .frame(maxWidth: .infinity)
         .padding(.vertical, 10)
         .task {
             text = initial
+            isAfter = false
             try? await Task.sleep(for: .seconds(delay))
             text = after
+            isAfter = true
         }
     }
 }

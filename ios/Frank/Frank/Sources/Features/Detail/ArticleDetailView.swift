@@ -323,9 +323,7 @@ extension ArticleDetailView {
                         .kerning(1.2)
                         .textCase(.uppercase)
 
-                    markdownText(result.summary)
-                        .font(.body)
-                        .lineSpacing(4)
+                    paragraphView(result.summary)
                 }
 
                 Divider()
@@ -338,10 +336,7 @@ extension ArticleDetailView {
                         .kerning(1.2)
                         .textCase(.uppercase)
 
-                    markdownText(result.insight)
-                        .font(.body)
-                        .lineSpacing(4)
-                        .foregroundStyle(.secondary)
+                    paragraphView(result.insight, secondary: true)
                 }
             }
 
@@ -369,4 +364,22 @@ private func markdownText(_ text: String) -> Text {
         return Text(attributed)
     }
     return Text(text)
+}
+
+/// 줄 단위로 분리해 VStack으로 렌더링 — 문단 간격 표현.
+@ViewBuilder
+private func paragraphView(_ text: String, secondary: Bool = false) -> some View {
+    let lines = text
+        .components(separatedBy: "\n")
+        .map { $0.trimmingCharacters(in: .whitespaces) }
+        .filter { !$0.isEmpty }
+
+    VStack(alignment: .leading, spacing: 12) {
+        ForEach(lines, id: \.self) { line in
+            markdownText(line)
+                .font(.body)
+                .lineSpacing(5)
+                .foregroundStyle(secondary ? AnyShapeStyle(.secondary) : AnyShapeStyle(.primary))
+        }
+    }
 }
