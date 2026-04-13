@@ -1,0 +1,320 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>일일 회고 — 2026-04-13</title>
+  <style>
+    :root {
+      --bg: #0f0f13;
+      --surface: #1a1a23;
+      --border: #2a2a38;
+      --accent: #7c6fff;
+      --accent2: #ff6b9d;
+      --accent3: #4dd9ac;
+      --text: #e8e8f0;
+      --muted: #888899;
+      --tag-feat: #7c6fff22;
+      --tag-fix: #ff6b9d22;
+      --tag-insight: #4dd9ac22;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: 'Pretendard', -apple-system, sans-serif;
+      font-size: 15px;
+      line-height: 1.7;
+      padding: 48px 24px;
+    }
+    .container { max-width: 780px; margin: 0 auto; }
+
+    /* Header */
+    .header {
+      margin-bottom: 48px;
+      padding-bottom: 32px;
+      border-bottom: 1px solid var(--border);
+    }
+    .header-meta {
+      font-size: 12px;
+      color: var(--muted);
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      margin-bottom: 12px;
+    }
+    .header h1 {
+      font-size: 28px;
+      font-weight: 700;
+      color: var(--text);
+      margin-bottom: 8px;
+    }
+    .header-sub {
+      font-size: 13px;
+      color: var(--muted);
+    }
+    .header-sub code {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      padding: 1px 6px;
+      border-radius: 4px;
+      font-size: 12px;
+      color: var(--accent);
+    }
+
+    /* Stats strip */
+    .stats {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+      gap: 12px;
+      margin-bottom: 48px;
+    }
+    .stat-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 16px;
+      text-align: center;
+    }
+    .stat-num {
+      font-size: 24px;
+      font-weight: 700;
+      color: var(--accent);
+      display: block;
+    }
+    .stat-label {
+      font-size: 11px;
+      color: var(--muted);
+      margin-top: 4px;
+      letter-spacing: 0.05em;
+    }
+
+    /* Timeline */
+    .section-title {
+      font-size: 11px;
+      font-weight: 600;
+      color: var(--muted);
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      margin-bottom: 20px;
+    }
+    .timeline {
+      margin-bottom: 48px;
+    }
+    .timeline-item {
+      display: flex;
+      gap: 16px;
+      margin-bottom: 16px;
+      align-items: flex-start;
+    }
+    .timeline-badge {
+      flex-shrink: 0;
+      width: 80px;
+      padding: 3px 8px;
+      border-radius: 6px;
+      font-size: 11px;
+      font-weight: 600;
+      text-align: center;
+      letter-spacing: 0.04em;
+    }
+    .badge-mvp7 { background: #4dd9ac22; color: #4dd9ac; border: 1px solid #4dd9ac44; }
+    .badge-mvp8 { background: #7c6fff22; color: #a89fff; border: 1px solid #7c6fff44; }
+    .badge-infra { background: #ff6b9d22; color: #ff6b9d; border: 1px solid #ff6b9d44; }
+    .timeline-content {
+      flex: 1;
+      font-size: 14px;
+      color: var(--text);
+      padding-top: 3px;
+    }
+    .timeline-content strong { color: var(--text); }
+    .timeline-content span { color: var(--muted); font-size: 13px; }
+
+    /* Decision cards */
+    .decisions { margin-bottom: 48px; }
+    .decision-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 24px;
+      margin-bottom: 16px;
+      position: relative;
+      overflow: hidden;
+    }
+    .decision-card::before {
+      content: '';
+      position: absolute;
+      top: 0; left: 0; right: 0;
+      height: 2px;
+    }
+    .decision-card.type-bug::before { background: linear-gradient(90deg, #ff6b9d, #ff6b9d88); }
+    .decision-card.type-scope::before { background: linear-gradient(90deg, #7c6fff, #7c6fff88); }
+    .decision-card.type-tech::before { background: linear-gradient(90deg, #4dd9ac, #4dd9ac88); }
+    .decision-card.type-ux::before { background: linear-gradient(90deg, #ffa94d, #ffa94d88); }
+    .decision-card.type-remove::before { background: linear-gradient(90deg, #ff6b6b, #ff6b6b88); }
+
+    .decision-type {
+      font-size: 10px;
+      font-weight: 700;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      margin-bottom: 8px;
+    }
+    .type-bug .decision-type { color: #ff6b9d; }
+    .type-scope .decision-type { color: #a89fff; }
+    .type-tech .decision-type { color: #4dd9ac; }
+    .type-ux .decision-type { color: #ffa94d; }
+    .type-remove .decision-type { color: #ff6b6b; }
+
+    .decision-title {
+      font-size: 17px;
+      font-weight: 700;
+      color: var(--text);
+      margin-bottom: 12px;
+    }
+    .decision-body {
+      font-size: 14px;
+      color: #c0c0d0;
+      margin-bottom: 16px;
+      line-height: 1.8;
+    }
+    .insight-box {
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 12px 16px;
+      font-size: 13px;
+      color: var(--muted);
+      line-height: 1.7;
+    }
+    .insight-box::before {
+      content: '💡 ';
+    }
+
+    /* Footer */
+    .footer {
+      padding-top: 32px;
+      border-top: 1px solid var(--border);
+      font-size: 12px;
+      color: var(--muted);
+      text-align: center;
+    }
+  </style>
+</head>
+<body>
+<div class="container">
+
+  <!-- Header -->
+  <div class="header">
+    <div class="header-meta">Daily Retrospective</div>
+    <h1>2026-04-13</h1>
+    <div class="header-sub">
+      <code>0e2e16b</code> → <code>58ee9cb</code> &nbsp;·&nbsp; 14 commits &nbsp;·&nbsp; 90 files &nbsp;·&nbsp; +5,499 / −442
+    </div>
+  </div>
+
+  <!-- Stats -->
+  <div class="stats">
+    <div class="stat-card">
+      <span class="stat-num">14</span>
+      <span class="stat-label">커밋</span>
+    </div>
+    <div class="stat-card">
+      <span class="stat-num">+28</span>
+      <span class="stat-label">서버 테스트 (252→280)</span>
+    </div>
+    <div class="stat-card">
+      <span class="stat-num">+20</span>
+      <span class="stat-label">웹 테스트 (183→203)</span>
+    </div>
+    <div class="stat-card">
+      <span class="stat-num">+11</span>
+      <span class="stat-label">iOS 테스트 (189→200)</span>
+    </div>
+    <div class="stat-card">
+      <span class="stat-num">4</span>
+      <span class="stat-label">완료 마일스톤</span>
+    </div>
+  </div>
+
+  <!-- Timeline -->
+  <div class="timeline">
+    <div class="section-title">오늘 한 일</div>
+    <div class="timeline-item">
+      <span class="timeline-badge badge-mvp7">MVP7 M4</span>
+      <div class="timeline-content"><strong>퀴즈 기능</strong> <span>— 웹 QuizModal + iOS QuizFeature 구현</span></div>
+    </div>
+    <div class="timeline-item">
+      <span class="timeline-badge badge-mvp8">MVP8 M1</span>
+      <div class="timeline-content"><strong>DB 스키마 + 서버 기반</strong> <span>— quiz_wrong_answers, favorites.quiz_completed, clean_snippet, 오답 CRUD, quiz/done 엔드포인트</span></div>
+    </div>
+    <div class="timeline-item">
+      <span class="timeline-badge badge-mvp8">MVP8 M2</span>
+      <div class="timeline-content"><strong>UX 개선</strong> <span>— 연관 기사 제거, 로딩 텍스트, 확인 버튼, iOS 퀴즈 버그 수정</span></div>
+    </div>
+    <div class="timeline-item">
+      <span class="timeline-badge badge-mvp8">MVP8 M3</span>
+      <div class="timeline-content"><strong>오답 아카이빙 + 퀴즈 완료 배지</strong> <span>— 웹 + iOS 병렬 완료</span></div>
+    </div>
+    <div class="timeline-item">
+      <span class="timeline-badge badge-infra">인프라</span>
+      <div class="timeline-content"><strong>deploy.sh --native 플래그</strong> <span>— Docker 없는 환경 지원</span></div>
+    </div>
+  </div>
+
+  <!-- Decisions -->
+  <div class="decisions">
+    <div class="section-title">의사결정 기록</div>
+
+    <div class="decision-card type-bug">
+      <div class="decision-type">버그 발견</div>
+      <div class="decision-title">iOS 퀴즈 — 어떤 기사를 열어도 Swift 문제만 나왔다</div>
+      <div class="decision-body">
+        시뮬레이터에서 직접 앱을 써보다가 발견. <code>ArticleDetailView</code>의 <code>quiz</code> 파라미터 기본값이 <code>MockQuizAdapter()</code>였고, <code>AppDependencies</code>에 quiz 포트가 빠져 있어서 View 생성 시 항상 Mock이 주입되는 구조였다. Mock 픽스처가 전부 Swift 문제라 어떤 기사든 Swift 퀴즈가 노출됐다. AppDependencies 체인에 포트를 추가하고 기본값 Mock을 제거해 수정.
+      </div>
+      <div class="insight-box">단위 테스트가 통과해도 실제 의존성 연결은 시뮬레이터 직접 사용에서만 잡힌다. 새 포트 추가 시 AppDependencies 체인 전체를 확인하는 습관이 필요하다.</div>
+    </div>
+
+    <div class="decision-card type-scope">
+      <div class="decision-type">스코프 결정</div>
+      <div class="decision-title">MVP8 M2/M3를 별도 마일스톤으로 분리한 이유</div>
+      <div class="decision-body">
+        M2는 신규 API 호출 없이 기존 화면 수정만이라 M3와 코드 충돌 없이 독립 진행이 가능했다. 동시에 M3는 M1 엔드포인트를 소비하므로, M1 완료 후에야 시작할 수 있다. 의존성 방향이 자연스럽게 M1 → M2 → M3 순서를 만들었고, M2를 먼저 끝내 UI 기반(확인 버튼, 타이포)을 안정화한 뒤 M3 오답 노트를 올렸다.
+      </div>
+      <div class="insight-box">마일스톤 분리 기준은 "작업량"이 아니라 "API 의존성 방향"이다. M2가 API 독립적이라는 사실이 병렬/직렬 설계의 근거가 됐다.</div>
+    </div>
+
+    <div class="decision-card type-tech">
+      <div class="decision-type">기술 결정</div>
+      <div class="decision-title">snippet 정제 — 외부 크롤링 API 대신 코드 필터링</div>
+      <div class="decision-body">
+        Jina Reader 같은 외부 API는 레이턴시·비용·의존성 리스크를 동시에 올린다. MVP 단계에서는 "완벽한 정제"보다 빠른 개선 후 Known Issues 문서화가 더 실용적이라 판단했다. <code>clean_snippet()</code>으로 HTML 태그·URL·이메일 제거 + 단어 경계 절단을 구현하고, 한국 뉴스 사이트 네비게이션 텍스트 혼입 문제는 Known Issues로 명시했다.
+      </div>
+      <div class="insight-box">Known Issues 문서화는 "나중에 고치겠다"는 미루기가 아니라, 현재 결정의 한계를 명시하는 기술 부채 관리다. 다음 MVP에서 재검토 기준이 된다.</div>
+    </div>
+
+    <div class="decision-card type-ux">
+      <div class="decision-type">UX 결정</div>
+      <div class="decision-title">퀴즈 확인 버튼 — "즉시 표시"에서 "확인 후 표시"로</div>
+      <div class="decision-body">
+        시뮬레이터에서 실제로 퀴즈를 풀다가 발견. 스크롤 중 실수로 보기를 탭하면 즉시 정오 결과가 나와서 당황스러웠다. 보기 선택 → 확인 버튼 클릭 → 정오 + 해설 표시 순서로 변경했고, 확인 전까지 보기를 다시 선택할 수 있다.
+      </div>
+      <div class="insight-box">"즉각 피드백"이 항상 좋은 UX가 아니다. 모바일 터치는 실수가 많으므로, 선택과 확정 사이의 의도적 간격이 필요하다. 이런 불편함은 기획 단계가 아니라 직접 사용에서만 발견된다.</div>
+    </div>
+
+    <div class="decision-card type-remove">
+      <div class="decision-type">제거 결정</div>
+      <div class="decision-title">연관 기사 섹션 전체 제거</div>
+      <div class="decision-body">
+        현재 구현은 키워드 기반 검색 결과를 "연관 기사"로 노출했다. 이는 원래 의도인 취향 기반 추천과 다르다 — 사용자 취향이 전혀 반영되지 않는 유사 검색 결과였다. 잘못된 방향의 기능이 계속 화면에 있으면 사용자 기대를 어긋나게 만들고, 나중에 올바른 기능을 붙일 때 혼란을 더한다고 판단해 과감히 제거했다.
+      </div>
+      <div class="insight-box">"있는 것보다 없는 게 나은 기능"이 존재한다. 제거도 의사결정이다. 재설계는 다음 MVP에서 사용자 취향 데이터를 활용하는 방식으로 처음부터 설계할 것.</div>
+    </div>
+
+  </div>
+
+  <div class="footer">
+    Frank · 2026-04-13 · generated by /daily-retro
+  </div>
+
+</div>
+</body>
+</html>
