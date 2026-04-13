@@ -12,6 +12,10 @@ final class MockFavoritesPort: FavoritesPort, @unchecked Sendable {
     var shouldFail = false
     var shouldConflict = false
 
+    /// MVP9 M2: listFavorites 호출 시 반환할 고정 아이템 목록.
+    /// nil이면 인메모리 store에서 반환한다.
+    var stubItems: [FavoriteItem]? = nil
+
     func addFavorite(item: FeedItem, summary: String?, insight: String?) async throws -> FavoriteItem {
         addCallCount += 1
         if shouldFail { throw MockFavoritesError.generic }
@@ -51,6 +55,8 @@ final class MockFavoritesPort: FavoritesPort, @unchecked Sendable {
     func listFavorites() async throws -> [FavoriteItem] {
         listCallCount += 1
         if shouldFail { throw MockFavoritesError.generic }
+        // stubItems가 있으면 우선 반환 (테스트 시나리오용)
+        if let stub = stubItems { return stub }
         // 삽입 역순 (created_at DESC 모사)
         return insertOrder.reversed().compactMap { store[$0] }
     }

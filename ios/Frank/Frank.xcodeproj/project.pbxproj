@@ -47,6 +47,7 @@
 		51BC6552204DAC1A94785C07 /* AppDependencies.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4234165709AECE80445A36D4 /* AppDependencies.swift */; };
 		527F34FE6024A28DA5A75CEE /* XCTestDynamicOverlay.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = E8015A7E829FCD30E0F18482 /* XCTestDynamicOverlay.framework */; };
 		52DD9C96D32A278DDB993735 /* CrossFeatureFlowUITest.swift in Sources */ = {isa = PBXBuildFile; fileRef = FE4500A81F7D0FCAF50285F6 /* CrossFeatureFlowUITest.swift */; };
+		53119E9C1E41C06646E29EC1 /* QuizViewSessionTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = CEC8DA2863BC11255DC9248A /* QuizViewSessionTests.swift */; };
 		5362080661815BAAE104038B /* TagManagementView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 066C8C806186AFA7AED0388A /* TagManagementView.swift */; };
 		55A059D92412DE987BE10826 /* MockQuizPort.swift in Sources */ = {isa = PBXBuildFile; fileRef = 08D9DEB7254ACCE4E3258C85 /* MockQuizPort.swift */; };
 		5952CDFE1742602FDB16BFE8 /* RelatedFeature.swift in Sources */ = {isa = PBXBuildFile; fileRef = B03A19D96FB079A6C3A8E712 /* RelatedFeature.swift */; };
@@ -63,6 +64,7 @@
 		6B7AC349A30C98AC28576721 /* HTTPTypes.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 78ACB19B20D01B71F42D1516 /* HTTPTypes.framework */; };
 		6E8AF67AB054D5C8E19BF7FC /* WrongAnswersFeatureTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = C62B7449FF4B3045E00D2D52 /* WrongAnswersFeatureTests.swift */; };
 		6FBF44F30EDFCD8403D8AAA3 /* MockSummarizePort.swift in Sources */ = {isa = PBXBuildFile; fileRef = 660460EA8592D4950DAA75C5 /* MockSummarizePort.swift */; };
+		726F0985C66FCCB15B31804B /* ArticleDetailQuizCompletedTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 86ED8EFAB1047C9CE142ED89 /* ArticleDetailQuizCompletedTests.swift */; };
 		7314065C4F6F2EF7ACAB6CA8 /* MockArticleAdapter.swift in Sources */ = {isa = PBXBuildFile; fileRef = 446040A4F0FA3C5A5500E67C /* MockArticleAdapter.swift */; };
 		733F018EF0344CE55D718426 /* APISummarizeAdapterTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = DB009F3A4E7FD109B1FDA442 /* APISummarizeAdapterTests.swift */; };
 		742297D17FE783F794113FDF /* MockArticlePort.swift in Sources */ = {isa = PBXBuildFile; fileRef = FF2F2E636DB425812FD112C1 /* MockArticlePort.swift */; };
@@ -273,6 +275,7 @@
 		84113DC12A87B8BF37D245B8 /* MockFavoritesAdapter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MockFavoritesAdapter.swift; sourceTree = "<group>"; };
 		8429B953E1AB5732169EDA8D /* EmptyStateViewTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EmptyStateViewTests.swift; sourceTree = "<group>"; };
 		84371F086178028D7CF4FAF2 /* WrongAnswerRow.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WrongAnswerRow.swift; sourceTree = "<group>"; };
+		86ED8EFAB1047C9CE142ED89 /* ArticleDetailQuizCompletedTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ArticleDetailQuizCompletedTests.swift; sourceTree = "<group>"; };
 		8834E578EA47B50ECB90514E /* Secrets.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Secrets.plist; sourceTree = "<group>"; };
 		895AFF2CCC471F69D5864640 /* WrongAnswerPort.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WrongAnswerPort.swift; sourceTree = "<group>"; };
 		8B8C9188EF336D34BB89EE36 /* SupabaseArticleAdapter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SupabaseArticleAdapter.swift; sourceTree = "<group>"; };
@@ -314,6 +317,7 @@
 		C587B4378133545CEB0CA50D /* LikesFeatureTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LikesFeatureTests.swift; sourceTree = "<group>"; };
 		C62B7449FF4B3045E00D2D52 /* WrongAnswersFeatureTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WrongAnswersFeatureTests.swift; sourceTree = "<group>"; };
 		CD0D171577CFA11B9845E3F0 /* FavoritesPort.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FavoritesPort.swift; sourceTree = "<group>"; };
+		CEC8DA2863BC11255DC9248A /* QuizViewSessionTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = QuizViewSessionTests.swift; sourceTree = "<group>"; };
 		CEE154518AA51FED7C3CB72B /* ServerConfig.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ServerConfig.swift; sourceTree = "<group>"; };
 		D4AC4EDEB8F09628412C3FFA /* LoginView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LoginView.swift; sourceTree = "<group>"; };
 		D7265FC0E95D1B5CD5DB920F /* ProfileAPI.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProfileAPI.swift; sourceTree = "<group>"; };
@@ -501,6 +505,7 @@
 		4029BE27491D61DDD144966D /* Favorites */ = {
 			isa = PBXGroup;
 			children = (
+				86ED8EFAB1047C9CE142ED89 /* ArticleDetailQuizCompletedTests.swift */,
 				C2CB272F0CAA3D170A46D4B6 /* FavoritesFeatureTests.swift */,
 				C62B7449FF4B3045E00D2D52 /* WrongAnswersFeatureTests.swift */,
 			);
@@ -783,6 +788,7 @@
 			isa = PBXGroup;
 			children = (
 				EF195791F5286C4CD565AF66 /* QuizFeatureTests.swift */,
+				CEC8DA2863BC11255DC9248A /* QuizViewSessionTests.swift */,
 			);
 			path = Quiz;
 			sourceTree = "<group>";
@@ -1008,6 +1014,7 @@
 				1B108E65BFCC8A4CACA11AA5 /* ArticleDetailFeatureTests.swift in Sources */,
 				F177587426E214F0D1BBD747 /* AuthFeatureTests.swift in Sources */,
 				66A7F3C8964B89BB7A013073 /* AuthFlowUITest.swift in Sources */,
+				726F0985C66FCCB15B31804B /* ArticleDetailQuizCompletedTests.swift in Sources */,
 				876239AEBEF44D2D94094AA7 /* FavoritesFeatureTests.swift in Sources */,
 				6E8AF67AB054D5C8E19BF7FC /* WrongAnswersFeatureTests.swift in Sources */,
 				4C9B8533B4796C0CC6F2590E /* FeedFeatureTests.swift in Sources */,
@@ -1015,6 +1022,7 @@
 				A0AB4B1A8CD1C4B0891EAB70 /* OnboardingFeatureTests.swift in Sources */,
 				D59B52177ABC739480991469 /* PortContractTests.swift in Sources */,
 				817A6B8532FE3E72AE147744 /* QuizFeatureTests.swift in Sources */,
+				53119E9C1E41C06646E29EC1 /* QuizViewSessionTests.swift in Sources */,
 				3F44A323F3D189F3EFB33AFB /* RelatedFeatureTests.swift in Sources */,
 				BC690A7AACBE0A5ED04A3815 /* RouterTests.swift in Sources */,
 				B78E36AC158110DDDE250C4E /* SettingsFeatureTests.swift in Sources */,

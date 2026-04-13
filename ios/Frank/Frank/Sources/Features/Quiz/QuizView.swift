@@ -1,5 +1,30 @@
 import SwiftUI
 
+// MARK: - Session Wrong Answer
+
+/// MVP9 M2: 현재 퀴즈 세션에서 발생한 오답 단일 항목.
+struct SessionWrongAnswerItem {
+    let question: QuizQuestion
+    let userIndex: Int
+}
+
+/// MVP9 M2: 퀴즈 세션 내 오답 누적 관리.
+/// QuizView 외부에서도 테스트 가능하도록 독립 struct로 분리.
+struct SessionWrongAnswerAccumulator {
+    private(set) var items: [SessionWrongAnswerItem] = []
+
+    /// 오답인 경우에만 누적한다. 정답이면 무시.
+    mutating func record(question: QuizQuestion, userIndex: Int) {
+        guard userIndex != question.answerIndex else { return }
+        items.append(SessionWrongAnswerItem(question: question, userIndex: userIndex))
+    }
+
+    /// 새 퀴즈 세션 시작 시 초기화.
+    mutating func reset() {
+        items = []
+    }
+}
+
 /// MVP7 M4: QuizView — 퀴즈 3문제 순차 진행 화면.
 ///
 /// ArticleDetailView에서 .sheet 형태로 표시.
@@ -19,6 +44,8 @@ struct QuizView: View {
     @State private var finished = false
     /// 퀴즈 완료 마킹 중복 방지 플래그
     @State private var quizCompletedMarked = false
+    /// MVP9 M2: 세션 오답 누적기
+    @State private var wrongAccumulator = SessionWrongAnswerAccumulator()
 
     private var currentQuestion: QuizQuestion? {
         guard currentIndex < questions.count else { return nil }
@@ -88,8 +115,10 @@ struct QuizView: View {
                     if selected == question.answerIndex {
                         score += 1
                     } else {
-                        // 오답 시 fire-and-forget 저장
+                        // 오답 시 fire-and-forget 저장 (서버 기록)
                         onWrongAnswer?(question, selected)
+                        // MVP9 M2: 세션 오답 누적 (완료 화면 인라인 표시용)
+                        wrongAccumulator.record(question: question, userIndex: selected)
                     }
                     confirmed = true
                 }
@@ -182,42 +211,125 @@ struct QuizView: View {
 
     @ViewBuilder
     private var finishedView: some View {
-        VStack(spacing: 24) {
-            Spacer()
+        ScrollView {
+            VStack(spacing: 24) {
+                Text(score == questions.count ? "🎉" : score >= questions.count / 2 ? "👍" : "📚")
+                    .font(.system(size: 60))
 
-            Text(score == questions.count ? "🎉" : score >= questions.count / 2 ? "👍" : "📚")
-                .font(.system(size: 60))
+                Text("퀴즈 완료!")
+                    .font(.title2.bold())
 
-            Text("퀴즈 완료!")
-                .font(.title2.bold())
+                Text("\(score) / \(questions.count)")
+                    .font(.system(size: 48, weight: .bold))
+                    .foregroundStyle(.indigo)
 
-            Text("\(score) / \(questions.count)")
-                .font(.system(size: 48, weight: .bold))
-                .foregroundStyle(.indigo)
+                if wrongAccumulator.items.isEmpty {
+                    Text("완벽! 모두 맞혔어요.")
+                        .font(.subheadline)
+                        .foregroundStyle(.secondary)
+                        .multilineTextAlignment(.center)
+                        .padding(.horizontal)
+                } else {
+                    Text(
+                        score >= questions.count / 2
+                            ? "잘 이해했습니다. 틀린 문제를 다시 확인해보세요."
+                            : "기사를 다시 읽고 복습해보세요."
+                    )
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
+                    .multilineTextAlignment(.center)
+                    .padding(.horizontal)
 
-            Text(
-                score == questions.count
-                    ? "완벽합니다! 기사 내용을 완전히 이해했습니다."
-                    : score >= questions.count / 2
-                        ? "잘 이해했습니다. 틀린 문제를 다시 확인해보세요."
-                        : "기사를 다시 읽고 복습해보세요."
-            )
-            .font(.subheadline)
-            .foregroundStyle(.secondary)
-            .multilineTextAlignment(.center)
-            .padding(.horizontal)
+                    // MVP9 M2: 세션 오답 인라인 섹션
+                    VStack(alignment: .leading, spacing: 12) {
+                        HStack {
+                            Text("이번 세션 오답 \(wrongAccumulator.items.count)개")
+                                .font(.headline)
+                            Spacer()
+                        }
+                        .padding(.horizontal)
 
-            Spacer()
+                        ForEach(Array(wrongAccumulator.items.enumerated()), id: \.offset) { _, item in
+                            sessionWrongAnswerCard(item: item)
+                                .padding(.horizontal)
+                        }
+                    }
+                }
 
-            Button("닫기") {
-                onClose()
+                Button("닫기") {
+                    onClose()
+                }
+                .buttonStyle(.borderedProminent)
+                .tint(.indigo)
+                .frame(maxWidth: .infinity)
+                .padding(.horizontal)
             }
-            .buttonStyle(.borderedProminent)
-            .tint(.indigo)
-            .frame(maxWidth: .infinity)
-            .padding(.horizontal)
+            .padding(.vertical, 24)
+        }
+    }
+
+    @ViewBuilder
+    private func sessionWrongAnswerCard(item: SessionWrongAnswerItem) -> some View {
+        let myAnswer: String = {
+            guard item.userIndex < item.question.options.count else { return "-" }
+            return item.question.options[item.userIndex]
+        }()
+        let correctAnswer: String = {
+            guard item.question.answerIndex < item.question.options.count else { return "-" }
+            return item.question.options[item.question.answerIndex]
+        }()
+
+        VStack(alignment: .leading, spacing: 10) {
+            Text(item.question.question)
+                .font(.subheadline)
+                .fontWeight(.semibold)
+                .fixedSize(horizontal: false, vertical: true)
+
+            HStack(spacing: 8) {
+                // 내 답 (빨강)
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("내 답")
+                        .font(.caption2)
+                        .foregroundStyle(.red)
+                        .fontWeight(.semibold)
+                    Text(myAnswer)
+                        .font(.caption)
+                        .padding(.horizontal, 8)
+                        .padding(.vertical, 4)
+                        .background(Color.red.opacity(0.1))
+                        .foregroundStyle(.red)
+                        .clipShape(RoundedRectangle(cornerRadius: 6))
+                }
+                // 정답 (초록)
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("정답")
+                        .font(.caption2)
+                        .foregroundStyle(.green)
+                        .fontWeight(.semibold)
+                    Text(correctAnswer)
+                        .font(.caption)
+                        .padding(.horizontal, 8)
+                        .padding(.vertical, 4)
+                        .background(Color.green.opacity(0.1))
+                        .foregroundStyle(.green)
+                        .clipShape(RoundedRectangle(cornerRadius: 6))
+                }
+            }
+
+            if !item.question.explanation.isEmpty {
+                Text(item.question.explanation)
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
         }
         .padding()
+        .background(Color.red.opacity(0.05))
+        .clipShape(RoundedRectangle(cornerRadius: 12))
+        .overlay(
+            RoundedRectangle(cornerRadius: 12)
+                .stroke(Color.red.opacity(0.2), lineWidth: 1)
+        )
     }
 
     // MARK: - Actions

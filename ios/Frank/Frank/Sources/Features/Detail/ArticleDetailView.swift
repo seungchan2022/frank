@@ -13,11 +13,19 @@ struct ArticleDetailView: View {
     let favoritesFeature: FavoritesFeature
     let likesFeature: LikesFeature
     private let summarizePort: any SummarizePort
+    /// MVP9 M2: 오답 시트 로드용으로 보관
+    private let wrongAnswerPort: any WrongAnswerPort
     @State private var feature: ArticleDetailFeature
     @State private var quizFeature: QuizFeature
     @State private var favoriteLoading: Bool = false
     @State private var showQuiz = false
     @State private var showSafari = false
+    /// MVP9 M2: 오답 보기 시트 표시 여부
+    @State private var showWrongAnswerSheet = false
+    /// MVP9 M2: 시트에 표시할 오답 목록
+    @State private var sheetWrongAnswers: [WrongAnswer] = []
+    /// MVP9 M2: 오답 시트 로딩 중
+    @State private var sheetLoading = false
 
     init(
         feedItem: FeedItem,
@@ -32,6 +40,7 @@ struct ArticleDetailView: View {
         self.favoritesFeature = favoritesFeature
         self.likesFeature = likesFeature
         self.summarizePort = summarize
+        self.wrongAnswerPort = wrongAnswer
         self._feature = State(initialValue: ArticleDetailFeature(feedItem: feedItem, summarize: summarize))
         self._quizFeature = State(initialValue: QuizFeature(
             quiz: quiz,
@@ -77,6 +86,34 @@ struct ArticleDetailView: View {
                     quizFeature.markQuizCompleted()
                 }
             )
+        }
+        .sheet(isPresented: $showWrongAnswerSheet) {
+            NavigationStack {
+                Group {
+                    if sheetLoading {
+                        ProgressView()
+                            .frame(maxWidth: .infinity, maxHeight: .infinity)
+                    } else if sheetWrongAnswers.isEmpty {
+                        Text("이 기사의 오답 기록이 없어요")
+                            .foregroundStyle(.secondary)
+                            .frame(maxWidth: .infinity, maxHeight: .infinity)
+                    } else {
+                        List(sheetWrongAnswers) { item in
+                            WrongAnswerRow(item: item)
+                        }
+                        .listStyle(.plain)
+                    }
+                }
+                .navigationTitle("오답 보기")
+                .navigationBarTitleDisplayMode(.inline)
+                .toolbar {
+                    ToolbarItem(placement: .cancellationAction) {
+                        Button("닫기") {
+                            showWrongAnswerSheet = false
+                        }
+                    }
+                }
+            }
         }
         .onChange(of: quizFeature.phase) { _, newPhase in
             if case .done = newPhase {
@@ -178,6 +215,47 @@ extension ArticleDetailView {
 
     @ViewBuilder
     private var quizButton: some View {
+        // MVP9 M2: quizCompleted 상태일 때 "다시 풀기" + "오답 보기" 분리 버튼
+        if favoritesFeature.isQuizCompleted(feedItem.url.absoluteString) {
+            completedQuizButtons
+        } else {
+            notCompletedQuizButtons
+        }
+    }
+
+    @ViewBuilder
+    private var completedQuizButtons: some View {
+        HStack(spacing: 10) {
+            Button {
+                Task {
+                    await quizFeature.generateQuiz(url: feedItem.url.absoluteString, title: feedItem.title)
+                }
+            } label: {
+                HStack {
+                    Image(systemName: "arrow.clockwise")
+                    Text("다시 풀기")
+                }
+                .frame(maxWidth: .infinity)
+            }
+            .buttonStyle(.bordered)
+            .tint(.indigo)
+
+            Button {
+                Task { await loadWrongAnswerSheet() }
+            } label: {
+                HStack {
+                    Image(systemName: "list.bullet.rectangle")
+                    Text("오답 보기")
+                }
+                .frame(maxWidth: .infinity)
+            }
+            .buttonStyle(.bordered)
+            .tint(.orange)
+        }
+    }
+
+    @ViewBuilder
+    private var notCompletedQuizButtons: some View {
         switch quizFeature.phase {
         case .idle, .done:
             Button {
@@ -217,6 +295,14 @@ extension ArticleDetailView {
                 .tint(.orange)
             }
         }
+    }
+
+    private func loadWrongAnswerSheet() async {
+        sheetLoading = true
+        showWrongAnswerSheet = true
+        let all = (try? await wrongAnswerPort.list()) ?? []
+        sheetWrongAnswers = all.filter { $0.articleUrl == feedItem.url.absoluteString }
+        sheetLoading = false
     }
 
     @ViewBuilder

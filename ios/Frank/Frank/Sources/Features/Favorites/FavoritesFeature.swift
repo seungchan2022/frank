@@ -84,6 +84,12 @@ final class FavoritesFeature {
         likedUrls.contains(url)
     }
 
+    /// MVP9 M2: 해당 기사 URL의 퀴즈 완료 여부 확인.
+    /// 즐겨찾기에 없는 기사는 false 반환.
+    func isQuizCompleted(_ url: String) -> Bool {
+        items.first { $0.url == url }?.quizCompleted ?? false
+    }
+
     /// 변이 에러 초기화 (뷰에서 에러 dismiss 시 호출).
     func clearOperationError() {
         operationError = nil
