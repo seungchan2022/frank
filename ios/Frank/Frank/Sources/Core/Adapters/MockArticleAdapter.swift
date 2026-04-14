@@ -9,7 +9,7 @@ actor MockArticleAdapter: ArticlePort {
         self.feedItems = seed
     }
 
-    func fetchFeed(tagId: UUID?) async throws -> [FeedItem] {
+    func fetchFeed(tagId: UUID?, noCache: Bool = false) async throws -> [FeedItem] {
         // tagId 있으면 해당 태그 아이템만 반환 (서버 동작 시뮬레이션)
         guard let tagId else { return feedItems }
         return feedItems.filter { $0.tagId == tagId }

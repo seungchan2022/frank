@@ -227,4 +227,46 @@ struct APIArticleAdapterTests {
             _ = try await adapter.fetchFeed(tagId: nil)
         }
     }
+
+    // MARK: - MVP10 M3: noCache 헤더
+
+    @Test("fetchFeed noCache:true → Cache-Control: no-cache 헤더 전송")
+    func fetchFeedNoCacheHeader() async throws {
+        MockURLProtocol.resetHandler(forHost: Self.testHost)
+        let (adapter, _) = try makeAdapter()
+
+        var capturedRequest: URLRequest?
+        MockURLProtocol.setHandler(forHost: Self.testHost) { request in
+            capturedRequest = request
+            let response = try self.makeResponse(
+                url: request.url ?? URL(fileURLWithPath: "/dev/null"),
+                statusCode: 200
+            )
+            return (response, Data("[]".utf8))
+        }
+
+        _ = try await adapter.fetchFeed(tagId: nil, noCache: true)
+
+        #expect(capturedRequest?.value(forHTTPHeaderField: "Cache-Control") == "no-cache")
+    }
+
+    @Test("fetchFeed noCache 기본값(false) → Cache-Control 헤더 없음")
+    func fetchFeedNoCacheDefault() async throws {
+        MockURLProtocol.resetHandler(forHost: Self.testHost)
+        let (adapter, _) = try makeAdapter()
+
+        var capturedRequest: URLRequest?
+        MockURLProtocol.setHandler(forHost: Self.testHost) { request in
+            capturedRequest = request
+            let response = try self.makeResponse(
+                url: request.url ?? URL(fileURLWithPath: "/dev/null"),
+                statusCode: 200
+            )
+            return (response, Data("[]".utf8))
+        }
+
+        _ = try await adapter.fetchFeed(tagId: nil)
+
+        #expect(capturedRequest?.value(forHTTPHeaderField: "Cache-Control") == nil)
+    }
 }

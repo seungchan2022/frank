@@ -130,7 +130,7 @@ final class FeedFeature {
             let myTagIds = try await tag.fetchMyTagIds()
             tags = allTags.filter { myTagIds.contains($0.id) }
 
-            let items = try await article.fetchFeed(tagId: nil)
+            let items = try await article.fetchFeed(tagId: nil, noCache: false)
             feedItems = items
             tagCache["all"] = items
 
@@ -139,7 +139,7 @@ final class FeedFeature {
                 for tagId in myTagIds {
                     group.addTask {
                         let key = tagId.uuidString
-                        let result = try? await self.article.fetchFeed(tagId: tagId)
+                        let result = try? await self.article.fetchFeed(tagId: tagId, noCache: false)
                         return (key, result)
                     }
                 }
@@ -171,7 +171,7 @@ final class FeedFeature {
 
         // 캐시 미스 → 조용히 fetch (로딩 표시 없음, 프리패치 실패 시 fallback)
         do {
-            let items = try await article.fetchFeed(tagId: tagId)
+            let items = try await article.fetchFeed(tagId: tagId, noCache: false)
             feedItems = items
             tagCache[key] = items
             selectedTagId = tagId
@@ -187,7 +187,8 @@ final class FeedFeature {
         let key = cacheKey(for: selectedTagId)
 
         do {
-            let items = try await article.fetchFeed(tagId: selectedTagId)
+            // MVP10 M3: pull-to-refresh는 서버 TTL 캐시 우회
+            let items = try await article.fetchFeed(tagId: selectedTagId, noCache: true)
             feedItems = items
             tagCache[key] = items
             finishRefresh()

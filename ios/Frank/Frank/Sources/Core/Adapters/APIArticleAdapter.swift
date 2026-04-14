@@ -55,7 +55,7 @@ struct APIArticleAdapter: ArticlePort {
         return String(str[..<truncEnd]) + String(str[zoneIdx...])
     }
 
-    func fetchFeed(tagId: UUID?) async throws -> [FeedItem] {
+    func fetchFeed(tagId: UUID?, noCache: Bool = false) async throws -> [FeedItem] {
         var components = URLComponents()
         components.path = "/api/me/feed"
         // MVP6 M3: tag_id 있으면 해당 태그만 서버에서 필터링
@@ -63,7 +63,11 @@ struct APIArticleAdapter: ArticlePort {
             components.queryItems = [URLQueryItem(name: "tag_id", value: tagId.uuidString)]
         }
 
-        let request = try await makeRequest(components: components, method: "GET")
+        var request = try await makeRequest(components: components, method: "GET")
+        // MVP10 M3: pull-to-refresh 시 서버 TTL 캐시 우회
+        if noCache {
+            request.setValue("no-cache", forHTTPHeaderField: "Cache-Control")
+        }
         let dtos: [FeedItemDTO] = try await decode(request: request)
         return try dtos.map { try $0.toDomain() }
     }

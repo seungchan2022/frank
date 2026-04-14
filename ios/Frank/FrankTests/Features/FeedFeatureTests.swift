@@ -419,6 +419,17 @@ struct FeedFeatureTests {
         #expect(articlePort.lastFetchTagId == .some(tagId))
     }
 
+    /// MVP10 M3: refresh는 noCache: true로 fetchFeed 호출해야 함
+    @Test("refresh: noCache:true로 fetchFeed 호출")
+    func refresh_noCache_true() async {
+        let (sut, articlePort, _) = makeSUT(feedItems: [makeFeedItem()])
+
+        await sut.send(.loadInitial)
+        await sut.send(.refresh)
+
+        #expect(articlePort.lastFetchNoCache == true)
+    }
+
     /// M3 S6: 전체 탭 복귀 시 캐시 히트 → fetchFeed(tagId: nil) 재호출 없음
     @Test("전체 탭 복귀 시 캐시 히트 — fetchFeed 재호출 없음")
     func selectTag_nil_캐시히트() async {

@@ -10,10 +10,13 @@ final class MockArticlePort: ArticlePort, @unchecked Sendable {
     var fetchFeedCallCount = 0
     /// 마지막으로 전달된 tagId 기록 (검증용)
     var lastFetchTagId: UUID?? = .none
+    /// 마지막으로 전달된 noCache 값 (검증용)
+    var lastFetchNoCache: Bool = false
 
-    func fetchFeed(tagId: UUID?) async throws -> [FeedItem] {
+    func fetchFeed(tagId: UUID?, noCache: Bool = false) async throws -> [FeedItem] {
         fetchFeedCallCount += 1
         lastFetchTagId = tagId
+        lastFetchNoCache = noCache
         if let error = fetchError { throw error }
         guard let tagId else { return feedItems }
         return feedItems.filter { $0.tagId == tagId }
