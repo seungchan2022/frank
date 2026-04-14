@@ -1,11 +1,12 @@
 use std::future::Future;
 use std::pin::Pin;
+use std::time::Duration;
 
 use uuid::Uuid;
 
 use super::error::AppError;
 use super::models::{
-    Favorite, LlmResponse, Profile, QuizConcept, QuizResult, QuizWrongAnswer,
+    Favorite, FeedItem, LlmResponse, Profile, QuizConcept, QuizResult, QuizWrongAnswer,
     SaveWrongAnswerParams, SearchResult, Tag, UserTag,
 };
 
@@ -225,4 +226,19 @@ pub trait QuizWrongAnswerPort: Send + Sync {
         user_id: Uuid,
         id: Uuid,
     ) -> Pin<Box<dyn Future<Output = Result<(), AppError>> + Send + 'a>>;
+}
+
+/// 피드 TTL 인메모리 캐시 포트.
+/// 캐시 키: `"{user_id}:{sorted_tag_ids}"` (태그 없으면 `"{user_id}:all"`)
+/// 구현체는 `InMemoryFeedCache` (프로덕션) / `NoopFeedCache` (테스트) 중 선택.
+pub trait FeedCachePort: Send + Sync {
+    /// 캐시에서 피드 아이템을 조회한다. 만료되거나 없으면 `None` 반환.
+    fn get(&self, key: &str) -> Option<Vec<FeedItem>>;
+
+    /// 피드 아이템을 캐시에 저장한다. `ttl` 경과 후 자동 만료.
+    fn set(&self, key: &str, items: Vec<FeedItem>, ttl: Duration);
+
+    /// 해당 `user_id`의 모든 캐시 엔트리를 즉시 무효화한다.
+    /// 태그 변경 시 호출하여 stale 피드 방지.
+    fn invalidate_user(&self, user_id: Uuid);
 }

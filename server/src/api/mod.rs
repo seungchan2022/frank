@@ -12,8 +12,8 @@ pub mod tags;
 use std::sync::Arc;
 
 use crate::domain::ports::{
-    CrawlPort, DbPort, FavoritesPort, LlmPort, NotificationPort, QuizWrongAnswerPort,
-    SearchChainPort,
+    CrawlPort, DbPort, FavoritesPort, FeedCachePort, LlmPort, NotificationPort,
+    QuizWrongAnswerPort, SearchChainPort,
 };
 
 #[derive(Clone)]
@@ -25,6 +25,7 @@ pub struct AppState<D: DbPort> {
     pub notifier: Arc<dyn NotificationPort>,
     pub favorites: Arc<dyn FavoritesPort>,
     pub quiz_wrong_answers: Arc<dyn QuizWrongAnswerPort>,
+    pub feed_cache: Arc<dyn FeedCachePort>,
 }
 
 impl<D: DbPort + std::fmt::Debug> std::fmt::Debug for AppState<D> {
@@ -37,6 +38,7 @@ impl<D: DbPort + std::fmt::Debug> std::fmt::Debug for AppState<D> {
             .field("notifier", &"<dyn NotificationPort>")
             .field("favorites", &"<dyn FavoritesPort>")
             .field("quiz_wrong_answers", &"<dyn QuizWrongAnswerPort>")
+            .field("feed_cache", &"<dyn FeedCachePort>")
             .finish()
     }
 }
@@ -51,6 +53,7 @@ mod tests {
     use crate::infra::fake_notification::FakeNotificationAdapter;
     use crate::infra::fake_quiz_wrong_answers::FakeQuizWrongAnswerAdapter;
     use crate::infra::fake_search::FakeSearchAdapter;
+    use crate::infra::feed_cache::NoopFeedCache;
     use crate::infra::search_chain::SearchFallbackChain;
 
     #[test]
@@ -69,6 +72,7 @@ mod tests {
             notifier: Arc::new(FakeNotificationAdapter::new()),
             favorites: Arc::new(FakeFavoritesAdapter::new()),
             quiz_wrong_answers: Arc::new(FakeQuizWrongAnswerAdapter::new()),
+            feed_cache: Arc::new(NoopFeedCache),
         };
 
         let debug_str = format!("{:?}", state);
@@ -77,5 +81,6 @@ mod tests {
         assert!(debug_str.contains("<dyn LlmPort>"));
         assert!(debug_str.contains("<dyn CrawlPort>"));
         assert!(debug_str.contains("<dyn NotificationPort>"));
+        assert!(debug_str.contains("<dyn FeedCachePort>"));
     }
 }

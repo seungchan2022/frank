@@ -111,6 +111,7 @@ mod tests {
     use crate::infra::fake_notification::FakeNotificationAdapter;
     use crate::infra::fake_quiz_wrong_answers::FakeQuizWrongAnswerAdapter;
     use crate::infra::fake_search::FakeSearchAdapter;
+    use crate::infra::feed_cache::NoopFeedCache;
     use crate::infra::search_chain::SearchFallbackChain;
     use crate::middleware::auth::AuthUser;
     use axum::Router;
@@ -132,6 +133,7 @@ mod tests {
             notifier: Arc::new(FakeNotificationAdapter::new()),
             favorites: Arc::new(favorites),
             quiz_wrong_answers: Arc::new(FakeQuizWrongAnswerAdapter::new()),
+            feed_cache: Arc::new(NoopFeedCache),
         };
 
         Router::new()

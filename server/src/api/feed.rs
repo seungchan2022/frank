@@ -1,7 +1,9 @@
 use axum::Json;
 use axum::extract::{Extension, Query};
+use axum::http::HeaderMap;
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
+use std::time::Duration;
 use uuid::Uuid;
 
 use crate::domain::error::AppError;
@@ -10,6 +12,28 @@ use crate::domain::ports::DbPort;
 use crate::middleware::auth::AuthUser;
 
 use super::AppState;
+
+/// 피드 TTL: 5분
+const FEED_CACHE_TTL: Duration = Duration::from_secs(300);
+
+/// 캐시 키 생성: 특정 태그 → `"{user_id}:{tag_id}"`, 전체 피드 → `"{user_id}:{sorted_tag_ids}"`
+fn make_cache_key(user_id: Uuid, tag_ids: &[Uuid]) -> String {
+    if tag_ids.is_empty() {
+        return format!("{user_id}:all");
+    }
+    let mut sorted: Vec<String> = tag_ids.iter().map(|id| id.to_string()).collect();
+    sorted.sort();
+    format!("{user_id}:{}", sorted.join(","))
+}
+
+/// `Cache-Control: no-cache` 헤더가 있으면 true 반환.
+fn is_no_cache(headers: &HeaderMap) -> bool {
+    headers
+        .get("cache-control")
+        .and_then(|v| v.to_str().ok())
+        .map(|s| s.contains("no-cache"))
+        .unwrap_or(false)
+}
 
 /// GET /me/feed 쿼리 파라미터
 #[derive(Debug, Deserialize, Default)]
@@ -48,13 +72,15 @@ impl From<FeedItem> for FeedItemResponse {
 
 /// GET /me/feed
 /// 사용자 태그를 기반으로 검색 API를 직접 호출해 피드를 반환한다.
-/// DB에 저장하지 않음 — 매 호출마다 검색 API를 새로 호출.
+/// DB에 저장하지 않음 — 캐시 HIT 시 즉시 반환, MISS 시 검색 API 호출.
+/// `Cache-Control: no-cache` 헤더 수신 시 캐시 우회 → 항상 검색 API 호출.
 /// 모든 태그 검색을 `futures::future::join_all`로 병렬 실행한다.
 /// `tag_id` 쿼리 파라미터가 있으면 해당 태그만 검색 (하위 호환).
 pub async fn get_feed<D: DbPort>(
     Extension(state): Extension<AppState<D>>,
     Extension(user): Extension<AuthUser>,
     Query(feed_query): Query<FeedQuery>,
+    headers: HeaderMap,
 ) -> Result<Json<Vec<FeedItemResponse>>, AppError> {
     let user_tags = state.db.get_user_tags(user.id).await?;
     if user_tags.is_empty() {
@@ -82,6 +108,27 @@ pub async fn get_feed<D: DbPort>(
         // 해당 tag_id가 사용자 구독 태그가 아니면 빈 결과 (403 아님)
         return Ok(Json(vec![]));
     }
+
+    // ── 피드 캐시 조회 ──────────────────────────────────────────────────────
+    let no_cache = is_no_cache(&headers);
+    let cache_tag_ids: Vec<Uuid> = filtered_tags.iter().map(|ut| ut.tag_id).collect();
+    let cache_key = make_cache_key(user.id, &cache_tag_ids);
+
+    if !no_cache {
+        if let Some(cached_items) = state.feed_cache.get(&cache_key) {
+            tracing::info!(cache_key = %cache_key, "feed cache HIT — skipping search API");
+            return Ok(Json(
+                cached_items
+                    .into_iter()
+                    .map(FeedItemResponse::from)
+                    .collect(),
+            ));
+        }
+        tracing::info!(cache_key = %cache_key, "feed cache MISS — calling search API");
+    } else {
+        tracing::info!(cache_key = %cache_key, "feed cache BYPASS (no-cache header)");
+    }
+    // ────────────────────────────────────────────────────────────────────────
 
     // MVP7 M3 ST-1: 좋아요 3회 이상일 때만 키워드 개인화 적용.
     // MVP9 M2 수정: 태그별 키워드 분리 — 각 태그 검색 쿼리에 해당 태그 키워드만 붙임.
@@ -191,6 +238,15 @@ pub async fn get_feed<D: DbPort>(
     let mut seen_urls = std::collections::HashSet::new();
     items.retain(|item| seen_urls.insert(normalize_url(&item.url)));
 
+    // ── 피드 캐시 저장 ──────────────────────────────────────────────────────
+    // no-cache 요청도 결과는 저장 (다음 일반 요청에서 HIT)
+    if !items.is_empty() {
+        state
+            .feed_cache
+            .set(&cache_key, items.clone(), FEED_CACHE_TTL);
+    }
+    // ────────────────────────────────────────────────────────────────────────
+
     Ok(Json(
         items.into_iter().map(FeedItemResponse::from).collect(),
     ))
@@ -234,6 +290,7 @@ pub(super) fn is_homepage_url(raw_url: &str) -> bool {
 mod tests {
     use super::*;
     use crate::domain::models::{Profile, SearchResult};
+    use crate::domain::ports::FeedCachePort as _;
     use crate::domain::ports::SearchChainPort;
     use crate::infra::fake_crawl::FakeCrawlAdapter;
     use crate::infra::fake_db::FakeDbAdapter;
@@ -242,6 +299,7 @@ mod tests {
     use crate::infra::fake_notification::FakeNotificationAdapter;
     use crate::infra::fake_quiz_wrong_answers::FakeQuizWrongAnswerAdapter;
     use crate::infra::fake_search::FakeSearchAdapter;
+    use crate::infra::feed_cache::{InMemoryFeedCache, NoopFeedCache};
     use crate::infra::search_chain::SearchFallbackChain;
     use crate::middleware::auth::AuthUser;
     use axum::Router;
@@ -268,6 +326,7 @@ mod tests {
             notifier: Arc::new(FakeNotificationAdapter::new()),
             favorites: Arc::new(FakeFavoritesAdapter::new()),
             quiz_wrong_answers: Arc::new(FakeQuizWrongAnswerAdapter::new()),
+            feed_cache: Arc::new(NoopFeedCache),
         }
     }
 
@@ -286,7 +345,34 @@ mod tests {
             notifier: Arc::new(FakeNotificationAdapter::new()),
             favorites: Arc::new(FakeFavoritesAdapter::new()),
             quiz_wrong_answers: Arc::new(FakeQuizWrongAnswerAdapter::new()),
+            feed_cache: Arc::new(NoopFeedCache),
         }
+    }
+
+    fn make_test_state_with_cache(
+        db: FakeDbAdapter,
+        search_results: Vec<SearchResult>,
+    ) -> (
+        super::super::AppState<FakeDbAdapter>,
+        Arc<InMemoryFeedCache>,
+    ) {
+        let chain = SearchFallbackChain::new(vec![Box::new(FakeSearchAdapter::new(
+            "test",
+            search_results,
+            false,
+        ))]);
+        let cache = Arc::new(InMemoryFeedCache::new(10));
+        let state = super::super::AppState {
+            db,
+            search_chain: Arc::new(chain) as Arc<dyn SearchChainPort>,
+            llm: Arc::new(FakeLlmAdapter::new()),
+            crawl: Arc::new(FakeCrawlAdapter::new()),
+            notifier: Arc::new(FakeNotificationAdapter::new()),
+            favorites: Arc::new(FakeFavoritesAdapter::new()),
+            quiz_wrong_answers: Arc::new(FakeQuizWrongAnswerAdapter::new()),
+            feed_cache: Arc::clone(&cache) as Arc<dyn crate::domain::ports::FeedCachePort>,
+        };
+        (state, cache)
     }
 
     fn make_app(state: super::super::AppState<FakeDbAdapter>, user_id: Uuid) -> Router {
@@ -490,6 +576,7 @@ mod tests {
             notifier: Arc::new(FakeNotificationAdapter::new()),
             favorites: Arc::new(FakeFavoritesAdapter::new()),
             quiz_wrong_answers: Arc::new(FakeQuizWrongAnswerAdapter::new()),
+            feed_cache: Arc::new(NoopFeedCache),
         };
         let app = make_app(state, user_id);
         let server = TestServer::new(app);
@@ -498,6 +585,180 @@ mod tests {
         resp.assert_status_ok();
         let items: Vec<FeedItemResponse> = resp.json();
         assert!(items.is_empty());
+    }
+
+    // ── 캐시 테스트 (TDD: 구현 전 실패해야 함) ──────────────────────────────
+
+    #[tokio::test]
+    async fn get_feed_cache_hit_skips_search_api() {
+        // 캐시 HIT 시 검색 API 호출 없이 캐시 데이터 반환
+        let db = FakeDbAdapter::new();
+        let user_id = Uuid::new_v4();
+        db.seed_profile(Profile {
+            id: user_id,
+            display_name: None,
+            onboarding_completed: true,
+        });
+
+        let tags = db.get_tags();
+        let tag_id = tags[0].id;
+        db.seed_user_tag(user_id, tag_id);
+
+        let cached_items = vec![crate::domain::models::FeedItem {
+            title: "Cached Article".to_string(),
+            url: "https://example.com/news/cached".to_string(),
+            snippet: None,
+            source: "cache".to_string(),
+            published_at: None,
+            tag_id: Some(tag_id),
+            image_url: None,
+        }];
+
+        // 검색 API는 다른 기사를 반환하도록 설정 (캐시가 우선이면 이 결과는 나오지 않아야 함)
+        let (state, cache) = make_test_state_with_cache(
+            db,
+            vec![crate::domain::models::SearchResult {
+                title: "Search Article".to_string(),
+                url: "https://example.com/news/search".to_string(),
+                snippet: None,
+                published_at: None,
+                image_url: None,
+            }],
+        );
+
+        // 사용자 태그 ID 정렬 → 캐시 키 생성 (단일 태그)
+        let cache_key = format!("{}:{}", user_id, tag_id);
+        cache.set(
+            &cache_key,
+            cached_items,
+            std::time::Duration::from_secs(300),
+        );
+
+        let app = make_app(state, user_id);
+        let server = TestServer::new(app);
+
+        let resp = server.get("/me/feed").await;
+        resp.assert_status_ok();
+        let items: Vec<FeedItemResponse> = resp.json();
+        assert_eq!(items.len(), 1);
+        assert_eq!(
+            items[0].title, "Cached Article",
+            "캐시 HIT → 검색 API 호출 없음"
+        );
+    }
+
+    #[tokio::test]
+    async fn get_feed_cache_miss_calls_search_and_stores() {
+        // 캐시 MISS 시 검색 API 호출 후 결과를 캐시에 저장
+        let db = FakeDbAdapter::new();
+        let user_id = Uuid::new_v4();
+        db.seed_profile(Profile {
+            id: user_id,
+            display_name: None,
+            onboarding_completed: true,
+        });
+
+        let tags = db.get_tags();
+        let tag_id = tags[0].id;
+        db.seed_user_tag(user_id, tag_id);
+
+        let (state, cache) = make_test_state_with_cache(
+            db,
+            vec![crate::domain::models::SearchResult {
+                title: "Fresh Article".to_string(),
+                url: "https://example.com/news/fresh".to_string(),
+                snippet: None,
+                published_at: None,
+                image_url: None,
+            }],
+        );
+
+        let app = make_app(state, user_id);
+        let server = TestServer::new(app);
+
+        // 첫 요청 → MISS → 검색 API 호출
+        let resp = server.get("/me/feed").await;
+        resp.assert_status_ok();
+        let items: Vec<FeedItemResponse> = resp.json();
+        assert_eq!(items.len(), 1);
+        assert_eq!(items[0].title, "Fresh Article");
+
+        // 두 번째 요청 → HIT → 캐시 데이터 반환 (검색 API 재호출 없음)
+        let resp2 = server.get("/me/feed").await;
+        resp2.assert_status_ok();
+        let items2: Vec<FeedItemResponse> = resp2.json();
+        assert_eq!(items2.len(), 1, "캐시 MISS 후 저장 → 두 번째 요청은 HIT");
+
+        // 캐시에 데이터가 저장됐는지 직접 확인
+        let cache_key = format!("{}:{}", user_id, tag_id);
+        assert!(
+            cache.get(&cache_key).is_some(),
+            "첫 요청 후 캐시에 저장되어야 함"
+        );
+    }
+
+    #[tokio::test]
+    async fn get_feed_no_cache_header_bypasses_cache() {
+        // Cache-Control: no-cache 헤더 시 캐시 우회 → 항상 검색 API 호출
+        let db = FakeDbAdapter::new();
+        let user_id = Uuid::new_v4();
+        db.seed_profile(Profile {
+            id: user_id,
+            display_name: None,
+            onboarding_completed: true,
+        });
+
+        let tags = db.get_tags();
+        let tag_id = tags[0].id;
+        db.seed_user_tag(user_id, tag_id);
+
+        let cached_items = vec![crate::domain::models::FeedItem {
+            title: "Stale Cached Article".to_string(),
+            url: "https://example.com/news/stale".to_string(),
+            snippet: None,
+            source: "cache".to_string(),
+            published_at: None,
+            tag_id: Some(tag_id),
+            image_url: None,
+        }];
+
+        let (state, cache) = make_test_state_with_cache(
+            db,
+            vec![crate::domain::models::SearchResult {
+                title: "Fresh Article".to_string(),
+                url: "https://example.com/news/fresh-no-cache".to_string(),
+                snippet: None,
+                published_at: None,
+                image_url: None,
+            }],
+        );
+
+        // 캐시에 stale 데이터 미리 저장
+        let cache_key = format!("{}:{}", user_id, tag_id);
+        cache.set(
+            &cache_key,
+            cached_items,
+            std::time::Duration::from_secs(300),
+        );
+
+        let app = make_app(state, user_id);
+        let server = TestServer::new(app);
+
+        // no-cache 헤더로 요청 → 캐시 우회 → 검색 API 호출
+        let resp = server
+            .get("/me/feed")
+            .add_header(
+                axum::http::HeaderName::from_static("cache-control"),
+                axum::http::HeaderValue::from_static("no-cache"),
+            )
+            .await;
+        resp.assert_status_ok();
+        let items: Vec<FeedItemResponse> = resp.json();
+        assert_eq!(items.len(), 1);
+        assert_eq!(
+            items[0].title, "Fresh Article",
+            "no-cache → 캐시 우회 → 검색 API 호출"
+        );
     }
 
     #[test]

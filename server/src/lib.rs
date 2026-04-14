@@ -15,8 +15,8 @@ use tower_http::cors::CorsLayer;
 
 use api::AppState;
 use domain::ports::{
-    CrawlPort, DbPort, FavoritesPort, LlmPort, NotificationPort, QuizWrongAnswerPort,
-    SearchChainPort,
+    CrawlPort, DbPort, FavoritesPort, FeedCachePort, LlmPort, NotificationPort,
+    QuizWrongAnswerPort, SearchChainPort,
 };
 use middleware::auth::SupabaseConfig;
 
@@ -40,7 +40,12 @@ fn build_cors_layer() -> CorsLayer {
             Method::DELETE,
             Method::OPTIONS,
         ])
-        .allow_headers([header::AUTHORIZATION, header::CONTENT_TYPE, header::ACCEPT])
+        .allow_headers([
+            header::AUTHORIZATION,
+            header::CONTENT_TYPE,
+            header::ACCEPT,
+            header::CACHE_CONTROL,
+        ])
         .allow_credentials(true)
 }
 
@@ -54,6 +59,7 @@ pub fn create_router<D: DbPort + Clone + 'static>(
     notifier: Arc<dyn NotificationPort>,
     favorites: Arc<dyn FavoritesPort>,
     quiz_wrong_answers: Arc<dyn QuizWrongAnswerPort>,
+    feed_cache: Arc<dyn FeedCachePort>,
 ) -> Router {
     let state = AppState {
         db,
@@ -63,6 +69,7 @@ pub fn create_router<D: DbPort + Clone + 'static>(
         notifier,
         favorites,
         quiz_wrong_answers,
+        feed_cache,
     };
 
     let auth_routes = Router::new()
@@ -133,6 +140,7 @@ mod tests {
     use crate::infra::fake_notification::FakeNotificationAdapter;
     use crate::infra::fake_quiz_wrong_answers::FakeQuizWrongAnswerAdapter;
     use crate::infra::fake_search::FakeSearchAdapter;
+    use crate::infra::feed_cache::NoopFeedCache;
     use crate::infra::search_chain::SearchFallbackChain;
     use crate::middleware::auth::SupabaseConfig;
 
@@ -154,6 +162,7 @@ mod tests {
             Arc::new(FakeNotificationAdapter::new()),
             Arc::new(FakeFavoritesAdapter::new()),
             Arc::new(FakeQuizWrongAnswerAdapter::new()),
+            Arc::new(NoopFeedCache),
         );
         TestServer::new(router)
     }

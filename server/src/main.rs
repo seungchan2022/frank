@@ -3,6 +3,7 @@ use std::sync::Arc;
 use server::config::AppConfig;
 use server::domain::ports::SearchChainPort;
 use server::infra::exa::ExaAdapter;
+use server::infra::feed_cache::InMemoryFeedCache;
 use server::infra::firecrawl::FirecrawlAdapter;
 use server::infra::groq::GroqAdapter;
 use server::infra::imessage::{ImessageAdapter, LogOnlyNotificationAdapter};
@@ -60,6 +61,9 @@ async fn main() {
     let quiz_wrong_answers: Arc<dyn server::domain::ports::QuizWrongAnswerPort> =
         Arc::new(PostgresQuizWrongAnswerAdapter::new(pool.clone()));
 
+    let feed_cache: Arc<dyn server::domain::ports::FeedCachePort> =
+        Arc::new(InMemoryFeedCache::new(100));
+
     // iMessage 알림: IMESSAGE_RECIPIENT 환경변수가 설정된 경우만 활성화
     let notifier: Arc<dyn server::domain::ports::NotificationPort> =
         match std::env::var("IMESSAGE_RECIPIENT") {
@@ -83,6 +87,7 @@ async fn main() {
         notifier,
         favorites,
         quiz_wrong_answers,
+        feed_cache,
     );
 
     let addr = format!("0.0.0.0:{}", config.port);

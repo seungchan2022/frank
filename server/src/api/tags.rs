@@ -38,6 +38,8 @@ pub async fn save_my_tags<D: DbPort>(
     Json(body): Json<SaveTagsRequest>,
 ) -> Result<Json<serde_json::Value>, AppError> {
     tag_service::save_user_tags(&state.db, user.id, body.tag_ids).await?;
+    // 태그 변경 시 해당 사용자의 피드 캐시 즉시 무효화 (stale 피드 방지)
+    state.feed_cache.invalidate_user(user.id);
     Ok(Json(serde_json::json!({ "ok": true })))
 }
 
@@ -53,6 +55,7 @@ pub async fn get_my_profile<D: DbPort>(
 mod tests {
     use super::*;
     use crate::domain::models::Profile;
+    use crate::domain::ports::FeedCachePort as _;
     use crate::infra::fake_crawl::FakeCrawlAdapter;
     use crate::infra::fake_db::FakeDbAdapter;
     use crate::infra::fake_favorites::FakeFavoritesAdapter;
@@ -60,6 +63,7 @@ mod tests {
     use crate::infra::fake_notification::FakeNotificationAdapter;
     use crate::infra::fake_quiz_wrong_answers::FakeQuizWrongAnswerAdapter;
     use crate::infra::fake_search::FakeSearchAdapter;
+    use crate::infra::feed_cache::NoopFeedCache;
     use crate::infra::search_chain::SearchFallbackChain;
     use axum::Router;
     use axum::routing::{get, post};
@@ -80,6 +84,7 @@ mod tests {
             notifier: Arc::new(FakeNotificationAdapter::new()),
             favorites: Arc::new(FakeFavoritesAdapter::new()),
             quiz_wrong_answers: Arc::new(FakeQuizWrongAnswerAdapter::new()),
+            feed_cache: Arc::new(NoopFeedCache),
         }
     }
 
@@ -168,5 +173,73 @@ mod tests {
         let profile: Profile = resp.json();
         assert_eq!(profile.id, user_id);
         assert!(profile.onboarding_completed);
+    }
+
+    // ── 캐시 무효화 테스트 (TDD: 구현 전 실패해야 함) ──────────────────────
+
+    #[tokio::test]
+    async fn save_my_tags_invalidates_feed_cache() {
+        // POST /me/tags 성공 시 해당 user_id의 피드 캐시가 무효화되어야 함
+        let db = FakeDbAdapter::new();
+        let tags = db.get_tags();
+        let tag_ids: Vec<Uuid> = tags.iter().take(1).map(|t| t.id).collect();
+        let user_id = Uuid::new_v4();
+
+        db.seed_profile(Profile {
+            id: user_id,
+            display_name: None,
+            onboarding_completed: false,
+        });
+
+        let cache = Arc::new(crate::infra::feed_cache::InMemoryFeedCache::new(10));
+
+        // 캐시에 기존 데이터 삽입
+        let cache_key = format!("{}:all", user_id);
+        cache.set(
+            &cache_key,
+            vec![crate::domain::models::FeedItem {
+                title: "Old Article".to_string(),
+                url: "https://example.com/old".to_string(),
+                snippet: None,
+                source: "test".to_string(),
+                published_at: None,
+                tag_id: None,
+                image_url: None,
+            }],
+            std::time::Duration::from_secs(300),
+        );
+        assert!(cache.get(&cache_key).is_some(), "캐시에 데이터가 있어야 함");
+
+        let chain = SearchFallbackChain::new(vec![Box::new(FakeSearchAdapter::new(
+            "test",
+            vec![],
+            false,
+        ))]);
+        let state = AppState {
+            db,
+            search_chain: Arc::new(chain),
+            llm: Arc::new(FakeLlmAdapter::new()),
+            crawl: Arc::new(FakeCrawlAdapter::new()),
+            notifier: Arc::new(FakeNotificationAdapter::new()),
+            favorites: Arc::new(FakeFavoritesAdapter::new()),
+            quiz_wrong_answers: Arc::new(FakeQuizWrongAnswerAdapter::new()),
+            feed_cache: Arc::clone(&cache) as Arc<dyn crate::domain::ports::FeedCachePort>,
+        };
+
+        let app = make_app(state, user_id);
+        let server = TestServer::new(app);
+
+        // POST /me/tags → 태그 저장 → 캐시 무효화
+        let resp = server
+            .post("/me/tags")
+            .json(&serde_json::json!({ "tag_ids": tag_ids }))
+            .await;
+        resp.assert_status_ok();
+
+        // 캐시가 무효화되었는지 확인
+        assert!(
+            cache.get(&cache_key).is_none(),
+            "태그 변경 후 피드 캐시가 무효화되어야 함"
+        );
     }
 }

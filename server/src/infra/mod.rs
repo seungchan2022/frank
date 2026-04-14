@@ -6,6 +6,7 @@ pub mod fake_llm;
 pub mod fake_notification;
 pub mod fake_quiz_wrong_answers;
 pub mod fake_search;
+pub mod feed_cache;
 pub mod firecrawl;
 pub mod groq;
 pub mod http_utils;
