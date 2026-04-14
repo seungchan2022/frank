@@ -14,7 +14,7 @@ struct APILikesAdapter: LikesPort {
         self.session = session
     }
 
-    func likeArticle(title: String, snippet: String?) async throws -> LikeResult {
+    func likeArticle(title: String, snippet: String?, tagId: UUID?) async throws -> LikeResult {
         let token = try await auth.getAccessToken()
 
         guard let requestURL = URL(string: "/api/me/articles/like", relativeTo: serverURL) else {
@@ -26,7 +26,7 @@ struct APILikesAdapter: LikesPort {
         request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
 
-        let body = LikeArticleBody(title: title, snippet: snippet)
+        let body = LikeArticleBody(title: title, snippet: snippet, tagId: tagId)
         request.httpBody = try jsonEncoder.encode(body)
 
         let (data, response) = try await session.data(for: request)
@@ -52,6 +52,13 @@ struct APILikesAdapter: LikesPort {
 private struct LikeArticleBody: Encodable {
     let title: String
     let snippet: String?
+    let tagId: UUID?
+
+    enum CodingKeys: String, CodingKey {
+        case title
+        case snippet
+        case tagId = "tag_id"
+    }
 }
 
 private struct LikeArticleResponseDTO: Decodable {

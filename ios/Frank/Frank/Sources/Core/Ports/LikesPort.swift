@@ -5,7 +5,7 @@ import Foundation
 protocol LikesPort: Sendable {
     /// 기사 좋아요 처리.
     /// - Returns: 추출된 키워드 + 누적 좋아요 수
-    func likeArticle(title: String, snippet: String?) async throws -> LikeResult
+    func likeArticle(title: String, snippet: String?, tagId: UUID?) async throws -> LikeResult
 }
 
 /// 좋아요 처리 결과

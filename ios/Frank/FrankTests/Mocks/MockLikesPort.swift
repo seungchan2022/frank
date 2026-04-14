@@ -6,9 +6,11 @@ final class MockLikesPort: LikesPort, @unchecked Sendable {
     var shouldFail = false
     var stubbedKeywords: [String] = ["iOS", "Swift", "SwiftUI"]
     var stubbedTotalLikes: Int = 1
+    var lastTagId: UUID?
 
-    func likeArticle(title: String, snippet: String?) async throws -> LikeResult {
+    func likeArticle(title: String, snippet: String?, tagId: UUID?) async throws -> LikeResult {
         likeCallCount += 1
+        lastTagId = tagId
         if shouldFail { throw MockLikesError.generic }
         return LikeResult(keywords: stubbedKeywords, totalLikes: stubbedTotalLikes)
     }

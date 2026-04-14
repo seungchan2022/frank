@@ -106,6 +106,38 @@ struct LikesFeatureTests {
         #expect(!sut.isLiked("https://unknown.com"))
     }
 
+    // MARK: - tagId 전달
+
+    @Test("like 시 feedItem.tagId를 포트에 전달")
+    func likePassesTagId() async {
+        let port = MockLikesPort()
+        let (sut, _) = makeSUT(port: port)
+        let tagId = UUID()
+        let item = FeedItem(
+            title: "기사",
+            url: URL(string: "https://example.com/article")!,
+            source: "TestSource",
+            publishedAt: nil,
+            tagId: tagId,
+            snippet: nil
+        )
+
+        await sut.like(feedItem: item)
+
+        #expect(port.lastTagId == tagId)
+    }
+
+    @Test("like 시 tagId nil이면 nil 전달")
+    func likePassesNilTagId() async {
+        let port = MockLikesPort()
+        let (sut, _) = makeSUT(port: port)
+        let item = makeFeedItem() // tagId: nil
+
+        await sut.like(feedItem: item)
+
+        #expect(port.lastTagId == nil)
+    }
+
     // MARK: - 여러 기사 누적
 
     @Test("여러 기사 like 누적")

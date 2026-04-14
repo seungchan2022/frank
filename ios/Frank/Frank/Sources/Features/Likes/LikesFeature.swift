@@ -49,7 +49,8 @@ final class LikesFeature {
         do {
             let result = try await likes.likeArticle(
                 title: feedItem.title,
-                snippet: feedItem.snippet
+                snippet: feedItem.snippet,
+                tagId: feedItem.tagId
             )
             likedUrls.insert(urlString)
             lastKeywords = result.keywords
