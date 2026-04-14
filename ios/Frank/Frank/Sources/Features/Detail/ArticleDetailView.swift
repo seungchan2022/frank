@@ -83,7 +83,7 @@ struct ArticleDetailView: View {
                     quizFeature.saveWrongAnswer(question: question, userIndex: userIndex)
                 },
                 onQuizCompleted: {
-                    quizFeature.markQuizCompleted()
+                    Task { await favoritesFeature.markQuizCompleted(url: feedItem.url.absoluteString) }
                 }
             )
         }
