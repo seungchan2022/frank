@@ -10,6 +10,7 @@ export interface LikeArticleInput {
 	url: string;
 	title: string;
 	snippet: string | null;
+	tag_id?: string | null;
 }
 
 export interface LikeArticleResult {
@@ -44,7 +45,8 @@ export function createLikedStore() {
 			headers: { 'Content-Type': 'application/json' },
 			body: JSON.stringify({
 				title: input.title,
-				snippet: input.snippet ?? null
+				snippet: input.snippet ?? null,
+				tag_id: input.tag_id ?? null
 			})
 		}).catch(() => {
 			// 실패해도 UI 롤백 없음 — 이벤트 누적 모델

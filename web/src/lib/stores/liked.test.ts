@@ -37,6 +37,18 @@ describe('likedStore', () => {
 		expect(store.likedUrls.has(url)).toBe(true);
 	});
 
+	it('likeArticle: tag_id를 요청 바디에 포함', async () => {
+		const url = 'https://example.com/article-tag';
+		const tag_id = '11111111-1111-1111-1111-111111111111';
+		mockFetch({ keywords: ['iOS'], total_likes: 1 });
+
+		await store.likeArticle({ url, title: '기사', snippet: null, tag_id });
+
+		const call = (global.fetch as ReturnType<typeof vi.fn>).mock.calls[0];
+		const body = JSON.parse(call[1].body as string);
+		expect(body.tag_id).toBe(tag_id);
+	});
+
 	it('isLiked: likedUrls에 있으면 true 반환', async () => {
 		const url = 'https://example.com/article2';
 		mockFetch({ keywords: ['Swift'], total_likes: 1 });

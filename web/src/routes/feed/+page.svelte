@@ -184,7 +184,8 @@
 									likedStore.likeArticle({
 										url: item.url,
 										title: item.title,
-										snippet: item.snippet ?? null
+										snippet: item.snippet ?? null,
+										tag_id: item.tag_id ?? null
 									});
 								}}
 								aria-label={likedStore.isLiked(item.url) ? '좋아요 완료' : '좋아요'}
