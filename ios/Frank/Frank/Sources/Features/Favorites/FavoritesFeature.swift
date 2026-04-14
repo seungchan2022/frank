@@ -108,6 +108,36 @@ final class FavoritesFeature {
         }
     }
 
+    /// MVP10 M1: 퀴즈 완료 마킹 — 서버 업데이트 + items 로컬 갱신.
+    /// items 갱신으로 isQuizCompleted() 즉시 반영 → 버튼 전환 + 배지 표시.
+    func markQuizCompleted(url: String) async {
+        operationError = nil
+        do {
+            try await favorites.markQuizCompleted(url: url)
+            items = items.map { item in
+                guard item.url == url else { return item }
+                return FavoriteItem(
+                    id: item.id,
+                    userId: item.userId,
+                    title: item.title,
+                    url: item.url,
+                    snippet: item.snippet,
+                    source: item.source,
+                    publishedAt: item.publishedAt,
+                    tagId: item.tagId,
+                    summary: item.summary,
+                    insight: item.insight,
+                    likedAt: item.likedAt,
+                    createdAt: item.createdAt,
+                    imageUrl: item.imageUrl,
+                    quizCompleted: true
+                )
+            }
+        } catch {
+            operationError = "퀴즈 완료 처리에 실패했습니다."
+        }
+    }
+
     /// DELETE /me/favorites → items에서 제거.
     /// 실패 시 phase 대신 operationError에 기록 — 목록 화면 유지.
     func removeFavorite(url: String) async {
