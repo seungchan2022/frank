@@ -175,10 +175,25 @@ export const realApiClient: ApiClient = {
 	},
 
 	async summarize(url: string, title: string): Promise<SummaryResult> {
-		return request<SummaryResult>('/api/me/summarize', {
-			method: 'POST',
-			body: JSON.stringify({ url, title })
-		});
+		try {
+			return await request<SummaryResult>('/api/me/summarize', {
+				method: 'POST',
+				body: JSON.stringify({ url, title })
+			});
+		} catch (e) {
+			if (e instanceof ApiError) {
+				if (e.status === 422) {
+					throw new Error('페이지 내용을 가져올 수 없습니다. URL을 확인해 주세요.');
+				}
+				if (e.status === 503) {
+					throw new Error('요약 서비스를 일시적으로 사용할 수 없습니다. 잠시 후 다시 시도해 주세요.');
+				}
+				if (e.status === 504) {
+					throw new Error('요청 시간이 초과되었습니다. 잠시 후 다시 시도해 주세요.');
+				}
+			}
+			throw e;
+		}
 	},
 
 	async addFavorite(item: FeedItem, summary?: string, insight?: string): Promise<Favorite> {

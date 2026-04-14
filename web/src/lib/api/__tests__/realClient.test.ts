@@ -267,14 +267,34 @@ describe('RealApiClient: summarize (MVP5 M2)', () => {
 		});
 	});
 
-	it('summarize 504 → throw', async () => {
+	it('summarize 504 → "요청 시간이 초과되었습니다" 메시지로 throw', async () => {
 		(globalThis.fetch as unknown as ReturnType<typeof vi.fn>).mockResolvedValue(
-			jsonResponse({ error: '요약 요청이 시간을 초과했습니다 (30초)' }, 504)
+			jsonResponse({ error: '요약 요청이 시간을 초과했습니다 (60초)' }, 504)
 		);
 
 		await expect(
 			realApiClient.summarize('https://example.com/article', 'Test')
-		).rejects.toThrow();
+		).rejects.toThrow('요청 시간이 초과되었습니다. 잠시 후 다시 시도해 주세요.');
+	});
+
+	it('summarize 422 → "페이지 내용을 가져올 수 없습니다" 메시지로 throw', async () => {
+		(globalThis.fetch as unknown as ReturnType<typeof vi.fn>).mockResolvedValue(
+			jsonResponse({ error: '콘텐츠를 가져올 수 없습니다: crawl failed' }, 422)
+		);
+
+		await expect(
+			realApiClient.summarize('https://example.com/article', 'Test')
+		).rejects.toThrow('페이지 내용을 가져올 수 없습니다. URL을 확인해 주세요.');
+	});
+
+	it('summarize 503 → "요약 서비스를 일시적으로 사용할 수 없습니다" 메시지로 throw', async () => {
+		(globalThis.fetch as unknown as ReturnType<typeof vi.fn>).mockResolvedValue(
+			jsonResponse({ error: '요약 서비스를 사용할 수 없습니다: llm error' }, 503)
+		);
+
+		await expect(
+			realApiClient.summarize('https://example.com/article', 'Test')
+		).rejects.toThrow('요약 서비스를 일시적으로 사용할 수 없습니다. 잠시 후 다시 시도해 주세요.');
 	});
 });
 
