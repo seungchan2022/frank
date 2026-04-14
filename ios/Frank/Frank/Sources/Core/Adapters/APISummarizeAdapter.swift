@@ -41,6 +41,8 @@ struct APISummarizeAdapter: SummarizePort {
             switch http.statusCode {
             case 400: throw APISummarizeError.badRequest
             case 401: throw APISummarizeError.unauthorized
+            case 422: throw APISummarizeError.crawlFailed
+            case 503: throw APISummarizeError.llmUnavailable
             case 504: throw APISummarizeError.timeout
             default: throw APISummarizeError.httpError(statusCode: http.statusCode)
             }
@@ -64,6 +66,8 @@ enum APISummarizeError: LocalizedError, Equatable {
     case invalidResponse
     case badRequest
     case unauthorized
+    case crawlFailed
+    case llmUnavailable
     case timeout
     case httpError(statusCode: Int)
 
@@ -73,7 +77,9 @@ enum APISummarizeError: LocalizedError, Equatable {
         case .invalidResponse: "Invalid response from server"
         case .badRequest: "잘못된 요청입니다."
         case .unauthorized: "Unauthorized (401)"
-        case .timeout: "요약 요청이 시간을 초과했습니다. 다시 시도해주세요."
+        case .crawlFailed: "기사 내용을 불러오지 못했습니다."
+        case .llmUnavailable: "요약 서비스에 문제가 생겼습니다. 잠시 후 다시 시도해주세요."
+        case .timeout: "요약 시간이 초과됐습니다. 긴 기사일 수 있습니다."
         case .httpError(let code): "HTTP error: \(code)"
         }
     }

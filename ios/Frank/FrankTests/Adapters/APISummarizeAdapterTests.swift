@@ -120,6 +120,42 @@ struct APISummarizeAdapterTests {
         }
     }
 
+    @Test("summarize 422: crawlFailed 에러 변환")
+    func summarizeCrawlFailed() async throws {
+        MockURLProtocol.resetHandler(forHost: Self.testHost)
+        let (adapter, _) = try makeAdapter()
+
+        MockURLProtocol.setHandler(forHost: Self.testHost) { request in
+            let response = try self.makeResponse(
+                url: request.url ?? URL(fileURLWithPath: "/dev/null"),
+                statusCode: 422
+            )
+            return (response, Data())
+        }
+
+        await #expect(throws: APISummarizeError.crawlFailed) {
+            _ = try await adapter.summarize(url: "https://example.com", title: "Test")
+        }
+    }
+
+    @Test("summarize 503: llmUnavailable 에러 변환")
+    func summarizeLLMUnavailable() async throws {
+        MockURLProtocol.resetHandler(forHost: Self.testHost)
+        let (adapter, _) = try makeAdapter()
+
+        MockURLProtocol.setHandler(forHost: Self.testHost) { request in
+            let response = try self.makeResponse(
+                url: request.url ?? URL(fileURLWithPath: "/dev/null"),
+                statusCode: 503
+            )
+            return (response, Data())
+        }
+
+        await #expect(throws: APISummarizeError.llmUnavailable) {
+            _ = try await adapter.summarize(url: "https://example.com", title: "Test")
+        }
+    }
+
     @Test("summarize 400: badRequest 에러 변환")
     func summarizeBadRequest() async throws {
         MockURLProtocol.resetHandler(forHost: Self.testHost)
