@@ -181,6 +181,7 @@
 | 마일스톤 | [M3 피드 성능 개선](mvp10/M3_피드성능개선.md) | FeedCachePort + InMemoryFeedCache(TTL 5분), no-cache 헤더 웹+iOS |
 | 서브태스크 | [M1 서브태스크](mvp10/260414_MVP10_M1_퀴즈UX완성_배지수정.md) | QuizView 버튼 추가, FavoritesFeature 배지 수정 |
 | 서브태스크 | [M2 서브태스크](mvp10/260414_M2_BUG_subtasks.md) | keyword_weights 분리 + 요약 에러 메시지 서브태스크 분해 |
+| 회고 | [일일 회고 260414](260414_daily_retro.html) | cross-tag 오염 수정, 에러 코드 분리, NoopFeedCache 패턴, TTL 캐시 설계 |
 
 ---
 

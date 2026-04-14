@@ -1,0 +1,427 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>일일 회고 — 2026-04-14</title>
+  <style>
+    :root {
+      --bg: #0f0f13;
+      --surface: #1a1a23;
+      --border: #2a2a38;
+      --accent: #7c6fff;
+      --accent2: #ff6b9d;
+      --accent3: #4dd9ac;
+      --text: #e8e8f0;
+      --muted: #888899;
+      --tag-feat: #7c6fff22;
+      --tag-fix: #ff6b9d22;
+      --tag-insight: #4dd9ac22;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: 'Pretendard', -apple-system, sans-serif;
+      font-size: 15px;
+      line-height: 1.7;
+      padding: 48px 24px;
+    }
+    .container { max-width: 780px; margin: 0 auto; }
+
+    /* Header */
+    .header {
+      margin-bottom: 48px;
+      padding-bottom: 32px;
+      border-bottom: 1px solid var(--border);
+    }
+    .header-meta {
+      font-size: 12px;
+      color: var(--muted);
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      margin-bottom: 12px;
+    }
+    .header h1 {
+      font-size: 28px;
+      font-weight: 700;
+      color: var(--text);
+      margin-bottom: 8px;
+    }
+    .header-sub {
+      font-size: 13px;
+      color: var(--muted);
+    }
+    .header-sub code {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      padding: 1px 6px;
+      border-radius: 4px;
+      font-size: 12px;
+      color: var(--accent);
+    }
+
+    /* Stats strip */
+    .stats {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+      gap: 12px;
+      margin-bottom: 48px;
+    }
+    .stat-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 16px;
+      text-align: center;
+    }
+    .stat-num {
+      font-size: 24px;
+      font-weight: 700;
+      color: var(--accent);
+      display: block;
+    }
+    .stat-label {
+      font-size: 11px;
+      color: var(--muted);
+      margin-top: 4px;
+      letter-spacing: 0.05em;
+    }
+
+    /* Timeline */
+    .section-title {
+      font-size: 11px;
+      font-weight: 600;
+      color: var(--muted);
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      margin-bottom: 20px;
+    }
+    .timeline {
+      margin-bottom: 48px;
+    }
+    .timeline-item {
+      display: flex;
+      gap: 16px;
+      margin-bottom: 16px;
+      align-items: flex-start;
+    }
+    .timeline-badge {
+      flex-shrink: 0;
+      width: 90px;
+      padding: 3px 8px;
+      border-radius: 6px;
+      font-size: 11px;
+      font-weight: 600;
+      text-align: center;
+      letter-spacing: 0.04em;
+    }
+    .badge-m1 { background: #4dd9ac22; color: #4dd9ac; border: 1px solid #4dd9ac44; }
+    .badge-m2 { background: #ff6b9d22; color: #ff6b9d; border: 1px solid #ff6b9d44; }
+    .badge-m3 { background: #7c6fff22; color: #a89fff; border: 1px solid #7c6fff44; }
+    .badge-infra { background: #ffa94d22; color: #ffa94d; border: 1px solid #ffa94d44; }
+    .timeline-content {
+      flex: 1;
+      font-size: 14px;
+      color: var(--text);
+      padding-top: 3px;
+    }
+    .timeline-content strong { color: var(--text); }
+    .timeline-content span { color: var(--muted); font-size: 13px; }
+
+    /* Decision cards */
+    .decisions { margin-bottom: 48px; }
+    .decision-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 24px;
+      margin-bottom: 16px;
+      position: relative;
+      overflow: hidden;
+    }
+    .decision-card::before {
+      content: '';
+      position: absolute;
+      top: 0; left: 0; right: 0;
+      height: 2px;
+    }
+    .decision-card.type-data::before { background: linear-gradient(90deg, #4dd9ac, #4dd9ac88); }
+    .decision-card.type-api::before { background: linear-gradient(90deg, #7c6fff, #7c6fff88); }
+    .decision-card.type-bug::before { background: linear-gradient(90deg, #ff6b9d, #ff6b9d88); }
+    .decision-card.type-ios::before { background: linear-gradient(90deg, #ffa94d, #ffa94d88); }
+    .decision-card.type-cache::before { background: linear-gradient(90deg, #60cdff, #60cdff88); }
+    .decision-card.type-arch::before { background: linear-gradient(90deg, #a855f7, #a855f788); }
+    .decision-card.type-ux::before { background: linear-gradient(90deg, #f97316, #f9731688); }
+
+    .decision-type {
+      font-size: 10px;
+      font-weight: 700;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      margin-bottom: 8px;
+    }
+    .type-data .decision-type { color: #4dd9ac; }
+    .type-api .decision-type { color: #a89fff; }
+    .type-bug .decision-type { color: #ff6b9d; }
+    .type-ios .decision-type { color: #ffa94d; }
+    .type-cache .decision-type { color: #60cdff; }
+    .type-arch .decision-type { color: #c084fc; }
+    .type-ux .decision-type { color: #fb923c; }
+
+    .decision-title {
+      font-size: 17px;
+      font-weight: 700;
+      color: var(--text);
+      margin-bottom: 12px;
+    }
+    .decision-body {
+      font-size: 14px;
+      color: #c0c0d0;
+      margin-bottom: 16px;
+      line-height: 1.8;
+    }
+    .decision-body code {
+      background: var(--bg);
+      border: 1px solid var(--border);
+      padding: 1px 5px;
+      border-radius: 4px;
+      font-size: 12px;
+      color: var(--accent3);
+    }
+    .insight-box {
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 12px 16px;
+      font-size: 13px;
+      color: var(--muted);
+      line-height: 1.7;
+    }
+    .insight-box::before {
+      content: '💡 ';
+    }
+
+    /* KPS section */
+    .kps {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 16px;
+      margin-bottom: 48px;
+    }
+    @media (max-width: 600px) { .kps { grid-template-columns: 1fr; } }
+    .kps-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 20px;
+    }
+    .kps-label {
+      font-size: 10px;
+      font-weight: 700;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      margin-bottom: 12px;
+    }
+    .kps-card.keep .kps-label { color: #4dd9ac; }
+    .kps-card.problem .kps-label { color: #ff6b9d; }
+    .kps-card.surprise .kps-label { color: #ffa94d; }
+    .kps-item {
+      font-size: 13px;
+      color: #c0c0d0;
+      margin-bottom: 10px;
+      line-height: 1.6;
+      padding-left: 12px;
+      border-left: 2px solid var(--border);
+    }
+    .kps-item strong { color: var(--text); display: block; margin-bottom: 2px; }
+
+    /* Footer */
+    .footer {
+      padding-top: 32px;
+      border-top: 1px solid var(--border);
+      font-size: 12px;
+      color: var(--muted);
+      text-align: center;
+    }
+  </style>
+</head>
+<body>
+<div class="container">
+
+  <!-- Header -->
+  <div class="header">
+    <div class="header-meta">Daily Retrospective</div>
+    <h1>2026-04-14</h1>
+    <div class="header-sub">
+      <code>e212d95</code> → <code>146ee1d</code> &nbsp;·&nbsp; 25 commits &nbsp;·&nbsp; MVP10 M1/M2/M3 전체 완료
+    </div>
+  </div>
+
+  <!-- Stats -->
+  <div class="stats">
+    <div class="stat-card">
+      <span class="stat-num">25</span>
+      <span class="stat-label">커밋</span>
+    </div>
+    <div class="stat-card">
+      <span class="stat-num">+16</span>
+      <span class="stat-label">서버 테스트 (269→285)</span>
+    </div>
+    <div class="stat-card">
+      <span class="stat-num">+5</span>
+      <span class="stat-label">웹 테스트 (216→221)</span>
+    </div>
+    <div class="stat-card">
+      <span class="stat-num">+3</span>
+      <span class="stat-label">iOS 테스트 (211→214)</span>
+    </div>
+    <div class="stat-card">
+      <span class="stat-num">3</span>
+      <span class="stat-label">완료 마일스톤</span>
+    </div>
+  </div>
+
+  <!-- Timeline -->
+  <div class="timeline">
+    <div class="section-title">오늘 한 일</div>
+    <div class="timeline-item">
+      <span class="timeline-badge badge-m1">MVP10 M1</span>
+      <div class="timeline-content"><strong>iOS 퀴즈 UX 완성</strong> <span>— 다시 풀기 버튼, 오답 보기, FavoritesFeature 배지 수정</span></div>
+    </div>
+    <div class="timeline-item">
+      <span class="timeline-badge badge-m2">MVP10 M2</span>
+      <div class="timeline-content"><strong>버그 수정</strong> <span>— keyword_weights tag_id 분리, 요약 에러 422/503 분리, 좋아요 tag_id 누락 수정 (웹+iOS)</span></div>
+    </div>
+    <div class="timeline-item">
+      <span class="timeline-badge badge-m3">MVP10 M3</span>
+      <div class="timeline-content"><strong>피드 TTL 인메모리 캐시</strong> <span>— FeedCachePort + InMemoryFeedCache(5분) + no-cache 헤더 (서버+웹+iOS)</span></div>
+    </div>
+    <div class="timeline-item">
+      <span class="timeline-badge badge-infra">아카이빙</span>
+      <div class="timeline-content"><strong>MVP10 완료 아카이빙</strong> <span>— progress → history/mvp10, INDEX.md 갱신</span></div>
+    </div>
+  </div>
+
+  <!-- Decisions -->
+  <div class="decisions">
+    <div class="section-title">의사결정 기록</div>
+
+    <div class="decision-card type-data">
+      <div class="decision-type">데이터 설계</div>
+      <div class="decision-title">keyword_weights 태그별 분리 — tag_id 컬럼 추가 (안 2 선택)</div>
+      <div class="decision-body">
+        기존엔 좋아요 전체에서 키워드를 추출해 하나의 풀에 합쳤다. "AI" 기사에 좋아요를 많이 하면 "mobile", "swift" 태그 검색에도 AI 키워드가 boost되는 cross-tag 오염이 발생했다.<br><br>
+        안 1(태그 변경 시 전체 초기화)은 단순하지만 기존 개인화 데이터를 소실한다. 안 2(<code>tag_id</code> 컬럼 추가)는 DB 마이그레이션이 필요하지만 이전 가중치를 보존하고 태그 복귀 시 재활용할 수 있다.
+      </div>
+      <div class="insight-box">사용자가 축적한 개인화 데이터를 날리는 건 명백한 손실이다. 마이그레이션 비용이 있어도 "데이터 보존"이 맞는 방향이다.</div>
+    </div>
+
+    <div class="decision-card type-api">
+      <div class="decision-type">API 설계</div>
+      <div class="decision-title">요약 실패 에러 코드 원인별 분리 — 500 통일 → 422 / 503 / 408</div>
+      <div class="decision-body">
+        기존 요약 실패는 전부 500으로 반환했다. 클라이언트가 500만 받으면 "서버 에러"라는 동일 메시지밖에 표시할 수 없다.<br><br>
+        422(크롤링 실패 — 기사 본문 없음) / 503(LLM 장애 — OpenRouter/Groq 오류) / 408(타임아웃)으로 분리하면 클라이언트가 원인에 맞는 메시지를 선택할 수 있다.
+      </div>
+      <div class="insight-box">HTTP 상태 코드는 클라이언트와의 계약이다. 500으로 모든 에러를 뭉개면 클라이언트는 맥락을 잃는다. 원인 분류가 가능한 에러는 코드 수준에서 분리해야 한다.</div>
+    </div>
+
+    <div class="decision-card type-bug">
+      <div class="decision-type">Silent 버그 발견</div>
+      <div class="decision-title">좋아요 요청 tag_id 누락 — fire-and-forget의 조용한 실패</div>
+      <div class="decision-body">
+        M2 작업 중 서버 코드를 보니 <code>keyword_weights</code> 저장 시 <code>tag_id NOT NULL</code> 조건이 있었다. 클라이언트(웹+iOS)가 <code>tag_id</code>를 보내지 않아 keyword_weights 저장이 조용히 실패하고 있었다.<br><br>
+        좋아요 동작 자체는 성공했다(<code>hearts</code> 테이블은 정상 저장). 부수 효과(keyword_weights)만 실패하는 구조라 UI에서 아무 에러도 보이지 않았다.
+      </div>
+      <div class="insight-box">fire-and-forget 패턴은 실패가 무음으로 지나간다. 중요도에 따라 실패 로깅 또는 알림 정책을 명시적으로 정해야 한다.</div>
+    </div>
+
+    <div class="decision-card type-ios">
+      <div class="decision-type">iOS 상태 관리</div>
+      <div class="decision-title">markQuizCompleted — QuizFeature 대신 FavoritesFeature에서 처리</div>
+      <div class="decision-body">
+        퀴즈 완료 후 즐겨찾기 화면으로 돌아오면 배지가 표시되지 않는 stale 상태 문제. QuizFeature에서 완료 신호를 보내는 방식은 iOS <code>@Observable</code> 불변 복사 갱신 특성상 타이밍 문제를 만들었다.<br><br>
+        <code>FavoritesFeature.markQuizCompleted(url:)</code>를 추가하고, 퀴즈 완료 시점에 직접 호출하는 방식으로 변경. 상태 소유자가 직접 갱신.
+      </div>
+      <div class="insight-box">iOS @Observable에서 상태 갱신은 "데이터를 소유한 Feature가 직접 처리"가 원칙이다. 다른 Feature에서 신호를 보내 갱신을 유발하는 방식은 타이밍 문제를 만든다.</div>
+    </div>
+
+    <div class="decision-card type-cache">
+      <div class="decision-type">캐시 설계</div>
+      <div class="decision-title">피드 TTL 캐시 — Arc&lt;Mutex&lt;HashMap&gt;&gt; + Instant, Redis 제외</div>
+      <div class="decision-body">
+        Redis 대신 Rust 인메모리로 TTL 캐시 구현. 5분 TTL, 최대 100 엔트리.<br><br>
+        캐시 키: <code>"{user_id}:{sorted_tag_ids}"</code> — 사용자 격리 + 태그 조합 구분. UUID prefix 기반으로 <code>invalidate_user()</code> 구현 가능. eviction은 만료 엔트리 우선 제거 → 초과 시 oldest-first.<br><br>
+        Redis 제외 이유: 현재 사용자 규모에서 네트워크 왕복 비용이 캐시 이득보다 크다. 추후 다중 인스턴스 배포 시 Redis 전환 — <code>FeedCachePort</code> 교체만으로 가능.
+      </div>
+      <div class="insight-box">포트/어댑터 패턴의 가치는 구현 교체 비용에 있다. "지금은 인메모리, 나중에 Redis"를 미룰 수 있는 건 FeedCachePort가 경계를 만들기 때문이다.</div>
+    </div>
+
+    <div class="decision-card type-arch">
+      <div class="decision-type">아키텍처 인사이트</div>
+      <div class="decision-title">NoopFeedCache — 기존 테스트 8곳 무수정 통과</div>
+      <div class="decision-body">
+        <code>FeedCachePort</code> 구현체로 <code>NoopFeedCache</code>(항상 miss, 저장 무시)를 도입하고 테스트 픽스처에 주입했다. <code>InMemoryFeedCache</code>를 기존 테스트에 주입하면 테스트 간 캐시 공유 문제가 생기므로 Noop이 가장 안전한 기본값이다.<br><br>
+        결과: <code>make_test_state()</code> 수정 없이 Noop 주입만으로 기존 테스트 8곳 전부 통과.
+      </div>
+      <div class="insight-box">포트/어댑터의 실전 가치는 "기존 테스트를 건드리지 않고 새 구현체를 추가할 수 있다"는 데 있다. 이것이 TDD와 아키텍처가 교차하는 지점이다.</div>
+    </div>
+
+    <div class="decision-card type-ux">
+      <div class="decision-type">캐시 우회 전략</div>
+      <div class="decision-title">수동 새로고침 = Cache-Control: no-cache — 캐시 우회 vs 무효화 구분</div>
+      <div class="decision-body">
+        피드 TTL 캐시 도입 후 "새로고침인데 캐시 HIT → 오래된 데이터"가 표시되는 문제. 웹 새로고침 버튼 / iOS pull-to-refresh 시 <code>Cache-Control: no-cache</code> 헤더를 붙여 서버 캐시를 우회하도록 변경.<br><br>
+        no-cache 요청의 결과도 캐시에 저장 — no-cache 응답이 가장 최신 데이터이므로 다음 일반 요청에서 재활용 가능.
+      </div>
+      <div class="insight-box">"캐시 우회"와 "캐시 무효화"는 다르다. 우회는 이번 요청만 신선하게, 무효화는 캐시 전체를 버리는 것. 사용자 새로고침 의도에는 우회로 충분하다.</div>
+    </div>
+
+  </div>
+
+  <!-- KPS -->
+  <div class="section-title">Keep / Problem / Surprise</div>
+  <div class="kps">
+    <div class="kps-card keep">
+      <div class="kps-label">Keep</div>
+      <div class="kps-item">
+        <strong>NoopFeedCache 패턴</strong>
+        포트/어댑터가 "기존 테스트 무수정 통과"를 실제로 증명한 날. 인터페이스 먼저 설계하는 습관이 이 순간을 만든다.
+      </div>
+      <div class="kps-item">
+        <strong>에러 코드 원인별 분리</strong>
+        클라이언트가 맥락을 잃지 않게 하는 서버 설계 원칙. 앞으로 새 에러 케이스마다 적용할 기준이 됐다.
+      </div>
+    </div>
+    <div class="kps-card problem">
+      <div class="kps-label">Problem</div>
+      <div class="kps-item">
+        <strong>fire-and-forget silent 실패</strong>
+        tag_id 누락 버그가 오래 잠들어 있었던 건 부수 효과 실패를 모니터링하는 체계가 없었기 때문. 중요한 fire-and-forget은 실패 로깅이 필수다.
+      </div>
+      <div class="kps-item">
+        <strong>캐시 키 미래 확장성</strong>
+        {user_id}:{sorted_tag_ids} 포맷은 날짜 범위 등 필터가 추가되면 전면 수정이 필요하다. 지금 한계를 Known Issues로 문서화해야 한다.
+      </div>
+    </div>
+    <div class="kps-card surprise">
+      <div class="kps-label">Surprise</div>
+      <div class="kps-item">
+        <strong>인메모리 캐시의 단순함</strong>
+        <code>Arc&lt;Mutex&lt;HashMap&lt;String, (Vec&lt;Article&gt;, Instant)&gt;&gt;&gt;</code> 한 줄로 동시성 안전 TTL 캐시가 완성됐다. Rust 타입 시스템이 복잡한 동시성 보일러플레이트를 대신한다.
+      </div>
+      <div class="kps-item">
+        <strong>신규 기능 0개의 날</strong>
+        버그 5건 + 성능 개선 1건만으로 하루가 꽉 찼다. 이런 "완성도 전용" 날이 주기적으로 필요하다는 걸 다시 확인했다.
+      </div>
+    </div>
+  </div>
+
+  <div class="footer">
+    Frank · 2026-04-14 · generated by /daily-retro
+  </div>
+
+</div>
+</body>
+</html>
