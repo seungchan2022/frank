@@ -23,6 +23,9 @@ pub enum AppError {
 
     #[error("Service unavailable: {0}")]
     ServiceUnavailable(String),
+
+    #[error("Unprocessable entity: {0}")]
+    UnprocessableEntity(String),
 }
 
 impl IntoResponse for AppError {
@@ -44,6 +47,7 @@ impl IntoResponse for AppError {
                 tracing::warn!(detail = %msg, "service unavailable");
                 (StatusCode::SERVICE_UNAVAILABLE, msg.clone())
             }
+            AppError::UnprocessableEntity(msg) => (StatusCode::UNPROCESSABLE_ENTITY, msg.clone()),
         };
 
         let body = serde_json::json!({ "error": message });
@@ -139,6 +143,19 @@ mod tests {
 
         let err = AppError::Conflict("duplicate".to_string());
         assert!(err.to_string().contains("duplicate"));
+    }
+
+    #[test]
+    fn unprocessable_entity_returns_422() {
+        let err = AppError::UnprocessableEntity("크롤링 실패".to_string());
+        let resp = err.into_response();
+        assert_eq!(resp.status(), StatusCode::UNPROCESSABLE_ENTITY);
+    }
+
+    #[test]
+    fn unprocessable_entity_body_contains_message() {
+        let body = extract_body(AppError::UnprocessableEntity("콘텐츠 없음".to_string()));
+        assert_eq!(body, serde_json::json!({"error": "콘텐츠 없음"}));
     }
 
     fn extract_body(err: AppError) -> serde_json::Value {

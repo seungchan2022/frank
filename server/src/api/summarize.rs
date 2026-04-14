@@ -226,7 +226,7 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn post_summarize_crawl_failure_returns_500() {
+    async fn post_summarize_crawl_failure_returns_422() {
         let state = make_test_state(true, false);
         let user_id = Uuid::new_v4();
         let app = make_app(state, user_id);
@@ -240,6 +240,6 @@ mod tests {
             }))
             .await;
 
-        resp.assert_status_internal_server_error();
+        resp.assert_status(axum::http::StatusCode::UNPROCESSABLE_ENTITY);
     }
 }

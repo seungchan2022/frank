@@ -37,15 +37,13 @@ where
 
     // crawl + LLM 전체를 60초 타임아웃으로 감싸기
     let result = timeout(Duration::from_secs(SUMMARIZE_TIMEOUT_SECS), async {
-        let content = crawl
-            .scrape(url)
-            .await
-            .map_err(|e| AppError::Internal(format!("crawl failed: {e}")))?;
+        let content = crawl.scrape(url).await.map_err(|e| {
+            AppError::UnprocessableEntity(format!("콘텐츠를 가져올 수 없습니다: {e}"))
+        })?;
 
-        let response = llm
-            .summarize(title, &content)
-            .await
-            .map_err(|e| AppError::Internal(format!("llm failed: {e}")))?;
+        let response = llm.summarize(title, &content).await.map_err(|e| {
+            AppError::ServiceUnavailable(format!("요약 서비스를 사용할 수 없습니다: {e}"))
+        })?;
 
         Ok::<LlmResponse, AppError>(response)
     })
@@ -162,7 +160,7 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn crawl_failure_returns_internal_error() {
+    async fn crawl_failure_returns_unprocessable_entity() {
         let crawl = FakeCrawlAdapter::failing();
         let llm = FakeLlmAdapter::new();
         let favorites = FakeFavoritesAdapter::new();
@@ -178,11 +176,14 @@ mod tests {
         )
         .await;
 
-        assert!(matches!(result, Err(AppError::Internal(_))));
+        assert!(
+            matches!(result, Err(AppError::UnprocessableEntity(_))),
+            "크롤 실패는 422 UnprocessableEntity: {result:?}"
+        );
     }
 
     #[tokio::test]
-    async fn llm_failure_returns_internal_error() {
+    async fn llm_failure_returns_service_unavailable() {
         let crawl = FakeCrawlAdapter::new();
         let llm = FakeLlmAdapter::failing();
         let favorites = FakeFavoritesAdapter::new();
@@ -198,7 +199,10 @@ mod tests {
         )
         .await;
 
-        assert!(matches!(result, Err(AppError::Internal(_))));
+        assert!(
+            matches!(result, Err(AppError::ServiceUnavailable(_))),
+            "LLM 실패는 503 ServiceUnavailable: {result:?}"
+        );
     }
 
     #[tokio::test(start_paused = true)]
