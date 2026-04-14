@@ -317,7 +317,7 @@ describe('feedStore: 탭 캐시 (M3)', () => {
 
 		await feedStore.refresh();
 
-		expect(vi.mocked(apiClient.fetchFeed)).toHaveBeenCalledWith(undefined);
+		expect(vi.mocked(apiClient.fetchFeed)).toHaveBeenCalledWith(undefined, { noCache: true });
 		expect(feedStore.feedItems[0].url).toBe('https://example.com/news/new');
 	});
 

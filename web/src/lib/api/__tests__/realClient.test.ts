@@ -231,6 +231,30 @@ describe('RealApiClient: feed (MVP5 M1)', () => {
 		const result = await realApiClient.fetchFeed();
 		expect(result).toEqual([]);
 	});
+
+	it('fetchFeed noCache:true → Cache-Control: no-cache 헤더 전송', async () => {
+		(globalThis.fetch as unknown as ReturnType<typeof vi.fn>).mockResolvedValue(
+			jsonResponse([])
+		);
+
+		await realApiClient.fetchFeed(undefined, { noCache: true });
+
+		const { init } = lastFetchCall();
+		const headers = init.headers as Record<string, string>;
+		expect(headers['Cache-Control']).toBe('no-cache');
+	});
+
+	it('fetchFeed noCache 미지정 시 Cache-Control 헤더 없음', async () => {
+		(globalThis.fetch as unknown as ReturnType<typeof vi.fn>).mockResolvedValue(
+			jsonResponse([])
+		);
+
+		await realApiClient.fetchFeed();
+
+		const { init } = lastFetchCall();
+		const headers = init.headers as Record<string, string>;
+		expect(headers['Cache-Control']).toBeUndefined();
+	});
 });
 
 describe('RealApiClient: pipeline', () => {

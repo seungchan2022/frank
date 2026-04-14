@@ -130,7 +130,7 @@ async function refresh(): Promise<boolean> {
 	const key = activeTagId ?? 'all';
 
 	try {
-		const items = await apiClient.fetchFeed(activeTagId ?? undefined);
+		const items = await apiClient.fetchFeed(activeTagId ?? undefined, { noCache: true });
 		feedItems = items;
 		// 캐시 갱신
 		tagCache = new Map([...tagCache, [key, items]]);

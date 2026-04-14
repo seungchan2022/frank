@@ -145,9 +145,12 @@ export const realApiClient: ApiClient = {
 		});
 	},
 
-	async fetchFeed(tagId?: string): Promise<FeedItem[]> {
+	async fetchFeed(tagId?: string, options?: { noCache?: boolean }): Promise<FeedItem[]> {
 		const qs = tagId ? `?tag_id=${encodeURIComponent(tagId)}` : '';
-		return request<FeedItem[]>(`/api/me/feed${qs}`);
+		const extraHeaders: Record<string, string> = options?.noCache
+			? { 'Cache-Control': 'no-cache' }
+			: {};
+		return request<FeedItem[]>(`/api/me/feed${qs}`, { headers: extraHeaders });
 	},
 
 	async fetchArticles(opts: FetchArticlesOptions = {}): Promise<Article[]> {
