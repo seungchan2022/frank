@@ -1,0 +1,846 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>2026-04-13 개발 회고 — MVP9 완주의 날</title>
+  <style>
+    :root {
+      --bg: #FDF6F0;
+      --text: #2D2926;
+      --accent: #D97706;
+      --accent-light: #FEF3C7;
+      --heading: #92400E;
+      --border: #E5D5C5;
+      --code-bg: #FFF7ED;
+      --card-bg: #FFFFFF;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      font-size: 15px;
+      line-height: 1.7;
+      padding: 24px 16px 60px;
+      max-width: 480px;
+      margin: 0 auto;
+    }
+
+    /* Header */
+    .header {
+      background: linear-gradient(135deg, #92400E 0%, #D97706 100%);
+      color: white;
+      border-radius: 16px;
+      padding: 24px 20px;
+      margin-bottom: 24px;
+    }
+
+    .header .date {
+      font-size: 12px;
+      font-weight: 600;
+      opacity: 0.85;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      margin-bottom: 8px;
+    }
+
+    .header h1 {
+      font-size: 22px;
+      font-weight: 800;
+      line-height: 1.3;
+    }
+
+    .header .subtitle {
+      margin-top: 10px;
+      font-size: 13px;
+      opacity: 0.85;
+    }
+
+    /* Stats row */
+    .stats {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 10px;
+      margin-bottom: 24px;
+    }
+
+    .stat-card {
+      background: var(--card-bg);
+      border: 1.5px solid var(--border);
+      border-radius: 12px;
+      padding: 14px 10px;
+      text-align: center;
+    }
+
+    .stat-card .num {
+      font-size: 26px;
+      font-weight: 800;
+      color: var(--accent);
+      line-height: 1;
+    }
+
+    .stat-card .label {
+      font-size: 11px;
+      color: #888;
+      margin-top: 4px;
+      font-weight: 500;
+    }
+
+    /* Section */
+    .section {
+      margin-bottom: 28px;
+    }
+
+    .section-title {
+      font-size: 13px;
+      font-weight: 700;
+      color: var(--heading);
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      margin-bottom: 14px;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .section-title::after {
+      content: '';
+      flex: 1;
+      height: 1.5px;
+      background: var(--border);
+    }
+
+    /* Card */
+    .card {
+      background: var(--card-bg);
+      border: 1.5px solid var(--border);
+      border-radius: 14px;
+      padding: 18px 16px;
+      margin-bottom: 14px;
+    }
+
+    .card h3 {
+      font-size: 16px;
+      font-weight: 700;
+      color: var(--heading);
+      margin-bottom: 10px;
+    }
+
+    .card p {
+      font-size: 14px;
+      color: #444;
+      line-height: 1.65;
+    }
+
+    .card p + p {
+      margin-top: 10px;
+    }
+
+    /* Decision card */
+    .decision-card {
+      background: var(--card-bg);
+      border: 1.5px solid var(--border);
+      border-radius: 14px;
+      margin-bottom: 20px;
+      overflow: hidden;
+    }
+
+    .decision-header {
+      background: linear-gradient(135deg, var(--accent-light) 0%, #FDE8C0 100%);
+      padding: 14px 16px;
+      border-bottom: 1.5px solid var(--border);
+    }
+
+    .decision-header .decision-num {
+      font-size: 11px;
+      font-weight: 700;
+      color: var(--accent);
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+    }
+
+    .decision-header h3 {
+      font-size: 16px;
+      font-weight: 700;
+      color: var(--heading);
+      margin-top: 4px;
+    }
+
+    .decision-body {
+      padding: 16px;
+    }
+
+    .decision-body p {
+      font-size: 14px;
+      color: #444;
+      line-height: 1.65;
+      margin-bottom: 10px;
+    }
+
+    /* Meta row */
+    .meta-row {
+      display: flex;
+      gap: 6px;
+      flex-wrap: wrap;
+      margin: 10px 0;
+    }
+
+    .tag {
+      display: inline-flex;
+      align-items: center;
+      background: var(--accent-light);
+      color: var(--heading);
+      font-size: 11px;
+      font-weight: 600;
+      padding: 3px 9px;
+      border-radius: 20px;
+    }
+
+    .tag.green {
+      background: #D1FAE5;
+      color: #065F46;
+    }
+
+    .tag.blue {
+      background: #DBEAFE;
+      color: #1E40AF;
+    }
+
+    .tag.red {
+      background: #FEE2E2;
+      color: #991B1B;
+    }
+
+    /* Insight box */
+    .insight-box {
+      background: var(--accent-light);
+      border-left: 3.5px solid var(--accent);
+      border-radius: 0 8px 8px 0;
+      padding: 12px 14px;
+      margin: 12px 0;
+      font-size: 13px;
+      color: #78350F;
+      font-style: italic;
+      line-height: 1.6;
+    }
+
+    /* Comparison table */
+    .compare-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 12.5px;
+      margin: 12px 0;
+    }
+
+    .compare-table th {
+      background: var(--accent-light);
+      color: var(--heading);
+      font-weight: 700;
+      padding: 8px 10px;
+      text-align: left;
+      border: 1px solid var(--border);
+    }
+
+    .compare-table td {
+      padding: 7px 10px;
+      border: 1px solid var(--border);
+      vertical-align: top;
+      color: #444;
+    }
+
+    .compare-table tr:nth-child(even) td {
+      background: #FAFAF8;
+    }
+
+    .compare-table tr.selected td {
+      background: #ECFDF5;
+      font-weight: 600;
+      color: #065F46;
+    }
+
+    /* Code block */
+    .code-block {
+      background: var(--code-bg);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 12px 14px;
+      font-family: 'SF Mono', 'Fira Code', monospace;
+      font-size: 12px;
+      line-height: 1.6;
+      color: #444;
+      overflow-x: auto;
+      margin: 10px 0;
+    }
+
+    .code-block .comment {
+      color: #999;
+    }
+
+    .code-block .keyword {
+      color: #92400E;
+      font-weight: 600;
+    }
+
+    /* Timeline */
+    .timeline {
+      position: relative;
+      padding-left: 20px;
+    }
+
+    .timeline::before {
+      content: '';
+      position: absolute;
+      left: 6px;
+      top: 6px;
+      bottom: 6px;
+      width: 2px;
+      background: var(--border);
+    }
+
+    .timeline-item {
+      position: relative;
+      padding: 0 0 18px 16px;
+    }
+
+    .timeline-item::before {
+      content: '';
+      position: absolute;
+      left: -14px;
+      top: 6px;
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      background: var(--accent);
+      border: 2px solid white;
+      box-shadow: 0 0 0 2px var(--border);
+    }
+
+    .timeline-item .time-label {
+      font-size: 11px;
+      font-weight: 600;
+      color: var(--accent);
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      margin-bottom: 3px;
+    }
+
+    .timeline-item .time-content {
+      font-size: 13.5px;
+      color: #444;
+    }
+
+    /* Insight list */
+    .insight-list {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+
+    .insight-item {
+      display: flex;
+      gap: 12px;
+      align-items: flex-start;
+      background: var(--card-bg);
+      border: 1.5px solid var(--border);
+      border-radius: 12px;
+      padding: 14px;
+    }
+
+    .insight-num {
+      width: 26px;
+      height: 26px;
+      border-radius: 50%;
+      background: var(--accent);
+      color: white;
+      font-size: 12px;
+      font-weight: 700;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+    }
+
+    .insight-text {
+      font-size: 13.5px;
+      color: #444;
+      line-height: 1.6;
+    }
+
+    .insight-text strong {
+      color: var(--heading);
+    }
+
+    /* Tomorrow section */
+    .tomorrow-card {
+      background: linear-gradient(135deg, #F0FDF4 0%, #DCFCE7 100%);
+      border: 1.5px solid #86EFAC;
+      border-radius: 14px;
+      padding: 18px 16px;
+    }
+
+    .tomorrow-card h3 {
+      font-size: 15px;
+      font-weight: 700;
+      color: #065F46;
+      margin-bottom: 12px;
+    }
+
+    .tomorrow-item {
+      display: flex;
+      align-items: flex-start;
+      gap: 8px;
+      margin-bottom: 8px;
+      font-size: 13.5px;
+      color: #1F7A4F;
+    }
+
+    .tomorrow-item::before {
+      content: '→';
+      color: #10B981;
+      font-weight: 700;
+      flex-shrink: 0;
+      margin-top: 1px;
+    }
+
+    /* Mermaid */
+    pre.mermaid {
+      background: var(--code-bg);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 14px;
+      font-size: 12px;
+      text-align: center;
+      margin: 12px 0;
+    }
+
+    /* Learned items */
+    .learned-list {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .learned-item {
+      background: var(--card-bg);
+      border: 1.5px solid var(--border);
+      border-radius: 10px;
+      padding: 12px 14px;
+      font-size: 13.5px;
+      color: #444;
+      line-height: 1.6;
+    }
+
+    .learned-item strong {
+      color: var(--heading);
+    }
+
+    /* Feeling */
+    .feeling-card {
+      background: var(--card-bg);
+      border: 1.5px solid var(--border);
+      border-radius: 14px;
+      padding: 18px 16px;
+      font-size: 14px;
+      color: #444;
+      line-height: 1.75;
+    }
+
+    .feeling-card p + p {
+      margin-top: 10px;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Header -->
+  <div class="header">
+    <div class="date">2026 · 04 · 13 · MON</div>
+    <h1>MVP9 완주의 날 🏁</h1>
+    <div class="subtitle">기획 → M1(서버) → M2(퀴즈 UX) → QA → 아카이빙 — 하루 만에 전부</div>
+  </div>
+
+  <!-- Stats -->
+  <div class="stats">
+    <div class="stat-card">
+      <div class="num">6</div>
+      <div class="label">커밋</div>
+    </div>
+    <div class="stat-card">
+      <div class="num">2</div>
+      <div class="label">마일스톤</div>
+    </div>
+    <div class="stat-card">
+      <div class="num">427</div>
+      <div class="label">테스트 통과</div>
+    </div>
+  </div>
+
+  <!-- Today -->
+  <div class="section">
+    <div class="section-title">⏱ 오늘 뭘 했나</div>
+    <div class="card">
+      <p>아침부터 저녁까지 MVP9 전체를 설계하고, 구현하고, QA까지 완료했다. 단 하루 만에 마일스톤 두 개(M1 서버 개선 + M2 퀴즈 UX)가 전부 끝났다는 게 지금도 실감이 잘 안 난다.</p>
+      <p>시작은 인터뷰였다. 직접 앱을 켜서 사용해보니 문제가 세 가지로 뚜렷하게 보였다: 요약/퀴즈 생성이 30초 넘게 걸리고, 피드에 같은 기사가 계속 나오고, snippet 텍스트에 쓰레기가 섞여 있었다. 거기에 퀴즈 완료 후 오답을 보려면 별도 탭으로 이동해야 하는 UX 불편까지. 이 네 가지를 MVP9으로 묶어서 기획했다.</p>
+    </div>
+
+    <div class="timeline">
+      <div class="timeline-item">
+        <div class="time-label">기획</div>
+        <div class="time-content">실사용 인터뷰 → 4가지 문제 수집 → M1/M2 마일스톤 설계</div>
+      </div>
+      <div class="timeline-item">
+        <div class="time-label">M1 서버</div>
+        <div class="time-content">Groq 어댑터 교체 + Tavily time_range + clean_snippet 강화. 94.22% 커버리지 유지.</div>
+      </div>
+      <div class="timeline-item">
+        <div class="time-label">M2 iOS</div>
+        <div class="time-content">SessionWrongAnswerAccumulator + finishedView 오답 인라인 + 버튼 재설계. 211개 통과.</div>
+      </div>
+      <div class="timeline-item">
+        <div class="time-label">M2 웹</div>
+        <div class="time-content">QuizModal 오답 인라인 + favorites/feed 버튼 재설계. 216개 통과.</div>
+      </div>
+      <div class="timeline-item">
+        <div class="time-label">QA · 아카이빙</div>
+        <div class="time-content">M1·M2 완료 처리 → progress → history/mvp9 이동 → INDEX.md 갱신</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Decisions -->
+  <div class="section">
+    <div class="section-title">🧠 핵심 의사결정</div>
+
+    <!-- Decision 1: Groq -->
+    <div class="decision-card">
+      <div class="decision-header">
+        <div class="decision-num">결정 1</div>
+        <h3>OpenRouter → Groq 교체</h3>
+      </div>
+      <div class="decision-body">
+        <p>요약·퀴즈 생성이 30초 이상 걸렸다. "모델이 느린 게 아니라 무료 대기열이 느린 것"임을 파악한 게 핵심이었다.</p>
+
+        <table class="compare-table">
+          <thead>
+            <tr>
+              <th>옵션</th>
+              <th>레이턴시</th>
+              <th>비용</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>OpenRouter 유료 전환</td>
+              <td>5~10초</td>
+              <td>월 청구 시작</td>
+            </tr>
+            <tr>
+              <td>다른 모델로 교체</td>
+              <td>불명확</td>
+              <td>동일</td>
+            </tr>
+            <tr class="selected">
+              <td>✅ Groq 직접 연결</td>
+              <td>3~5초</td>
+              <td>무료 1,000 RPD</td>
+            </tr>
+          </tbody>
+        </table>
+
+        <pre class="mermaid">graph LR
+    A[Frank 서버] -->|Before: 30초+| B[OpenRouter\n무료 대기열]
+    B --> C[모델 회사]
+
+    D[Frank 서버] -->|After: 3~5초| E[Groq\n전용 칩 LPU]
+
+    style B fill:#ffcccc,color:#333
+    style E fill:#ccffcc,color:#333</pre>
+
+        <div class="insight-box">
+          느린 이유를 "모델 성능" 탓으로 넘기지 않고, 실제 병목(중계 레이어의 대기열)을 파악한 게 결정적이었다. 같은 모델을 어디서 실행하느냐에 따라 UX가 천지 차이가 난다.
+        </div>
+      </div>
+    </div>
+
+    <!-- Decision 2: Tavily -->
+    <div class="decision-card">
+      <div class="decision-header">
+        <div class="decision-num">결정 2 — 헷갈렸던 부분 🤔</div>
+        <h3>Tavily <code>time_range: "week"</code> 추가</h3>
+      </div>
+      <div class="decision-body">
+        <p>피드 새로 고침을 해도 같은 기사만 계속 나왔다. 날짜 필터가 없어서 Tavily가 항상 동일한 "최상위 기사"를 반환했다.</p>
+
+        <div class="meta-row">
+          <span class="tag red">❌ days: 7</span>
+          <span class="tag">topic: "news" 설정 시에만 동작</span>
+        </div>
+        <div class="meta-row">
+          <span class="tag green">✅ time_range: "week"</span>
+          <span class="tag">일반 검색에서 최근 7일 필터</span>
+        </div>
+
+        <div class="code-block">
+<span class="comment">// 변경 전 — 날짜 필터 없음</span>
+let body = json!({
+  "query": query,
+  "max_results": max_results,
+  "search_depth": "advanced",
+  "include_answer": false,
+});
+
+<span class="comment">// 변경 후 — 최근 7일 필터</span>
+let body = json!({
+  "query": query,
+  "max_results": max_results,
+  "search_depth": "advanced",
+  "include_answer": false,
+  <span class="keyword">"time_range": "week",</span>
+});
+        </div>
+
+        <div class="insight-box">
+          API 파라미터는 문서를 꼭 확인해야 한다. <code>days</code>와 <code>time_range</code>처럼 비슷해 보이지만 동작 조건이 다른 파라미터는 어림짐작 금지. wiremock <code>body_partial_json</code> 매처로 요청 본문까지 검증하는 테스트가 안전망이 됐다.
+        </div>
+      </div>
+    </div>
+
+    <!-- Decision 3: clean_snippet -->
+    <div class="decision-card">
+      <div class="decision-header">
+        <div class="decision-num">결정 3</div>
+        <h3>clean_snippet 복합 방식 — 패턴 필터 + 문장 경계 절단</h3>
+      </div>
+      <div class="decision-body">
+        <p>snippet에 <code>arrow_forward - #Android Studio</code>, <code>TechCrunch –:–:–:–</code>, <code>00:00 01:00 02:00</code> 같은 노이즈가 섞여 있었다. MVP8 clean_snippet은 HTML/URL/이메일만 제거했다.</p>
+
+        <table class="compare-table">
+          <thead>
+            <tr>
+              <th>접근</th>
+              <th>장점</th>
+              <th>단점</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>노이즈 패턴 정규식</td>
+              <td>정확히 제거</td>
+              <td>오탐 가능</td>
+            </tr>
+            <tr>
+              <td>HTML 제거 + 절단</td>
+              <td>단순, 범용</td>
+              <td>정보 손실 가능</td>
+            </tr>
+            <tr>
+              <td>LLM 정제</td>
+              <td>가장 정확</td>
+              <td>비용 + 레이턴시</td>
+            </tr>
+            <tr class="selected">
+              <td>✅ 복합 방식</td>
+              <td>레이어로 보완</td>
+              <td>-</td>
+            </tr>
+          </tbody>
+        </table>
+
+        <div class="insight-box">
+          텍스트 정제는 "완벽하게 깨끗하게"가 목표가 아니라 "충분히 읽을 수 있게"가 목표다. 비용 없이 regex만으로도 체감 품질이 확 올라간다.
+        </div>
+      </div>
+    </div>
+
+    <!-- Decision 4: SessionWrongAnswerAccumulator -->
+    <div class="decision-card">
+      <div class="decision-header">
+        <div class="decision-num">결정 4 — 헷갈렸던 부분 🤔</div>
+        <h3>SessionWrongAnswerAccumulator — 독립 struct 분리</h3>
+      </div>
+      <div class="decision-body">
+        <p>퀴즈 진행 중 오답을 로컬에 누적해서 완료 화면에 표시해야 했다. 처음엔 배열을 View 안에 바로 추가하면 되지 않을까 생각했다.</p>
+
+        <div class="code-block">
+<span class="comment">// 방법 A: QuizView 안에 배열 직접</span>
+@State private var sessionWrongAnswers: [SessionWrongAnswerItem] = []
+<span class="comment">// 오답 시 View에서 조건 체크</span>
+if selected != question.answerIndex {
+  sessionWrongAnswers.append(...)
+}
+
+<span class="comment">// 방법 B: Accumulator struct 분리 (실제 구현)</span>
+@State private var wrongAccumulator = SessionWrongAnswerAccumulator()
+<span class="comment">// 오답 판별 로직이 Accumulator 안에 캡슐화</span>
+wrongAccumulator.record(question: question, userIndex: selected)
+        </div>
+
+        <p>차이는 단 하나: <strong>조건 체크 로직이 어디 있냐</strong>. 방법 B는 <code>Accumulator</code> 안에 <code>guard userIndex != question.answerIndex</code>가 있어서, QuizView 없이 독립적으로 테스트할 수 있다.</p>
+
+        <pre class="mermaid">graph TD
+    A[QuizView] -->|record 호출| B[SessionWrongAnswerAccumulator]
+    B -->|정답이면| C[❌ 무시]
+    B -->|오답이면| D[✅ items 배열 누적]
+    D --> E[finishedView 인라인 표시]
+    F[QuizViewSessionTests\n7개] -.->|독립 테스트| B
+
+    style C fill:#ffeeee,color:#333
+    style D fill:#eeffee,color:#333
+    style F fill:#e8f5e9,color:#333</pre>
+
+        <div class="insight-box">
+          "이걸 왜 따로 struct로 만들지?" 라는 의구심이 들 때, 그 이유가 "테스트 가능성"이라는 걸 체감으로 이해하게 됐다. TDD를 따르면 자연스럽게 설계가 좋아진다.
+        </div>
+      </div>
+    </div>
+
+    <!-- Decision 5: M2 병렬 -->
+    <div class="decision-card">
+      <div class="decision-header">
+        <div class="decision-num">결정 5</div>
+        <h3>M2 웹·iOS 병렬 + 서버 변경 없음</h3>
+      </div>
+      <div class="decision-body">
+        <p>M2 기획 시 "서버 변경이 전혀 없다"는 걸 먼저 확인했다. <code>quiz_completed</code> 플래그는 MVP8에서 이미 DB에 있었고, 오답 API도 이미 있었다.</p>
+
+        <div class="meta-row">
+          <span class="tag green">✅ 클라이언트만 수정</span>
+          <span class="tag blue">M1과 완전 독립</span>
+          <span class="tag">기존 엔드포인트 재사용</span>
+        </div>
+
+        <div class="insight-box">
+          새 기능을 만들 때 "서버 변경이 반드시 필요한가?"를 먼저 확인하는 습관. 기존 데이터를 클라이언트에서 다르게 조합하는 것만으로 UX가 크게 달라질 수 있다.
+        </div>
+      </div>
+    </div>
+
+    <!-- Decision 6: 아카이빙 -->
+    <div class="decision-card">
+      <div class="decision-header">
+        <div class="decision-num">결정 6</div>
+        <h3>MVP9 종료 즉시 아카이빙</h3>
+      </div>
+      <div class="decision-body">
+        <p>하루 만에 M1·M2가 모두 완료됐다. QA 통과 후 바로 <code>progress → history/mvp9</code> 이동, INDEX.md 갱신까지 완료했다. 진행 중인 작업이 없으면 즉시 아카이빙하는 게 맞다.</p>
+        <div class="meta-row">
+          <span class="tag green">✅ 6커밋</span>
+          <span class="tag green">✅ 427 테스트</span>
+          <span class="tag green">✅ 94.22% 커버리지</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Flow diagram -->
+  <div class="section">
+    <div class="section-title">🗺 기획/설계 과정</div>
+    <div class="card">
+      <pre class="mermaid">flowchart TD
+    I[실사용 인터뷰] --> P1[속도 문제 30초+]
+    I --> P2[피드 반복: 같은 기사]
+    I --> P3[snippet 노이즈]
+    I --> P4[퀴즈 UX: 오답 확인 불편]
+
+    P1 --> M1[M1: 서버 개선]
+    P2 --> M1
+    P3 --> M1
+    P4 --> M2[M2: 퀴즈 UX]
+
+    M1 --> QA[통합 QA]
+    M2 --> QA
+    QA --> DONE[MVP9 완료 🏁]
+
+    style DONE fill:#d1fae5,color:#065f46
+    style M1 fill:#fef3c7,color:#92400e
+    style M2 fill:#fef3c7,color:#92400e</pre>
+    </div>
+  </div>
+
+  <!-- Insights -->
+  <div class="section">
+    <div class="section-title">💡 인사이트</div>
+    <div class="insight-list">
+      <div class="insight-item">
+        <div class="insight-num">1</div>
+        <div class="insight-text"><strong>병목 진단이 먼저다.</strong> "LLM이 느리다" → "OpenRouter 무료 대기열이 느리다" → "Groq에서 실행하면 6배 빠르다". 증상이 아니라 원인을 찾는 게 해결책의 품질을 결정한다.</div>
+      </div>
+      <div class="insight-item">
+        <div class="insight-num">2</div>
+        <div class="insight-text"><strong>API 파라미터는 반드시 문서 확인.</strong> <code>days</code>와 <code>time_range</code>처럼 비슷해 보이지만 동작 조건이 다른 파라미터는 어림짐작 금지.</div>
+      </div>
+      <div class="insight-item">
+        <div class="insight-num">3</div>
+        <div class="insight-text"><strong>테스트 가능성이 설계를 이끈다.</strong> <code>SessionWrongAnswerAccumulator</code>를 별도 struct로 분리한 이유가 "QuizView 없이도 단위 테스트 가능"이라는 것. TDD를 따르면 자연스럽게 설계가 좋아진다.</div>
+      </div>
+      <div class="insight-item">
+        <div class="insight-num">4</div>
+        <div class="insight-text"><strong>"서버 변경이 필요한가?"를 먼저 확인.</strong> M2 전체가 클라이언트만으로 해결됐다. 기존 데이터를 다르게 조합하는 것만으로 UX가 크게 달라질 수 있다.</div>
+      </div>
+      <div class="insight-item">
+        <div class="insight-num">5</div>
+        <div class="insight-text"><strong>하루에 MVP 하나가 가능한 조건.</strong> 문제가 명확하고, 의존성이 없고, 병렬 구조가 잡혀 있을 때. 오늘이 딱 그 조건이었다.</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Learned -->
+  <div class="section">
+    <div class="section-title">📚 배운 것</div>
+    <div class="learned-list">
+      <div class="learned-item"><strong>Groq vs OpenRouter 구조 차이</strong>: 중계 레이어가 없는 전용 인프라는 레이턴시 차원이 다름. 무료 플랜 = 대기열 = 느림.</div>
+      <div class="learned-item"><strong>Tavily <code>time_range</code> vs <code>days</code></strong>: topic 설정 여부에 따라 쓰는 파라미터가 다름. 일반 검색 = <code>time_range: "week"</code>.</div>
+      <div class="learned-item"><strong>SessionWrongAnswerAccumulator 패턴</strong>: View에서 로직을 빼서 별도 struct에 캡슐화 → 독립 테스트 가능. 조건 체크 위치가 설계를 바꾼다.</div>
+      <div class="learned-item"><strong>wiremock <code>body_partial_json</code> 매처</strong>: 요청 본문의 일부만 검증. 파라미터가 실제로 전달되는지 안전망 역할.</div>
+      <div class="learned-item"><strong>lazy fetch 패턴</strong>: "이미 로드됐으면 재사용, 없으면 그때 fetch" — 불필요한 API 호출 없이 기존 데이터를 재활용.</div>
+    </div>
+  </div>
+
+  <!-- Feeling -->
+  <div class="section">
+    <div class="section-title">😌 느낀 점</div>
+    <div class="feeling-card">
+      <p>하루 만에 MVP 하나를 기획부터 아카이빙까지 완주한 게 오늘의 하이라이트다. 처음엔 M1이 끝나야 M2를 시작해야 하는 줄 알았는데, 의존성을 확인해보니 완전히 독립적이었다. 병렬로 동시에 진행했고, 하루 안에 전부 끝났다.</p>
+      <p><code>SessionWrongAnswerAccumulator</code>를 처음 봤을 때 "이걸 왜 따로 struct로 만들었지?"가 솔직한 반응이었다. 막상 이유를 파악하고 나니 "테스트를 먼저 생각하면 설계가 이렇게 된다"는 게 납득됐다. TDD가 단순히 테스트를 먼저 쓰는 게 아니라 설계 방식 자체를 바꾼다는 걸 오늘 실감했다.</p>
+      <p>Tavily <code>time_range</code>는 문서 안 보고 <code>days: 7</code>로 바로 했다면 효과가 없었을 텐데, 마일스톤 문서에 주의 사항이 적혀 있어서 잡아냈다. 문서가 제대로 작성되어 있으면 이런 함정을 방지할 수 있다는 걸 다시 확인했다.</p>
+    </div>
+  </div>
+
+  <!-- Tomorrow -->
+  <div class="section">
+    <div class="section-title">📅 내일 할 일</div>
+    <div class="tomorrow-card">
+      <h3>MVP10 방향 탐색</h3>
+      <div class="tomorrow-item">앱을 다시 사용해보면서 어디가 가장 아쉬운지 느껴보기</div>
+      <div class="tomorrow-item">M3 후보 검토: 버튼 레이아웃 개선, Groq 스트리밍, LLM snippet 정제, SWR 강화</div>
+      <div class="tomorrow-item">/milestone 돌리기 전에 실사용 인터뷰부터</div>
+    </div>
+  </div>
+
+  <script type="module">
+    import mermaid from 'https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.esm.min.mjs';
+    mermaid.initialize({
+      startOnLoad: true,
+      theme: 'base',
+      themeVariables: {
+        primaryColor: '#FEF3C7',
+        primaryTextColor: '#2D2926',
+        primaryBorderColor: '#E5D5C5',
+        lineColor: '#D97706',
+        secondaryColor: '#FDF6F0',
+        tertiaryColor: '#FFFFFF',
+        fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif',
+        fontSize: '13px',
+      }
+    });
+  </script>
+
+</body>
+</html>
