@@ -28,10 +28,11 @@ pub async fn get_related<D: DbPort>(
     // like_count 조회 실패 시 0으로 폴백
     let like_count = state.db.get_like_count(user.id).await.unwrap_or(0);
     // feed.rs의 3개와 달리 5개 사용: 태그 쿼리가 없어 키워드 기반 연관도가 높을수록 정확도 향상
+    // MVP9 M2: 전체 태그 기반 키워드 조회 (tag_ids 빈 배열 = 전체)
     let top_keywords = if like_count >= 3 {
         state
             .db
-            .get_top_keywords(user.id, 5)
+            .get_top_keywords(user.id, vec![], 5)
             .await
             .unwrap_or_default()
     } else {
@@ -143,11 +144,16 @@ mod tests {
         }
 
         // 키워드 사전 세팅
-        db.increment_keyword_weights(user_id, vec!["Rust".to_string(), "async".to_string()])
-            .await
-            .unwrap();
+        let tag_id = Uuid::new_v4();
+        db.increment_keyword_weights(
+            user_id,
+            tag_id,
+            vec!["Rust".to_string(), "async".to_string()],
+        )
+        .await
+        .unwrap();
 
-        let top_keywords = db.get_top_keywords(user_id, 5).await.unwrap();
+        let top_keywords = db.get_top_keywords(user_id, vec![], 5).await.unwrap();
         let expected_query = format!("Concurrency article {}", top_keywords.join(" "));
 
         let mut query_map: HashMap<String, Result<Vec<SearchResult>, String>> = HashMap::new();

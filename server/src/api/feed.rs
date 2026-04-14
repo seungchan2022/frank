@@ -83,29 +83,32 @@ pub async fn get_feed<D: DbPort>(
         return Ok(Json(vec![]));
     }
 
-    // MVP7 M3 ST-1: 전체 피드(tag_id 없음) + 좋아요 3회 이상일 때만 키워드 개인화 적용
-    // tag_id 지정 시: 특정 태그 피드 순수 유지 (cross-tag 키워드 오염 방지)
+    // MVP7 M3 ST-1: 좋아요 3회 이상일 때만 키워드 개인화 적용.
+    // MVP9 M2 수정: 태그별 키워드 분리 — 각 태그 검색 쿼리에 해당 태그 키워드만 붙임.
+    // 전체 피드(tag_id 없음)에서도 cross-tag 오염 방지: AI 키워드가 모바일 기사에 붙지 않도록.
     // like_count 조회 실패 시 0으로 폴백 (개인화 비활성화)
-    let keyword_suffix = if feed_query.tag_id.is_none() {
+    let use_personalization = if feed_query.tag_id.is_none() {
         let like_count = state.db.get_like_count(user.id).await.unwrap_or(0);
-        if like_count >= 3 {
-            // 상위 키워드 조회 — 실패 시 빈 Vec으로 폴백
-            let top_keywords = state
+        like_count >= 3
+    } else {
+        false
+    };
+
+    // 개인화 활성화 시 태그별 키워드 미리 조회 (tag_id → keyword_suffix 맵)
+    let mut tag_keyword_map: std::collections::HashMap<uuid::Uuid, String> =
+        std::collections::HashMap::new();
+    if use_personalization {
+        for user_tag in &filtered_tags {
+            let keywords = state
                 .db
-                .get_top_keywords(user.id, 3)
+                .get_top_keywords(user.id, vec![user_tag.tag_id], 3)
                 .await
                 .unwrap_or_default();
-            if top_keywords.is_empty() {
-                String::new()
-            } else {
-                format!(" {}", top_keywords.join(" "))
+            if !keywords.is_empty() {
+                tag_keyword_map.insert(user_tag.tag_id, format!(" {}", keywords.join(" ")));
             }
-        } else {
-            String::new()
         }
-    } else {
-        String::new()
-    };
+    }
 
     // (tag_id, tag_name, search_query) tuple로 병렬 검색 잡 표현 — owned String으로 future 캡처
     let jobs: Vec<(uuid::Uuid, String, String)> = filtered_tags
@@ -116,10 +119,19 @@ pub async fn get_feed<D: DbPort>(
                 .copied()
                 .unwrap_or("unknown")
                 .to_string();
-            let search_query = format!("{tag_name} latest news{keyword_suffix}");
+            let suffix = tag_keyword_map
+                .get(&user_tag.tag_id)
+                .cloned()
+                .unwrap_or_default();
+            let search_query = format!("{tag_name} latest news{suffix}");
             (user_tag.tag_id, tag_name, search_query)
         })
         .collect();
+
+    // 실제 검색 쿼리 로깅 (태그별 키워드 오염 여부 확인용)
+    for (_, _, q) in &jobs {
+        tracing::info!(search_query = %q, "feed search query");
+    }
 
     // join_all로 모든 태그 검색을 동시에 실행
     let chain = std::sync::Arc::clone(&state.search_chain);
@@ -758,11 +770,15 @@ mod tests {
             db.increment_like_count(user_id).await.unwrap();
         }
 
-        // GPT(weight=2), transformer(weight=1) seed
-        db.increment_keyword_weights(user_id, vec!["GPT".to_string(), "transformer".to_string()])
-            .await
-            .unwrap();
-        db.increment_keyword_weights(user_id, vec!["GPT".to_string()])
+        // GPT(weight=2), transformer(weight=1) seed — tag_a.id 기준으로 심어야 함
+        db.increment_keyword_weights(
+            user_id,
+            tag_a.id,
+            vec!["GPT".to_string(), "transformer".to_string()],
+        )
+        .await
+        .unwrap();
+        db.increment_keyword_weights(user_id, tag_a.id, vec!["GPT".to_string()])
             .await
             .unwrap();
 
@@ -860,7 +876,8 @@ mod tests {
         for _ in 0..3 {
             db.increment_like_count(user_id).await.unwrap();
         }
-        db.increment_keyword_weights(user_id, vec!["Swift".to_string()])
+        let kw_tag_id = Uuid::new_v4();
+        db.increment_keyword_weights(user_id, kw_tag_id, vec!["Swift".to_string()])
             .await
             .unwrap();
 

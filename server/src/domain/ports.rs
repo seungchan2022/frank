@@ -46,17 +46,21 @@ pub trait DbPort: Send + Sync {
 
     /// MVP7 M2: 키워드 가중치 누적.
     /// 신규 키워드는 INSERT(weight=1), 기존 키워드는 weight+1.
+    /// tag_id: 어느 태그 피드에서 좋아요를 눌렀는지 (연관 태그별 분리 저장).
     fn increment_keyword_weights(
         &self,
         user_id: Uuid,
+        tag_id: Uuid,
         keywords: Vec<String>,
     ) -> impl std::future::Future<Output = Result<(), AppError>> + Send;
 
     /// MVP7 M2: 상위 키워드 조회 (weight DESC, updated_at DESC, keyword ASC).
+    /// tag_ids: 필터링할 태그 목록. 빈 배열이면 전체 태그에서 조회.
     /// limit: u32 (usize는 플랫폼 의존)
     fn get_top_keywords(
         &self,
         user_id: Uuid,
+        tag_ids: Vec<Uuid>,
         limit: u32,
     ) -> impl std::future::Future<Output = Result<Vec<String>, AppError>> + Send;
 

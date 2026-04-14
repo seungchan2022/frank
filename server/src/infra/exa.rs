@@ -74,7 +74,6 @@ pub fn clean_snippet(s: &str) -> String {
     }
 }
 
-
 impl ExaAdapter {
     pub fn new(api_key: &str) -> Self {
         Self::with_base_url(api_key, "https://api.exa.ai")

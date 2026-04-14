@@ -1,6 +1,7 @@
 use axum::Json;
 use axum::extract::Extension;
 use serde::{Deserialize, Serialize};
+use uuid::Uuid;
 
 use crate::domain::error::AppError;
 use crate::domain::ports::DbPort;
@@ -13,6 +14,7 @@ use super::AppState;
 pub struct LikeArticleRequest {
     pub title: String,
     pub snippet: Option<String>,
+    pub tag_id: Uuid,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -35,9 +37,15 @@ pub async fn like_article<D: DbPort>(
 
     let snippet = body.snippet.as_deref();
 
-    let result =
-        likes_service::process_like(user.id, &title, snippet, &state.db, state.llm.as_ref())
-            .await?;
+    let result = likes_service::process_like(
+        user.id,
+        body.tag_id,
+        &title,
+        snippet,
+        &state.db,
+        state.llm.as_ref(),
+    )
+    .await?;
 
     Ok(Json(LikeArticleResponse {
         keywords: result.keywords,
@@ -104,11 +112,13 @@ mod tests {
         let app = make_app(state, user_id);
         let server = TestServer::new(app);
 
+        let tag_id = Uuid::new_v4();
         let resp = server
             .post("/me/articles/like")
             .json(&serde_json::json!({
                 "title": "iOS 개발 기사",
-                "snippet": "Swift 관련 내용"
+                "snippet": "Swift 관련 내용",
+                "tag_id": tag_id
             }))
             .await;
         resp.assert_status_ok();
@@ -126,10 +136,12 @@ mod tests {
         let app = make_app(state, user_id);
         let server = TestServer::new(app);
 
+        let tag_id = Uuid::new_v4();
         let resp = server
             .post("/me/articles/like")
             .json(&serde_json::json!({
-                "title": "기사 제목만"
+                "title": "기사 제목만",
+                "tag_id": tag_id
             }))
             .await;
         resp.assert_status_ok();
@@ -146,10 +158,12 @@ mod tests {
         let app = make_app(state, user_id);
         let server = TestServer::new(app);
 
+        let tag_id = Uuid::new_v4();
         let resp = server
             .post("/me/articles/like")
             .json(&serde_json::json!({
-                "title": "   "
+                "title": "   ",
+                "tag_id": tag_id
             }))
             .await;
         resp.assert_status_bad_request();
@@ -164,9 +178,10 @@ mod tests {
         let app = make_app(state, user_id);
         let server = TestServer::new(app);
 
+        let tag_id = Uuid::new_v4();
         let resp1 = server
             .post("/me/articles/like")
-            .json(&serde_json::json!({"title": "기사1"}))
+            .json(&serde_json::json!({"title": "기사1", "tag_id": tag_id}))
             .await;
         resp1.assert_status_ok();
         let b1: LikeArticleResponse = resp1.json();
@@ -174,7 +189,7 @@ mod tests {
 
         let resp2 = server
             .post("/me/articles/like")
-            .json(&serde_json::json!({"title": "기사2"}))
+            .json(&serde_json::json!({"title": "기사2", "tag_id": tag_id}))
             .await;
         resp2.assert_status_ok();
         let b2: LikeArticleResponse = resp2.json();

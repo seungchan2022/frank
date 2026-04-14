@@ -214,36 +214,61 @@ impl DbPort for PostgresDbAdapter {
     async fn increment_keyword_weights(
         &self,
         user_id: Uuid,
+        tag_id: Uuid,
         keywords: Vec<String>,
     ) -> Result<(), AppError> {
-        for keyword in &keywords {
-            sqlx::query(
-                "INSERT INTO user_keyword_weights (user_id, keyword, weight, updated_at)
-                 VALUES ($1, $2, 1, NOW())
-                 ON CONFLICT (user_id, keyword) DO UPDATE
-                   SET weight = user_keyword_weights.weight + 1, updated_at = NOW()",
-            )
-            .bind(user_id)
-            .bind(keyword)
-            .execute(&self.pool)
-            .await
-            .map_err(|e| AppError::Internal(format!("DB keyword weight upsert failed: {e}")))?;
+        if keywords.is_empty() {
+            return Ok(());
         }
+        // keywords 슬라이스를 UNNEST로 단일 쿼리 batch UPSERT
+        // weight/updated_at은 INSERT default + conflict update로 처리
+        sqlx::query(
+            "INSERT INTO user_keyword_weights (user_id, tag_id, keyword, weight, updated_at)
+             SELECT $1, $2, kw, 1, NOW() FROM UNNEST($3::text[]) AS kw
+             ON CONFLICT (user_id, tag_id, keyword) DO UPDATE
+               SET weight = user_keyword_weights.weight + 1, updated_at = NOW()",
+        )
+        .bind(user_id)
+        .bind(tag_id)
+        .bind(&keywords)
+        .execute(&self.pool)
+        .await
+        .map_err(|e| AppError::Internal(format!("DB keyword weight upsert failed: {e}")))?;
         Ok(())
     }
 
-    async fn get_top_keywords(&self, user_id: Uuid, limit: u32) -> Result<Vec<String>, AppError> {
-        let rows: Vec<(String,)> = sqlx::query_as(
-            "SELECT keyword FROM user_keyword_weights
-             WHERE user_id = $1
-             ORDER BY weight DESC, updated_at DESC, keyword ASC
-             LIMIT $2",
-        )
-        .bind(user_id)
-        .bind(limit as i64)
-        .fetch_all(&self.pool)
-        .await
-        .map_err(|e| AppError::Internal(format!("DB get_top_keywords failed: {e}")))?;
+    async fn get_top_keywords(
+        &self,
+        user_id: Uuid,
+        tag_ids: Vec<Uuid>,
+        limit: u32,
+    ) -> Result<Vec<String>, AppError> {
+        let rows: Vec<(String,)> = if tag_ids.is_empty() {
+            sqlx::query_as(
+                "SELECT keyword FROM user_keyword_weights
+                 WHERE user_id = $1
+                 ORDER BY weight DESC, updated_at DESC, keyword ASC
+                 LIMIT $2",
+            )
+            .bind(user_id)
+            .bind(limit as i64)
+            .fetch_all(&self.pool)
+            .await
+            .map_err(|e| AppError::Internal(format!("DB get_top_keywords failed: {e}")))?
+        } else {
+            sqlx::query_as(
+                "SELECT keyword FROM user_keyword_weights
+                 WHERE user_id = $1 AND tag_id = ANY($2)
+                 ORDER BY weight DESC, updated_at DESC, keyword ASC
+                 LIMIT $3",
+            )
+            .bind(user_id)
+            .bind(&tag_ids)
+            .bind(limit as i64)
+            .fetch_all(&self.pool)
+            .await
+            .map_err(|e| AppError::Internal(format!("DB get_top_keywords failed: {e}")))?
+        };
 
         Ok(rows.into_iter().map(|(k,)| k).collect())
     }
