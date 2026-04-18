@@ -90,26 +90,7 @@ WARNING: {파일}은 현재 세션 스코프({SESSION_SCOPE}) 밖입니다.
 - 동일 메인태스크 문서를 여러 세션에서 동시 수정 시 충돌 가능
 - 서브태스크별로 분리된 문서 사용 권장: `progress/subtask/{YYMMDD}_{제목}/`
 
-## SS6 스코프 영속화 (CLAUDE.local.md)
-
-> 스킬 실행 시 컨텍스트 압축으로 SESSION_SCOPE가 소실될 수 있다.
-> 이를 방지하기 위해 **CLAUDE.local.md**에 스코프를 영속화한다.
-
-### 설정 방법
-
-각 터미널/워크트리 루트에 `CLAUDE.local.md`를 생성:
-
-```markdown
-# Session Scope
-SESSION_SCOPE: [auth-module, shared-utils]
-이 세션은 위 모듈만 수정한다. 스킬 실행 후에도 이 스코프를 유지한다.
-```
-
-- `CLAUDE.local.md`는 `.gitignore`에 자동 추가됨 → 터미널별 독립 운영 가능
-- **매 대화 시작 시 자동 로드** → 컨텍스트 압축에도 생존
-- 스킬 완료 후 Claude가 스코프를 잊어버리면 CLAUDE.local.md에서 복원
-
-## SS7 git 충돌 방지
+## SS6 git 충돌 방지
 
 - 같은 파일을 여러 세션에서 동시 수정하면 git 충돌 발생
 - 세션별 커밋 전 `git status`로 다른 세션의 미커밋 변경 확인
