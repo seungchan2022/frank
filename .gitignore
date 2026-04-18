@@ -65,3 +65,7 @@ logs/
 # === Workflow 산출물 (step-3 자동 생성 의존 그래프) ===
 progress/*_dag.d2
 progress/*_dag.svg
+
+# === KPI runtime logs ===
+progress/kpi/bypass.log
+progress/kpi/*_manual.md
