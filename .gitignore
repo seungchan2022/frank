@@ -13,6 +13,7 @@ Thumbs.db
 .claude/settings.local.json
 .claude/worktrees/
 .playwright-mcp/
+.mcp.json
 
 # === Rust (server/) ===
 target/

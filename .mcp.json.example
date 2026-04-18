@@ -2,7 +2,7 @@
   "mcpServers": {
     "tuist": {
       "type": "stdio",
-      "command": "/Users/seungchan/.local/share/mise/installs/tuist/4.174.2/bin/tuist",
+      "command": "tuist",
       "args": ["mcp", "start"]
     },
     "codex": {
