@@ -156,8 +156,52 @@ allowed-tools:
 
 ---
 
+## [6] MVP 사이클 초기화 (다음 MVP 방향성)
+
+**`/milestone-review`는 MVP 한 사이클의 끝/시작 경계에서 한 번 실행하는 스킬이다.**
+각 마일스톤(M1, M2, ...) 단위 전이는 `/workflow`가 자동 처리하므로 여기서는 다루지 않는다.
+
+### 호출 시점
+
+1. 이전 MVP가 history로 아카이빙된 **직후**
+2. 다음 MVP 방향성을 잡기 전 — 전체 진행 상황 한 번 훑기
+
+### 수행 작업
+
+1. `progress/active_mvp.txt` 확인
+   - 값이 `{N+1}:planning` 또는 `none`이면 → 새 MVP 사이클 시작
+   - 값이 `{N}:in-progress`이고 모든 마일스톤이 done 상태라면 → MVP 완료 프로세스 안내 (아래)
+
+2. 이전 MVP 완료 마감 안내 (해당 시):
+   ```
+   📋 MVP{N}의 모든 마일스톤이 끝난 것으로 보입니다.
+   다음 순서로 마무리하세요 (수동):
+     1. progress/mvp{N}/_roadmap.md에서 모든 M done 상태 확인
+     2. 필요한 문서 업데이트 (회고·INDEX 등)
+     3. progress/mvp{N}/* → history/mvp{N}/ 이동 (progress-cleanup 스킬 사용 가능)
+     4. history/mvp{N}/{YYMMDD}_mvp{N}_completion_retro.md 작성
+     5. MVP 최종 KPI 검증 필요 시 active_mvp.txt를 "{N}:completing"으로 바꾼 뒤 /kpi 실행
+     6. 마감 커밋 후 active_mvp.txt를 "{N+1}:planning", active_milestone.txt를 "none"으로 초기화
+   ```
+
+3. 다음 MVP 방향성 잡기:
+   - 이전 회고에서 "다음에 할 것(Next)" 목록 추출
+   - 현재 활성 부채(`progress/debt.md`) 목록 로드
+   - 사용자 인터뷰 후 `/milestone "MVP{N+1} ..."` 호출 안내
+
+### 이 스킬이 하지 않는 것
+
+- M1, M2 각각의 completing 전이 (→ `/workflow`가 자동 처리)
+- 매일 작업 상황 대시보드 (→ `/status` 또는 `/kpi`)
+- 기획 상세화 (→ `/milestone`)
+
+---
+
 ## 다음 단계
 
-- **다음 아이템 착수**: 유형에 따라 적절한 스킬 안내
-- **새 Discovery 사이클**: `/milestone` (기존 프로젝트에 새 아이디어 탐색)
-- **상세 분석**: `/deep-analysis` (특정 마일스톤의 기술적 위험 분석)
+- **새 MVP 기획**: `/milestone "MVP{N+1} 설명"`
+- **현재 상태 확인**: `/status` / `/kpi`
+- **상세 분석**: `/deep-analysis`
+
+---
+

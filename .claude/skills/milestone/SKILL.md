@@ -317,6 +317,65 @@ M2: {마일스톤명}                    [2주]  ← 의존: M1
 
 ---
 
+## [5.5] KPI 2층 선언 + 상태 초기화 (필수)
+
+**2층 KPI 구조**: 각 마일스톤마다 `## KPI` 섹션 + MVP 전체 통합 `## KPI` 섹션 (로드맵에).
+
+### (a) 각 M{X}_*.md에 **마일스톤 KPI** 자동 삽입
+
+해당 마일스톤 DoD에 직결되는 지표 2~5개만:
+
+```markdown
+## KPI (M{X})
+
+| 지표 | 측정 방법 | 목표 | 게이트 | 기준선 |
+|---|---|---|---|---|
+| M{X} DoD 테스트 통과 | {플랫폼별 test 명령} | 전체 통과 | Hard | — |
+| {마일스톤 고유 지표} | {측정} | {목표} | {Hard/Soft} | — |
+```
+
+### (b) `_roadmap.md`에 **MVP 최종 KPI** 자동 삽입
+
+MVP 전체 통합 품질 지표:
+
+```markdown
+## KPI (MVP{N} 최종)
+
+| 지표 | 측정 방법 | 목표 | 게이트 | 기준선 |
+|---|---|---|---|---|
+| 서버 테스트 커버리지 | cargo-tarpaulin | ≥90% | Hard | MVP{N-1} 값 |
+| 웹 테스트 커버리지 | vitest --coverage | ≥90% | Hard | MVP{N-1} 값 |
+| iOS 테스트 커버리지 | xcodebuild + xccov | ≥85% | Soft | MVP{N-1} 값 |
+| MVP 회고 작성 | history/mvp{N}/retro.md 존재 | exists | Hard | — |
+| 기술부채 증감 | progress/debt.md 카운트 | net 감소 | Soft | MVP{N-1} 값 |
+```
+
+기준선은 `history/mvp{N-1}/` 이전 회고에서 자동 추출.
+
+### (c) 상태 파일 2개 초기화
+
+```bash
+# MVP 로드맵 확정·사용자 승인 시점
+echo "{N}:in-progress" > progress/active_mvp.txt
+echo "M1:planning"     > progress/active_milestone.txt
+```
+
+- MVP 상태: `planning` (기획 중) → `in-progress` (로드맵 확정·M1 시작 전)
+- 마일스톤 상태: 기본 `M1:planning`. 다음 단계(`/init` 또는 `/workflow`)에서 `in-progress`로 전이
+
+### 전이 요약
+
+| 이벤트 | active_mvp | active_milestone |
+|---|---|---|
+| `/milestone` 진행 중 | `{N}:planning` | — |
+| 로드맵 확정·승인 | `{N}:in-progress` | `M1:planning` |
+| `/workflow "M1-..."` 호출 | 그대로 | `M1:in-progress` |
+| `/milestone-review`가 M1 완료 확정 | 그대로 | `M1:done` → `M2:planning` |
+| 마지막 마일스톤 done | `{N}:completing` | `M{last}:done` |
+| MVP 최종 KPI 전부 통과 | `{N}:done` → 다음 MVP `planning` | `none` |
+
+---
+
 ## [6] 산출물 생성
 
 ### 디렉토리 구조
@@ -477,6 +536,27 @@ progress/
 
 ---
 
+## [6.5] 구멍 찾기 리뷰 자동 호출 (필수)
+
+[6] 산출물 생성 완료 직후, **방금 만든 로드맵·각 마일스톤 문서에 대해 `/critical-review` 자동 호출**.
+
+대상:
+- `progress/mvp{N}/_roadmap.md` (MVP 전체 구조·의존성·KPI)
+- `progress/mvp{N}/M{X}_*.md` (각 마일스톤의 목표·DoD·KPI)
+
+목적: 기획 단계에서 **여러 마일스톤에 퍼진 구조 결함**을 선제 발견. 구현 들어가기 전이 수정 비용 최저.
+
+결과 처리:
+- **치명** 발견 → 즉시 수정 확인 후 로드맵·M 문서 갱신
+- **중대** 발견 → 수정 or 후속 과제 기록 결정
+- **경미** 발견 → 후속 과제로 기록하고 통과
+
+상세는 `.claude/skills/critical-review/SKILL.md` 참조.
+
+> **왜 여기서?** 네가 이번 세션에서 KPI 구조적 결함을 구현 진행 중 발견해서 2번 재개편했던 교훈. 기획 확정 직후 한 번 훑으면 그런 재작업 막을 수 있다.
+
+---
+
 ## 다음 단계
 
 - **로드맵 리뷰**: `/milestone-review`
@@ -484,3 +564,14 @@ progress/
 - **research 아이템**: `/deep-analysis {대상}`
 - **decision 아이템**: `/debate {주제}`
 - **상태 확인**: `/status`
+- **KPI 대시보드**: `/kpi`
+
+## KPI 게이트와의 연계 (2층 구조)
+
+- **마일스톤 단위 게이트**: 현재 활성 마일스톤(M1, M2, ...)의 상태에 따라 해당 마일스톤 `## KPI`만 검증
+  - `M{X}:planning|in-progress` → 점진 지표 Soft 강등, 회귀형만 Hard
+  - `M{X}:completing` → 선언 그대로 (해당 마일스톤 Hard 엄격)
+  - `M{X}:done` → 다음 마일스톤으로 전이
+- **MVP 최종 게이트**: `MVP:completing` 전이 시점에 `_roadmap.md`의 전체 KPI 엄격 검증
+- 각 마일스톤은 독립적 completing 체크포인트 — **막판 몰아치기 방지**
+- 상세: `rules/0_CODEX_RULES.md §3.5`

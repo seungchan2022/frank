@@ -20,7 +20,11 @@ allowed-tools:
 ## 실행 흐름
 
 ```
-/workflow {요구사항}
+/workflow "M{X}-{요구사항}"
+       ↓
+[0] ★ active_milestone 자동 갱신
+   └ 요구사항에서 "M{X}" 추출해 progress/active_milestone.txt를 "M{X}:in-progress"로 전이
+     (이미 같은 상태면 유지. 마일스톤 기획 문서 자동 로드)
        ↓
 [1] 워크플로우 개요 표시
        ↓
@@ -30,10 +34,54 @@ allowed-tools:
        ↓
 [4] 사용자 인터뷰
        ↓
-[5] 메인태스크 문서 생성
+[5] 메인태스크 문서 생성 (마일스톤 문서 참조 링크 포함)
        ↓
 → /step-2 안내
 ```
+
+## [0] 마일스톤 상태 자동 전이
+
+`/workflow "M2-피드성능"` 같이 호출되면 다음을 수행:
+
+1. **요구사항 문자열에서 `M{숫자}` 패턴 추출** (없으면 현재 active_milestone 유지)
+
+2. **이전 마일스톤 자동 done 처리**:
+   - `progress/active_milestone.txt`를 읽어 이전 M 확인
+   - 이전이 `M{Y}:in-progress` 이고 새 호출이 다른 `M{X}`면:
+     → 시스템이 **"이전 M{Y} 완료된 것으로 처리합니다. 수동 E2E 테스트 통과 + 문서 갱신 + 커밋 완료됐나요? (y/n)"** 확인
+     → `y`면 `M{Y}:done`으로 전이 후 계속. 기록은 직전 커밋으로 남김
+     → `n`이면 중단하고 사용자에게 M{Y} 마무리 안내
+
+3. **새 마일스톤 active 전이**:
+   - `progress/mvp{N}/M{X}_*.md` 파일 존재 확인 — 없으면 `/milestone`으로 먼저 기획 요청
+   - `echo "M{X}:in-progress" > progress/active_milestone.txt`
+
+4. 이후 step-1~step-9는 이 마일스톤 KPI로 게이트 검증
+
+### step-9 (커밋) 직후 MVP 완료 자동 체크
+
+step-9 커밋 성공 시 시스템이 자동으로:
+1. `progress/mvp{N}/_roadmap.md`에서 전체 마일스톤 목록 추출
+2. `active_milestone.txt` 기준으로 **남은 M이 없나** 확인
+3. 모든 M이 done 상태로 전이 가능(또는 이미 done)이면:
+   ```
+   📋 MVP{N} 로드맵의 모든 마일스톤이 끝난 것으로 보입니다.
+   MVP 완료 프로세스를 시작할까요?
+
+   - MVP{N}:completing으로 전이
+   - MVP 최종 KPI 엄격 검증 (_roadmap.md)
+   - history/mvp{N}/{YYMMDD}_mvp{N}_completion_retro.md 회고 작성 안내
+   - progress/mvp{N}/ → history/mvp{N}/ 아카이빙
+   - active_mvp.txt를 다음 MVP로 초기화
+
+   진행? (y/n)
+   ```
+4. 사용자 `y` → 위 절차 자동 수행. 실패 시 안내.
+5. `n` → 그냥 커밋만 완료
+
+**사용자는 수동 E2E 테스트 완료 + 다음 `/workflow` 호출만으로 M 전이 발생.** 별도 명령어 불필요.
+
+---
 
 ---
 
