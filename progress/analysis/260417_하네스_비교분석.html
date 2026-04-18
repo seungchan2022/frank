@@ -1,0 +1,817 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>하네스 엔지니어링 비교 분석 노트 — 2026-04-17</title>
+  <style>
+    :root {
+      --bg: #0f0f13; --surface: #1a1a23; --surface-2: #14141c;
+      --border: #2a2a38; --border-soft: #22222e;
+      --accent: #7c6fff; --accent-pink: #ff6b9d; --accent-mint: #4dd9ac;
+      --accent-orange: #ff9f4d; --accent-yellow: #ffd54d;
+      --text: #e8e8f0; --muted: #888899;
+      --good: #4dd9ac; --warn: #ffd54d; --bad: #ff6b6b;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      background: var(--bg); color: var(--text);
+      font-family: 'Pretendard', -apple-system, BlinkMacSystemFont, sans-serif;
+      font-size: 15px; line-height: 1.75; padding: 48px 24px 96px;
+    }
+    .container { max-width: 880px; margin: 0 auto; }
+
+    .header { margin-bottom: 44px; padding-bottom: 28px; border-bottom: 1px solid var(--border); }
+    .header-meta { font-size: 11px; color: var(--muted); letter-spacing: 0.14em; text-transform: uppercase; margin-bottom: 12px; }
+    .header h1 {
+      font-size: 28px; font-weight: 800; letter-spacing: -0.01em; margin-bottom: 10px;
+      background: linear-gradient(135deg, var(--accent) 0%, var(--accent-pink) 100%);
+      -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;
+    }
+    .header-sub { font-size: 13.5px; color: var(--muted); line-height: 1.7; }
+
+    .section { margin-bottom: 56px; }
+    .section-title {
+      font-size: 11px; font-weight: 700; color: var(--muted);
+      letter-spacing: 0.14em; text-transform: uppercase;
+      margin-bottom: 20px; display: flex; align-items: center; gap: 10px;
+    }
+    .section-title::before { content: ""; width: 14px; height: 2px; background: var(--accent); border-radius: 2px; }
+    .section h2 { font-size: 21px; font-weight: 700; margin-bottom: 14px; }
+    .section h3 { font-size: 15px; font-weight: 700; margin-top: 24px; margin-bottom: 10px; color: var(--accent-pink); }
+    .section h4 { font-size: 14px; font-weight: 700; margin-top: 18px; margin-bottom: 8px; color: var(--text); }
+    .section p { margin-bottom: 10px; color: var(--text); }
+    .section p + p { margin-top: 2px; }
+
+    .intro {
+      font-size: 13.5px; color: var(--muted); line-height: 1.75;
+      margin-bottom: 14px; padding: 10px 14px;
+      background: var(--surface-2); border-left: 2px solid var(--accent);
+      border-radius: 6px;
+    }
+
+    .tldr {
+      background: linear-gradient(135deg, #7c6fff15 0%, #ff6b9d10 100%);
+      border: 1px solid #7c6fff33; border-radius: 12px;
+      padding: 22px 24px; margin-bottom: 40px;
+    }
+    .tldr p { font-size: 15px; line-height: 1.8; margin: 0; }
+    .tldr strong { color: var(--accent-pink); }
+
+    table {
+      width: 100%; border-collapse: separate; border-spacing: 0;
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: 10px; overflow: hidden; margin-bottom: 14px;
+    }
+    th, td { padding: 11px 14px; font-size: 13px; text-align: left; border-bottom: 1px solid var(--border-soft); vertical-align: top; }
+    th { background: var(--surface-2); font-size: 11px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); font-weight: 700; }
+    tr:last-child td { border-bottom: none; }
+    .stars { color: var(--accent-yellow); font-size: 13px; letter-spacing: 1px; white-space: nowrap; }
+
+    .strong-item {
+      background: var(--surface); border: 1px solid var(--border);
+      border-left: 3px solid var(--accent-mint);
+      border-radius: 10px; padding: 16px 20px; margin-bottom: 12px;
+    }
+    .strong-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; flex-wrap: wrap; gap: 8px; }
+    .strong-title { font-size: 15px; font-weight: 700; color: var(--text); }
+    .strong-body p { font-size: 13.5px; line-height: 1.75; margin-bottom: 8px; }
+    .strong-body p:last-child { margin-bottom: 0; }
+    .strong-body strong { color: var(--accent-mint); }
+    .strong-body .warn-inline {
+      color: var(--warn); font-weight: 600;
+    }
+    .strong-body .warn-para {
+      padding: 8px 12px; background: #ffd54d11; border-left: 2px solid var(--warn);
+      border-radius: 4px; font-size: 13px; margin-top: 8px;
+    }
+
+    .action-badge {
+      display: inline-block; padding: 2px 7px; border-radius: 4px;
+      font-size: 10.5px; font-weight: 700; letter-spacing: 0.03em;
+    }
+    .action-skip { background: #4dd9ac22; color: #4dd9ac; border: 1px solid #4dd9ac44; }
+    .action-opt { background: #ffd54d22; color: #ffd54d; border: 1px solid #ffd54d44; }
+    .action-move { background: #ff9f4d22; color: #ff9f4d; border: 1px solid #ff9f4d44; }
+
+    .reading-guide {
+      background: var(--surface); border: 1px solid var(--accent);
+      border-radius: 10px; padding: 14px 18px; margin-bottom: 18px;
+      font-size: 13px;
+    }
+    .reading-guide strong { color: var(--accent); }
+    .reading-guide ul { list-style: none; padding-left: 0; margin-top: 8px; }
+    .reading-guide li { margin-bottom: 4px; }
+
+    .gap-card {
+      background: var(--surface); border: 1px solid var(--border);
+      border-left: 3px solid var(--accent-orange);
+      border-radius: 10px; padding: 18px 22px; margin-bottom: 14px;
+    }
+    .gap-card.top { border-left-color: var(--accent-pink); }
+    .gap-card.low { border-left-color: var(--muted); opacity: 0.9; }
+    .gap-header { display: flex; align-items: center; gap: 10px; margin-bottom: 12px; flex-wrap: wrap; }
+    .gap-rank { font-size: 20px; }
+    .gap-title { font-size: 15.5px; font-weight: 700; }
+    .gap-row { display: grid; grid-template-columns: 80px 1fr; gap: 10px; margin: 6px 0; font-size: 13.5px; line-height: 1.75; }
+    @media (max-width: 640px) { .gap-row { grid-template-columns: 60px 1fr; } }
+    .gap-row .k { color: var(--accent-pink); font-size: 11px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; padding-top: 2px; }
+    .gap-card.low .gap-row .k { color: var(--muted); }
+    .gap-row .v { color: var(--text); }
+
+    .score-row { display: grid; grid-template-columns: 170px 1fr 60px; gap: 12px; align-items: center; padding: 8px 0; border-bottom: 1px solid var(--border-soft); }
+    @media (max-width: 640px) { .score-row { grid-template-columns: 120px 1fr 50px; } }
+    .score-label { font-size: 13px; font-weight: 600; }
+    .score-bar { height: 8px; background: var(--surface-2); border-radius: 4px; overflow: hidden; }
+    .score-fill { height: 100%; border-radius: 4px; background: linear-gradient(90deg, var(--accent) 0%, var(--accent-pink) 100%); }
+    .score-fill.warn { background: linear-gradient(90deg, var(--accent-orange) 0%, var(--accent-yellow) 100%); }
+    .score-fill.bad { background: linear-gradient(90deg, var(--bad) 0%, var(--accent-orange) 100%); }
+    .score-num { text-align: right; font-size: 13px; font-weight: 700; color: var(--accent); }
+    .score-num.warn { color: var(--accent-yellow); }
+    .score-num.bad { color: var(--bad); }
+    .score-avg {
+      margin-top: 14px; padding: 16px 20px;
+      background: linear-gradient(135deg, #7c6fff15, #ff6b9d10);
+      border: 1px solid #7c6fff33; border-radius: 10px;
+      display: flex; align-items: center; justify-content: space-between;
+    }
+    .score-avg-val { font-size: 26px; font-weight: 800; color: var(--accent-pink); }
+
+    .checklist { list-style: none; padding-left: 0; }
+    .checklist li {
+      padding: 12px 16px; margin-bottom: 10px;
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: 8px; font-size: 13px; line-height: 1.7;
+    }
+    .checklist li::before { content: "☐ "; color: var(--accent-pink); font-weight: 700; margin-right: 6px; }
+
+    .quote-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+    @media (max-width: 700px) { .quote-grid { grid-template-columns: 1fr; } }
+    .quote-card { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 18px 20px; }
+    .quote-card.a { border-top: 2px solid var(--accent); }
+    .quote-card.o { border-top: 2px solid var(--accent-mint); }
+    .quote-src { font-size: 10.5px; color: var(--muted); letter-spacing: 0.1em; text-transform: uppercase; margin-bottom: 10px; font-weight: 700; }
+    .quote-body { font-size: 13px; line-height: 1.7; font-style: italic; }
+    .quote-body + .quote-body { margin-top: 10px; }
+
+    .callout {
+      background: var(--surface); border-left: 3px solid var(--accent);
+      padding: 12px 16px; border-radius: 6px; font-size: 13.5px; margin: 12px 0;
+      line-height: 1.75;
+    }
+    .callout.warn { border-left-color: var(--warn); background: #ffd54d11; }
+    .callout.mint { border-left-color: var(--accent-mint); background: #4dd9ac11; }
+    .callout strong { color: var(--accent); }
+    .callout.mint strong { color: var(--accent-mint); }
+
+    code { background: var(--surface-2); border: 1px solid var(--border); padding: 1px 5px; border-radius: 4px; font-size: 12px; color: var(--accent); font-family: 'SF Mono', Menlo, monospace; }
+    .footer { margin-top: 60px; padding-top: 20px; border-top: 1px solid var(--border); font-size: 11.5px; color: var(--muted); text-align: center; }
+  </style>
+</head>
+<body>
+<div class="container">
+
+  <header class="header">
+    <div class="header-meta">Analysis Note · 2026-04-17</div>
+    <h1>하네스 엔지니어링 비교 분석 노트</h1>
+    <div class="header-sub">
+      Anthropic / OpenAI 하네스 가이드 × 프로젝트 <code>frank</code><br/>
+      본인 학습용 + 나중에 꺼내 쓸 매뉴얼.
+    </div>
+  </header>
+
+  <div class="tldr">
+    <p>
+      프로젝트는 <strong>하네스 원칙을 문서로는 잘 반영</strong>했다.
+      서브 룰북, 에이전트 역할 분리, <code>/step-7</code> 리팩토링 3R + 리뷰 3R 같은 장치가 이미 갖춰져 있다.
+      <strong>남은 과제는 문서화된 원칙을 자동 실행 가능한 기계 장치로 격상</strong>하는 방향이다.
+      즉 "해야 한다"고 쓴 것을 "어기면 막는다 / 사람 없이도 굴러간다"로 바꾸는 일이다.
+    </p>
+  </div>
+
+
+  <!-- §1 두 문서 핵심 원리 -->
+  <section class="section">
+    <div class="section-title">1. 두 문서 핵심 원리</div>
+
+    <h3>왜 이 두 문서인가</h3>
+    <p>
+      둘 다 2026년 초에 AI 에이전트가 <strong>혼자서 오래(수 시간~수 개월) 일하게 하는 법</strong>을 다룬 실전 보고서다.
+      Anthropic은 Claude 연구를 통해 "왜 AI가 긴 작업에서 실패하는지"를 4가지 유형으로 정리했고,
+      OpenAI는 "5개월 동안 코드 한 줄도 직접 쓰지 않고 AI로만 100만 줄 프로그램을 완성한" 실제 실험 결과를 공개했다.
+      두 문서가 강조하는 원리는 다르지만 <strong>공통 철학은 하나</strong>: "AI를 더 똑똑하게 만들기보다 AI가 일할 환경을 잘 만드는 것이 중요하다".
+    </p>
+
+    <h3 style="color:#a89fff;">1.1 Anthropic — 실패 4유형 × 해결</h3>
+    <p class="intro">AI가 긴 작업에서 실패하는 4가지 방식과 해결책.</p>
+
+    <table>
+      <thead><tr><th style="width:50%">실패</th><th>해결</th></tr></thead>
+      <tbody>
+        <tr><td>① 대충 끝내려 함</td><td><strong>체크리스트</strong></td></tr>
+        <tr><td>② 다 했다고 거짓말</td><td><strong>체크리스트 + 다른 AI 검사</strong></td></tr>
+        <tr><td>③ 원래 목표 잊음</td><td><strong>인수인계서</strong></td></tr>
+        <tr><td>④ 자기 답안 자기 채점</td><td><strong>다른 AI 검사 + 5~15회 반복</strong></td></tr>
+      </tbody>
+    </table>
+
+    <div class="callout" style="margin:14px 0; background:rgba(255,200,0,0.06); border-left:3px solid rgba(255,200,0,0.5);">
+      <strong>원문 용어 매핑</strong> (헷갈림 방지)
+      <ul style="margin:6px 0 0 20px;">
+        <li><strong>체크리스트</strong> = Feature List = 기능 목록 = 피쳐 리스트</li>
+        <li><strong>다른 AI 검사</strong> = 평가자 분리 = 다중 에이전트</li>
+        <li><strong>인수인계서</strong> = 컨텍스트 리셋</li>
+      </ul>
+    </div>
+
+    <p><strong>②와 ④는 원인이 같다</strong> — 둘 다 "자기 평가 편향". 그래서 같은 약(다른 AI 검사)이 통함.</p>
+
+    <h3 style="color:var(--accent-mint);">1.2 OpenAI — 4대 원리 (100만줄/5개월 프로젝트)</h3>
+    <p class="intro">3~7명이 5개월간 AI로만 100만 줄 프로그램을 만들면서 쌓은 교훈.</p>
+    <table>
+      <thead><tr><th style="width:22%">원리</th><th>무엇인가</th><th style="width:32%">왜 중요한가</th></tr></thead>
+      <tbody>
+        <tr><td>① AGENTS.md (지도+도서관)</td><td>100줄짜리 짧은 안내서 + 상세 내용은 별도 <code>docs/</code></td><td>안내서가 너무 길면 작업 집중 못 함. 얇은 가이드 + 필요 시 찾는 도서관 구조</td></tr>
+        <tr><td>② 기계적 규칙 강제</td><td>6-layer 아키텍처를 린터가 자동 검사. 위반 시 거부 + <strong>"이렇게 고치면 됨" 힌트까지</strong></td><td>AI는 상황 따라 다르게 판단함. "해야 한다"만으론 안 지켜짐. 기계가 막아야 함</td></tr>
+        <tr><td>③ 피드백 루프</td><td>AI가 Chrome DevTools로 자기 화면 직접 보고 수정. 성능 기준치(예: "0.8초 기동") 통과할 때까지 자동 반복</td><td>사람이 매번 확인하면 속도 안 남. AI가 자기 결과를 자기가 검증하는 자율 루프 필요</td></tr>
+        <tr><td>④ 가비지 컬렉션</td><td>AI가 매일 낡은 코드·문서 청소 PR을 자동 올림. 1분 내 자동 반영</td><td>쓰레기 쌓이면 시스템이 느려짐. 큰 리모델링 대신 매일 조금씩 청소</td></tr>
+      </tbody>
+    </table>
+
+    <div class="callout">
+      <strong>엔지니어의 새 역할</strong>: OpenAI가 말한 "요리사 → 주방 설계자". 직접 코드를 쓰지 않고 <strong>AI가 일할 환경을 설계</strong>하고, <strong>실수가 나오면 환경에 박제</strong>하여 재발 방지한다.
+    </div>
+  </section>
+
+  <!-- §2 루브릭 -->
+  <section class="section">
+    <div class="section-title">2. 채점 루브릭</div>
+
+    <h3>왜 루브릭이 필요한가</h3>
+    <p>
+      이 노트의 스코어(★, n/10)가 <strong>"왜 그 점수인지"</strong> 설명 없으면 주관적 느낌으로 읽힌다.
+      루브릭을 먼저 정해두면 같은 기준으로 재채점 가능하고, 나중에 봐도 "내가 왜 이렇게 매겼는지" 추적 가능하다.
+    </p>
+
+    <h3>2.1 정합도 (★ 기준)</h3>
+    <table>
+      <thead><tr><th>등급</th><th>정의</th><th>언제 이 등급인가</th></tr></thead>
+      <tbody>
+        <tr><td><span class="stars">★★★★★</span></td><td>문서 + 기계 강제 양쪽</td><td>원칙이 룰북에 있고 hook/lint/CI가 자동으로 막음</td></tr>
+        <tr><td><span class="stars">★★★★☆</span></td><td>문서화 + 일부 기계 강제</td><td>원칙은 문서에 있으나 강제 장치가 일부만 있거나 약함</td></tr>
+        <tr><td><span class="stars">★★★☆☆</span></td><td>문서만, 강제 없음</td><td>문서에 있지만 어겨도 알림 없음</td></tr>
+        <tr><td><span class="stars">★★☆☆☆</span></td><td>부분 구현</td><td>원칙 자체가 일부만 반영됨</td></tr>
+        <tr><td><span class="stars">★☆☆☆☆</span></td><td>언급 수준</td><td>이름만 있고 실질 구현 없음</td></tr>
+      </tbody>
+    </table>
+
+    <h3>2.2 스코어 (n/10)</h3>
+    <table>
+      <thead><tr><th>점수</th><th>의미</th><th>해석</th></tr></thead>
+      <tbody>
+        <tr><td><strong style="color:var(--accent-mint);">9~10</strong></td><td>업계 모범 사례</td><td>이 영역에선 더 개선할 여지 적음</td></tr>
+        <tr><td><strong style="color:var(--accent);">7~8</strong></td><td>실무 적용 충분</td><td>핵심은 갖춰짐, 일부 자동화 여지</td></tr>
+        <tr><td><strong style="color:var(--warn);">5~6</strong></td><td>기계 강제 부족</td><td>문서·운영 수준은 있으나 어기면 막는 장치 약함</td></tr>
+        <tr><td><strong style="color:var(--accent-orange);">3~4</strong></td><td>실천 산발적</td><td>원칙은 인지하나 일관성 부족</td></tr>
+        <tr><td><strong style="color:var(--bad);">1~2</strong></td><td>부재</td><td>해당 장치 없음</td></tr>
+      </tbody>
+    </table>
+
+    <div class="callout warn">
+      <strong>한계</strong>: 같은 항목을 다시 채점하면 <strong>1~2점 변동 가능</strong>. 특히 7과 6의 경계가 주관적이다.
+      따라서 <strong>절대 등급이 아닌 상대적 진단</strong>으로만 사용. "X는 Y보다 부족하다"가 핵심이지 "X는 객관적으로 6점이다"가 아니다.
+    </div>
+  </section>
+
+  <!-- §3 인벤토리 -->
+  <section class="section">
+    <div class="section-title">3. 프로젝트 자산 인벤토리 (실측)</div>
+
+    <h3>왜 이 수치를 기록하는가</h3>
+    <p>
+      분석의 근거를 숫자로 고정해두면 <strong>나중에 "그때 기준으로는 이랬다"고 추적 가능</strong>하다.
+      프로젝트 성장에 따라 수치가 바뀌면 그 자체가 하네스 성숙도의 변화 지표가 된다.
+    </p>
+
+    <table>
+      <thead><tr><th style="width:30%">계층</th><th>실측</th><th>해석</th></tr></thead>
+      <tbody>
+        <tr><td><code>CLAUDE.md</code></td><td>173줄</td><td>OpenAI 권장 "100줄" 초과. 다만 100줄 기준은 100만줄 프로젝트용이라 MVP 규모엔 적절</td></tr>
+        <tr><td>서브 룰북</td><td>9개 + <code>INDEX.md</code></td><td><code>rules/sub/</code> 하위. 도메인별로 잘 분리됨 (workflow, git, documentation, milestone 등)</td></tr>
+        <tr><td>언어 스코프 룰</td><td>4개</td><td>rust/swift/svelte/python-ml. 해당 언어 작업 시 자동 로드 → 컨텍스트 관리에 유리</td></tr>
+        <tr><td>스킬</td><td>22개</td><td><code>/step-1~9</code>, <code>/milestone</code>, <code>/debate</code> 등. 포트/어댑터 패턴으로 역할 분리</td></tr>
+        <tr><td>에이전트</td><td>7개</td><td>debate, interviewer, reviewer, refactorer, tester, git, deep-analysis</td></tr>
+        <tr><td><code>settings.json</code></td><td>deny 7건, hooks 2종</td><td><code>git push</code>, <code>rm -rf</code>, <code>.env 수정</code> 등 기계적 차단. Stop + PreCompact hook</td></tr>
+        <tr><td>Memory</td><td>25개 (feedback 10개)</td><td><code>memory/feedback_*.md</code> 10건 축적 — "실수 박제" 철학의 실제 적용 사례</td></tr>
+        <tr><td>MCP (프로젝트 <code>.mcp.json</code>)</td><td><strong style="color:var(--accent-mint);">2개만</strong> (<code>tuist</code>, <code>codex</code>)</td><td>프로젝트 자체는 매우 절제됨</td></tr>
+        <tr><td>MCP (글로벌 주입)</td><td>~16 서버, ~200 도구</td><td>Claude Code 사용자 전역 설정에서 유래. 프로젝트가 직접 등록한 게 아님</td></tr>
+      </tbody>
+    </table>
+  </section>
+
+  <!-- §4 Strong Fit -->
+  <section class="section">
+    <div class="section-title">4. Strong Fit (정합된 부분)</div>
+
+    <h3>이 섹션의 의미</h3>
+    <p>
+      두 문서가 강조하는 원칙 중 프로젝트가 <strong>이미 잘 반영하고 있는 부분</strong>을 정리한다.
+      ★5가 아닌 항목엔 "감점 사유"를 ⚠로 표시하되, <strong>수정할 필요가 있는지</strong>를 명확히 한다 — 감점 사유가 있다고 다 고쳐야 하는 건 아니다.
+    </p>
+
+    <div class="reading-guide">
+      <strong>⚠ 행동 권고 3종</strong>
+      <ul>
+        <li><span class="action-badge action-skip">[넘어가기]</span> 감점 사유이지만 지금 수정 불필요 (이유 명시)</li>
+        <li><span class="action-badge action-opt">[선택적]</span> 여유 있을 때 개선하면 ★5 가능</li>
+        <li><span class="action-badge action-move">[Gap 이관]</span> 별도 Gap 항목에서 관리. Strong Fit 자체는 유지</li>
+      </ul>
+    </div>
+
+    <div class="strong-item">
+      <div class="strong-header">
+        <div class="strong-title">4.1 AGENTS.md = 지도+도서관 (OpenAI ①)</div>
+        <span class="stars">★★★★☆</span>
+      </div>
+      <div class="strong-body">
+        <p><strong>왜 강점인가</strong>: <code>CLAUDE.md</code>(173줄)는 "지도" 역할, <code>rules/sub/*.md</code> 9개는 상세 "도서관" 역할을 맡는다. 언어 스코프 룰은 rust/swift/svelte/python-ml 작업 시 자동 로드되어 컨텍스트 효율이 높다. OpenAI가 100만줄 프로젝트에서 도입한 구조와 거의 동일하다.</p>
+        <div class="warn-para">
+          <span class="warn-inline">⚠ 감점 사유</span>: CLAUDE.md가 OpenAI 권장 "100줄"을 초과(173줄). <span class="action-badge action-skip">[넘어가기]</span> — OpenAI 기준은 100만줄 대형 프로젝트에서 컨텍스트 과부하를 막기 위한 수치. 현재는 MVP 규모라 173줄이 오히려 적절한 밀도다. 세션 시작 지연이나 가독성 문제가 체감될 때 분할.
+        </div>
+      </div>
+    </div>
+
+    <div class="strong-item">
+      <div class="strong-header">
+        <div class="strong-title">4.2 기계적 규칙 강제 (OpenAI ②)</div>
+        <span class="stars">★★★★★</span>
+      </div>
+      <div class="strong-body">
+        <p><strong>왜 강점인가</strong>: 프로젝트는 두 계층의 hook과 deny 규칙으로 <strong>위험 명령·형식 위반·테스트 미통과를 기계적으로 차단</strong>한다.</p>
+        <table style="margin-top:8px;margin-bottom:10px;">
+          <thead><tr><th style="width:32%;">계층</th><th style="width:28%;">어디</th><th>역할</th></tr></thead>
+          <tbody>
+            <tr><td>Git pre-commit hook</td><td><code>.git/hooks/pre-commit</code></td><td>main 직접 커밋 차단, 테스트 미통과 차단</td></tr>
+            <tr><td>Git commit-msg hook</td><td><code>.git/hooks/commit-msg</code></td><td>커밋 메시지 형식 강제</td></tr>
+            <tr><td>Claude Code deny</td><td><code>settings.json</code></td><td><code>git push</code>, <code>rm -rf</code>, <code>.env</code> 수정 등 7건 자동 거부</td></tr>
+            <tr><td>PreCompact hook</td><td><code>settings.json</code></td><td>컴팩션 전 대화 로그 자동 백업</td></tr>
+          </tbody>
+        </table>
+        <p>"해야 한다"가 아니라 <strong>"어기면 막는"</strong> 수준이다. OpenAI가 강조한 "기계적 규칙 강제"의 상당 부분이 이미 실현됨.</p>
+        <p style="font-size:12.5px;color:var(--muted);margin-top:8px;">
+          참고: <code>settings.json</code>의 Stop hook은 이모지 출력만 하는 placeholder. 하지만 <strong>실질 검증은 Git hook이 담당</strong>하므로 공백 없음. §9에서 정리 예정.
+        </p>
+      </div>
+    </div>
+
+    <div class="strong-item">
+      <div class="strong-header">
+        <div class="strong-title">4.3 다중 에이전트 · 평가자 분리 (Anthropic ③)</div>
+        <span class="stars">★★★★★</span>
+      </div>
+      <div class="strong-body">
+        <p><strong>왜 강점인가</strong>: <code>/debate</code> 스킬이 Claude(Anthropic) + Codex(OpenAI) + Serena(MCP 심볼 분석) 3자 토론을 진행한다. <strong>서로 다른 회사·다른 방법</strong>이라 편향이 부분적으로 독립되어 있다. 역할 에이전트 7종도 작성자와 평가자를 분리한다. 특히 <code>/step-7</code>은 Claude 작성 / Codex 리뷰 구조로 "자기 답안을 자기가 채점"하는 실패 유형 ④를 방지한다. MVP 단계 코드 리뷰 영역에서는 이 조합만으로 충분한 독립성이 확보된다.</p>
+      </div>
+    </div>
+
+    <div class="strong-item">
+      <div class="strong-header">
+        <div class="strong-title">4.4 반복적 개선 (Anthropic ④)</div>
+        <span class="stars">★★★★☆</span>
+      </div>
+      <div class="strong-body">
+        <p><strong>왜 강점인가</strong>: <code>/step-7</code> 스킬이 리팩토링 3R(R1/R2/R3) + 리뷰 3R(보안/아키텍처/최종) 구조를 갖는다. Anthropic이 프론트엔드 디자인 작업에서 5~15회 반복 적용해 품질을 끌어올린 방식과 동일한 아이디어. 한 번에 완벽한 결과 대신 <strong>만들고→평가하고→다시 만들기</strong> 반복.</p>
+      </div>
+    </div>
+
+    <div class="strong-item">
+      <div class="strong-header">
+        <div class="strong-title">4.5 Discovery-First 탐색 60% (공통)</div>
+        <span class="stars">★★★★★</span>
+      </div>
+      <div class="strong-body">
+        <p><strong>왜 강점인가</strong>: <code>/milestone</code> 스킬과 <code>rules/sub/milestone.md</code>에 <strong>"탐색과 브레인스토밍이 전체 시간의 60%"</strong>가 명시. "무엇을 만들지 함께 발견하는" 절차가 룰로 박혀 있다. 구현 바로 뛰어들지 않는 원칙은 Anthropic ① One-shotting 방지, OpenAI "의도 명확화" 철학과 연결된다.</p>
+      </div>
+    </div>
+
+    <div class="strong-item">
+      <div class="strong-header">
+        <div class="strong-title">4.6 TDD 문화 (OpenAI 검증 루프)</div>
+        <span class="stars">★★★★★</span>
+      </div>
+      <div class="strong-body">
+        <p><strong>왜 강점인가</strong>: <code>rules/0_CODEX_RULES.md §2.2</code>에 "실패 테스트 먼저 → 구현 → 통과 확인" 순서가 강제. 90% 커버리지 기준도 명시. "구현 후 테스트 추가 금지"까지 포함되어 OpenAI의 "성능 기준치 통과해야 완료" 철학을 만족한다.</p>
+      </div>
+    </div>
+
+    <div class="strong-item">
+      <div class="strong-header">
+        <div class="strong-title">4.7 실수 → 룰 영속화 (OpenAI 철학)</div>
+        <span class="stars">★★★★☆</span>
+      </div>
+      <div class="strong-body">
+        <p><strong>왜 강점인가</strong>: <code>memory/feedback_*.md</code>에 <strong>10건의 피드백 축적</strong> (예: <code>feedback_e2e_before_commit.md</code>, <code>feedback_commit_granularity.md</code>). 사용자가 지적한 실수가 규칙으로 박제되어 재발 방지된다. OpenAI "AI가 실수하면 환경을 설계해서 두 번 다시 안 일어나게"의 구현.</p>
+      </div>
+    </div>
+
+    <div class="strong-item">
+      <div class="strong-header">
+        <div class="strong-title">4.8 안전 제한 (공통)</div>
+        <span class="stars">★★★★★</span>
+      </div>
+      <div class="strong-body">
+        <p><strong>왜 강점인가</strong>: <code>rules/sub/mcp_integration.md</code>에 프로덕션 접근 금지, DDL 사전 승인 필수, Firecrawl 크롤링 사전 승인 등이 명시. Chrome DevTools·Playwright도 로컬/스테이징만 허용. 위험한 자동 실행을 체계적으로 차단.</p>
+      </div>
+    </div>
+
+    <div class="strong-item">
+      <div class="strong-header">
+        <div class="strong-title">4.9 컨텍스트 압축 보존 (Anthropic ①)</div>
+        <span class="stars">★★★★☆</span>
+      </div>
+      <div class="strong-body">
+        <p><strong>왜 강점인가</strong>: <code>settings.json</code>의 <code>compactPrompt</code>에 보존할 5항목(CLAUDE.md 규칙 / 태스크 진행 / 수정 파일 / 피드백 / 실패 접근법)이 명시. PreCompact hook이 컴팩션 전 대화 로그를 백업한다. Anthropic이 "근무 교대 시 인수인계서" 비유로 설명한 장치의 상당 부분이 구현됨.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- §5 Gap -->
+  <section class="section">
+    <div class="section-title">5. Gap 4개 (부족한 부분)</div>
+
+    <h3>이 섹션의 의미</h3>
+    <p>
+      문서 원리 중 <strong>아직 부족한 부분</strong>을 5개로 정리한다.
+    </p>
+    <div class="callout mint">
+      <strong>중요한 원칙</strong>: 이 리스트는 "해야 할 일 목록"이 아니라 "실수가 실제로 나왔을 때 꺼내 쓸 매뉴얼"이다.
+      5개 중 몇 개는 영영 안 고쳐도 프로젝트가 잘 굴러갈 수 있다.
+      OpenAI의 "실수가 나오면 박제"의 <strong>반대는 "실수 나오기 전에 예방적으로 다 설치"</strong>이고, 이건 과투자다.
+    </div>
+
+
+    <div class="gap-card top">
+      <div class="gap-header">
+        <span class="gap-rank">🥇</span>
+        <span class="gap-title">G1. Feature List 자동 생성</span>
+      </div>
+      <div class="gap-row"><div class="k">무엇</div><div class="v">서브태스크를 시작할 때 "이 태스크가 완성되었다고 하려면 충족해야 할 <strong>태스크 고유의 세부 조건</strong>"을 AI가 자동 생성해 체크리스트로 남기는 장치. Anthropic이 claude.ai 앱을 AI로 만들 때 <strong>200개 이상</strong>의 기능 목록을 먼저 작성한 것과 같다.</div></div>
+      <div class="gap-row"><div class="k">DoD와 관계</div><div class="v">
+        <table style="margin-top:6px;">
+          <thead><tr><th>구분</th><th>DoD (현재)</th><th>Feature List (G1)</th></tr></thead>
+          <tbody>
+            <tr><td>성격</td><td>포괄적·범용</td><td>고유·세밀</td></tr>
+            <tr><td>예시</td><td>"린트 통과 / 테스트 통과 / 리뷰 완료"</td><td>"비로그인 대응 / 낙관적 업데이트 롤백 / 더블 클릭 방지"</td></tr>
+            <tr><td>묻는 것</td><td>"형식적으로 끝났나?"</td><td>"실제 기능이 완성됐나?"</td></tr>
+            <tr><td>관계</td><td><strong>유지</strong></td><td><strong>추가</strong> (나란히)</td></tr>
+          </tbody>
+        </table>
+      </div></div>
+      <div class="gap-row"><div class="k">부족</div><div class="v">DoD는 5~7개 포괄적 항목만 → <strong>태스크 고유의 엣지 케이스·에러 처리·회귀 검증이 누락</strong>. "다 했어요" 선언 시 태스크 특화 항목을 정말 다 했는지 검증 불가.</div></div>
+      <div class="gap-row"><div class="k">방법</div><div class="v"><code>/step-4</code> (서브태스크 인터뷰) 직후 "초기화 에이전트" 단계 추가. 스코프 확정 직후 AI가 Planner 역할로 Feature List 자동 생성. 구현 후 "남은 항목 n개" 카운트.</div></div>
+      <div class="gap-row"><div class="k">적정 수</div><div class="v">서브태스크당 <strong>30~50개</strong>. 너무 적으면(5~10) 기존 DoD와 차이 없음, 너무 많으면(100+) 오버헤드. 30~50이 MVP 서브태스크(3~5 파일)의 각 측면 세밀 커버 적정선</div></div>
+      <div class="gap-row"><div class="k">구성 예시</div><div class="v">
+        "피드 좋아요" 서브태스크 기준:
+        <table style="margin-top:6px;">
+          <thead><tr><th>카테고리</th><th>수</th></tr></thead>
+          <tbody>
+            <tr><td>기능 (골든 패스)</td><td>5</td></tr>
+            <tr><td>엣지 케이스</td><td>4</td></tr>
+            <tr><td>에러 처리</td><td>3</td></tr>
+            <tr><td>테스트</td><td>3</td></tr>
+            <tr><td>UI/UX</td><td>4</td></tr>
+            <tr><td>회귀 확인</td><td>3</td></tr>
+            <tr><td>플랫폼 (iOS/웹)</td><td>2</td></tr>
+            <tr><td><strong>합계</strong></td><td><strong>24~30</strong></td></tr>
+          </tbody>
+        </table>
+      </div></div>
+      <div class="gap-row"><div class="k">왜 step-4</div><div class="v">step-1(메인태스크) 너무 추상적 / step-3(서브태스크 분리) 상세 없음 / <strong>step-4 스코프 확정 직후가 최적</strong></div></div>
+      <div class="gap-row"><div class="k">왜 1순위</div><div class="v">난이도 하 (반나절), 임팩트 높음 (Anthropic 실패 ①②③ 동시 대응), 체감 빠름, 학습 가치 최고</div></div>
+    </div>
+
+    <div class="gap-card">
+      <div class="gap-header"><span class="gap-title">G6. 세션 MCP 과다 로드</span></div>
+      <div class="gap-row"><div class="k">무엇</div><div class="v">지금 세션에 <strong>너무 많은 MCP 도구와 함수(~200개)</strong>가 선언됨. 각 작업마다 필요한 것만 쓰는 게 아니라 <strong>모든 도구가 매 세션에 다 로드</strong>됨.
+        <ul style="margin-top:6px;padding-left:20px;">
+          <li>쓰지도 않는 도구 설명이 컨텍스트 차지 → <strong>토큰 낭비</strong></li>
+          <li>수많은 비슷한 이름 사이에서 선택해야 함 → <strong>탐색 시간 증가 + 도구 선택 오류</strong></li>
+        </ul>
+      </div></div>
+      <div class="gap-row"><div class="k">해결</div><div class="v"><strong>두 층 구조</strong>:
+        <table style="margin-top:6px;">
+          <thead><tr><th>층</th><th>역할</th><th>어디서</th></tr></thead>
+          <tbody>
+            <tr><td><strong>전역</strong></td><td>프로젝트에서 사용 가능한 모든 MCP 서버 등록</td><td>Claude Code 사용자 설정 (그대로 유지)</td></tr>
+            <tr><td><strong>스킬별</strong></td><td>각 스킬이 이번 작업에 쓸 도구만 미리 선언</td><td><code>.claude/skills/*/SKILL.md</code>의 <code>allowed-tools</code></td></tr>
+          </tbody>
+        </table>
+        AI가 매번 200개 중에서 고르지 않고, <strong>해당 스킬이 필요한 몇 개만 보고 빠르게 판단</strong>.
+      </div></div>
+      <div class="gap-row"><div class="k">실측</div><div class="v">스킬마다 편차 큼:
+        <table style="margin-top:6px;">
+          <thead><tr><th>상태</th><th>스킬</th><th>도구 수</th></tr></thead>
+          <tbody>
+            <tr><td style="color:var(--accent-mint);">타이트 ✅</td><td><code>/step-4</code>, <code>/step-8</code>, <code>/step-9</code></td><td>2</td></tr>
+            <tr><td></td><td><code>/status</code>, <code>/step-2</code>, <code>/init</code></td><td>3~4</td></tr>
+            <tr><td style="color:var(--warn);">중간 ⚠️</td><td><code>/workflow</code>, <code>/step-1~7</code>, <code>/daily-retro</code> 등</td><td>10~14</td></tr>
+            <tr><td style="color:var(--accent-orange);">과다 ⚠️</td><td><code>/milestone-review</code> / <code>/milestone</code> / <code>/debate</code></td><td>17 / 23 / 25</td></tr>
+            <tr><td style="color:var(--bad);"><strong>선언 없음 🚨</strong></td><td><code>/deep-analysis</code>, <code>/presentation</code>, <code>/progress-cleanup</code></td><td><strong>전역 200개 모두 로드</strong></td></tr>
+          </tbody>
+        </table>
+      </div></div>
+      <div class="gap-row"><div class="k">순서</div><div class="v">
+        1. 🚨 <strong>선언 없는 3개 먼저 추가</strong> — <code>/deep-analysis</code>, <code>/presentation</code>, <code>/progress-cleanup</code>에 <code>allowed-tools</code> 명시<br/>
+        2. <strong>과다 스킬 다이어트</strong> — <code>/debate</code>·<code>/milestone</code>에서 실제 안 쓰는 도구 제거<br/>
+        3. <strong>중간 스킬 점진 조정</strong> — 사용하면서 "이거 필요 없었네" 발견되면 빼기
+      </div></div>
+      <div class="gap-row"><div class="k">언제</div><div class="v">토큰 비용 체감 시, 또는 도구 선택 오류 자주 보일 때. 당장 시급하진 않지만 반나절 작업.</div></div>
+      <div class="gap-row"><div class="k">유지보수</div><div class="v"><strong>초기 세팅만 사람이 하고, 이후는 AI가 자동 판단·제안</strong>.
+        <div style="margin-top:8px;background:var(--surface-2);padding:12px 14px;border-radius:6px;font-size:12.5px;line-height:1.8;">
+          스킬 사용 중<br/>
+          &nbsp;&nbsp;└→ AI가 "이 도구 있으면 좋았겠다" / "없어서 우회했다" 자각<br/>
+          &nbsp;&nbsp;└→ [자동] <code>memory/feedback_g6_*.md</code> 기록 (사용자 개입 0%)<br/><br/>
+          <strong style="color:var(--accent-pink);">같은 패턴 3회 반복</strong><br/>
+          &nbsp;&nbsp;└→ [자동] 사용자에게 제안:<br/>
+          &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;📢 <code>/milestone</code> 스킬에서 tavily_crawl이 3회 필요했습니다.<br/>
+          &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<code>allowed-tools</code>에 추가할까요? [승인] [거부]<br/><br/>
+          <strong>사용자: 승인 → 자동 반영</strong>
+        </div>
+      </div></div>
+    </div>
+
+<div class="gap-card">
+      <div class="gap-header"><span class="gap-title">G3. UI 자율 피드백 루프</span></div>
+      <div class="gap-row"><div class="k">무엇</div><div class="v">Playwright로 AI가 <strong>자기가 만든 화면을 직접 보고, 스스로 수정 반복</strong>하는 자율 루프. OpenAI의 "밤새 일하는 AI" 구조.
+        <div style="margin-top:6px;background:var(--surface-2);padding:10px 12px;border-radius:6px;font-size:12.5px;">
+          AI UI 구현 → 스크린샷 자동 촬영 → 기준과 비교 →<br/>
+          다르면 AI 자동 코드 수정 → 다시 스크린샷 → 일치할 때까지 반복
+        </div>
+      </div></div>
+      <div class="gap-row"><div class="k">핵심 전제</div><div class="v"><strong>"기준"이 있어야 작동</strong>. 기준 없이 AI가 자기 구현을 자기가 평가하면 Anthropic의 <strong>"자기평가 실패"</strong> 원칙 위반.
+        <table style="margin-top:6px;">
+          <thead><tr><th>상황</th><th>기준</th><th>효과</th></tr></thead>
+          <tbody>
+            <tr><td><strong>A.</strong> 사용자가 이미지·시안 제공</td><td>시안</td><td style="color:var(--accent-mint);">✅ 가장 이상적</td></tr>
+            <tr><td><strong>B.</strong> AI 자율 판단만 ("좋아요 버튼 추가")</td><td><strong>없음</strong></td><td style="color:var(--bad);">❌ 비교 불가</td></tr>
+            <tr><td><strong>C.</strong> 회귀 테스트</td><td>이전 상태</td><td style="color:var(--accent-mint);">✅ 가능</td></tr>
+            <tr><td><strong>D.</strong> 명백한 시각 버그</td><td>정상 렌더 상식</td><td style="color:var(--accent-mint);">✅ 가능</td></tr>
+          </tbody>
+        </table>
+        <div style="margin-top:10px;font-size:13px;">
+          <strong>C. 회귀 테스트란?</strong> "이전엔 잘 되던 게 새 변경으로 깨졌는지" 확인. 기준은 <strong>"변경 전 상태"</strong>.
+          <div style="margin-top:4px;background:var(--surface-2);padding:10px 12px;border-radius:6px;font-size:12.5px;">
+            어제: 피드 화면 정상 → 스크린샷 찍어둠 (기준)<br/>
+            오늘: 좋아요 버튼 추가 (코드 변경)<br/>
+            &nbsp;&nbsp;→ 오늘 피드 화면 스크린샷 → 어제 것과 비교<br/>
+            &nbsp;&nbsp;→ 내가 안 건드린 다른 부분이 깨졌는지 확인
+          </div>
+        </div>
+        <div style="margin-top:10px;font-size:13px;">
+          <strong>D. 명백한 시각 버그</strong>: 시안 없이도 누가 봐도 깨진 경우.
+          <ul style="margin-top:4px;padding-left:20px;font-size:12.5px;">
+            <li>텍스트가 화면 밖으로 튀어나옴 (overflow)</li>
+            <li>버튼이 다른 요소 위에 겹침</li>
+            <li>이미지가 빈 박스로 보임</li>
+            <li>레이아웃이 무너짐</li>
+          </ul>
+          AI가 스크린샷 보고 "이거 이상하다" 감지 가능. 기준은 <strong>"정상적 렌더 상식"</strong>.
+        </div>
+      </div></div>
+      <div class="gap-row"><div class="k">비용</div><div class="v"><strong>Playwright를 쓰면 반환값(이미지·DOM)이 커서 토큰을 많이 쓴다.</strong>
+        <table style="margin-top:6px;">
+          <thead><tr><th>도구</th><th>반환</th><th>토큰</th></tr></thead>
+          <tbody>
+            <tr><td><code>browser_take_screenshot</code></td><td>이미지(비전)</td><td>수백~수천</td></tr>
+            <tr><td><code>browser_snapshot</code></td><td>DOM 트리 전체</td><td>수천~수만</td></tr>
+          </tbody>
+        </table>
+        5~15회 반복 시 1작업당 <strong>수만~수십만 토큰</strong> → 모든 UI 작업 적용은 <strong>과투자</strong>.
+      </div></div>
+      <div class="gap-row"><div class="k">방법</div><div class="v"><code>/step-8</code>에 UI 변경 감지 시 자동 스크린샷 + 기준과 diff + 불일치 시 <code>/step-6</code> 재진입 파이프라인.</div></div>
+      <div class="gap-row"><div class="k">언제</div><div class="v">다음 <strong>모두</strong> 해당될 때 (하나만으론 부족):
+        <ul style="margin-top:4px;padding-left:20px;">
+          <li>디자인 시안/기준 이미지가 있음</li>
+          <li>같은 UI를 3번 이상 반복 수정 중 (수동보다 자동이 싸짐)</li>
+        </ul>
+      </div></div>
+      <div class="gap-row"><div class="k">MVP 가치</div><div class="v">개인 MVP라 디자인 시안 없이 기능 중심으로 작업한다면 <strong>A 시나리오가 거의 없음</strong>. 따라서 G3 실용 가치는 <strong>제한적</strong>이고, 낮은 우선순위가 맞음. 디자인 중요도가 높아지는 시점에 재고.</div></div>
+    </div>
+
+    <div class="gap-card">
+      <div class="gap-header"><span class="gap-title">G4. MVP 완료 아카이빙 자동 알림</span></div>
+      <div class="gap-row"><div class="k">무엇</div><div class="v">MVP 모든 마일스톤이 끝났을 때 <strong>"이제 아카이빙하세요"를 AI가 자동 알림</strong>. 사용자는 승인만 누르면 <code>/progress-cleanup</code> 실행.</div></div>
+      <div class="gap-row"><div class="k">작업 흐름</div><div class="v" style="background:var(--surface-2);padding:10px 12px;border-radius:6px;font-size:12.5px;">
+        마일스톤 리뷰 → MVP + 내부 마일스톤 흐름 잡기<br/>
+        &nbsp;&nbsp;↓<br/>
+        마일스톤 스킬 → 각 마일스톤 상세 기획<br/>
+        &nbsp;&nbsp;↓<br/>
+        세션 단위로 마일스톤 하나씩 진행 → 완료 시 로드맵에 "완료" 표시<br/>
+        &nbsp;&nbsp;↓<br/>
+        모든 마일스톤 끝 → <code>/progress-cleanup</code>으로 아카이빙 (progress/ → history/)
+      </div></div>
+      <div class="gap-row"><div class="k">부족</div><div class="v"><code>/progress-cleanup</code> 스킬은 존재. 하지만 <strong>사용자가 "MVP 끝났지"를 기억해서 직접 실행</strong>해야 함. 잊으면 <code>progress/</code>에 낡은 파일 계속 쌓임.</div></div>
+      <div class="gap-row"><div class="k">실측</div><div class="v">
+        <strong style="color:var(--accent-mint);">G4 감지에 필요한 자산이 이미 갖춰져 있음</strong>:
+        <ol style="margin-top:6px;padding-left:20px;">
+          <li><strong>규칙 명시</strong>: <code>rules/sub/milestone.md</code>에 "로드맵은 프로젝트당 1개", "마일스톤 완료 시 <code>_roadmap.md</code> 타임라인 업데이트 필수" 명시</li>
+          <li><strong>실제 파일 존재</strong>: <code>history/mvp4/</code>, <code>history/mvp9/</code>, <code>history/mvp10/</code>에 <code>_roadmap.md</code> 확인</li>
+          <li><strong>상태 기록 형식</strong>: 마일스톤별 "완료" 상태가 명확한 테이블로 기록</li>
+        </ol>
+        실제 예시:
+        <div style="margin-top:6px;background:var(--surface-2);padding:10px 12px;border-radius:6px;font-size:12.5px;">
+          | 마일스톤 | 목표 | 기간 | 상태 |<br/>
+          |----------|------|------|------|<br/>
+          | M1 | iOS 퀴즈 UX 완성 | 1~2일 | 완료 |<br/>
+          | M2 | 버그 수정 | 1~2일 | 완료 |<br/>
+          | M3 | 피드 성능 | 2~3일 | 완료 |
+        </div>
+        → <strong>파싱 쉬운 고정 형식</strong>. G4는 새 구조 만들 필요 없이 <strong>기존 자산 위에 얹기만</strong> 하면 됨.
+      </div></div>
+      <div class="gap-row"><div class="k">방법</div><div class="v" style="background:var(--surface-2);padding:10px 12px;border-radius:6px;font-size:12.5px;line-height:1.8;">
+        사용자가 마일스톤 완료 시 <code>_roadmap.md</code>에서 M{N} 상태를 "완료"로 갱신<br/>
+        &nbsp;&nbsp;↓<br/>
+        <strong>[Hook]</strong> <code>_roadmap.md</code> 변경 이벤트 감지<br/>
+        &nbsp;&nbsp;↓<br/>
+        <strong>[자동]</strong> AI가 로드맵 전체 스캔 → 모든 마일스톤 완료?<br/>
+        &nbsp;&nbsp;↓ YES<br/>
+        <strong>[자동 제안]</strong> "📢 MVP의 모든 마일스톤 완료.<br/>
+        &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;아카이빙할까요? [승인] [거부] [나중에]"<br/>
+        &nbsp;&nbsp;↓<br/>
+        사용자: 승인 → <code>/progress-cleanup</code> 자동 실행
+      </div></div>
+      <div class="gap-row"><div class="k">왜 완전 자동이 아닌가</div><div class="v"><strong>롤백 비용</strong> 때문.
+        <table style="margin-top:6px;">
+          <thead><tr><th>완전 자동</th><th>알림 + 승인</th></tr></thead>
+          <tbody>
+            <tr><td>체크 실수 시 파일 수십 개 즉시 이동 → 되돌리기 번거로움</td><td>승인 1번으로 안전망 확보</td></tr>
+            <tr><td>회고 더 쓰고 싶은 타이밍에도 이미 이동</td><td>사용자가 타이밍 조절 가능</td></tr>
+            <tr><td>진행 중 다른 작업과 충돌 가능</td><td>적절한 시점에 실행</td></tr>
+          </tbody>
+        </table>
+        원칙: <strong>"강제 적용 범위 큰 작업(파일 이동 등)은 승인 필수"</strong>.
+      </div></div>
+    </div>
+
+  </section>
+
+  <!-- §6 스코어카드 -->
+  <section class="section">
+    <div class="section-title">6. 스코어카드</div>
+
+    <h3>점수 산정 로직</h3>
+    <p>
+      각 영역의 점수는 §2 루브릭 + §4 Strong Fit + §5 Gap 분석을 종합해 매긴다. 7~8점은 "실무 적용 충분", 5~6점은 "기계 강제 부족"의 경계다.
+    </p>
+
+    <table>
+      <thead><tr><th>영역</th><th style="width:70px;text-align:right;">점수</th><th>산정 근거</th></tr></thead>
+      <tbody>
+        <tr><td>문서 구조</td><td style="text-align:right;font-weight:700;color:var(--accent);">8/10</td><td>AGENTS.md 지도+도서관 구조 완비. CLAUDE.md 100줄 권장 초과라 10점은 아님</td></tr>
+        <tr><td>기계적 강제</td><td style="text-align:right;font-weight:700;color:var(--accent);">8/10</td><td>Git hook 2종 + deny 7건 + PreCompact 백업이 실질 검증·보호를 모두 담당. 9점 이상은 AI 자체 작업 완료 검증까지 추가 필요</td></tr>
+        <tr><td>평가자 분리</td><td style="text-align:right;font-weight:700;color:var(--accent);">8/10</td><td>Claude(Anthropic)·Codex(OpenAI)·Serena(MCP) 서로 다른 회사·방법으로 부분 독립 확보. MVP 단계 코드 리뷰엔 충분. 9점 이상은 LLM 외 수단 편입 필요하나 과투자</td></tr>
+        <tr><td>피드백 루프</td><td style="text-align:right;font-weight:700;color:var(--accent-yellow);">6/10</td><td>테스트 강제 있으나 UI 자율 검증(G3) 없음. "자동화 부족" 경계</td></tr>
+        <tr><td>체크리스트·DoD</td><td style="text-align:right;font-weight:700;color:var(--accent-yellow);">6/10</td><td>DoD 있으나 Feature List(G1) 세밀도 부족. "문서만, 세부 강제 없음"</td></tr>
+        <tr><td>컨텍스트 관리</td><td style="text-align:right;font-weight:700;color:var(--accent-mint);">9/10</td><td>세션 내 <code>compactPrompt</code> 5항목 + PreCompact 백업 + 세션 간 <code>/init</code> 자동 로드. 사용자 수동 문서 업데이트와 조합으로 <strong>사실상 완성형</strong></td></tr>
+        <tr><td>가비지 컬렉션</td><td style="text-align:right;font-weight:700;color:var(--bad);">5/10</td><td><code>/progress-cleanup</code> 스킬만 존재, 자동 스케줄 없음. 수동 실행 단계</td></tr>
+        <tr><td>실수→룰 승격</td><td style="text-align:right;font-weight:700;color:var(--accent-mint);">8/10</td><td>feedback 10건 축적 + 새 세션에서 MEMORY.md 자동 로드로 재발 방지 작동 중. AI 자율 감지는 불가능하므로 사용자 지적 기반 루프가 사실상 최선</td></tr>
+        <tr><td>프로젝트 MCP 등록</td><td style="text-align:right;font-weight:700;color:var(--accent);">7/10</td><td>프로젝트 자체 <code>.mcp.json</code>은 2개로 매우 절제. 글로벌 주입 200+ 문제는 G6에서 별도 다룸</td></tr>
+      </tbody>
+    </table>
+
+    <div class="score-avg">
+      <div style="font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:0.1em;">평균</div>
+      <div class="score-avg-val">7.1<span style="font-size:14px;color:var(--muted);">/10</span></div>
+    </div>
+
+    <h3>해석</h3>
+    <p>
+      평균 7.1은 <strong>"실무 적용은 충분하지만 자동화 여지 있음"</strong> 구간의 상단이다.
+      특히 <strong>컨텍스트 관리(9)·문서 구조(8)·기계적 강제(8)·평가자 분리(8)</strong>가 강점이고,
+      <strong>가비지 컬렉션(5)·체크리스트(6)·피드백 루프(6)·실수→룰 승격(6)</strong>이 상대적 약점이다.
+      약점 영역은 모두 "문서화된 원칙을 자동 실행으로 격상"하면 1~2점 상승 가능하다.
+    </p>
+  </section>
+
+  <!-- §7 추천 순위 -->
+  <section class="section">
+    <div class="section-title">7. 개선 추천 순위</div>
+
+    <h3>이 순위의 원칙</h3>
+    <ul style="padding-left:18px;font-size:13.5px;line-height:1.85;">
+      <li><strong>Gap 리스트 = 매뉴얼</strong>이지 "해야 할 일 리스트"가 아니다</li>
+      <li><strong>실수가 실제로 나왔을 때</strong> 해당 Gap을 꺼내 쓰기 (OpenAI "실수 박제" 철학)</li>
+      <li>4개 중 <strong>몇 개는 영영 안 고쳐도 됨</strong>. 프로젝트 맥락에 맞춰 선택적 도입</li>
+      <li>단 <strong>G1은 학습 가치와 임팩트 모두 높아서 권장</strong></li>
+    </ul>
+
+    <h3>최우선 1개 (지금 가치 있는 것)</h3>
+    <table>
+      <thead><tr><th style="width:40px;">#</th><th style="width:28%;">Gap</th><th>이유</th></tr></thead>
+      <tbody>
+        <tr><td><strong>1</strong></td><td><strong>G1</strong> Feature List 자동 생성</td><td>난이도 하, 임팩트 높음. 반나절 작업. <strong>학습·체감·저위험 교집합</strong>. 하네스 원리 체득 최적 입문. Anthropic 실패 ①②③ 동시 대응해 학습 효율 최고</td></tr>
+      </tbody>
+    </table>
+
+    <h3>나머지 3개 (필요해질 때 꺼내 쓰기)</h3>
+    <table>
+      <thead><tr><th>#</th><th>Gap</th><th>핵심</th><th>꺼낼 시점</th></tr></thead>
+      <tbody>
+        <tr><td>2</td><td>G6 세션 MCP 과다 로드</td><td>스킬별 <code>allowed-tools</code> 타이트 + deferred</td><td>토큰 비용 체감 시</td></tr>
+        <tr><td>3</td><td>G3 UI 자율 피드백</td><td>스크린샷 diff → 재수정 루프</td><td>같은 UI 3번↑ 반복 수정 시</td></tr>
+        <tr><td>4</td><td>G4 MVP 완료 아카이빙 알림</td><td>로드맵 상태 감지 → 자동 제안 → 승인</td><td>MVP 여러 개 돌리며 아카이빙 자주 잊을 때</td></tr>
+      </tbody>
+    </table>
+
+    <h3>앞으로 더 배울 것 (학습 체크리스트)</h3>
+    <p style="font-size:13px;color:var(--muted);margin-bottom:10px;">
+      이 노트를 작성하면서 <strong style="color:var(--accent-pink);">아직 확신이 없는 지점 2가지</strong>. 나중에 멘토·동료·자료로 보완할 주제.
+    </p>
+    <ul class="checklist">
+      <li><strong>하네스의 경계선 정의</strong> — 어디까지가 하네스이고 어디부터가 그냥 프로젝트 인프라인가? 예: <code>scripts/deploy.sh</code>는 하네스? Git hook은? CI 파이프라인은? 실무 기준이 필요</li>
+      <li><strong>MVP 단계별 하네스 투자 우선순위</strong> — "이론적 중요도"와 "상황별 긴급도" 충돌 시 판단 기준. "유저 100명 전엔 이 수준까지만" 같은 rule of thumb</li>
+    </ul>
+  </section>
+
+  <!-- §8 실제 수정 TODO -->
+  <section class="section">
+    <div class="section-title">8. 실제 수정 TODO (분석 중 발견)</div>
+
+    <h3>이 섹션의 의미</h3>
+    <p>
+      §5의 Gap 4개는 <strong>"이론적 개선 지점"</strong>(언젠가 필요해지면 꺼내 쓰는 매뉴얼)이다.
+      반면 이 §8은 <strong>"분석 과정에서 실제로 발견된 즉시 수정 가능한 항목"</strong>을 누적한다.
+      Gap과 달리 <strong>지금 당장 처리하면 더 깔끔해지는</strong> 작업들이다.
+    </p>
+
+    <div class="gap-card top">
+      <div class="gap-header"><span class="gap-title">8.1 Stop hook 제거</span></div>
+      <div class="gap-row"><div class="k">무엇</div><div class="v"><code>.claude/settings.json</code>에서 Stop hook 섹션 삭제</div></div>
+      <div class="gap-row"><div class="k">왜</div><div class="v">
+        • 현재 <code>echo '🔍 완료 전 검증 게이트 통과'</code> 이모지 출력만 수행<br/>
+        • <strong>실질 검증(테스트·린트·형식)은 Git hook이 전부 담당</strong> → 중복 방지 불필요<br/>
+        • 리팩토링 커밋(<code>b53509bd</code>)에서 "나중에 검증 로직 채울 자리"로 만들었으나 수개월간 placeholder<br/>
+        • OpenAI/Anthropic 철학: "쓰지 않는 장치는 제거" (복잡도 관리)
+      </div></div>
+      <div class="gap-row"><div class="k">방법</div><div class="v"><code>settings.json</code>에서 <code>"Stop"</code> 배열 통째로 제거. <code>"PreCompact"</code>는 백업 기능이 실동작하므로 유지</div></div>
+      <div class="gap-row"><div class="k">영향</div><div class="v">AI 응답 종료 시 터미널에 🔍 이모지 안 뜨는 것 외엔 없음</div></div>
+      <div class="gap-row"><div class="k">나중에</div><div class="v">정말 필요하면 그때 다시 추가. 예: "서브태스크 DoD 체크박스 전부 체크됐나 자동 확인" 같은 실질 로직 생길 때</div></div>
+    </div>
+
+    <div class="gap-card top">
+      <div class="gap-header"><span class="gap-title">8.2 step-8 수동 테스트 체크리스트 기계 강제</span></div>
+      <div class="gap-row"><div class="k">무엇</div><div class="v"><code>/step-8</code>에 이미 있는 "사용자 확인 없이 step-9 금지" 규칙을 <strong>Claude가 어겨도 막는 기계 장치</strong> 추가</div></div>
+      <div class="gap-row"><div class="k">왜</div><div class="v">현재는 <strong>자발적 준수</strong>에 의존. 사용자가 "그냥 커밋해줘"라고 하면 Claude가 그냥 진행 가능</div></div>
+      <div class="gap-row"><div class="k">Before</div><div class="v" style="background:var(--surface-2);padding:10px 12px;border-radius:6px;font-size:12.5px;line-height:1.7;">
+        사용자: "/step-8 진행"<br/>
+        Claude: [테스트 통과] [배포] [수동 테스트 안내]<br/>
+        사용자: "바쁘니 그냥 커밋"<br/>
+        Claude: (판단상 진행) /step-9 → 커밋 완료 <span style="color:var(--bad);">❌ 테스트 건너뜀</span>
+      </div></div>
+      <div class="gap-row"><div class="k">After</div><div class="v" style="background:#4dd9ac11;padding:10px 12px;border-radius:6px;font-size:12.5px;line-height:1.7;">
+        사용자: "/step-8 진행"<br/>
+        Claude: [테스트 통과] [배포]<br/>
+        &nbsp;&nbsp;&nbsp;&nbsp;체크리스트 생성: <code>progress/subtask/.../manual_test.md</code><br/>
+        &nbsp;&nbsp;&nbsp;&nbsp;- [ ] 1. 골든 패스<br/>
+        &nbsp;&nbsp;&nbsp;&nbsp;- [ ] 2. 엣지 케이스<br/>
+        &nbsp;&nbsp;&nbsp;&nbsp;- [ ] 3. 회귀 확인<br/>
+        사용자: "그냥 커밋"<br/>
+        Claude: /step-9 진입 시도 → <span style="color:var(--bad);">❌ 차단</span><br/>
+        &nbsp;&nbsp;&nbsp;&nbsp;체크리스트 미완료: 3/3<br/>
+        &nbsp;&nbsp;&nbsp;&nbsp;옵션: (a) 테스트 후 [x] 표시 (b) --skip-manual (사유 필수)<br/>
+        사용자: (차단되어) 테스트 후 커밋
+      </div></div>
+      <div class="gap-row"><div class="k">방법</div><div class="v">
+        1. <code>/step-8</code>이 서브태스크별 체크리스트 파일 자동 생성<br/>
+        2. <code>/step-9</code> 진입 시 미체크 항목 수 검증<br/>
+        3. 미완료 시 차단 + 안내<br/>
+        4. 긴급 우회용 <code>--skip-manual</code> 플래그 + 사유 필수 기록
+      </div></div>
+      <div class="gap-row"><div class="k">범위</div><div class="v">이 항목은 <strong>UI/동작 수동 테스트 강제</strong> 전용. 코드 리뷰(step-7)는 이미 LLM 3자 분리로 충분하므로 무관</div></div>
+    </div>
+  </section>
+
+  <!-- 부록 -->
+  <section class="section">
+    <div class="section-title">부록 — 문서 원문 인용</div>
+    <div class="quote-grid">
+      <div class="quote-card a">
+        <div class="quote-src">Anthropic</div>
+        <div class="quote-body">"당신이 모델이 아니라면, 당신은 하네스다"</div>
+        <div class="quote-body">"하네스는 모델이 스스로 할 수 없는 일에 대한 가정을 담고 있는데, 이 가정은 모델이 좋아지면서 낡아질 수 있다"</div>
+      </div>
+      <div class="quote-card o">
+        <div class="quote-src">OpenAI</div>
+        <div class="quote-body">"AI가 실수하면, 그 실수를 두 번 다시 하지 않도록 환경을 설계한다"</div>
+        <div class="quote-body">"소프트웨어 엔지니어링 팀의 주된 업무는 이제 코드를 쓰는 것이 아니라, 환경을 설계하고, 의도를 명확히 하고, AI가 안정적으로 일할 수 있는 피드백 구조를 만드는 것이다"</div>
+      </div>
+    </div>
+  </section>
+
+  <footer class="footer">
+    frank / progress/analysis/260417_하네스_비교분석 · 분석 노트 · 2026-04-17
+  </footer>
+
+</div>
+</body>
+</html>
