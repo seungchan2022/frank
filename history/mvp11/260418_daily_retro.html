@@ -1,0 +1,532 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0">
+<title>2026-04-18 개발 회고</title>
+<style>
+  :root {
+    --bg: #FDF6F0;
+    --text: #2D2926;
+    --accent: #D97706;
+    --accent-light: #FEF3C7;
+    --heading: #92400E;
+    --border: #E5D5C5;
+    --code-bg: #FFF7ED;
+    --card-bg: #FFFFFF;
+    --muted: #78716C;
+    --success: #047857;
+    --danger: #B91C1C;
+  }
+  * { box-sizing: border-box; }
+  html, body {
+    margin: 0; padding: 0;
+    background: var(--bg);
+    color: var(--text);
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Noto Sans KR', sans-serif;
+    font-size: 15.5px;
+    line-height: 1.75;
+    -webkit-text-size-adjust: 100%;
+  }
+  .container {
+    max-width: 480px;
+    margin: 0 auto;
+    padding: 24px 20px 80px;
+  }
+  h1 {
+    font-size: 1.65em;
+    color: var(--heading);
+    margin: 0.2em 0 0.4em;
+    letter-spacing: -0.01em;
+    line-height: 1.3;
+  }
+  h2 {
+    font-size: 1.25em;
+    color: var(--heading);
+    margin: 1.8em 0 0.6em;
+    padding-bottom: 0.35em;
+    border-bottom: 2px solid var(--border);
+    letter-spacing: -0.01em;
+  }
+  h3 {
+    font-size: 1.08em;
+    color: var(--heading);
+    margin: 1.5em 0 0.5em;
+    letter-spacing: -0.01em;
+  }
+  h4 {
+    font-size: 0.98em;
+    color: var(--accent);
+    margin: 1.1em 0 0.3em;
+    font-weight: 700;
+  }
+  p { margin: 0.5em 0 1em; }
+  ul, ol {
+    margin: 0.5em 0 1em;
+    padding-left: 1.3em;
+  }
+  li { margin: 0.3em 0; }
+  blockquote {
+    margin: 1em 0;
+    padding: 12px 16px;
+    background: var(--accent-light);
+    border-left: 4px solid var(--accent);
+    border-radius: 6px;
+    color: var(--heading);
+  }
+  blockquote p:first-child { margin-top: 0; }
+  blockquote p:last-child { margin-bottom: 0; }
+  code {
+    background: var(--code-bg);
+    padding: 2px 6px;
+    border-radius: 4px;
+    font-size: 0.9em;
+    font-family: 'SF Mono', Menlo, Consolas, monospace;
+    color: var(--heading);
+    border: 1px solid var(--border);
+    word-break: break-all;
+  }
+  pre {
+    background: var(--code-bg);
+    padding: 14px;
+    border-radius: 8px;
+    overflow-x: auto;
+    font-size: 0.88em;
+    border: 1px solid var(--border);
+    line-height: 1.55;
+  }
+  pre code {
+    background: transparent;
+    padding: 0;
+    border: none;
+    color: var(--text);
+    word-break: normal;
+  }
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 1em 0;
+    font-size: 0.92em;
+  }
+  th, td {
+    border: 1px solid var(--border);
+    padding: 8px 10px;
+    text-align: left;
+    vertical-align: top;
+  }
+  th {
+    background: var(--accent-light);
+    color: var(--heading);
+    font-weight: 700;
+  }
+  tr:nth-child(even) td { background: var(--code-bg); }
+  hr {
+    border: none;
+    border-top: 2px solid var(--border);
+    margin: 2em 0;
+  }
+  .card {
+    background: var(--card-bg);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 16px 18px;
+    margin: 1em 0;
+    box-shadow: 0 1px 3px rgba(45, 41, 38, 0.05);
+  }
+  .meta-box {
+    background: var(--accent-light);
+    border-radius: 10px;
+    padding: 14px 16px;
+    margin: 1em 0;
+    font-size: 0.93em;
+  }
+  .meta-box strong { color: var(--heading); }
+  .decision {
+    background: var(--card-bg);
+    border: 1px solid var(--border);
+    border-left: 5px solid var(--accent);
+    border-radius: 8px;
+    padding: 14px 18px;
+    margin: 1.2em 0;
+  }
+  .decision h3 {
+    margin-top: 0;
+    color: var(--accent);
+  }
+  .label {
+    display: inline-block;
+    padding: 2px 10px;
+    border-radius: 12px;
+    font-size: 0.78em;
+    font-weight: 600;
+    margin-right: 6px;
+    vertical-align: middle;
+  }
+  .label-situation { background: #E0E7FF; color: #3730A3; }
+  .label-options { background: var(--accent-light); color: var(--heading); }
+  .label-decision { background: #D1FAE5; color: var(--success); }
+  .label-why { background: #FEE2E2; color: var(--danger); }
+  .label-insight { background: #FEF3C7; color: var(--heading); }
+  .mermaid {
+    background: var(--card-bg);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 16px;
+    margin: 1em 0;
+    text-align: center;
+    overflow-x: auto;
+  }
+  .small { font-size: 0.85em; color: var(--muted); }
+  .footer {
+    margin-top: 3em;
+    padding-top: 1.5em;
+    border-top: 1px solid var(--border);
+    color: var(--muted);
+    font-size: 0.85em;
+    text-align: center;
+  }
+  @media (max-width: 520px) {
+    .container { padding: 16px 14px 60px; }
+    h1 { font-size: 1.45em; }
+    h2 { font-size: 1.15em; }
+    h3 { font-size: 1em; }
+    table { font-size: 0.85em; }
+    th, td { padding: 6px 8px; }
+  }
+</style>
+</head>
+<body>
+<div class="container">
+
+<h1>🗓️ 2026-04-18 (토)<br>개발 회고</h1>
+
+<div class="meta-box">
+<strong>오늘의 한 줄</strong><br>
+하네스 분석 → 갭 식별 → "문서 원칙"을 "기계 강제"로 격상한 날.
+<hr style="border-top: 1px dashed var(--border); margin: 10px 0;">
+<strong>활성 상태</strong>: MVP11 planning · 활성 마일스톤 none<br>
+<strong>커밋 7개</strong> · 총 <code>+3,647 / −614</code> 라인 (주로 문서 + 인프라)
+</div>
+
+<h2>🌅 오늘 뭘 했나</h2>
+
+<p>오늘은 코드를 만지기보다 <strong>AI와 내가 일하는 환경 자체를 손본 날</strong>이었다. 어제 올린 "하네스 엔지니어링 비교 분석 노트"가 발단이었는데, 이 문서가 갭 4개(G1/G3/G4/G6)와 TODO 2개를 정리하자마자 "이걸 문서로만 남기면 어차피 안 지켜진다"는 생각이 들었다. 그래서 하루를 4개 묶음으로 끊어 진행했다.</p>
+
+<div class="card">
+<h4>🕐 첫 묶음 (낮, ~15:44) — public 전환 준비</h4>
+<p>저장소를 public으로 열 가능성을 열어두기 위해 history 문서들의 네이버 이메일·Supabase project ref·<code>/Users/seungchan/</code> 로컬 경로를 스크럽. <code>.mcp.json</code>은 사용자별 절대 경로가 섞여 있어서 gitignore 처리 + <code>.mcp.json.example</code>로 분리.</p>
+</div>
+
+<div class="card">
+<h4>🕓 두 번째 묶음 (16:03, 룰 슬림화)</h4>
+<p>서브 룰북 재정비. <code>mcp_integration.md</code> + <code>mcp_tool_design.md</code>를 <code>agents.md</code> 하나로 통합(419줄 삭제). <code>workflow.md</code>는 별도 단계 시스템이 아니라 사고 가이드로 재정의해서 <code>0_CODEX_RULES.md §3</code>의 5단계와 충돌하던 부분 제거.</p>
+</div>
+
+<div class="card" style="border-left: 5px solid var(--accent);">
+<h4>🕓 세 번째 묶음 (16:04, 메인 작업 — feat 2개)</h4>
+<p><strong>(1) 2층 KPI 게이트 시스템</strong>: <code>kpi-lib.sh</code>(250줄) + <code>kpi-check.sh</code>(131줄) + <code>kpi-report.sh</code>(128줄) 신규. <code>active_mvp.txt</code>·<code>active_milestone.txt</code> 2층 상태 파일 + <code>TEMPLATE_mvp_kpi.md</code>. 파서가 MVP 기획 문서의 <code>## KPI</code> 섹션을 읽고 상태별로 Hard 게이트 자동 강등. <code>CLAUDE.md</code>도 215줄 → 95줄로 슬림화.</p>
+<p><strong>(2) <code>/critical-review</code> 스킬 신설</strong>: 적대적 시각으로 기획·분리안의 숨은 구멍을 선제 발굴. 치명/중대/경미 분류 + 각 구멍에 대안 동반. <code>/milestone</code> [6.5] + step-5 [3.5]에 자동 호출 연계. <code>/milestone-review</code>는 MVP 경계에만 호출되도록 축소.</p>
+</div>
+
+<div class="card">
+<h4>🕘 네 번째 묶음 (16:03~21:00, hook + 문서 재반영)</h4>
+<p>Stop hook을 단순 echo에서 <code>kpi-report.sh --quick</code>으로 전환. PostToolUse(Edit|Write) 신설 — active MVP Hard KPI 있으면 편집 직후 리마인더. 마지막 21:00 커밋은 하네스 분석 문서에 오늘 반영한 것들(G1/G3/G4/G6, 8.1/8.2)의 현재 상태를 표로 박제.</p>
+</div>
+
+<hr>
+
+<h2>🎯 핵심 의사결정과 그 이유</h2>
+
+<!-- 결정 1 -->
+<div class="decision">
+<h3>결정 1. 하네스 2문서를 frank 실측과 대조하는 노트 작성</h3>
+
+<p><span class="label label-situation">상황</span><br>
+Anthropic "긴 작업 실패 4유형" + OpenAI "5개월·100만줄 하네스 엔지니어링" 두 문서를 각각 요약만 할지, 내 프로젝트 실측과 맞대놓고 볼지 고민.</p>
+
+<p><span class="label label-options">선택지</span></p>
+<table>
+<tr><th>옵션</th><th>장점</th><th>단점</th></tr>
+<tr><td>A. 요약만</td><td>시간 적음</td><td>갭이 안 드러남</td></tr>
+<tr><td>B. 한쪽 깊게</td><td>집중 가능</td><td>편향. 두 시각 다름</td></tr>
+<tr><td><strong>C. 2문서 × frank 실측</strong></td><td><strong>갭 식별 객관적</strong></td><td>시간 많이 듦</td></tr>
+</table>
+
+<p><span class="label label-decision">결정</span> C. Strong Fit 9 + Gap 4(G1/G3/G4/G6) + 스코어카드 2120줄짜리 MD/HTML 쌍.</p>
+
+<p><span class="label label-why">왜</span> 하네스의 핵심은 일반론이 아니라 "이 프로젝트는 지금 어디쯤이냐"다. 실측을 인벤토리로 박아두면 <strong>나중에 다시 봤을 때 성숙도 변화를 숫자로 추적</strong> 가능. 실제로 오늘 오후 작업 대부분이 이 인벤토리에서 직접 도출됨.</p>
+
+<p><span class="label label-insight">인사이트</span> 학습 문서는 "받아적는 형태"가 아니라 <strong>"내 상황에 얹어보는 형태"</strong>로 써야 쓸모가 생긴다.</p>
+</div>
+
+<!-- 결정 2 -->
+<div class="decision">
+<h3>결정 2. KPI 게이트를 "2층"으로 설계</h3>
+
+<p><span class="label label-situation">상황</span><br>
+기존엔 MVP 단위로 KPI 선언 → pre-commit 검증. 그런데 MVP가 M1/M2/M3로 쪼개져 있어서 "어느 마일스톤의 어떤 지표가 활성이냐"가 불분명. M1 끝났는데 M2에서 M1 지표 계속 검증하는 이상한 상황 반복.</p>
+
+<p><span class="label label-options">선택지</span></p>
+<ul>
+<li><strong>A. 단일 MVP 유지</strong> — 기존 방식. 마일스톤 전환 시 정확도 떨어짐</li>
+<li><strong>B. 마일스톤별만</strong> — MVP 최종 품질 게이트가 사라짐</li>
+<li><strong>C. 2층: 마일스톤 + MVP 최종</strong> — 복잡도 ↑, 책임 명확 ↑</li>
+</ul>
+
+<p><span class="label label-decision">결정</span> C. 각 <code>M{X}_*.md</code>에 마일스톤용 <code>## KPI</code>, <code>_roadmap.md</code>에 MVP 최종 <code>## KPI</code>. <code>active_mvp.txt</code> + <code>active_milestone.txt</code> 2층 상태 파일.</p>
+
+<p><span class="label label-why">왜</span> 마일스톤과 MVP 최종은 <strong>질적으로 다른 게이트</strong>. 마일스톤 = 기능 회귀 통과, MVP 최종 = 사용자 가치 지표. 한 층에 섞으면 점진 지표와 회귀 지표가 뒤엉킴. 2층 분리로 <strong>상태별 자동 강등 로직</strong>(planning/in-progress/completing/done)을 각 층 독립 적용 가능.</p>
+
+<p><span class="label label-insight">인사이트</span> "하나로 통일하면 깔끔하다"는 관성은 <strong>성격이 다른 게이트를 섞었을 때 치명적</strong>.</p>
+</div>
+
+<!-- 결정 3 -->
+<div class="decision">
+<h3>결정 3. <code>/critical-review</code>를 별도 스킬로 분리</h3>
+
+<p><span class="label label-situation">상황</span><br>
+기획·분리안 허점 선제 발굴 장치 필요. 이미 <code>/debate</code>(3자 토론), <code>/deep-analysis</code>(심층 분석) 존재.</p>
+
+<p><span class="label label-options">선택지</span></p>
+<ul>
+<li>A. <code>/debate</code>에 "적대적 모드" 플래그 — 스킬 재사용, 단 목적 다름(토론=경쟁 선택 / 리뷰=부수기)</li>
+<li>B. <code>/deep-analysis</code>로 흡수 — 결이 다름(이해 vs 리뷰)</li>
+<li><strong>C. <code>/critical-review</code> 신설</strong> — 스킬 수 ↑(22→23), 자동 호출 지점 2군데 명확</li>
+</ul>
+
+<p><span class="label label-decision">결정</span> C. 독립 스킬 + 치명/중대/경미 3단계 + 각 구멍에 대안 동반.</p>
+
+<p><span class="label label-why">왜</span> <code>/debate</code>는 "어느 안이 더 나은가 <em>선택</em>", <code>/critical-review</code>는 "선택된 안을 적극적으로 <em>부수기</em>". 섞으면 토론은 경쟁이 약해지고 리뷰는 편들게 됨. 자동 호출(milestone [6.5] + step-5 [3.5])로 구멍 두 개가 닫히면 "구현 후 재작업" 비용 크게 감소.</p>
+
+<p><span class="label label-insight">인사이트</span> 스킬 수를 아끼는 것보다 <strong>역할 다르면 이름도 다르게</strong>. 한 에이전트에 두 역할 → 둘 다 약해짐 (OpenAI 하네스).</p>
+</div>
+
+<!-- 결정 4 -->
+<div class="decision">
+<h3>결정 4. Stop hook — "제거" 대신 "재채움"</h3>
+
+<p><span class="label label-situation">상황</span><br>
+어제 분석 결론: "Stop hook이 이모지 placeholder. 실질 검증은 Git hook이 다 함. 제거 권고."</p>
+
+<p><span class="label label-options">선택지</span> A. 제거(깔끔) / B. 유지(의미 없음) / <strong>C. 재채움</strong></p>
+
+<p><span class="label label-decision">결정</span> C. echo → <code>kpi-report.sh --quick</code> 전환.</p>
+
+<p><span class="label label-why">왜</span> 어제 기준으론 "껍데기"가 맞았지만 <strong>오늘 2층 KPI가 생기면서 채울 알맹이가 생김</strong>. 제거했다가 다시 추가하는 비용 회피. 분석 노트 8.1 "실질 로직 생기면 다시 추가" 케이스에 부합.</p>
+
+<p><span class="label label-insight">인사이트</span> 원본 권고를 그대로 따르지 않고 <strong>현재 시점의 맥락에 맞춰 재판단</strong>. 분석 문서는 하루 만에 권고가 바뀔 만큼 <strong>움직이는 대상</strong>.</p>
+</div>
+
+<!-- 결정 5 -->
+<div class="decision">
+<h3>결정 5. G1 수치: 30~50개 → 15~25개로 축소</h3>
+
+<p><span class="label label-situation">상황</span><br>
+Anthropic 권고 Feature List 체크 항목 30~50개. 실측: MVP10 M2=7, MVP7 M4=7, MVP6 M1=8 → 대체로 7~8개.</p>
+
+<p><span class="label label-options">선택지</span> A. 원안 30~50 / B. 현 수준 유지 / <strong>C. 3배(15~25) + 소형 스킵</strong></p>
+
+<p><span class="label label-decision">결정</span> C. 15~25개 + 1~2 파일 수정 소형은 스킵 옵션.</p>
+
+<p><span class="label label-why">왜</span> 30~50은 팀·대규모 제품 기준. 1인이 한 세션에 소화 가능한 인지 부하 초과. <strong>약 성인 용량을 아이한테 먹이는 셈</strong>. 3배 증가만 해도 Anthropic 실패 ① "대충 끝내려 함" 방어 효과는 충분.</p>
+
+<p><span class="label label-insight">인사이트</span> 하네스 기법을 그대로 가져오면 원전 가치가 그대로 나오진 않음. <strong>프로젝트 규모별 스케일링 계수</strong>를 정하는 게 실전 감각.</p>
+</div>
+
+<hr>
+
+<h2>📐 기획/설계 과정</h2>
+
+<p>오늘 작업은 <strong>하향식</strong>. 어제 분석 노트 → 오늘 실행, 기계 강제 격상 가능한 것부터 순서대로.</p>
+
+<pre class="mermaid">
+flowchart TB
+    A["어제 하네스 분석 노트<br/>(5cbbc56)<br/>Gap 4 + TODO 2"] --> C["오늘 시작"]
+    C --> D["7b98282 chore:<br/>public 전환 스크럽"]
+    D --> E["0ca5d68 chore:<br/>룰북 통합 -419줄"]
+    E --> F["5b0c776 feat:<br/>2층 KPI 게이트"]
+    F --> G["662ecd3 feat:<br/>/critical-review<br/>+ 자동 연계"]
+    G --> H["965439a chore:<br/>Stop hook 재채움"]
+    H --> I["d6734a6 docs:<br/>분석 노트 갱신"]
+
+    style A fill:#FEF3C7,stroke:#D97706,color:#92400E
+    style F fill:#D1FAE5,stroke:#047857,color:#065F46
+    style G fill:#D1FAE5,stroke:#047857,color:#065F46
+    style I fill:#FEF3C7,stroke:#D97706,color:#92400E
+</pre>
+
+<p><strong>커밋 단위 분리 원칙</strong>을 의식적으로 지켰다. 7개로 쪼갠 이유는 revert 범위 축소뿐 아니라 <strong>각 커밋 메시지가 의사결정 근거를 박제</strong>하도록. feat 커밋 본문을 "신규 자산 / 룰·문서 반영 / 핵심 변화" 3문단 구조로 쓴 건 2주 뒤 "왜 이 구조를 골랐나"를 복원 가능하게 짠 것.</p>
+
+<hr>
+
+<h2>🗺️ 2층 KPI 게이트 구조</h2>
+
+<pre class="mermaid">
+flowchart TB
+    subgraph S["상태 파일 2개"]
+        S1["active_mvp.txt<br/>11:planning"]
+        S2["active_milestone.txt<br/>none / M2:in-progress"]
+    end
+
+    subgraph L1["Layer 1: 마일스톤 KPI"]
+        M1["M1_*.md<br/>## KPI 섹션"]
+        M2["M2_*.md<br/>## KPI 섹션"]
+        M3["M3_*.md<br/>## KPI 섹션"]
+    end
+
+    subgraph L2["Layer 2: MVP 최종 KPI"]
+        R["_roadmap.md<br/>## KPI 섹션"]
+    end
+
+    S --> LIB["kpi-lib.sh<br/>파서·측정"]
+    LIB --> CHECK["kpi-check.sh<br/>Hard 미달 → exit 1"]
+    LIB --> REPORT["kpi-report.sh<br/>대시보드"]
+
+    CHECK --> PC["pre-commit hook<br/>커밋 차단"]
+
+    L1 -.-> LIB
+    L2 -.-> LIB
+
+    style S fill:#FEF3C7,stroke:#D97706
+    style L1 fill:#E0E7FF,stroke:#3730A3
+    style L2 fill:#FEE2E2,stroke:#B91C1C
+    style CHECK fill:#FEE2E2,stroke:#B91C1C
+</pre>
+
+<p><strong>검증 대상 자동 선택</strong>:</p>
+<ul>
+<li><code>MVP:completing</code> → MVP 최종 KPI 검증</li>
+<li>그 외 → 현재 활성 마일스톤 KPI 검증</li>
+</ul>
+
+<p><strong>상태별 자동 강등</strong>:</p>
+<table>
+<tr><th>상태</th><th>점진 지표</th><th>회귀 지표</th></tr>
+<tr><td>planning</td><td>Soft</td><td>Hard</td></tr>
+<tr><td>in-progress</td><td>Soft</td><td>Hard</td></tr>
+<tr><td>completing</td><td><strong>Hard</strong></td><td><strong>Hard</strong></td></tr>
+<tr><td>done</td><td>없음</td><td>없음</td></tr>
+</table>
+
+<hr>
+
+<h2>🎓 인사이트 &amp; 피드백</h2>
+
+<div class="card">
+<h4>1. "문서 원칙"과 "기계 강제"는 가치가 다르다</h4>
+<p>pre-commit에 <code>kpi-check.sh</code>를 붙이는 순간, "KPI 달성해야 한다"는 룰이 더 이상 내 의지에 의존하지 않는다. OpenAI 6-layer 린터의 축소판. <strong>"해야 한다"는 "어기면 막는다"보다 몇 배 약하다</strong>는 걸 체감.</p>
+</div>
+
+<div class="card">
+<h4>2. 원본 권고를 맥락에 맞춰 재판단하는 힘</h4>
+<p>Stop hook 결정처럼 하루 사이에 권고가 바뀔 수 있다. 분석 문서는 <strong>"고정된 결론"이 아니라 "움직이는 대상"</strong>. 원본 권고를 읽을 때마다 "지금 이 시점에 이게 여전히 맞나"를 되묻는 습관 필요.</p>
+</div>
+
+<div class="card">
+<h4>3. 스케일링 계수 — 원전 수치를 그대로 가져오지 않는다</h4>
+<p>G1 30~50개 → 15~25개 조정. Anthropic/OpenAI 글은 100만줄·수개월 기준. Frank는 1인 MVP. 같은 원리라도 <strong>수치는 달라야</strong>. 앞으로 다른 하네스 기법 도입할 때마다 같은 질문 필요.</p>
+</div>
+
+<div class="card">
+<h4>4. 커밋 단위 분리 = 미래 가독성 투자</h4>
+<p>7개로 쪼갠 건 번거로웠지만 2주 뒤 "왜 Stop hook을 바꿨지?"를 찾으려면 <code>965439a</code>만 열면 됨. 몰아서 커밋했으면 git blame에서 섞임. <strong>과거 아닌 미래의 나를 위한 투자</strong>.</p>
+</div>
+
+<div class="card">
+<h4>5. 인터뷰에서 쓸 만한 포인트 (멘토/면접관용)</h4>
+<ul>
+<li>"왜 2층 KPI?" → "단일 통일의 관성은 성격 다른 게이트 섞으면 치명적"</li>
+<li>"왜 <code>/critical-review</code> 분리?" → "역할 분리 가치 &gt; 스킬 수 절약 비용"</li>
+<li>"왜 원본 수치 안 썼나?" → "프로젝트 규모별 스케일링 계수"</li>
+</ul>
+<p>세 가지 모두 <strong>"레거시 따라하기"가 아닌 "현재 맥락 재판단"</strong>을 보여줌.</p>
+</div>
+
+<hr>
+
+<h2>📚 배운 것</h2>
+
+<h3>기술적으로</h3>
+<ul>
+<li><code>progress/active_*.txt</code> 2층 상태 파일 설계 — 상태 전이 주체(스킬/훅/수동) 명확화로 버그 감소</li>
+<li>pre-commit에서 외부 스크립트 호출 — <code>exit 1</code> 시 커밋 차단, <code>KPI_BYPASS=1</code> 환경변수 + <code>bypass.log</code> 기록 패턴</li>
+<li>hook 환경변수화 — <code>${CLAUDE_BACKUP_DIR:-~/.claude/backups}</code>로 테스트 용이성 확보</li>
+</ul>
+
+<h3>프로세스에서</h3>
+<ul>
+<li>"어제 분석 → 오늘 실행" 2단 분리가 작동. 분석 시 구현 부담 없고, 실행 시 탐색 부담 없음</li>
+<li>커밋 본문 "신규/변경/근거" 3문단 구조 체득. 한 달 전엔 제목만 썼음</li>
+<li><code>docs:</code> / <code>chore:</code> 커밋 KPI 자동 스킵 로직 덕에 오늘 같은 인프라 세션에서 pre-commit 방해 안 됨</li>
+</ul>
+
+<hr>
+
+<h2>💭 느낀 점</h2>
+
+<blockquote>
+<p>오늘은 <strong>코드 한 줄도 프로덕션에 안 가는 날</strong>이었다. 처음엔 "하루 종일 룰만 만졌는데 의미가 있나" 불안.</p>
+<p>마지막 커밋(<code>d6734a6</code>)에서 분석 문서의 Gap 표가 "미구현" → "해결 (대체 방식)" / "부분 구현"으로 바뀌는 걸 보고, <strong>이게 "환경 설계자" 일이구나</strong> 감각이 잡혔다.</p>
+<p>OpenAI "요리사 → 주방 설계자" 비유가 오늘 실제 체감으로 들어왔다.</p>
+</blockquote>
+
+<p><strong>힘들었던 것</strong> — <code>/critical-review</code>와 <code>/debate</code> 경계 판단. "목적의 비대칭성"(선택 vs 부수기)으로 갈랐는데 옳았는지는 며칠 써봐야.</p>
+
+<p><strong>뿌듯한 것</strong> — 커밋 7개 자연스럽게 분리됨. 4월 초엔 feat+chore+docs 한 커밋에 몰아넣던 버릇. <strong>습관이 붙었다는 체감</strong>.</p>
+
+<hr>
+
+<h2>🚀 내일 할 일</h2>
+
+<div class="decision" style="border-left-color: var(--success);">
+<h3 style="color: var(--success);">Top 1. G1 Feature List 자동 생성 스킬 구현</h3>
+<p>남은 하네스 갭 중 "★ 최우선". 오늘 수치 기준(15~25개, 소형 스킵) 확정 완료. 스킬만 짜면 됨.</p>
+<ul>
+<li>step-3(서브태스크 분리) 또는 step-4(인터뷰) 자동 호출 후보</li>
+<li>체크리스트 저장: <code>progress/checklists/{YYMMDD}_{task}.md</code></li>
+<li>commit hook으로 진행률 추적</li>
+</ul>
+</div>
+
+<div class="card">
+<h4>그 다음</h4>
+<ul>
+<li><strong>MVP11 기획 착수</strong> — <code>active_mvp.txt</code>가 <code>11:planning</code>인데 아직 <code>history/mvp11/_discovery.md</code> 없음. <code>/milestone</code>으로 Discovery → 로드맵</li>
+<li><strong>G6 MCP 과다 로드 조정</strong> — 선언 없는 3개(<code>/deep-analysis</code>·<code>/presentation</code>·<code>/progress-cleanup</code>) + 과다 3개(<code>/milestone</code>·<code>/debate</code>·<code>/milestone-review</code>)</li>
+</ul>
+</div>
+
+<div class="card" style="opacity: 0.85;">
+<h4>대기 (필요 시)</h4>
+<ul>
+<li>G3 UI 자율 피드백 루프 — Chrome DevTools MCP 이미 연결. 웹 변경 작업 생길 때 도입</li>
+<li>G4 MVP 완료 아카이빙 — 부분 구현. 실제 MVP 완료 1회 돌아가야 재평가</li>
+</ul>
+</div>
+
+<div class="footer">
+회고 작성: 2026-04-18 · 도구: <code>/daily-retro</code> · Claude Opus 4.7 (1M context)
+</div>
+
+</div>
+
+<script type="module">
+  import mermaid from 'https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.esm.min.mjs';
+  mermaid.initialize({
+    startOnLoad: true,
+    theme: 'base',
+    themeVariables: {
+      primaryColor: '#FEF3C7',
+      primaryTextColor: '#2D2926',
+      primaryBorderColor: '#D97706',
+      lineColor: '#92400E',
+      secondaryColor: '#FFF7ED',
+      tertiaryColor: '#FDF6F0',
+      background: '#FDF6F0',
+      fontFamily: 'inherit'
+    }
+  });
+</script>
+
+</body>
+</html>
