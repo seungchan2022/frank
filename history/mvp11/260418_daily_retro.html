@@ -175,6 +175,29 @@
     margin: 1em 0;
     text-align: center;
     overflow-x: auto;
+    overflow-y: visible;
+  }
+  .mermaid svg {
+    max-width: none !important;
+    height: auto !important;
+    display: inline-block;
+    overflow: visible !important;
+  }
+  .mermaid foreignObject {
+    overflow: visible !important;
+  }
+  .mermaid .nodeLabel,
+  .mermaid .edgeLabel,
+  .mermaid .label,
+  .mermaid .cluster-label {
+    overflow: visible !important;
+    white-space: normal !important;
+    line-height: 1.35 !important;
+  }
+  .mermaid .node rect,
+  .mermaid .node polygon,
+  .mermaid .node circle {
+    overflow: visible !important;
   }
   .small { font-size: 0.85em; color: var(--muted); }
   .footer {
@@ -515,6 +538,7 @@ flowchart TB
   mermaid.initialize({
     startOnLoad: true,
     theme: 'base',
+    flowchart: { useMaxWidth: false, htmlLabels: true },
     themeVariables: {
       primaryColor: '#FEF3C7',
       primaryTextColor: '#2D2926',
