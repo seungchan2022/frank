@@ -1,7 +1,8 @@
 # G1 Feature List 자동 생성 스킬 구현
 
 > 생성일: 260420
-> 상태: 진행중
+> 완료일: 260420
+> 상태: ✅ 완료 (01 + 02 + 04)
 > 소속: MVP 마일스톤 외부 단일 태스크 (하네스 엔지니어링 격상 시리즈)
 > 근거 문서: `progress/analysis/260417_하네스_비교분석.md` §5 G1 · §7 우선순위표 · 요약 표
 
@@ -45,11 +46,11 @@
 | 5 | Feature List 확정 시점 | **A** | step-4 초안 → step-5/6/7 참고 → step-8 실측 + 상태 전환 + 항목 추가/수정 |
 
 ### 완료 조건
-- [ ] `.claude/skills/step-4/SKILL.md` — 인터뷰 직후 Feature List **초안 생성** 단계 추가 (훑어보기 승인만)
-- [ ] 서브태스크 문서 포맷에 `## Feature List` 섹션 추가 (파일 수 기준 크기 판정 + 4상태 모델 + 안정 ID 규약 + 파싱 실패 정책)
-- [ ] `.claude/skills/step-8/SKILL.md` — Feature List 순회 검증 단계 추가 (allowed-tools에 Write 포함, 사용자 보고 기반 갱신 루프)
-- [ ] `progress/analysis/260417_하네스_비교분석.md` — G1 관련 4곳 ⏳ → ✅ 동기화 (요약 표 G1 / §5 G1 / §7 순위표 / 최상단 최종 갱신일) **§8.2는 현행 유지**
-- [ ] feat 커밋 + docs 커밋 분리
+- [x] `.claude/skills/step-4/SKILL.md` — 인터뷰 직후 Feature List **초안 생성** 단계 추가 (훑어보기 승인만)
+- [x] 서브태스크 문서 포맷에 `## Feature List` 섹션 추가 (파일 수 기준 크기 판정 + 4상태 모델 + 안정 ID 규약 + 파싱 실패 정책)
+- [x] `.claude/skills/step-8/SKILL.md` — Feature List 순회 검증 단계 추가 (allowed-tools에 Write 포함, 사용자 보고 기반 갱신 루프)
+- [x] `progress/analysis/260417_하네스_비교분석.md` — G1 관련 4곳 ⏳ → ✅ 동기화 (요약 표 G1 / §5 G1 / §7 순위표 / 최상단 최종 갱신일) **§8.2는 현행 유지**
+- [x] feat 커밋 + docs 커밋 분리
 
 ### KPI / 게이트
 MVP 마일스톤 외부 태스크이므로 전용 KPI 없음. 기존 Frank 커밋 전 필수 검증(린트+타입+테스트) + `scripts/kpi-check.sh`는 그대로 적용.
