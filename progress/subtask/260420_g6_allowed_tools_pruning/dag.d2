@@ -1,0 +1,46 @@
+# G6 서브태스크 의존성 DAG
+# 생성: 260420
+# 렌더: d2 dag.d2 dag.svg
+
+direction: right
+
+S1: "01 선언 없는 3개\n스킬 frontmatter 추가\n(deep-analysis, presentation,\nprogress-cleanup)" {
+  style.fill: "#d4e8d4"
+  shape: rectangle
+}
+
+S2: "02 과다 3개 스킬\nallowed-tools pruning\n(milestone, debate,\nmilestone-review)" {
+  style.fill: "#d4e8d4"
+  shape: rectangle
+}
+
+S3: "03 rules/sub/agents.md\n원칙 섹션 추가\n(3~5줄)" {
+  style.fill: "#f5dc9e"
+  shape: rectangle
+}
+
+S4: "04 분석 문서\nbefore/after 표 +\n3곳 ⏳→✅ 동기화\n(docs 커밋)" {
+  style.fill: "#e8d4e8"
+  shape: rectangle
+}
+
+S1 -> S3: "실사용 기준 확정"
+S2 -> S3: "실사용 기준 확정"
+S1 -> S4: "수치 집계"
+S2 -> S4: "수치 집계"
+S3 -> S4: "원칙 문서 반영"
+
+legend: "범례" {
+  near: bottom-left
+  shape: text
+  grid-columns: 1
+  parallel: "병렬 가능 (의존성 없음)" {
+    style.fill: "#d4e8d4"
+  }
+  sequential: "순차 (선행 필요)" {
+    style.fill: "#f5dc9e"
+  }
+  docs: "docs 커밋 (별도 분리)" {
+    style.fill: "#e8d4e8"
+  }
+}
