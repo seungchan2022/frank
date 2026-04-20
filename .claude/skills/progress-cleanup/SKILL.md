@@ -1,6 +1,14 @@
 ---
 name: progress-cleanup
 description: "진행상황 정리. 완료 마일스톤 아카이빙 + stale TODO 감지 + history/INDEX.md 갱신. 트리거 키워드: progress 정리, cleanup, 아카이빙."
+context: fork
+allowed-tools:
+  - Read
+  - Write
+  - Edit
+  - Glob
+  - Grep
+  - Bash
 ---
 
 # /progress-cleanup 스킬

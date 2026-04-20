@@ -1,6 +1,14 @@
 ---
 name: presentation
 description: "Gamma+Mermaid MCP로 디자인 품질 프레젠테이션/인포그래픽 생성. 트리거 키워드: PPT 만들어줘, 프레젠테이션, 슬라이드, 인포그래픽, 보고서, 발표자료."
+context: fork
+allowed-tools:
+  - Write
+  - mcp__mermaid__get-mermaid-draft
+  - mcp__mermaid__save-mermaid-draft
+  - mcp__mermaid__mermaid-mcp-app
+  - mcp__gamma__*
+  - mcp__d2__*
 ---
 
 # /presentation 스킬

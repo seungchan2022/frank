@@ -1,6 +1,26 @@
 ---
 name: deep-analysis
 description: "심층추론/심층분석. 다중 MCP 활용 심층 코드/아키텍처 분석. 트리거 키워드: 심층추론, 심층분석, deep analysis, 깊이 분석, 코드 분석해줘."
+context: fork
+allowed-tools:
+  - Read
+  - Write
+  - Glob
+  - Grep
+  - Bash
+  - Agent
+  - mcp__context7__resolve-library-id
+  - mcp__context7__query-docs
+  - mcp__codex__codex
+  - mcp__codex__codex-reply
+  - mcp__serena__find_symbol
+  - mcp__serena__get_symbols_overview
+  - mcp__serena__read_file
+  - mcp__serena__search_for_pattern
+  - mcp__serena__list_dir
+  - mcp__tavily__tavily_search
+  - mcp__tavily__tavily_research
+  - mcp__sequential-thinking__sequentialthinking
 ---
 
 # /deep-analysis 스킬

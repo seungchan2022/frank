@@ -39,6 +39,13 @@
 | 라이브러리 API 조회 | context7 | tavily(대안 검토) |
 | 외부 트렌드 조사 | tavily | context7 |
 
+### 2.2 스킬 `allowed-tools` 최소 집합 원칙
+
+- **본문 실사용 도구**를 기준으로 선언하되, 쌍/동족 도구(예: `codex` ↔ `codex-reply`, `tavily_search` ↔ `tavily_research`)는 함께 포함한다.
+- **보수 원칙**: 공격적 pruning 금지 — 본문에서 한 번도 언급되지 않는 도구만 제거 후보로 올리고, 의심스러우면 남긴다.
+- 미선언 도구는 런타임 `ToolSearch` 지연 로드에 의존하므로 과도하게 좁히지 않는다.
+- 근거/적용 결과는 `progress/analysis/260417_하네스_비교분석.md` §5 G6 참조.
+
 ---
 
 ## 3. 안전 제한 (MUST)

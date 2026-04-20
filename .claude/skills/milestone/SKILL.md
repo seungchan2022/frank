@@ -19,13 +19,11 @@ allowed-tools:
   - mcp__tavily__tavily_search
   - mcp__tavily__tavily_research
   - mcp__exa__web_search_exa
-  - mcp__exa__crawling_exa
   - mcp__firecrawl__firecrawl_search
   - mcp__firecrawl__firecrawl_scrape
   - mcp__mermaid__mermaid-mcp-app
   - mcp__mermaid__get-mermaid-draft
   - mcp__mermaid__save-mermaid-draft
-  - Task
 ---
 
 # 마일스톤 플로우 (/milestone)

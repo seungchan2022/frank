@@ -23,7 +23,6 @@ allowed-tools:
   - mcp__arxiv-mcp-server__search_papers
   - mcp__arxiv-mcp-server__download_paper
   - mcp__arxiv-mcp-server__read_paper
-  - Task
   - Read
   - Write
   - Glob

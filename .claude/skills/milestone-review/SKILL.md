@@ -17,9 +17,7 @@ allowed-tools:
   - mcp__serena__list_dir
   - mcp__serena__search_for_pattern
   - mcp__tavily__tavily_search
-  - mcp__exa__web_search_exa
   - mcp__mermaid__mermaid-mcp-app
-  - Task
 ---
 
 # 마일스톤 리뷰 (/milestone-review)
