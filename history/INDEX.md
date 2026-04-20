@@ -195,6 +195,19 @@
 
 ---
 
+## Harness Engineering — AI 협업 환경 튜닝 (260417~260420)
+
+> 기간 3일. MVP1~10 실측 데이터 기반 하네스 분석 → G1·G6·§8.2 순차 적용. 다음 튜닝 기준점: MVP11부터의 실제 흐름.
+
+| 유형 | 파일 | 핵심 내용 |
+|------|------|----------|
+| 분석 | [하네스 비교분석](harness/analysis/260417_하네스_비교분석.md) | Anthropic·OpenAI 하네스 원리 × frank 실측 대조. 갭 식별 + G1~G6 실행 순서 확정 |
+| 태스크 | [G1 Feature List 스킬](harness/260420_g1_feature_list_skill.md) | step-4 초안 생성 + step-8 순회 검증. 안정 ID·4상태 모델·소형 스킵 |
+| 태스크 | [G6 allowed-tools 정비](harness/260420_g6_allowed_tools_pruning.md) | 스킬 6개 frontmatter 보수 원칙 + agents.md §2.2 명문화 |
+| 태스크 | [§8.2 커밋 차단](harness/260420_g8_2_commit_block.md) | feature-list-check.sh + pre-commit hook + step-9 UX. Anthropic 실패 ①②③ 완전 대응 |
+
+---
+
 ## MVP 버전 체계 (260406 확정)
 
 > .5 버전 폐지. 부채 해소는 다음 MVP에 흡수.
@@ -255,3 +268,6 @@
 | iOS AppDependencies quiz 포트 누락 버그 | `260413_retro.md` |
 | snippet 정제 코드 필터링 선택 근거 + Known Issues | `260413_retro.md` |
 | MVP8 M2/M3 QA 결과 + 타이포그래피·로딩 색상 수정 경위 | `260413_retro.md` |
+| 하네스 분석 + 갭 식별 + 튜닝 실행 순서 | `harness/analysis/260417_하네스_비교분석.md` |
+| Feature List 체계 (안정 ID·4상태·소형 스킵) | `harness/260420_g1_feature_list_skill.md` |
+| Feature List 미체크 커밋 차단 구조 | `harness/260420_g8_2_commit_block.md` |
