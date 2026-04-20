@@ -139,13 +139,14 @@ while IFS= read -r line; do
   fi
 
   # [~] [- ] 사유 누락 검증
+  # 올바른 포맷: [~] deferred (사유) {ID} ... / [-] N/A (사유) {ID} ...
   if [[ "$state" == "deferred" ]]; then
-    if ! echo "$line" | grep -qE '\[~\][[:space:]]+[^[:space:]]'; then
-      parse_errors+=("[~] 사유 누락: $line")
+    if ! echo "$line" | grep -qE '\[~\][[:space:]]+deferred[[:space:]]*\(.+\)'; then
+      parse_errors+=("[~] deferred (사유) 포맷 위반: $line")
     fi
   elif [[ "$state" == "na" ]]; then
-    if ! echo "$line" | grep -qE '\[-\][[:space:]]+[^[:space:]]'; then
-      parse_errors+=("[-] 사유 누락: $line")
+    if ! echo "$line" | grep -qE '\[-\][[:space:]]+N/A[[:space:]]*\(.+\)'; then
+      parse_errors+=("[-] N/A (사유) 포맷 위반: $line")
     fi
   fi
 
