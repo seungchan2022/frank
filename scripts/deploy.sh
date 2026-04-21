@@ -223,7 +223,7 @@ run_ios() {
 
     # 신규 Swift 파일 추가 시 pbxproj 자동 갱신 (항상 실행)
     log_info "Tuist 프로젝트 재생성 중..."
-    (cd "$PROJECT_ROOT/ios/Frank" && ~/.tuist/Versions/4.31.0/tuist generate --no-open)
+    (cd "$PROJECT_ROOT/ios/Frank" && ~/.local/share/mise/installs/tuist/4.174.2/bin/tuist generate --no-open)
 
     # tuist generate 시마다 DerivedData 해시가 달라져 stale 디렉토리가 누적된다.
     # 최신 1개만 남기고 나머지를 삭제해 SourceKit-LSP 인덱싱 오탐을 방지한다.
