@@ -205,6 +205,7 @@
 | 태스크 | [G1 Feature List 스킬](harness/260420_g1_feature_list_skill.md) | step-4 초안 생성 + step-8 순회 검증. 안정 ID·4상태 모델·소형 스킵 |
 | 태스크 | [G6 allowed-tools 정비](harness/260420_g6_allowed_tools_pruning.md) | 스킬 6개 frontmatter 보수 원칙 + agents.md §2.2 명문화 |
 | 태스크 | [§8.2 커밋 차단](harness/260420_g8_2_commit_block.md) | feature-list-check.sh + pre-commit hook + step-9 UX. Anthropic 실패 ①②③ 완전 대응 |
+| 회고 | [일일 회고 260420](260420_daily_retro.html) | 하네스 튜닝 완료 회고. 왜 지금 튜닝 / 취사선택 원칙 / MVP11 이후 기대 / 이터레이티브 교훈 |
 
 ---
 
@@ -271,3 +272,4 @@
 | 하네스 분석 + 갭 식별 + 튜닝 실행 순서 | `harness/analysis/260417_하네스_비교분석.md` |
 | Feature List 체계 (안정 ID·4상태·소형 스킵) | `harness/260420_g1_feature_list_skill.md` |
 | Feature List 미체크 커밋 차단 구조 | `harness/260420_g8_2_commit_block.md` |
+| /critical-review 스킬 설계 + step-5 연계 | `harness/analysis/260417_하네스_비교분석.md` |

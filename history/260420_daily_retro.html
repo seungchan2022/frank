@@ -1,0 +1,376 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>일일 회고 — 2026-04-20</title>
+  <style>
+    :root {
+      --bg: #0f0f13;
+      --surface: #1a1a23;
+      --border: #2a2a38;
+      --accent: #7c6fff;
+      --accent2: #ff6b9d;
+      --accent3: #4dd9ac;
+      --text: #e8e8f0;
+      --muted: #888899;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: 'Pretendard', -apple-system, sans-serif;
+      font-size: 15px;
+      line-height: 1.7;
+      padding: 48px 24px;
+    }
+    .container { max-width: 780px; margin: 0 auto; }
+
+    .header {
+      margin-bottom: 48px;
+      padding-bottom: 32px;
+      border-bottom: 1px solid var(--border);
+    }
+    .header-meta {
+      font-size: 12px;
+      color: var(--muted);
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      margin-bottom: 12px;
+    }
+    .header h1 {
+      font-size: 28px;
+      font-weight: 700;
+      color: var(--text);
+      margin-bottom: 8px;
+    }
+    .header-sub {
+      font-size: 13px;
+      color: var(--muted);
+    }
+    .header-sub code {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      padding: 1px 6px;
+      border-radius: 4px;
+      font-size: 12px;
+      color: var(--accent);
+    }
+
+    .stats {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+      gap: 12px;
+      margin-bottom: 48px;
+    }
+    .stat-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 16px;
+      text-align: center;
+    }
+    .stat-num {
+      font-size: 24px;
+      font-weight: 700;
+      color: var(--accent);
+      display: block;
+    }
+    .stat-label {
+      font-size: 11px;
+      color: var(--muted);
+      margin-top: 4px;
+      letter-spacing: 0.05em;
+    }
+
+    .section-title {
+      font-size: 11px;
+      font-weight: 600;
+      color: var(--muted);
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      margin-bottom: 20px;
+    }
+    .timeline { margin-bottom: 48px; }
+    .timeline-item {
+      display: flex;
+      gap: 16px;
+      margin-bottom: 16px;
+      align-items: flex-start;
+    }
+    .timeline-badge {
+      flex-shrink: 0;
+      width: 90px;
+      padding: 3px 8px;
+      border-radius: 6px;
+      font-size: 11px;
+      font-weight: 600;
+      text-align: center;
+      letter-spacing: 0.04em;
+    }
+    .badge-g1 { background: #4dd9ac22; color: #4dd9ac; border: 1px solid #4dd9ac44; }
+    .badge-g6 { background: #7c6fff22; color: #a89fff; border: 1px solid #7c6fff44; }
+    .badge-g82 { background: #ff6b9d22; color: #ff6b9d; border: 1px solid #ff6b9d44; }
+    .badge-arch { background: #ffa94d22; color: #ffa94d; border: 1px solid #ffa94d44; }
+    .timeline-content {
+      flex: 1;
+      font-size: 14px;
+      color: var(--text);
+      padding-top: 3px;
+    }
+    .timeline-content strong { color: var(--text); }
+    .timeline-content span { color: var(--muted); font-size: 13px; }
+
+    .decisions { margin-bottom: 48px; }
+    .decision-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 24px;
+      margin-bottom: 16px;
+      position: relative;
+      overflow: hidden;
+    }
+    .decision-card::before {
+      content: '';
+      position: absolute;
+      top: 0; left: 0; right: 0;
+      height: 2px;
+    }
+    .decision-card.type-why::before { background: linear-gradient(90deg, #4dd9ac, #4dd9ac88); }
+    .decision-card.type-what::before { background: linear-gradient(90deg, #7c6fff, #7c6fff88); }
+    .decision-card.type-next::before { background: linear-gradient(90deg, #60cdff, #60cdff88); }
+    .decision-card.type-lesson::before { background: linear-gradient(90deg, #ff6b9d, #ff6b9d88); }
+
+    .decision-type {
+      font-size: 10px;
+      font-weight: 700;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      margin-bottom: 8px;
+    }
+    .type-why .decision-type { color: #4dd9ac; }
+    .type-what .decision-type { color: #a89fff; }
+    .type-next .decision-type { color: #60cdff; }
+    .type-lesson .decision-type { color: #ff6b9d; }
+
+    .decision-title {
+      font-size: 17px;
+      font-weight: 700;
+      color: var(--text);
+      margin-bottom: 12px;
+    }
+    .decision-body {
+      font-size: 14px;
+      color: #c0c0d0;
+      margin-bottom: 16px;
+      line-height: 1.8;
+    }
+    .decision-body code {
+      background: var(--bg);
+      border: 1px solid var(--border);
+      padding: 1px 5px;
+      border-radius: 4px;
+      font-size: 12px;
+      color: #4dd9ac;
+    }
+    .insight-box {
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 12px 16px;
+      font-size: 13px;
+      color: var(--muted);
+      line-height: 1.7;
+    }
+    .insight-box::before { content: '💡 '; }
+
+    .kps {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 16px;
+      margin-bottom: 48px;
+    }
+    @media (max-width: 600px) { .kps { grid-template-columns: 1fr; } }
+    .kps-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 20px;
+    }
+    .kps-label {
+      font-size: 10px;
+      font-weight: 700;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      margin-bottom: 12px;
+    }
+    .kps-card.keep .kps-label { color: #4dd9ac; }
+    .kps-card.problem .kps-label { color: #ff6b9d; }
+    .kps-card.surprise .kps-label { color: #ffa94d; }
+    .kps-item {
+      font-size: 13px;
+      color: #c0c0d0;
+      margin-bottom: 10px;
+      line-height: 1.6;
+      padding-left: 12px;
+      border-left: 2px solid var(--border);
+    }
+    .kps-item strong { color: var(--text); display: block; margin-bottom: 2px; }
+
+    .footer {
+      padding-top: 32px;
+      border-top: 1px solid var(--border);
+      font-size: 12px;
+      color: var(--muted);
+      text-align: center;
+    }
+  </style>
+</head>
+<body>
+<div class="container">
+
+  <div class="header">
+    <div class="header-meta">Daily Retrospective</div>
+    <h1>2026-04-20</h1>
+    <div class="header-sub">
+      <code>e83daf9</code> → <code>d30c741</code> &nbsp;·&nbsp; 14 commits &nbsp;·&nbsp; 하네스 엔지니어링 튜닝 완료 (G1 · G6 · §8.2)
+    </div>
+  </div>
+
+  <div class="stats">
+    <div class="stat-card">
+      <span class="stat-num">14</span>
+      <span class="stat-label">커밋</span>
+    </div>
+    <div class="stat-card">
+      <span class="stat-num">3</span>
+      <span class="stat-label">하네스 태스크 완료</span>
+    </div>
+    <div class="stat-card">
+      <span class="stat-num">G1·G6·§8.2</span>
+      <span class="stat-label">적용 항목</span>
+    </div>
+    <div class="stat-card">
+      <span class="stat-num">MVP11~</span>
+      <span class="stat-label">새 기준 적용 시작</span>
+    </div>
+  </div>
+
+  <div class="timeline">
+    <div class="section-title">오늘 한 일</div>
+    <div class="timeline-item">
+      <span class="timeline-badge badge-g1">G1</span>
+      <div class="timeline-content"><strong>Feature List 자동 생성</strong> <span>— step-4 초안 생성 + step-8 순회 검증. 안정 ID(F/E/R/T/U/G/P-NN) · 4상태 모델 · 소형 스킵</span></div>
+    </div>
+    <div class="timeline-item">
+      <span class="timeline-badge badge-g6">G6</span>
+      <div class="timeline-content"><strong>allowed-tools 보수 원칙 정비</strong> <span>— 스킬 6개 frontmatter 보수. 미사용 MCP 제거 + 보수 원칙 agents.md에 명문화</span></div>
+    </div>
+    <div class="timeline-item">
+      <span class="timeline-badge badge-g82">§8.2</span>
+      <div class="timeline-content"><strong>Feature List 미체크 커밋 차단</strong> <span>— feature-list-check.sh + pre-commit hook + step-9 UX. active_subtask.txt SSOT</span></div>
+    </div>
+    <div class="timeline-item">
+      <span class="timeline-badge badge-arch">아카이빙</span>
+      <div class="timeline-content"><strong>history/harness/ 분리 아카이빙</strong> <span>— MVP 아카이브와 별도 폴더. 다음 튜닝 기준점 명시</span></div>
+    </div>
+    <div class="timeline-item">
+      <span class="timeline-badge" style="background:#ff6b9d22;color:#ff6b9d;border:1px solid #ff6b9d44;">CR</span>
+      <div class="timeline-content"><strong>/critical-review 스킬 신설</strong> <span style="color:var(--muted);font-size:12px;">(260418)</span> <span>— 구멍 찾기 리뷰. step-5 자동 연계 + 마일스톤 Specify 단계 1회 호출. 워크플로우 안에 적대적 검토 내재화</span></div>
+    </div>
+  </div>
+
+  <div class="decisions">
+    <div class="section-title">오늘의 핵심</div>
+
+    <div class="decision-card type-why">
+      <div class="decision-type">왜 지금 튜닝했나</div>
+      <div class="decision-title">남이 만든 세팅 → 내 스타일로. MVP1~10이 쌓인 지금이 적기였다</div>
+      <div class="decision-body">
+        처음 바이브 코딩을 시작할 때는 어떻게 진행해야 할지 몰랐다. 배워서 하기보다 일단 만들어준 세팅으로 직접 해보면서 프로덕트를 만드는 게 먼저였다.<br><br>
+        MVP1~10을 직접 진행하고 나서야 대략적인 흐름이 잡혔다. 이 시점에 하네스 엔지니어링을 공부하고, 남이 만든 세팅을 내 스타일에 맞게 튜닝해야 한다는 판단이 생겼다.
+      </div>
+      <div class="insight-box">실사용 경험 없이 하는 튜닝은 추측이다. MVP10까지의 데이터가 있었기에 "뭘 바꿔야 하는지"가 보였다.</div>
+    </div>
+
+    <div class="decision-card type-what">
+      <div class="decision-type">무엇을 바꿨나</div>
+      <div class="decision-title">무조건 다 적용이 아니라 — 내 프로젝트 규모에 맞게 취사선택</div>
+      <div class="decision-body">
+        Anthropic · OpenAI 하네스 엔지니어링 제안서를 내 프로젝트와 실측 대조했다. 이미 잘 되어 있는 것, 내 규모에 과잉인 것은 건너뛰고 실질적으로 필요한 부분만 선택했다.<br><br>
+        <strong>G1:</strong> 검증 체크리스트가 없었다 → 서브태스크마다 Feature List 자동 생성으로 "뭘 검증해야 하는지"를 명시화.<br>
+        <strong>G6:</strong> 사용하지 않는 MCP가 많이 로드되고 있었다 → 실사용 기준으로 정리 + 보수 원칙 명문화.<br>
+        <strong>§8.2:</strong> "검증했냐?"가 자율에 맡겨져 있었다 → 미체크 항목이 있으면 커밋 자체가 막히도록 기계 강제.<br>
+        <strong>/critical-review:</strong> step-5 서브태스크 분리 직후 적대적 시각으로 숨은 구멍을 한 번 더 훑는 스킬. 기획 단계의 함정을 구현 전에 선제 발굴.
+      </div>
+      <div class="insight-box">이미 있는 것 위에 보완하는 것이지 처음부터 다시 만드는 게 아니다. 취사선택이 핵심이었다.</div>
+    </div>
+
+    <div class="decision-card type-next">
+      <div class="decision-type">MVP11부터 달라지는 것</div>
+      <div class="decision-title">각 단계에서 기계가 막는다 — "됐겠지"로 넘어가는 선택지가 사라진다</div>
+      <div class="decision-body">
+        이전엔 검증을 빠뜨려도 넘어갈 수 있었다. 이제는 서브태스크마다 Feature List가 생기고, 그 항목을 다 통과하지 않으면 커밋이 막힌다.<br><br>
+        직접 써봐야 체감되는 종류의 변화다. AI가 각 단계에서 조금 더 신중해지고, 놓치는 케이스가 줄어드는 방향으로 작동할 것으로 기대한다.<br><br>
+        다음 튜닝 시점이 오면 — MVP11 이후 실제 흐름을 기준으로 다시 분석한다. 이전(MVP1~10) 데이터는 이미 다른 기준이므로 참고하지 않는다.
+      </div>
+      <div class="insight-box">변화는 써봐야 안다. 이 회고는 기대치를 적는 것이고, 실제 효과는 MVP11 이후 흐름이 말해줄 것이다.</div>
+    </div>
+
+    <div class="decision-card type-lesson">
+      <div class="decision-type">오늘의 교훈</div>
+      <div class="decision-title">한번에 완벽하게 하려다 지쳤다 — 이터레이티브하게 했어야 했다</div>
+      <div class="decision-body">
+        튜닝을 한 번에 완벽하게 끝내려 하니 결정해야 할 것이 너무 많았고 시간도 많이 들었다. 각 결정이 어떻게 다른지도 와닿지 않는 경우가 많았다.<br><br>
+        어느 정도만 하고 직접 사용해본 후 다시 튜닝하는 방식이 더 나았을 것이다. 실사용 없이는 뭐가 문제인지 실감하기 어렵고, 결정 피로만 쌓인다.
+      </div>
+      <div class="insight-box">튜닝도 제품 개발과 같다. 완벽한 v1보다 빠른 v0.5 → 실사용 → v1이 더 낫다. 다음 튜닝은 더 짧은 사이클로.</div>
+    </div>
+
+  </div>
+
+  <div class="section-title">Keep / Problem / Surprise</div>
+  <div class="kps">
+    <div class="kps-card keep">
+      <div class="kps-label">Keep</div>
+      <div class="kps-item">
+        <strong>취사선택 원칙</strong>
+        하네스 제안서를 전부 따르지 않고, 내 프로젝트 규모와 실측에 맞는 것만 골랐다. 이 판단이 오버엔지니어링을 막았다.
+      </div>
+      <div class="kps-item">
+        <strong>history/harness 분리</strong>
+        MVP 아카이브와 하네스 튜닝 기록을 별도로 관리한 결정. 다음 튜닝 시 참조 범위를 명확하게 만든다.
+      </div>
+    </div>
+    <div class="kps-card problem">
+      <div class="kps-label">Problem</div>
+      <div class="kps-item">
+        <strong>한번에 완벽하게</strong>
+        G1·G6·§8.2를 하루에 전부 끝내려 한 것. 결정 피로가 쌓이고 "뭐가 다른지 모르겠다"는 느낌이 든 원인이었다.
+      </div>
+      <div class="kps-item">
+        <strong>체감 없는 결정</strong>
+        실사용 전에 결정해야 하는 항목이 많았다. 실제로 써보지 않으면 어떤 선택이 맞는지 와닿지 않는다.
+      </div>
+    </div>
+    <div class="kps-card surprise">
+      <div class="kps-label">Surprise</div>
+      <div class="kps-item">
+        <strong>튜닝도 이터레이션이다</strong>
+        제품을 만들듯 환경도 빠른 사이클로 조금씩 개선하는 게 맞다는 걸 오늘 처음 체감했다.
+      </div>
+      <div class="kps-item">
+        <strong>써봐야 안다</strong>
+        변화가 클수록 실사용 전에는 효과를 예측하기 어렵다. MVP11 이후가 실제 검증 구간이다.
+      </div>
+    </div>
+  </div>
+
+  <div class="footer">
+    Frank · 2026-04-20 · generated by /daily-retro
+  </div>
+
+</div>
+</body>
+</html>
