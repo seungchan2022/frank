@@ -102,6 +102,7 @@ settings.json/hooks 기계적 강제:
 - `/workflow "태스크"` — 5단계 실행
 - `/kpi` — 현재 MVP KPI 상태 대시보드
 - `/debate`, `/deep-analysis` — 3자 토론·심층 분석
+- `/study "MVPN"` — MVP별 흐름·개념 학습 (객관식 자가 확인 + 자동 critical-review)
 - `/init`, `/next`, `/status` — 세션 초기화·진행
 
 ## 작업 원칙
