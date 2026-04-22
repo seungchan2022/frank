@@ -15,6 +15,9 @@
 
 set -euo pipefail
 
+# mise shims PATH 보장 (비인터랙티브 환경에서 ~/.zshrc 미로드 대비)
+export PATH="$HOME/.local/share/mise/shims:$PATH"
+
 # ─── 상수 ────────────────────────────────────────────────────────────────────
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 PROJECT_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
