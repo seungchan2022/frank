@@ -1,0 +1,184 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <title>1단계: 로그인 전체 흐름</title>
+  <style>
+    body { font-family: 'Apple SD Gothic Neo', sans-serif; background: #FDF6F0; padding: 32px; color: #2D2926; max-width: 1100px; margin: 0 auto; }
+    h1 { color: #92400E; font-size: 22px; margin-bottom: 6px; }
+    .subtitle { color: #888; font-size: 14px; margin-bottom: 28px; }
+    .tab-bar { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 0; }
+    .tab { padding: 10px 16px; border-radius: 8px 8px 0 0; cursor: pointer; font-size: 13px; font-weight: 600; border: 1px solid #E5D5C5; border-bottom: none; background: #f0e8e0; color: #92400E; user-select: none; }
+    .tab.active { background: white; color: #D97706; }
+    .panel { display: none; background: white; border: 1px solid #E5D5C5; border-radius: 0 12px 12px 12px; padding: 28px; margin-bottom: 20px; overflow-x: auto; }
+    .panel.active { display: block; }
+    .panel img { width: 100%; height: auto; }
+    .legend { background: white; border: 1px solid #E5D5C5; border-radius: 12px; padding: 24px; margin-top: 16px; }
+    .legend h2 { color: #92400E; font-size: 16px; margin: 0 0 16px; }
+    .legend ol { margin: 0; padding-left: 20px; line-height: 2.4; }
+    .legend li { font-size: 14px; }
+    .num { font-weight: bold; color: #D97706; }
+    .badge { display: inline-block; padding: 2px 8px; border-radius: 4px; font-size: 11px; font-weight: bold; margin-left: 6px; vertical-align: middle; }
+    .badge-web  { background: #DBEAFE; color: #1E40AF; }
+    .badge-ios  { background: #EDE9FE; color: #5B21B6; }
+    .badge-diff { background: #FEE2E2; color: #991B1B; }
+    .badge-same { background: #D1FAE5; color: #065F46; }
+    code { background: #FFF7ED; padding: 1px 6px; border-radius: 4px; font-size: 12px; font-family: monospace; }
+    .note { margin-top: 16px; padding: 14px 16px; border-radius: 8px; font-size: 13px; line-height: 1.8; }
+    .note-yellow { background: #FEF3C7; border-left: 4px solid #D97706; }
+    .note-purple { background: #EDE9FE; border-left: 4px solid #7C3AED; }
+    .note-blue   { background: #DBEAFE; border-left: 4px solid #2563EB; }
+    .compare-table { width: 100%; border-collapse: collapse; margin-top: 12px; font-size: 13px; }
+    .compare-table th { background: #FEF3C7; color: #92400E; padding: 10px 14px; text-align: left; border: 1px solid #E5D5C5; }
+    .compare-table td { padding: 10px 14px; border: 1px solid #E5D5C5; vertical-align: top; line-height: 1.7; }
+    .compare-table tr:nth-child(even) td { background: #FAFAFA; }
+    .section-title { font-size: 15px; font-weight: bold; color: #92400E; margin: 24px 0 10px; border-bottom: 2px solid #E5D5C5; padding-bottom: 6px; }
+    .empty-legend { color: #bbb; font-size: 13px; font-style: italic; text-align: center; padding: 20px 0; }
+  </style>
+</head>
+<body>
+  <h1>1단계: 로그인 전체 흐름</h1>
+  <p class="subtitle">웹(이메일) · 웹(Apple OAuth) · iOS(이메일) · iOS(Apple) · 4자 비교</p>
+
+  <div class="tab-bar">
+    <div class="tab active" onclick="show('email')">① 웹 이메일</div>
+    <div class="tab"        onclick="show('apple')">② 웹 Apple OAuth</div>
+    <div class="tab"        onclick="show('ios-email')">③ iOS 이메일</div>
+    <div class="tab"        onclick="show('ios-apple')">④ iOS Apple</div>
+    <div class="tab"        onclick="show('compare')">⑤ 4자 비교</div>
+  </div>
+
+  <!-- ① 웹 이메일 -->
+  <div id="panel-email" class="panel active">
+    <img src="flow_email.svg" alt="웹 이메일 로그인 흐름">
+    <div class="legend">
+      <h2>흐름 해설</h2>
+      <p class="empty-legend">학습 후 채워집니다.</p>
+    </div>
+  </div>
+
+  <!-- ② 웹 Apple OAuth -->
+  <div id="panel-apple" class="panel">
+    <img src="flow_apple.svg" alt="웹 Apple OAuth 로그인 흐름">
+    <div class="legend">
+      <h2>흐름 해설</h2>
+      <p class="empty-legend">학습 후 채워집니다.</p>
+    </div>
+  </div>
+
+  <!-- ③ iOS 이메일 -->
+  <div id="panel-ios-email" class="panel">
+    <img src="flow_ios_email.svg" alt="iOS 이메일 로그인 흐름">
+    <div class="legend">
+      <h2>흐름 해설</h2>
+      <p class="empty-legend">학습 후 채워집니다.</p>
+    </div>
+  </div>
+
+  <!-- ④ iOS Apple -->
+  <div id="panel-ios-apple" class="panel">
+    <img src="flow_ios_apple.svg" alt="iOS Apple 로그인 흐름">
+    <div class="legend">
+      <h2>흐름 해설</h2>
+      <p class="empty-legend">학습 후 채워집니다.</p>
+    </div>
+  </div>
+
+  <!-- ⑤ 4자 비교 -->
+  <div id="panel-compare" class="panel">
+    <p class="section-title">4가지 로그인 방식 비교</p>
+    <table class="compare-table">
+      <thead>
+        <tr>
+          <th>항목</th>
+          <th>① 웹 이메일 <span class="badge badge-web">Web</span></th>
+          <th>② 웹 Apple <span class="badge badge-web">Web</span></th>
+          <th>③ iOS 이메일 <span class="badge badge-ios">iOS</span></th>
+          <th>④ iOS Apple <span class="badge badge-ios">iOS</span></th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><strong>인증 방식</strong></td>
+          <td>이메일+비밀번호</td>
+          <td>OAuth 2.0 (PKCE)</td>
+          <td>이메일+비밀번호</td>
+          <td>Sign in with Apple</td>
+        </tr>
+        <tr>
+          <td><strong>브라우저 리다이렉트</strong></td>
+          <td>없음 <span class="badge badge-same">직접 호출</span></td>
+          <td>있음 <span class="badge badge-diff">Apple 서버 경유</span></td>
+          <td>없음 <span class="badge badge-same">직접 호출</span></td>
+          <td>없음 <span class="badge badge-same">네이티브 팝업</span></td>
+        </tr>
+        <tr>
+          <td><strong>Apple 인증 UI</strong></td>
+          <td>—</td>
+          <td>Safari에서 Apple 로그인 페이지</td>
+          <td>—</td>
+          <td>iOS 네이티브 팝업 + Face ID</td>
+        </tr>
+        <tr>
+          <td><strong>Supabase 호출 방식</strong></td>
+          <td><code>signInWithPassword()</code></td>
+          <td><code>exchangeCodeForSession(code)</code></td>
+          <td><code>signIn(email:password:)</code></td>
+          <td><code>signInWithIdToken(credentials)</code></td>
+        </tr>
+        <tr>
+          <td><strong>Apple 측에서 받는 것</strong></td>
+          <td>—</td>
+          <td>authorization <strong>code</strong></td>
+          <td>—</td>
+          <td><strong>idToken</strong> (Apple 서명 JWT)</td>
+        </tr>
+        <tr>
+          <td><strong>토큰 저장 위치</strong></td>
+          <td>httpOnly 쿠키 <span class="badge badge-web">JS 접근 불가</span></td>
+          <td>httpOnly 쿠키 <span class="badge badge-web">JS 접근 불가</span></td>
+          <td>iOS Keychain <span class="badge badge-ios">앱 샌드박스</span></td>
+          <td>iOS Keychain <span class="badge badge-ios">앱 샌드박스</span></td>
+        </tr>
+        <tr>
+          <td><strong>토큰 관리 주체</strong></td>
+          <td>hooks.server.ts</td>
+          <td>hooks.server.ts</td>
+          <td>Supabase Swift SDK</td>
+          <td>Supabase Swift SDK</td>
+        </tr>
+        <tr>
+          <td><strong>세션 복원 방식</strong></td>
+          <td>쿠키 자동 전송</td>
+          <td>쿠키 자동 전송</td>
+          <td>Keychain에서 SDK가 복원</td>
+          <td>Keychain에서 SDK가 복원</td>
+        </tr>
+        <tr>
+          <td><strong>Rust API 인증</strong></td>
+          <td colspan="4" style="text-align:center">공통: Bearer 토큰 → <code>require_auth()</code> 미들웨어 → Supabase 검증 → <code>AuthUser</code> Extension 삽입</td>
+        </tr>
+      </tbody>
+    </table>
+    <div class="note note-yellow" style="margin-top:20px">
+      💡 <strong>웹 Apple vs iOS Apple 핵심 차이</strong><br>
+      웹은 브라우저가 Apple 서버로 나갔다 돌아오는 <strong>code 교환 방식</strong>이고,<br>
+      iOS는 시스템이 직접 처리해서 <strong>idToken을 바로</strong> 주는 방식이다.
+    </div>
+    <div class="note note-blue" style="margin-top:12px">
+      💡 <strong>웹 vs iOS 공통점</strong><br>
+      플랫폼이 달라도 <strong>Rust API 인증은 완전히 동일</strong>하다.<br>
+      Supabase JWT → Bearer 토큰 → <code>require_auth()</code> → <code>AuthUser</code> Extension.
+    </div>
+  </div>
+
+  <script>
+    function show(tab) {
+      document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+      document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+      document.getElementById('panel-' + tab).classList.add('active');
+      event.target.classList.add('active');
+    }
+  </script>
+</body>
+</html>
