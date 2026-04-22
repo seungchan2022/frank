@@ -22,6 +22,7 @@ let project = Project(
                     // HTTP 로컬 서버 허용 (ATS localhost 예외)
                     "NSAppTransportSecurity": [
                         "NSAllowsLocalNetworking": true,
+                        "NSAllowsArbitraryLoads": true,
                     ],
                 ]
             ),
@@ -32,6 +33,10 @@ let project = Project(
                 .external(name: "Supabase"),
             ],
             settings: .settings(
+                base: [
+                    "DEVELOPMENT_TEAM": "$(DEVELOPMENT_TEAM)",
+                    "CODE_SIGN_STYLE": "Automatic",
+                ],
                 configurations: [
                     .debug(name: "Debug", xcconfig: "Config.xcconfig"),
                     .release(name: "Release", xcconfig: "Config.xcconfig"),
