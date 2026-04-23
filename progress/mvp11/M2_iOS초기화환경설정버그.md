@@ -66,7 +66,7 @@ static var live: ServerConfig {
 
 ---
 
-## KPI (M1)
+## KPI (M2)
 
 | 지표 | 측정 방법 | 목표 | 게이트 | 기준선 |
 |---|---|---|---|---|
