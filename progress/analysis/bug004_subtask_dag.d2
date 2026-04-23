@@ -1,0 +1,76 @@
+title: BUG-004 서브태스크 의존성 DAG {
+  near: top-center
+  shape: text
+  style.font-size: 18
+  style.bold: true
+}
+
+# 노드 정의
+start: {
+  label: "BUG-004\n검색엔진 뉴스 품질 개선"
+  shape: oval
+  style.fill: "#4A90D9"
+  style.font-color: "#FFFFFF"
+}
+
+st1: {
+  label: "ST-1\nExa type:news\n+ startPublishedDate\n[exa.rs]"
+  shape: rectangle
+  style.fill: "#E8F5E9"
+  style.stroke: "#388E3C"
+}
+
+st2: {
+  label: "ST-2\nTavily topic:news\n+ time_range 조합\n[tavily.rs]"
+  shape: rectangle
+  style.fill: "#E8F5E9"
+  style.stroke: "#388E3C"
+}
+
+st3_interview: {
+  label: "/step-4 인터뷰\nST-3 위치 결정\n(A: feed.rs / B: search_chain.rs)"
+  shape: diamond
+  style.fill: "#FFF9C4"
+  style.stroke: "#F9A825"
+}
+
+st3: {
+  label: "ST-3\nURL 후처리 필터\n(listing 페이지 제거)\n[위치 미결]"
+  shape: rectangle
+  style.fill: "#E3F2FD"
+  style.stroke: "#1565C0"
+}
+
+verify: {
+  label: "검증 게이트\ncargo clippy\ncargo test\nkpi-check.sh"
+  shape: oval
+  style.fill: "#EDE7F6"
+  style.stroke: "#6A1B9A"
+}
+
+# 엣지 정의
+start -> st1: "병렬 시작"
+start -> st2: "병렬 시작"
+
+st1 -> st3_interview: {
+  label: "우선순위 순서\n(코드 독립)"
+  style.stroke-dash: 4
+}
+st2 -> st3_interview: {
+  label: "우선순위 순서\n(코드 독립)"
+  style.stroke-dash: 4
+}
+
+st3_interview -> st3: "위치 확정 후"
+
+st1 -> verify: "테스트 통과"
+st2 -> verify: "테스트 통과"
+st3 -> verify: "테스트 통과"
+
+# 범례
+legend: {
+  label: "범례\n─── 기술 의존성\n- - - 실행 우선순위 (코드 독립)"
+  shape: text
+  near: bottom-right
+  style.font-size: 12
+}
