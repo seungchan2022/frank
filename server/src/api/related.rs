@@ -7,7 +7,7 @@ use crate::domain::ports::DbPort;
 use crate::middleware::auth::AuthUser;
 
 use super::AppState;
-use super::feed::{FeedItemResponse, is_homepage_url};
+use super::feed::{FeedItemResponse, is_homepage_url, is_listing_url};
 
 /// GET /me/articles/related 쿼리 파라미터
 #[derive(Debug, Deserialize)]
@@ -63,7 +63,7 @@ pub async fn get_related<D: DbPort>(
 
     let items: Vec<FeedItemResponse> = search_items
         .into_iter()
-        .filter(|sr| !is_homepage_url(&sr.url)) // feed.rs와 동일하게 홈페이지 URL 제거
+        .filter(|sr| !is_homepage_url(&sr.url) && !is_listing_url(&sr.url)) // feed.rs와 동일하게 홈페이지·listing URL 제거
         .map(|sr| FeedItemResponse {
             title: sr.title,
             url: sr.url,
@@ -292,5 +292,56 @@ mod tests {
         for item in &items {
             assert!(item.tag_id.is_none(), "연관 기사의 tag_id는 항상 None");
         }
+    }
+
+    /// 테스트 5: 홈페이지·listing URL은 결과에서 제외됨
+    #[tokio::test]
+    async fn get_related_filters_homepage_and_listing_urls() {
+        let db = FakeDbAdapter::new();
+        let user_id = Uuid::new_v4();
+
+        let mut query_map: HashMap<String, Result<Vec<SearchResult>, String>> = HashMap::new();
+        query_map.insert(
+            "rust programming".to_string(),
+            Ok(vec![
+                // 정상 기사
+                SearchResult {
+                    title: "Rust Article".to_string(),
+                    url: "https://example.com/news/rust-article".to_string(),
+                    snippet: None,
+                    published_at: None,
+                    image_url: None,
+                },
+                // 홈페이지 URL → 제외
+                SearchResult {
+                    title: "Home".to_string(),
+                    url: "https://example.com".to_string(),
+                    snippet: None,
+                    published_at: None,
+                    image_url: None,
+                },
+                // listing URL → 제외
+                SearchResult {
+                    title: "Tag Page".to_string(),
+                    url: "https://example.com/tag".to_string(),
+                    snippet: None,
+                    published_at: None,
+                    image_url: None,
+                },
+            ]),
+        );
+
+        let state = make_test_state_with_query_map(db, query_map);
+        let app = make_app(state, user_id);
+        let server = TestServer::new(app);
+
+        let resp = server
+            .get("/me/articles/related")
+            .add_query_param("title", "rust programming")
+            .await;
+        resp.assert_status_ok();
+        let items: Vec<FeedItemResponse> = resp.json();
+        assert_eq!(items.len(), 1, "홈페이지·listing URL은 필터링되어야 함");
+        assert_eq!(items[0].title, "Rust Article");
     }
 }

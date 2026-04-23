@@ -214,9 +214,14 @@ pub async fn get_feed<D: DbPort>(
         };
 
         for sr in search_items {
-            // 홈페이지/목록 URL 필터링
+            // listing URL 먼저 체크 — /tag/ 같은 단일 세그먼트 listing이
+            // is_homepage_url(segments ≤ 1)에 흡수되어 로그가 틀리게 남는 것을 방지
+            if is_listing_url(&sr.url) {
+                tracing::debug!(url = %sr.url, "skipping listing URL");
+                continue;
+            }
             if is_homepage_url(&sr.url) {
-                tracing::debug!(url = %sr.url, "skipping homepage/listing URL");
+                tracing::debug!(url = %sr.url, "skipping homepage URL");
                 continue;
             }
             items.push(FeedItem {
@@ -269,21 +274,99 @@ fn normalize_url(url: &str) -> String {
     without_www.trim_end_matches('/').to_string()
 }
 
-/// 홈페이지/목록 URL을 판별한다.
-/// path 세그먼트가 1개 이하면 개별 기사가 아닌 것으로 간주.
-pub(super) fn is_homepage_url(raw_url: &str) -> bool {
-    let path = raw_url
+/// URL에서 path 세그먼트 목록을 추출한다.
+/// - 스킴+도메인 이후의 path만 대상
+/// - 소문자 정규화, query string 제거, trailing slash 제거 후 분리
+fn url_path_segments(url: &str) -> Vec<String> {
+    let path = url
         .find("://")
         .and_then(|scheme_end| {
-            let after_scheme = &raw_url[scheme_end + 3..];
+            let after_scheme = &url[scheme_end + 3..];
             after_scheme
                 .find('/')
                 .map(|slash_pos| &after_scheme[slash_pos..])
         })
         .unwrap_or("/");
-    let path = path.trim_end_matches('/');
-    let segments: Vec<&str> = path.split('/').filter(|s| !s.is_empty()).collect();
-    segments.len() <= 1
+    let path = path.to_lowercase();
+    // query string(?), fragment(#) 제거 후 trailing slash 정리
+    // str::split은 항상 ≥1 원소를 반환하므로 unwrap() 안전
+    let path = path.split('?').next().unwrap();
+    let path = path.split('#').next().unwrap().trim_end_matches('/');
+    path.split('/')
+        .filter(|s| !s.is_empty())
+        .map(String::from)
+        .collect()
+}
+
+/// listing URL 패턴(태그·카테고리·섹션 인덱스 페이지·페이지네이션)을 판별한다.
+///
+/// Rule 1: 마지막 세그먼트가 listing 키워드 → 차단
+///   예) `/tag/` → 차단, `/latest/` → 차단
+///
+/// Rule 2: 마지막 세그먼트가 순수 정수(페이지 번호)이고 앞에 listing 관련 세그먼트가 있으면 차단
+///   예) `/blog/latest/2` → 차단, `/category/news/3` → 차단
+///   예) `/2026/04/23` → 통과 (앞 세그먼트 모두 날짜/숫자, listing 키워드 없음)
+pub(super) fn is_listing_url(url: &str) -> bool {
+    // 단수·복수 쌍 순서로 나열. Rule 1 판별 대상.
+    const LISTING_SEGMENTS: &[&str] = &[
+        "tag",
+        "tags",
+        "category",
+        "categories",
+        "topic",
+        "topics",
+        "section",
+        "latest",
+        "archive",
+    ];
+
+    // Rule 2에서 페이지 번호 앞에 있으면 listing으로 판별할 키워드
+    const LISTING_PREFIX_SEGMENTS: &[&str] = &[
+        "tag",
+        "tags",
+        "category",
+        "categories",
+        "topic",
+        "topics",
+        "section",
+        "latest",
+        "archive",
+        "page",
+        "all",
+        "recent",
+    ];
+
+    let segments = url_path_segments(url);
+
+    match segments.last() {
+        None => false,
+        Some(last) => {
+            // Rule 1: 마지막 세그먼트가 listing 키워드
+            if LISTING_SEGMENTS.contains(&last.as_str()) {
+                return true;
+            }
+            // Rule 2: 마지막 세그먼트가 페이지 번호(순수 양의 정수)이고
+            //         앞 경로에 listing 관련 세그먼트가 있으면 페이지네이션 listing
+            if last.parse::<u32>().is_ok() {
+                let preceding = &segments[..segments.len() - 1];
+                if preceding
+                    .iter()
+                    .any(|s| LISTING_PREFIX_SEGMENTS.contains(&s.as_str()))
+                {
+                    return true;
+                }
+            }
+            false
+        }
+    }
+}
+
+/// 홈페이지/단순 목록 URL을 판별한다.
+/// path 세그먼트가 1개 이하면 개별 기사가 아닌 것으로 간주.
+/// 주의: `/openai-launches-model` 같은 단일 슬러그 기사도 탈락할 수 있다.
+/// 검색 엔진이 반환하는 URL 중 이런 패턴은 드물어 허용 가능한 트레이드오프로 채택.
+pub(super) fn is_homepage_url(url: &str) -> bool {
+    url_path_segments(url).len() <= 1
 }
 
 #[cfg(test)]
@@ -818,6 +901,162 @@ mod tests {
         assert!(!is_homepage_url("https://example.com/2024/01/my-post"));
     }
 
+    // MARK: - ST-3: is_listing_url 단위 테스트
+
+    #[test]
+    fn listing_url_tag_only_filtered() {
+        assert!(is_listing_url("https://example.com/tag/"), "/tag/ → 차단");
+        assert!(is_listing_url("https://example.com/tags/"), "/tags/ → 차단");
+    }
+
+    #[test]
+    fn listing_url_category_only_filtered() {
+        assert!(
+            is_listing_url("https://example.com/category/"),
+            "/category/ → 차단"
+        );
+        assert!(
+            is_listing_url("https://example.com/categories/"),
+            "/categories/ → 차단"
+        );
+    }
+
+    #[test]
+    fn listing_url_topics_only_filtered() {
+        assert!(
+            is_listing_url("https://example.com/topics/"),
+            "/topics/ → 차단"
+        );
+        assert!(
+            is_listing_url("https://example.com/topic/"),
+            "/topic/ → 차단"
+        );
+        assert!(
+            is_listing_url("https://example.com/section/"),
+            "/section/ → 차단"
+        );
+    }
+
+    #[test]
+    fn listing_url_real_article_not_filtered() {
+        assert!(
+            !is_listing_url("https://example.com/news/some-article"),
+            "/news/some-article → 통과"
+        );
+        assert!(
+            !is_listing_url("https://example.com/2026/04/my-post"),
+            "/2026/04/my-post → 통과"
+        );
+    }
+
+    #[test]
+    fn listing_url_category_with_slug_not_filtered() {
+        assert!(
+            !is_listing_url("https://example.com/category/tech/article-slug"),
+            "/category/tech/article-slug → 통과 (오탐 방지)"
+        );
+    }
+
+    #[test]
+    fn listing_url_tag_with_value_not_filtered() {
+        // 수용된 트레이드오프: /tag/ai-news 는 통과 (마지막 세그먼트 = "ai-news", 비-listing)
+        assert!(
+            !is_listing_url("https://example.com/tag/ai-news"),
+            "/tag/ai-news → 통과 (트레이드오프 수용)"
+        );
+    }
+
+    #[test]
+    fn listing_url_case_insensitive() {
+        assert!(
+            is_listing_url("https://example.com/TAG/"),
+            "/TAG/ → 차단 (대소문자 무관)"
+        );
+        assert!(
+            is_listing_url("https://example.com/Category/"),
+            "/Category/ → 차단 (대소문자 무관)"
+        );
+    }
+
+    #[test]
+    fn listing_url_with_fragment_filtered() {
+        // fragment가 있어도 listing URL은 차단돼야 한다
+        assert!(
+            is_listing_url("https://example.com/tag#top"),
+            "/tag#top → 차단 (fragment 무시)"
+        );
+        assert!(
+            is_listing_url("https://example.com/category#foo"),
+            "/category#foo → 차단 (fragment 무시)"
+        );
+    }
+
+    #[test]
+    fn listing_url_with_query_and_fragment_filtered() {
+        // query + fragment 동시에 있어도 listing 판별이 동작해야 한다
+        assert!(
+            is_listing_url("https://example.com/tag?page=2#section"),
+            "/tag?page=2#section → 차단"
+        );
+        assert!(
+            !is_listing_url("https://example.com/news/article?ref=home#comments"),
+            "/news/article?...#... → 통과"
+        );
+    }
+
+    // MARK: - Rule 2: 페이지네이션 listing (마지막 세그먼트가 정수 + 앞에 listing 키워드)
+
+    #[test]
+    fn listing_url_paginated_latest_filtered() {
+        // /blog/latest/2 → Rule 2: last=2(정수), 앞에 "latest" → 차단
+        assert!(
+            is_listing_url("https://developer.android.com/blog/latest/2?hl=ko"),
+            "/blog/latest/2 → 차단 (페이지네이션 listing)"
+        );
+        assert!(
+            is_listing_url("https://example.com/latest/3"),
+            "/latest/3 → 차단"
+        );
+    }
+
+    #[test]
+    fn listing_url_paginated_category_filtered() {
+        assert!(
+            is_listing_url("https://example.com/category/news/2"),
+            "/category/news/2 → 차단 (앞에 category)"
+        );
+        assert!(
+            is_listing_url("https://example.com/page/5"),
+            "/page/5 → 차단 (앞에 page)"
+        );
+    }
+
+    #[test]
+    fn listing_url_date_path_not_filtered() {
+        // 날짜 기반 기사 URL: 앞 세그먼트가 숫자뿐이라 listing_prefix 없음 → 통과
+        assert!(
+            !is_listing_url("https://example.com/2026/04/23"),
+            "/2026/04/23 → 통과 (날짜 경로)"
+        );
+        assert!(
+            !is_listing_url("https://example.com/2026/01/my-article"),
+            "/2026/01/my-article → 통과"
+        );
+    }
+
+    #[test]
+    fn listing_url_latest_without_page_filtered() {
+        // /latest/ 자체도 Rule 1으로 차단
+        assert!(
+            is_listing_url("https://example.com/blog/latest"),
+            "/blog/latest → 차단 (Rule 1: last=latest)"
+        );
+        assert!(
+            is_listing_url("https://example.com/archive"),
+            "/archive → 차단 (Rule 1)"
+        );
+    }
+
     /// S1: 태그 2개 — 각 태그 쿼리에 서로 다른 결과 → 두 결과가 모두 합산됨
     #[tokio::test]
     async fn get_feed_parallel_tags_merged() {
@@ -1009,6 +1248,56 @@ mod tests {
         resp.assert_status_ok();
         let items: Vec<FeedItemResponse> = resp.json();
         assert!(items.is_empty(), "미구독 tag_id → 빈 결과");
+    }
+
+    /// ST-3: listing URL 필터 — /tag/, /category/ 패턴은 피드에서 제거됨
+    #[tokio::test]
+    async fn get_feed_skips_listing_urls() {
+        let db = FakeDbAdapter::new();
+        let user_id = Uuid::new_v4();
+        db.seed_profile(Profile {
+            id: user_id,
+            display_name: None,
+            onboarding_completed: true,
+        });
+
+        let tags = db.get_tags();
+        let tag_id = tags[0].id;
+        db.seed_user_tag(user_id, tag_id);
+
+        let results = vec![
+            SearchResult {
+                title: "Tag Listing".to_string(),
+                url: "https://example.com/tag/".to_string(),
+                snippet: None,
+                published_at: None,
+                image_url: None,
+            },
+            SearchResult {
+                title: "Category Listing".to_string(),
+                url: "https://example.com/category/".to_string(),
+                snippet: None,
+                published_at: None,
+                image_url: None,
+            },
+            SearchResult {
+                title: "Real Article".to_string(),
+                url: "https://example.com/news/real-article".to_string(),
+                snippet: None,
+                published_at: None,
+                image_url: None,
+            },
+        ];
+
+        let state = make_test_state(db, results);
+        let app = make_app(state, user_id);
+        let server = TestServer::new(app);
+
+        let resp = server.get("/me/feed").await;
+        resp.assert_status_ok();
+        let items: Vec<FeedItemResponse> = resp.json();
+        assert_eq!(items.len(), 1, "listing URL은 피드에서 제거돼야 한다");
+        assert!(items[0].url.contains("real-article"));
     }
 
     /// ST-1: top_keywords가 있으면 search_query에 append
