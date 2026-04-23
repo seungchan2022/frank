@@ -106,9 +106,16 @@ impl SearchPort for ExaAdapter {
     > {
         let query = query.to_string();
         Box::pin(async move {
+            // Tavily의 time_range:"week"와 의미적 쌍 — 두 어댑터 모두 최근 7일 뉴스만 반환
+            const SEARCH_WINDOW_DAYS: i64 = 7;
+            let now = chrono::Utc::now();
+            let week_ago = now - chrono::Duration::days(SEARCH_WINDOW_DAYS);
             let body = serde_json::json!({
                 "query": query,
                 "numResults": max_results,
+                // Exa API 파라미터명: category (Tavily는 topic) — 각 API 스펙 차이
+                "category": "news",
+                "startPublishedDate": week_ago.to_rfc3339_opts(chrono::SecondsFormat::Millis, true),
                 "contents": {
                     "highlights": {
                         "numSentences": 3,
@@ -187,7 +194,7 @@ impl SearchPort for ExaAdapter {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use wiremock::matchers::{method, path};
+    use wiremock::matchers::{body_partial_json, method, path};
     use wiremock::{Mock, MockServer, ResponseTemplate};
 
     // --- clean_snippet 단위 테스트 ---
@@ -436,5 +443,120 @@ mod tests {
         let results = adapter.search("test", 5).await.unwrap();
 
         assert_eq!(results[0].image_url, None);
+    }
+
+    // MARK: - ST-1: category:"news" + startPublishedDate 파라미터 검증
+
+    #[tokio::test]
+    async fn exa_request_includes_category_news() {
+        let mock_server = MockServer::start().await;
+
+        Mock::given(method("POST"))
+            .and(path("/search"))
+            .and(body_partial_json(serde_json::json!({
+                "category": "news"
+            })))
+            .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({
+                "results": [{"title": "Test", "url": "https://example.com/news/test", "highlights": ["snippet"], "publishedDate": "2026-04-23T00:00:00Z"}]
+            })))
+            .mount(&mock_server)
+            .await;
+
+        let adapter = ExaAdapter::with_base_url("test-key", &mock_server.uri());
+        let result = adapter.search("test query", 5).await;
+        assert!(
+            result.is_ok(),
+            "category: news 파라미터 포함 요청이 성공해야 함: {:?}",
+            result.err()
+        );
+        assert_eq!(result.unwrap().len(), 1);
+    }
+
+    /// Exa API의 publishedDate → SearchResult.published_at 매핑이 올바른지 검증.
+    /// startPublishedDate 키 존재 여부는 body_partial_json으로 강하게 확인.
+    #[tokio::test]
+    async fn exa_published_date_mapped_to_published_at() {
+        let mock_server = MockServer::start().await;
+
+        Mock::given(method("POST"))
+            .and(path("/search"))
+            .and(body_partial_json(serde_json::json!({
+                "category": "news"
+            })))
+            .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({
+                "results": [{"title": "Dated", "url": "https://example.com/news/dated", "highlights": ["snippet"], "publishedDate": "2026-04-16T00:00:00Z"}]
+            })))
+            .mount(&mock_server)
+            .await;
+
+        let adapter = ExaAdapter::with_base_url("test-key", &mock_server.uri());
+        let result = adapter.search("date test", 5).await;
+        assert!(
+            result.is_ok(),
+            "startPublishedDate 포함 요청이 성공해야 함: {:?}",
+            result.err()
+        );
+        // publishedDate가 published_at 필드에 매핑되어 반환되어야 한다
+        let items = result.unwrap();
+        assert_eq!(items.len(), 1);
+        assert!(
+            items[0].published_at.is_some(),
+            "published_at 필드가 Some이어야 함"
+        );
+        assert_eq!(
+            items[0].published_at.as_deref(),
+            Some("2026-04-16T00:00:00Z")
+        );
+    }
+
+    // MARK: - ST-1: startPublishedDate 값 형식·범위 검증
+
+    #[tokio::test]
+    async fn exa_start_published_date_rfc3339_z_suffix_and_within_7_days() {
+        let mock_server = MockServer::start().await;
+
+        // 요청 본문을 캡처하여 값 형식과 범위를 검증
+        Mock::given(method("POST"))
+            .and(path("/search"))
+            .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({
+                "results": [{"title": "Test", "url": "https://example.com/news/test", "highlights": ["s"], "publishedDate": null}]
+            })))
+            .mount(&mock_server)
+            .await;
+
+        let before = chrono::Utc::now();
+        let adapter = ExaAdapter::with_base_url("test-key", &mock_server.uri());
+        let _ = adapter.search("test", 1).await;
+        let after = chrono::Utc::now();
+
+        // 수신된 요청에서 startPublishedDate 값을 파싱해 검증
+        let requests = mock_server.received_requests().await.unwrap();
+        assert_eq!(requests.len(), 1, "요청이 1회 전송돼야 함");
+
+        let body: serde_json::Value = serde_json::from_slice(&requests[0].body).unwrap();
+        let date_str = body["startPublishedDate"]
+            .as_str()
+            .expect("startPublishedDate는 문자열이어야 함");
+
+        // Z suffix 확인 (RFC3339 millis + Z)
+        assert!(
+            date_str.ends_with('Z'),
+            "startPublishedDate는 Z suffix로 끝나야 함: {}",
+            date_str
+        );
+
+        // 파싱 가능 확인
+        let parsed = chrono::DateTime::parse_from_rfc3339(date_str)
+            .expect("startPublishedDate는 유효한 RFC3339 형식이어야 함");
+        let parsed_utc = parsed.with_timezone(&chrono::Utc);
+
+        // 7일(±1초 여유) 이내 범위 확인
+        let expected_min = before - chrono::Duration::days(7) - chrono::Duration::seconds(1);
+        let expected_max = after - chrono::Duration::days(7) + chrono::Duration::seconds(1);
+        assert!(
+            parsed_utc >= expected_min && parsed_utc <= expected_max,
+            "startPublishedDate가 7일 전 범위 내여야 함: {}",
+            date_str
+        );
     }
 }
