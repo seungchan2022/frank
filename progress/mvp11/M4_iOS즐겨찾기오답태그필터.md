@@ -63,6 +63,6 @@
 
 | 지표 | 측정 방법 | 목표 | 게이트 | 기준선 |
 |---|---|---|---|---|
-| M2 DoD 테스트 통과 | `xcodebuild test -workspace Frank.xcworkspace -scheme Frank -destination 'platform=iOS Simulator,name=iPhone 17 Pro'` | 전체 통과 | Hard | — |
+| M4 DoD 테스트 통과 | `xcodebuild test -workspace Frank.xcworkspace -scheme Frank -destination 'platform=iOS Simulator,name=iPhone 17 Pro'` | 전체 통과 | Hard | — |
 | BUG-003 재현 0건 | 시뮬레이터에서 즐겨찾기·오답 탭 태그 필터 동작 수동 확인 | 0건 | Hard | 필터 없음 |
 | 태그 필터 선택/해제 동작 | 시뮬레이터 수동 UI 확인 | 정상 동작 | Hard | — |
