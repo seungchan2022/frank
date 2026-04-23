@@ -70,6 +70,6 @@ static var live: ServerConfig {
 
 | 지표 | 측정 방법 | 목표 | 게이트 | 기준선 |
 |---|---|---|---|---|
-| M1 DoD 테스트 통과 | `xcodebuild test -workspace Frank.xcworkspace -scheme Frank -destination 'platform=iOS Simulator,name=iPhone 17 Pro'` | 전체 통과 | Hard | — |
+| M2 DoD 테스트 통과 | `xcodebuild test -workspace Frank.xcworkspace -scheme Frank -destination 'platform=iOS Simulator,name=iPhone 17 Pro'` | 전체 통과 | Hard | — |
 | BUG-001 재현 0건 | 시뮬레이터 콜드 스타트 3회 수동 확인 | 0건 | Hard | 항상 재현 |
 | BUG-002 재현 0건 | 시뮬레이터에서 API 연결 성공 수동 확인 | 0건 | Hard | 항상 재현 |
