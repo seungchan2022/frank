@@ -70,6 +70,8 @@ impl SearchPort for TavilyAdapter {
                 "search_depth": "advanced",
                 "include_answer": false,
                 "time_range": "week",
+                // Tavily API 파라미터명: topic (Exa는 category) — 각 API 스펙 차이
+                "topic": "news",
             });
 
             let config = RetryConfig::for_search();
@@ -329,6 +331,33 @@ mod tests {
         assert!(
             result.is_ok(),
             "time_range: week 파라미터 포함 요청이 성공해야 함"
+        );
+        assert_eq!(result.unwrap().len(), 1);
+    }
+
+    // MARK: - ST-2: topic:"news" 파라미터 검증
+
+    #[tokio::test]
+    async fn tavily_request_includes_topic_news() {
+        let mock_server = MockServer::start().await;
+
+        Mock::given(method("POST"))
+            .and(path("/search"))
+            .and(body_partial_json(serde_json::json!({
+                "topic": "news"
+            })))
+            .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({
+                "results": [{"title": "News Article", "url": "https://example.com/news/article", "content": "snippet", "published_date": null}]
+            })))
+            .mount(&mock_server)
+            .await;
+
+        let adapter = TavilyAdapter::with_base_url("test-key", &mock_server.uri());
+        let result = adapter.search("test query", 5).await;
+        assert!(
+            result.is_ok(),
+            "topic: news 파라미터 포함 요청이 성공해야 함: {:?}",
+            result.err()
         );
         assert_eq!(result.unwrap().len(), 1);
     }
