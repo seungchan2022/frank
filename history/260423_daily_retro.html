@@ -1,0 +1,363 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>일일 회고 — 2026-04-23</title>
+  <style>
+    :root {
+      --bg: #0f0f13;
+      --surface: #1a1a23;
+      --border: #2a2a38;
+      --accent: #7c6fff;
+      --accent2: #ff6b9d;
+      --accent3: #4dd9ac;
+      --text: #e8e8f0;
+      --muted: #888899;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: 'Pretendard', -apple-system, sans-serif;
+      font-size: 15px;
+      line-height: 1.7;
+      padding: 48px 24px;
+    }
+    .container { max-width: 780px; margin: 0 auto; }
+
+    .header {
+      margin-bottom: 48px;
+      padding-bottom: 32px;
+      border-bottom: 1px solid var(--border);
+    }
+    .header-meta {
+      font-size: 12px;
+      color: var(--muted);
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      margin-bottom: 12px;
+    }
+    .header h1 {
+      font-size: 28px;
+      font-weight: 700;
+      color: var(--text);
+      margin-bottom: 8px;
+    }
+    .header-sub {
+      font-size: 13px;
+      color: var(--muted);
+    }
+    .header-sub code {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      padding: 1px 6px;
+      border-radius: 4px;
+      font-size: 12px;
+    }
+
+    .commits {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 24px;
+      margin-bottom: 40px;
+    }
+    .commits h2 {
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      margin-bottom: 16px;
+    }
+    .commit-list { display: flex; flex-direction: column; gap: 10px; }
+    .commit-item {
+      display: flex;
+      align-items: baseline;
+      gap: 12px;
+      font-size: 14px;
+    }
+    .commit-hash {
+      font-family: 'SF Mono', monospace;
+      font-size: 12px;
+      color: var(--accent);
+      background: #7c6fff15;
+      padding: 2px 7px;
+      border-radius: 4px;
+      flex-shrink: 0;
+    }
+    .commit-msg { color: var(--text); }
+    .commit-tag {
+      font-size: 11px;
+      padding: 2px 7px;
+      border-radius: 4px;
+      flex-shrink: 0;
+    }
+    .tag-fix { background: #ff6b9d20; color: var(--accent2); }
+    .tag-docs { background: #4dd9ac20; color: var(--accent3); }
+    .tag-chore { background: #88889920; color: var(--muted); }
+
+    .section { margin-bottom: 40px; }
+    .section-label {
+      font-size: 11px;
+      font-weight: 600;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      color: var(--muted);
+      margin-bottom: 20px;
+    }
+
+    .decision-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 28px;
+      margin-bottom: 20px;
+      position: relative;
+      overflow: hidden;
+    }
+    .decision-card::before {
+      content: '';
+      position: absolute;
+      top: 0; left: 0;
+      width: 3px; height: 100%;
+    }
+    .card-fix::before { background: var(--accent2); }
+    .card-arch::before { background: var(--accent3); }
+    .card-plan::before { background: var(--accent); }
+
+    .card-title {
+      font-size: 17px;
+      font-weight: 700;
+      color: var(--text);
+      margin-bottom: 20px;
+    }
+    .card-title code {
+      font-family: 'SF Mono', monospace;
+      font-size: 15px;
+      color: var(--accent);
+    }
+
+    .block { margin-bottom: 20px; }
+    .block-label {
+      font-size: 11px;
+      font-weight: 600;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      margin-bottom: 8px;
+    }
+    .label-problem { color: var(--accent2); }
+    .label-how { color: var(--accent); }
+    .label-insight { color: var(--accent3); }
+    .label-why { color: var(--accent2); }
+    .label-decision { color: var(--accent); }
+
+    .block p {
+      font-size: 14px;
+      color: #c8c8d8;
+      line-height: 1.75;
+    }
+
+    .insight-note {
+      background: #4dd9ac0d;
+      border: 1px solid #4dd9ac25;
+      border-radius: 8px;
+      padding: 14px 18px;
+      font-size: 13px;
+      color: var(--accent3);
+      font-style: italic;
+      line-height: 1.65;
+    }
+
+    .patterns {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 24px;
+    }
+    .patterns h2 {
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      margin-bottom: 16px;
+    }
+    .pattern-list { display: flex; flex-direction: column; gap: 10px; }
+    .pattern-item {
+      display: flex;
+      align-items: flex-start;
+      gap: 10px;
+      font-size: 14px;
+      color: #c8c8d8;
+    }
+    .pattern-dot {
+      width: 6px; height: 6px;
+      border-radius: 50%;
+      background: var(--accent);
+      margin-top: 8px;
+      flex-shrink: 0;
+    }
+  </style>
+</head>
+<body>
+<div class="container">
+
+  <div class="header">
+    <div class="header-meta">Daily Retro</div>
+    <h1>2026년 4월 23일</h1>
+    <div class="header-sub">
+      MVP11 <code>in-progress</code> &nbsp;·&nbsp; M1 <code>done</code> &nbsp;·&nbsp; branch: <code>main</code> &nbsp;·&nbsp; 커밋 15개
+    </div>
+  </div>
+
+  <div class="commits">
+    <h2>오늘의 커밋</h2>
+    <div class="commit-list">
+      <div class="commit-item">
+        <span class="commit-hash">8740e36</span>
+        <span class="commit-tag tag-docs">docs</span>
+        <span class="commit-msg">MVP11 로드맵 M1 완료 처리 및 기술 부채 기록</span>
+      </div>
+      <div class="commit-item">
+        <span class="commit-hash">b60f0da</span>
+        <span class="commit-tag tag-docs">docs</span>
+        <span class="commit-msg">M1 검색엔진 뉴스 품질 개선 진행 상황 업데이트</span>
+      </div>
+      <div class="commit-item">
+        <span class="commit-hash">ec8dbdd</span>
+        <span class="commit-tag tag-fix">fix</span>
+        <span class="commit-msg">URL listing 필터 추가 및 페이지네이션 감지 (ST-3)</span>
+      </div>
+      <div class="commit-item">
+        <span class="commit-hash">5da8f2b</span>
+        <span class="commit-tag tag-fix">fix</span>
+        <span class="commit-msg">Tavily topic:"news" 추가 (ST-2)</span>
+      </div>
+      <div class="commit-item">
+        <span class="commit-hash">2769ea2</span>
+        <span class="commit-tag tag-fix">fix</span>
+        <span class="commit-msg">Exa category:"news" + startPublishedDate 추가 (ST-1)</span>
+      </div>
+      <div class="commit-item">
+        <span class="commit-hash">78ed18a</span>
+        <span class="commit-tag tag-chore">chore</span>
+        <span class="commit-msg">MVP11 활성 마일스톤 M2:in-progress로 전환</span>
+      </div>
+      <div class="commit-item">
+        <span class="commit-hash">…</span>
+        <span class="commit-tag tag-docs">docs</span>
+        <span class="commit-msg">MVP11 기획 문서 · 마일스톤 · 로드맵 정비 (9개)</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="section">
+    <div class="section-label">핵심 결정 3개</div>
+
+    <div class="decision-card card-plan">
+      <div class="card-title">MVP11 기획 순서 — 버그 우선 · 서버 먼저 · 웹·iOS 병렬</div>
+
+      <div class="block">
+        <div class="block-label label-why">왜 이 순서인가</div>
+        <p>
+          M2·M3·M4는 서버 API가 이미 태그를 반환하고 있어 의존성이 없다.
+          M1(BUG-004)만 먼저 잡으면 나머지는 병렬로 돌릴 수 있는 구조였다.
+          버그를 안고 기능을 올리면 디버깅 범위가 넓어지기 때문에 수정 우선 원칙을 택했다.
+        </p>
+      </div>
+
+      <div class="block">
+        <div class="block-label label-decision">결정</div>
+        <p>
+          M1 완료 후 M2(iOS 초기화 버그) · M3(웹 즐겨찾기/오답 태그 필터) · M4(iOS 즐겨찾기/오답 태그 필터)
+          병렬 진행 구조 확정. 다음 세션은 나머지 마일스톤 구현에 집중한다.
+        </p>
+      </div>
+
+      <div class="insight-note">
+        의존성을 먼저 그리면 병렬화 가능한 곳이 보인다. "서버 먼저"는 속도가 아니라 의존 관계의 문제다.
+      </div>
+    </div>
+
+    <div class="decision-card card-fix">
+      <div class="card-title"><code>category:"news"</code> — API 팩트 정정이 플랜보다 먼저였어야 했다</div>
+
+      <div class="block">
+        <div class="block-label label-problem">무슨 일이 있었나</div>
+        <p>
+          M1 플랜에는 Exa 파라미터로 <code>type:"news"</code>가 명시돼 있었다.
+          실제로 적용하기 전 Exa 공식 문서를 확인했더니 <code>type</code>은 검색 알고리즘 선택용(neural/keyword)이고,
+          콘텐츠를 뉴스로 필터하는 건 <code>category:"news"</code>였다.
+          플랜 단계에서 API 스펙을 검증했더라면 수정 없이 바로 구현할 수 있었다.
+        </p>
+      </div>
+
+      <div class="block">
+        <div class="block-label label-how">어떻게 처리했나</div>
+        <p>
+          문서 확인 즉시 플랜을 수정하고 <code>category:"news"</code>로 구현했다.
+          오류 자체는 작았지만, "플랜에 적힌 것도 틀릴 수 있다"는 점을 다시 확인한 계기가 됐다.
+        </p>
+      </div>
+
+      <div class="insight-note">
+        플랜은 가설이다. 외부 API 파라미터는 구현 전에 공식 문서에서 한 번 더 확인하는 루틴이 필요하다.
+      </div>
+    </div>
+
+    <div class="decision-card card-arch">
+      <div class="card-title">기술 부채 명시 — "두더지 잡기"임을 인정하고 기록</div>
+
+      <div class="block">
+        <div class="block-label label-why">왜 이 결정이 중요했나</div>
+        <p>
+          URL 패턴 필터(is_listing_url)는 각 검색엔진의 URL 구조가 제각각이라
+          완전한 차단이 불가능하다. 엔진이 바뀌거나 URL 구조가 달라지면 다시 패턴을 추가해야 하는
+          두더지 잡기 구조다. 이번 MVP 범위에서는 빠른 개선을 위해 이 방식을 택했지만,
+          근본 해결이 아님을 숨기지 않고 문서에 남기기로 했다.
+        </p>
+      </div>
+
+      <div class="block">
+        <div class="block-label label-decision">기록한 내용</div>
+        <p>
+          후속 과제 2가지를 로드맵에 명시했다: ① 뉴스 전용 API(NewsAPI / Bing News) 교체로
+          기사만 반환 보장, ② LLM 기반 스니펫 분류로 엔진 독립적 후처리.
+          어느 쪽이든 다음 사이클에서 선택해야 할 결정이다.
+        </p>
+      </div>
+
+      <div class="insight-note">
+        완성처럼 보이지만 완성이 아닌 것을 완성처럼 두면 다음 사람(미래의 나)이 속는다.
+        한계를 기록하는 것이 부채를 갚는 첫 번째 단계다.
+      </div>
+    </div>
+  </div>
+
+  <div class="patterns">
+    <h2>오늘의 패턴</h2>
+    <div class="pattern-list">
+      <div class="pattern-item">
+        <div class="pattern-dot"></div>
+        <span>플랜에 적힌 API 파라미터도 검증이 필요하다 — 플랜은 가설이다</span>
+      </div>
+      <div class="pattern-item">
+        <div class="pattern-dot"></div>
+        <span>각 검색엔진 URL 패턴이 달라 완전한 필터는 어렵다 — 미해결로 남겨두고 다음 사이클로 이월</span>
+      </div>
+      <div class="pattern-item">
+        <div class="pattern-dot"></div>
+        <span>한계를 기록하는 것이 기술 부채 관리의 시작점이다</span>
+      </div>
+      <div class="pattern-item">
+        <div class="pattern-dot"></div>
+        <span>의존성을 먼저 파악하면 병렬화 가능한 마일스톤이 보인다</span>
+      </div>
+    </div>
+  </div>
+
+</div>
+</body>
+</html>
