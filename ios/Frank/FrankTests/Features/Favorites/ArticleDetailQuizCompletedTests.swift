@@ -34,7 +34,7 @@ struct ArticleDetailQuizCompletedTests {
     @Test("quizCompleted=true인 즐겨찾기 항목 조회")
     func quizCompleted_true_for_completed_item() async {
         let port = MockFavoritesPort()
-        let feature = FavoritesFeature(favorites: port)
+        let feature = FavoritesFeature(favorites: port, tag: MockTagPort())
 
         // 수동으로 items 설정 테스트를 위해 Port를 통해 로드
         let url = "https://example.com/article"
@@ -50,7 +50,7 @@ struct ArticleDetailQuizCompletedTests {
     @Test("quizCompleted=false인 즐겨찾기 항목 조회")
     func quizCompleted_false_for_uncompleted_item() async {
         let port = MockFavoritesPort()
-        let feature = FavoritesFeature(favorites: port)
+        let feature = FavoritesFeature(favorites: port, tag: MockTagPort())
 
         let url = "https://example.com/article2"
         let item = makeFavoriteItem(url: url, quizCompleted: false)
@@ -65,7 +65,7 @@ struct ArticleDetailQuizCompletedTests {
     @Test("URL로 FavoriteItem의 quizCompleted 값을 조회하는 헬퍼 메서드")
     func quizCompleted_helper_returns_correct_value() async {
         let port = MockFavoritesPort()
-        let feature = FavoritesFeature(favorites: port)
+        let feature = FavoritesFeature(favorites: port, tag: MockTagPort())
 
         let url = "https://example.com/quiz-done"
         let item = makeFavoriteItem(url: url, quizCompleted: true)
@@ -80,7 +80,7 @@ struct ArticleDetailQuizCompletedTests {
     @Test("즐겨찾기에 없는 기사는 quizCompleted=false 반환")
     func quizCompleted_returns_false_for_unknown_url() {
         let port = MockFavoritesPort()
-        let feature = FavoritesFeature(favorites: port)
+        let feature = FavoritesFeature(favorites: port, tag: MockTagPort())
 
         #expect(feature.isQuizCompleted("https://unknown.com") == false)
     }
