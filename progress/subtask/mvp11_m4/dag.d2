@@ -1,0 +1,53 @@
+direction: down
+
+# MVP11 M4 — iOS 즐겨찾기·오답 태그 칩 필터 의존성 DAG
+
+st1: ST-1 + ST-5 {
+  label: "FavoritesFeature 태그 상태 추가\n+ DI TagAdapter 주입"
+  shape: rectangle
+  style.fill: "#dbeafe"
+}
+
+st2: ST-2 {
+  label: "FavoritesView 기사 탭\n태그 칩 필터 UI"
+  shape: rectangle
+  style.fill: "#dcfce7"
+}
+
+st3_4: ST-3 + ST-4 {
+  label: "WrongAnswers 태그맵\n+ 오답 탭 태그 칩 UI"
+  shape: rectangle
+  style.fill: "#fef9c3"
+}
+
+build_check: 빌드 검증 {
+  label: "xcodebuild build\n컴파일 통과"
+  shape: diamond
+  style.fill: "#f3e8ff"
+}
+
+unit_test: 단위 테스트 {
+  label: "FavoritesFeatureTests\nFavoritesViewTests\nWrongAnswersFeatureTests"
+  shape: rectangle
+  style.fill: "#fee2e2"
+}
+
+swiftlint: SwiftLint {
+  label: "swiftlint lint --strict\nviolations: 0"
+  shape: diamond
+  style.fill: "#f3e8ff"
+}
+
+done: 완료 {
+  label: "xcodebuild test\nTEST SUCCEEDED"
+  shape: hexagon
+  style.fill: "#d1fae5"
+}
+
+st1 -> build_check: "init 시그니처 변경"
+build_check -> st2: "컴파일 통과"
+build_check -> st3_4: "컴파일 통과"
+st2 -> unit_test: "TagChipBar 렌더 테스트"
+st3_4 -> unit_test: "필터 로직 테스트"
+unit_test -> swiftlint
+swiftlint -> done
