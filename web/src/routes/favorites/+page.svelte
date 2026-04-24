@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { goto } from '$app/navigation';
+	import { onMount } from 'svelte';
 	import { getAuth } from '$lib/stores/auth.svelte';
 	import { favoritesStore } from '$lib/stores/favoritesStore.svelte';
 	import { summaryCache } from '$lib/stores/summaryCache.svelte';
@@ -7,15 +8,27 @@
 	import Header from '$lib/components/Header.svelte';
 	import WrongAnswerCard from '$lib/components/WrongAnswerCard.svelte';
 	import { formatArticleDate } from '$lib/utils/article';
+	import {
+		buildFavTagIds,
+		buildFilterTags,
+		buildWrongAnswerTagMap,
+		filterFavorites,
+		filterWrongAnswers
+	} from '$lib/utils/favorites-filter';
 	import type { Favorite } from '$lib/types/favorite';
 	import type { WrongAnswer } from '$lib/types/quiz';
+	import type { Tag } from '$lib/types/tag';
 
 	const auth = getAuth();
 
 	/// MVP8 M3: 스크랩 탭 세그먼트 — 'articles' | 'wrong-answers'
 	let activeTab = $state<'articles' | 'wrong-answers'>('articles');
 
-	/// 오답 노트 상태
+	/// MVP11 M3: 태그 칩 필터
+	let allTags = $state<Tag[]>([]);
+	let selectedTagId = $state<string | null>(null);
+
+	/// 오답 노트 상태 (filteredWrongAnswers 선언 전에 위치해야 함)
 	let wrongAnswers = $state<WrongAnswer[]>([]);
 	let wrongAnswersLoading = $state(false);
 	let wrongAnswersError = $state<string | null>(null);
@@ -134,6 +147,20 @@
 		event.stopPropagation();
 		goToArticle(fav);
 	}
+
+	const favTagIds = $derived(buildFavTagIds(favoritesStore.favorites));
+	const filterTags = $derived(buildFilterTags(allTags, favTagIds));
+	const filteredFavorites = $derived(filterFavorites(favoritesStore.favorites, selectedTagId));
+	const wrongAnswerTagMap = $derived(buildWrongAnswerTagMap(favoritesStore.favorites));
+	const filteredWrongAnswers = $derived(filterWrongAnswers(wrongAnswers, wrongAnswerTagMap, selectedTagId));
+
+	onMount(async () => {
+		try {
+			allTags = await apiClient.fetchTags();
+		} catch {
+			// 태그 로드 실패 시 필터 UI 숨김, 전체 목록 표시 (비크리티컬)
+		}
+	});
 </script>
 
 <div class="min-h-screen bg-gray-50">
@@ -148,7 +175,7 @@
 		<!-- 세그먼트 컨트롤 -->
 		<div class="mb-6 flex rounded-lg border border-gray-200 bg-white p-1 w-fit gap-1">
 			<button
-				onclick={() => (activeTab = 'articles')}
+				onclick={() => { activeTab = 'articles'; selectedTagId = null; }}
 				class={[
 					'rounded-md px-4 py-1.5 text-sm font-medium transition-colors',
 					activeTab === 'articles'
@@ -159,7 +186,7 @@
 				기사
 			</button>
 			<button
-				onclick={() => (activeTab = 'wrong-answers')}
+				onclick={() => { activeTab = 'wrong-answers'; selectedTagId = null; }}
 				class={[
 					'rounded-md px-4 py-1.5 text-sm font-medium transition-colors',
 					activeTab === 'wrong-answers'
@@ -172,6 +199,30 @@
 		</div>
 
 		{#if activeTab === 'articles'}
+			<!-- 태그 칩 필터 (MVP11 M3) -->
+			{#if filterTags.length > 0}
+				<div class="mb-4 flex flex-wrap gap-2">
+					<button
+						onclick={() => (selectedTagId = null)}
+						class="rounded-full px-3 py-1 text-sm font-medium transition-colors {selectedTagId === null
+							? 'bg-gray-900 text-white'
+							: 'bg-gray-100 text-gray-600 hover:bg-gray-200'}"
+					>
+						전체
+					</button>
+					{#each filterTags as tag (tag.id)}
+						<button
+							onclick={() => (selectedTagId = tag.id)}
+							class="rounded-full px-3 py-1 text-sm font-medium transition-colors {selectedTagId === tag.id
+								? 'bg-indigo-600 text-white'
+								: 'bg-gray-100 text-gray-600 hover:bg-gray-200'}"
+						>
+							{tag.name}
+						</button>
+					{/each}
+				</div>
+			{/if}
+
 			<!-- 기사 탭 -->
 			{#if favoritesStore.loading}
 				<!-- 로딩 스켈레톤 -->
@@ -207,10 +258,15 @@
 						피드 보러 가기
 					</a>
 				</div>
+			{:else if filteredFavorites.length === 0}
+				<!-- 태그 필터 결과 없음 -->
+				<div class="rounded-lg border border-gray-200 bg-white p-8 text-center">
+					<p class="text-sm text-gray-500">해당 태그의 즐겨찾기 기사가 없습니다.</p>
+				</div>
 			{:else}
 				<!-- 기사 목록 -->
 				<div class="space-y-3">
-					{#each favoritesStore.favorites as fav (fav.id)}
+					{#each filteredFavorites as fav (fav.id)}
 						<div class="group rounded-lg border border-gray-200 bg-white transition-shadow hover:shadow-md">
 							<!-- 상단: 기사 정보 + 즐겨찾기 해제 -->
 							<div class="flex items-stretch">
@@ -328,8 +384,31 @@
 					<p class="mt-2 text-sm text-gray-500">퀴즈를 풀고 오답을 아카이빙해보세요.</p>
 				</div>
 			{:else}
+				<!-- 태그 칩 필터 (MVP11 M3) -->
+				{#if filterTags.length > 0}
+					<div class="mb-4 flex flex-wrap gap-2">
+						<button
+							onclick={() => (selectedTagId = null)}
+							class="rounded-full px-3 py-1 text-sm font-medium transition-colors {selectedTagId === null
+								? 'bg-gray-900 text-white'
+								: 'bg-gray-100 text-gray-600 hover:bg-gray-200'}"
+						>
+							전체
+						</button>
+						{#each filterTags as tag (tag.id)}
+							<button
+								onclick={() => (selectedTagId = tag.id)}
+								class="rounded-full px-3 py-1 text-sm font-medium transition-colors {selectedTagId === tag.id
+									? 'bg-indigo-600 text-white'
+									: 'bg-gray-100 text-gray-600 hover:bg-gray-200'}"
+							>
+								{tag.name}
+							</button>
+						{/each}
+					</div>
+				{/if}
 				<div class="space-y-3">
-					{#each wrongAnswers as wa (wa.id)}
+					{#each filteredWrongAnswers as wa (wa.id)}
 						<WrongAnswerCard item={wa} onDelete={handleDeleteWrongAnswer} />
 					{/each}
 				</div>
