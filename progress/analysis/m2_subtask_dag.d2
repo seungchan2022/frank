@@ -1,0 +1,56 @@
+title: M2 iOS 초기화·환경설정 버그 서브태스크 의존성 DAG {
+  near: top-center
+  shape: text
+  style.font-size: 18
+  style.bold: true
+}
+
+# 노드 정의
+start: {
+  label: "M2\niOS 초기화·환경설정\n버그 수정"
+  shape: oval
+  style.fill: "#4A90D9"
+  style.font-color: "#FFFFFF"
+}
+
+st2: {
+  label: "ST-2 (먼저)\nBUG-002 ServerConfig\n컴파일 타임 분기\n[ServerConfig.swift]"
+  shape: rectangle
+  style.fill: "#E8F5E9"
+  style.stroke: "#388E3C"
+}
+
+st1: {
+  label: "ST-1\nBUG-001 Supabase\nemitLocalSessionAsInitialSession\n[AppDependencies.swift]"
+  shape: rectangle
+  style.fill: "#E3F2FD"
+  style.stroke: "#1565C0"
+}
+
+st3: {
+  label: "ST-3\nServerConfig 분기\n단위 테스트 보강\n[FrankTests/]"
+  shape: rectangle
+  style.fill: "#FFF9C4"
+  style.stroke: "#F9A825"
+}
+
+st4: {
+  label: "ST-4\n기존 iOS 테스트\n전체 통과 (회귀 검증)\n[xcodebuild test]"
+  shape: oval
+  style.fill: "#EDE7F6"
+  style.stroke: "#6A1B9A"
+}
+
+# 엣지 정의
+start -> st2: "환경 격리 먼저"
+st2 -> st1: "URL 분기 후\n세션 버그 검증 명확"
+st1 -> st3: "수정 완료 후\n테스트 보강"
+st3 -> st4: "단위 테스트 통과 후\n회귀 검증"
+
+# 범례
+legend: {
+  label: "범례\n─── 기술 의존성 (순차)\nST-2 → ST-1: URL 격리 먼저 해야 BUG-001 재현 조건 안정화"
+  shape: text
+  near: bottom-right
+  style.font-size: 12
+}

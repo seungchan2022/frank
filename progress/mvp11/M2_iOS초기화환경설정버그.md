@@ -1,7 +1,8 @@
 # M2: iOS 초기화·환경설정 버그 수정
 
 > 프로젝트: Frank MVP11
-> 상태: 대기
+> 상태: done
+> 완료일: 2026-04-24
 > 예상 기간: 1~2일
 > 의존성: 없음
 
@@ -12,17 +13,17 @@
 
 ## 성공 기준 (Definition of Done)
 
-- [ ] 앱 첫 실행(콜드 스타트) 시 "태그를 불러오지 못했습니다" 에러 메시지 미노출
-- [ ] `#if targetEnvironment(simulator)` 분기로 시뮬레이터는 `localhost:8080`, 실기기는 xcconfig 값 사용
-- [ ] 시뮬레이터 → 실기기 전환 후 앱 정상 실행 확인 (연결 성공)
-- [ ] 기존 iOS 테스트 전체 통과 (회귀 없음)
+- [x] 앱 첫 실행(콜드 스타트) 시 "태그를 불러오지 못했습니다" 에러 메시지 미노출
+- [x] `#if targetEnvironment(simulator)` 분기로 시뮬레이터는 `localhost:8080`, 실기기는 xcconfig 값 사용
+- [x] 시뮬레이터 → 실기기 전환 후 앱 정상 실행 확인 (연결 성공)
+- [x] 기존 iOS 테스트 전체 통과 (회귀 없음, 230/230)
 
 ## 아이템
 
 | # | 아이템 | 유형 | 실행 스킬 | 상태 |
 |---|--------|------|----------|------|
-| 1 | BUG-001: Supabase 세션 복원 완료 대기 후 API 요청 | feature | /workflow | 대기 |
-| 2 | BUG-002: ServerConfig 시뮬레이터/실기기 URL 자동 분기 | feature | /workflow | 대기 |
+| 1 | BUG-001: Supabase 세션 복원 완료 대기 후 API 요청 | feature | /workflow | ✅ 완료 |
+| 2 | BUG-002: ServerConfig 시뮬레이터/실기기 URL 자동 분기 | feature | /workflow | ✅ 완료 |
 
 ## 수정 방향
 
