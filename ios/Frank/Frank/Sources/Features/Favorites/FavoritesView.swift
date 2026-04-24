@@ -5,6 +5,7 @@ import SwiftUI
 /// MVP8 M2: RelatedPort 제거, QuizPort 주입 — ArticleDetailView로 퀴즈 포트 전달.
 /// MVP8 M3: WrongAnswerPort + FavoritesPort 주입 — QuizFeature에 전달.
 ///           세그먼트 탭 ("기사" / "오답 노트") + quizCompleted 배지 + WrongAnswersFeature 통합.
+/// MVP11 M4: TagChipBarView 통합 — 기사·오답 탭 공유 selectedTagId 필터.
 struct FavoritesView: View {
     let feature: FavoritesFeature
     let summarize: any SummarizePort
@@ -15,6 +16,10 @@ struct FavoritesView: View {
 
     @State private var selectedTab: FavoritesTab = .articles
     @State private var wrongAnswersFeature: WrongAnswersFeature
+
+    /// MVP11 M4: 기사·오답 탭 공유 selectedTagId. 탭 전환 시 nil 초기화.
+    /// MVP11 M4: 기사·오답 탭 공유 선택 태그. 탭 전환 시 nil 초기화.
+    @State private var selectedTagId: UUID?
 
     init(
         feature: FavoritesFeature,
@@ -33,6 +38,24 @@ struct FavoritesView: View {
         self._wrongAnswersFeature = State(initialValue: WrongAnswersFeature(wrongAnswer: wrongAnswer))
     }
 
+    // MARK: - MVP11 M4: 오답 탭 필터 computed
+
+    /// url → tagId 매핑. tagId가 없는 즐겨찾기는 포함하지 않음.
+    var wrongAnswerTagMap: [String: UUID] {
+        WrongAnswerTagFilter.buildTagMap(from: feature.items)
+    }
+
+    /// 오답 탭 필터 결과.
+    /// - selectedTagId == nil: 전체 반환
+    /// - selectedTagId != nil: 해당 태그 url Set 교집합 + favorites에 없는 오답 항상 포함
+    var filteredWrongAnswers: [WrongAnswer] {
+        WrongAnswerTagFilter.apply(
+            items: wrongAnswersFeature.items,
+            tagMap: wrongAnswerTagMap,
+            selectedTagId: selectedTagId
+        )
+    }
+
     var body: some View {
         NavigationStack {
             VStack(spacing: 0) {
@@ -46,8 +69,6 @@ struct FavoritesView: View {
                 .padding(.horizontal, 16)
                 .padding(.vertical, 10)
 
-                Divider()
-
                 // 탭별 콘텐츠
                 switch selectedTab {
                 case .articles:
@@ -59,6 +80,7 @@ struct FavoritesView: View {
             .navigationTitle("스크랩")
             .task { await feature.loadFavorites() }
             .task(id: selectedTab) {
+                selectedTagId = nil
                 if selectedTab == .wrongAnswers {
                     await wrongAnswersFeature.load()
                 }
@@ -94,13 +116,16 @@ struct FavoritesView: View {
             if feature.items.isEmpty && feature.hasLoaded {
                 articlesEmptyView
             } else {
-                itemList
+                VStack(spacing: 0) {
+                    tagChipBar { selectedTagId = $0 }
+                    itemList
+                }
             }
         }
     }
 
     private var itemList: some View {
-        List(feature.items) { item in
+        List(feature.filteredItems(selectedTagId: selectedTagId)) { item in
             NavigationLink(value: item) {
                 FavoriteRowView(item: item)
             }
@@ -160,14 +185,19 @@ struct FavoritesView: View {
             if wrongAnswersFeature.items.isEmpty {
                 wrongAnswersEmptyView
             } else {
-                wrongAnswersList
+                VStack(spacing: 0) {
+                    tagChipBar { tagId in
+                        selectedTagId = tagId
+                    }
+                    wrongAnswersList
+                }
             }
         }
     }
 
     private var wrongAnswersList: some View {
         List {
-            ForEach(wrongAnswersFeature.items) { item in
+            ForEach(filteredWrongAnswers) { item in
                 WrongAnswerRow(item: item)
                     .swipeActions(edge: .trailing) {
                         Button(role: .destructive) {
@@ -256,6 +286,23 @@ struct FavoritesView: View {
             .padding(.bottom, 16)
             .onTapGesture { feature.clearOperationError() }
             .transition(.move(edge: .bottom).combined(with: .opacity))
+    }
+
+    // MARK: - Shared Tag Chip Bar
+
+    /// 기사·오답 탭 공용 TagChipBarView + Divider 블록.
+    /// - Parameter onSelect: 태그 선택 시 호출되는 콜백. 탭마다 다른 부수 효과를 주입한다.
+    @ViewBuilder
+    private func tagChipBar(onSelect: @escaping (UUID?) -> Void) -> some View {
+        if !feature.tags.isEmpty {
+            TagChipBarView(
+                tags: feature.tags,
+                selectedTagId: selectedTagId,
+                onSelect: onSelect
+            )
+            .padding(.vertical, 8)
+            Divider()
+        }
     }
 
     // MARK: - Summary Cache Injection

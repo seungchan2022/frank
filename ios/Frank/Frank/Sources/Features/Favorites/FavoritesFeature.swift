@@ -29,6 +29,8 @@ enum FavoritesPhase: Equatable {
 /// - 빈 즐겨찾기 사용자 재호출 방지
 /// - `likedUrls`는 items에서 computed (Set<String>)
 ///
+/// MVP11 M4: TagPort 주입 → tags + filteredItems(selectedTagId:) 추가.
+///
 /// 상태 분리 원칙:
 /// - `phase`: 초기 로드 전용 (idle → loading → done/failed)
 /// - `operationError`: add/remove 변이 실패 시 인라인 표시용
@@ -46,34 +48,55 @@ final class FavoritesFeature {
     /// phase와 독립적으로 관리 — 목록 화면을 유지한 채 에러 표시 가능.
     private(set) var operationError: String? = nil
 
+    /// MVP11 M4: 즐겨찾기 기사에 실제 존재하는 태그만 표시.
+    private(set) var tags: [Tag] = []
+
     /// items에서 url 추출한 Set. isLiked 조회에 O(1).
     var likedUrls: Set<String> {
         Set(items.map(\.url))
     }
 
+    /// MVP11 M4: selectedTagId 기준 필터된 즐겨찾기 목록.
+    /// selectedTagId는 FavoritesView @State 단일 소스 — Feature는 파라미터로 받아 계산만.
+    func filteredItems(selectedTagId: UUID?) -> [FavoriteItem] {
+        guard let tagId = selectedTagId else { return items }
+        return items.filter { $0.tagId == tagId }
+    }
+
     // MARK: - Dependencies
 
     private let favorites: any FavoritesPort
+    private let tagPort: any TagPort
 
     // MARK: - Init
 
-    init(favorites: any FavoritesPort) {
+    init(favorites: any FavoritesPort, tag: any TagPort) {
         self.favorites = favorites
+        self.tagPort = tag
     }
 
     // MARK: - Actions
 
-    /// GET /me/favorites → items + likedUrls 갱신.
+    /// GET /me/favorites → items + likedUrls + tags 갱신.
     /// hasLoaded=true이면 no-op (빈 즐겨찾기도 보호).
+    ///
+    /// MVP11 M4: items 로드 성공 후 fetchAllTags()로 태그 목록 갱신.
+    /// - fetchAllTags 실패 시 tags = [] (폴백) — items 로드는 영향받지 않음.
     func loadFavorites() async {
         guard !hasLoaded else { return }
 
         phase = .loading
         do {
-            let result = try await favorites.listFavorites()
-            items = result
+            let fetchedItems = try await favorites.listFavorites()
+            items = fetchedItems
             hasLoaded = true
             phase = .done
+
+            // items에 실제 존재하는 tagId 교집합만 칩으로 표시.
+            // fetchAllTags 실패 시 tags = [] 로 degrade — items 로드 결과에 영향 없음.
+            let favTagIds = Set(fetchedItems.compactMap(\.tagId))
+            let allTags = try? await tagPort.fetchAllTags()
+            tags = allTags?.filter { favTagIds.contains($0.id) } ?? []
         } catch {
             phase = .failed(FavoritesErrorMessage.loadFailed)
         }

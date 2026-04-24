@@ -134,7 +134,7 @@ struct MainTabView: View {
     init(dependencies: AppDependencies, authFeature: AuthFeature) {
         self.authFeature = authFeature
         self.dependencies = dependencies
-        self._favoritesFeature = State(initialValue: FavoritesFeature(favorites: dependencies.favorites))
+        self._favoritesFeature = State(initialValue: FavoritesFeature(favorites: dependencies.favorites, tag: dependencies.tag))
         self._likesFeature = State(initialValue: LikesFeature(likes: dependencies.likes))
     }
 
