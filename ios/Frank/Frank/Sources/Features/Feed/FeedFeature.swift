@@ -126,8 +126,11 @@ final class FeedFeature {
         hasLoadedInitially = true
         beginLoading()
         do {
-            let allTags = try await tag.fetchAllTags()
-            let myTagIds = try await tag.fetchMyTagIds()
+            // MVP11 M4 perf: fetchAllTags + fetchMyTagIds 병렬 호출
+            async let allTagsTask = tag.fetchAllTags()
+            async let myTagIdsTask = tag.fetchMyTagIds()
+            let allTags = try await allTagsTask
+            let myTagIds = try await myTagIdsTask
             tags = allTags.filter { myTagIds.contains($0.id) }
 
             let items = try await article.fetchFeed(tagId: nil, noCache: false)
