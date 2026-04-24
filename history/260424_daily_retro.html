@@ -1,0 +1,411 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>2026-04-24 개발 회고</title>
+<style>
+  :root {
+    --bg: #FDF6F0;
+    --text: #2D2926;
+    --accent: #D97706;
+    --accent-light: #FEF3C7;
+    --heading: #92400E;
+    --border: #E5D5C5;
+    --code-bg: #FFF7ED;
+    --card-bg: #FFFFFF;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    font-size: 15px;
+    line-height: 1.7;
+    padding: 20px 16px 60px;
+    max-width: 480px;
+    margin: 0 auto;
+  }
+  h1 {
+    font-size: 22px;
+    color: var(--heading);
+    margin-bottom: 4px;
+    line-height: 1.3;
+  }
+  .subtitle {
+    font-size: 13px;
+    color: #A0856A;
+    margin-bottom: 24px;
+  }
+  h2 {
+    font-size: 16px;
+    color: var(--heading);
+    border-left: 4px solid var(--accent);
+    padding-left: 10px;
+    margin: 28px 0 12px;
+  }
+  h3 {
+    font-size: 14px;
+    color: var(--accent);
+    margin: 20px 0 8px;
+    font-weight: 700;
+  }
+  p { margin-bottom: 10px; }
+  .card {
+    background: var(--card-bg);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 16px;
+    margin-bottom: 14px;
+  }
+  .tag {
+    display: inline-block;
+    background: var(--accent-light);
+    color: var(--heading);
+    font-size: 11px;
+    font-weight: 700;
+    padding: 2px 8px;
+    border-radius: 20px;
+    margin-bottom: 8px;
+  }
+  .timeline {
+    position: relative;
+    padding-left: 20px;
+    border-left: 2px solid var(--border);
+    margin: 8px 0 16px;
+  }
+  .timeline-item {
+    position: relative;
+    margin-bottom: 12px;
+  }
+  .timeline-item::before {
+    content: '';
+    position: absolute;
+    left: -25px;
+    top: 6px;
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: var(--accent);
+  }
+  .timeline-time {
+    font-size: 11px;
+    color: var(--accent);
+    font-weight: 700;
+    margin-bottom: 2px;
+  }
+  .timeline-desc {
+    font-size: 13px;
+    color: var(--text);
+  }
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 12px;
+    margin: 10px 0 14px;
+  }
+  th {
+    background: var(--accent-light);
+    color: var(--heading);
+    padding: 6px 8px;
+    text-align: left;
+    font-weight: 700;
+    border: 1px solid var(--border);
+  }
+  td {
+    padding: 6px 8px;
+    border: 1px solid var(--border);
+    vertical-align: top;
+  }
+  .insight-box {
+    background: var(--accent-light);
+    border-left: 4px solid var(--accent);
+    border-radius: 0 8px 8px 0;
+    padding: 12px 14px;
+    margin: 12px 0;
+    font-size: 13px;
+  }
+  .insight-box strong {
+    color: var(--heading);
+    display: block;
+    margin-bottom: 4px;
+  }
+  .decision-badge {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 6px;
+  }
+  .badge-num {
+    background: var(--accent);
+    color: white;
+    width: 22px;
+    height: 22px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 11px;
+    font-weight: 700;
+    flex-shrink: 0;
+  }
+  .badge-title {
+    font-size: 13px;
+    font-weight: 700;
+    color: var(--text);
+  }
+  .mermaid-wrap {
+    background: var(--card-bg);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 14px;
+    margin: 14px 0;
+    overflow-x: auto;
+  }
+  pre.mermaid { font-size: 12px; }
+  .feeling {
+    background: var(--card-bg);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 16px;
+    font-size: 14px;
+    line-height: 1.8;
+    margin-top: 8px;
+  }
+  ul {
+    padding-left: 18px;
+    margin-bottom: 10px;
+  }
+  li { margin-bottom: 4px; font-size: 14px; }
+  .tomorrow-item {
+    display: flex;
+    align-items: flex-start;
+    gap: 8px;
+    padding: 8px 0;
+    border-bottom: 1px solid var(--border);
+    font-size: 13px;
+  }
+  .tomorrow-item:last-child { border-bottom: none; }
+  .tomorrow-dot {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: var(--accent);
+    margin-top: 7px;
+    flex-shrink: 0;
+  }
+  .accident-box {
+    background: #FFF1F2;
+    border: 1px solid #FECDD3;
+    border-radius: 10px;
+    padding: 14px;
+    margin: 12px 0;
+    font-size: 13px;
+  }
+  .accident-box .label {
+    font-size: 11px;
+    font-weight: 700;
+    color: #BE123C;
+    margin-bottom: 6px;
+  }
+</style>
+</head>
+<body>
+
+<h1>🗓️ 2026-04-24 개발 회고</h1>
+<p class="subtitle">MVP11 완주일 — 버그 수정부터 사고 수습까지</p>
+
+<!-- 타임라인 -->
+<h2>오늘 타임라인</h2>
+<div class="timeline">
+  <div class="timeline-item">
+    <div class="timeline-time">11:55</div>
+    <div class="timeline-desc">🔧 BUG-002 — ServerConfig 시뮬/실기기 URL 컴파일 타임 분기</div>
+  </div>
+  <div class="timeline-item">
+    <div class="timeline-time">14:19</div>
+    <div class="timeline-desc">🔧 BUG-001 — Supabase 세션 복원 타이밍 수정</div>
+  </div>
+  <div class="timeline-item">
+    <div class="timeline-time">18:12</div>
+    <div class="timeline-desc">✅ M3 웹 즐겨찾기·오답 태그 칩 필터 구현 완료</div>
+  </div>
+  <div class="timeline-item">
+    <div class="timeline-time">20:35</div>
+    <div class="timeline-desc">✅ M4 iOS 태그 필터 + Codex 방지 규칙 + FeedFeature 병렬 개선</div>
+  </div>
+  <div class="timeline-item">
+    <div class="timeline-time">20:47</div>
+    <div class="timeline-desc">📦 MVP11 아카이빙 완료 — active_mvp none</div>
+  </div>
+</div>
+
+<!-- 핵심 의사결정 -->
+<h2>핵심 의사결정</h2>
+
+<!-- 결정 1 -->
+<div class="card">
+  <div class="decision-badge">
+    <div class="badge-num">1</div>
+    <div class="badge-title">BUG-001 — 세션 복원 타이밍</div>
+  </div>
+  <span class="tag">iOS · Supabase</span>
+  <p style="font-size:13px">앱 첫 실행 시 세션 복원 전에 API 요청이 먼저 나가면서 401 에러 발생. SDK 경고 메시지가 직접 해법을 가리켰다.</p>
+  <table>
+    <tr><th>방법</th><th>결과</th></tr>
+    <tr><td><code>emitLocalSessionAsInitialSession: true</code></td><td>✅ 선택 — SDK 공식 권장</td></tr>
+    <tr><td>세션 이벤트 직접 대기</td><td>❌ 복잡, 경쟁 조건 여전히 존재</td></tr>
+  </table>
+  <div class="insight-box">
+    <strong>💡 인사이트</strong>
+    SDK 경고 메시지는 대부분 이미 답을 갖고 있다. 복잡하게 우회하기 전에 먼저 읽는 것이 맞다.
+  </div>
+</div>
+
+<!-- 결정 2 -->
+<div class="card">
+  <div class="decision-badge">
+    <div class="badge-num">2</div>
+    <div class="badge-title">BUG-002 — 컴파일 타임 환경 분기</div>
+  </div>
+  <span class="tag">iOS · Swift</span>
+  <p style="font-size:13px">LAN IP 하드코딩으로 시뮬레이터 연결 실패. 런타임 vs 컴파일 타임 분기를 선택해야 했다.</p>
+  <table>
+    <tr><th>방법</th><th>결과</th></tr>
+    <tr><td><code>#if targetEnvironment(simulator)</code></td><td>✅ 선택 — 잘못된 요청 불가능</td></tr>
+    <tr><td>런타임 분기</td><td>❌ 잘못된 URL 요청이 나갈 위험</td></tr>
+    <tr><td>deploy.sh LAN IP 자동 감지</td><td>❌ xcconfig 수정 → git dirty</td></tr>
+  </table>
+  <div class="insight-box">
+    <strong>💡 인사이트</strong>
+    환경 분리는 컴파일 타임이 런타임보다 안전하다. "잘못된 요청이 나가는 순간 자체"를 없애야 할 때는 컴파일 타임 강제.
+  </div>
+</div>
+
+<!-- 결정 3 — 사고 -->
+<div class="card">
+  <div class="decision-badge">
+    <div class="badge-num">3</div>
+    <div class="badge-title">Codex step-7 무한 루프 사고</div>
+  </div>
+  <span class="tag">워크플로우 · 에이전트</span>
+  <div class="accident-box">
+    <div class="label">⚠️ 사고 경위</div>
+    Codex에게 분석이 아닌 실행(xcodebuild test) 권한을 줬더니 테스트 실패 시마다 재시도 루프 진입 → 124+ tool uses → 수동 중단
+  </div>
+
+  <div class="mermaid-wrap">
+    <pre class="mermaid">
+flowchart TD
+    A[step-7 호출] --> B[Codex에 xcodebuild test 전달]
+    B --> C{테스트 통과?}
+    C -->|실패| D[Codex 재시도]
+    D --> C
+    C -->|통과| E[완료]
+    D -->|124+ 반복| F[💥 수동 중단]
+
+    style F fill:#FEE2E2,stroke:#EF4444
+    style D fill:#FEF3C7,stroke:#D97706
+    </pre>
+  </div>
+
+  <p style="font-size:13px">방지 규칙 추가: <code>step-7/SKILL.md</code> + <code>rules/sub/agents.md</code> 직접 수정. "같은 문제는 문서가 아니라 기계로 막는다."</p>
+  <div class="insight-box">
+    <strong>💡 인사이트</strong>
+    에이전트에게 실행 권한을 줄 때는 종료 조건이 명시돼야 한다. Codex = 분석 전용, 실행은 Claude가 직접 제어.
+  </div>
+</div>
+
+<!-- 오늘의 솔직한 어려움 -->
+<h2>오늘 어려웠던 것</h2>
+<div class="card">
+  <p style="font-size:14px">
+    구현 자체는 기획 문서가 미리 있어서 흔들리지 않았다. 어려운 건 다른 곳이었다.
+  </p>
+  <p style="font-size:14px">
+    MVP11이 워크플로우 세팅을 새로 튜닝한 후 첫 번째 MVP였다. 세팅을 바꿨다고 해서 곧바로 이전처럼 자연스럽게 흘러가는 게 아니었다 — Codex 사고가 터졌고, 흐름이 달라진 부분들을 실시간으로 판단하면서 조정해야 했다. <strong>그 판단 자체가 피로했다.</strong>
+  </p>
+</div>
+
+<!-- 인사이트 -->
+<h2>인사이트 & 피드백</h2>
+
+<div class="mermaid-wrap">
+  <pre class="mermaid">
+graph LR
+    A[기획 문서 先작성] -->|구현 중 흔들림 없음| B[BUG-001·002 빠른 해결]
+    C[명세 없이 실행 권한 위임] -->|종료 조건 없음| D[Codex 무한 루프]
+    D -->|방지 규칙 추가| E[기계로 막기]
+
+    style B fill:#D1FAE5,stroke:#059669
+    style D fill:#FEE2E2,stroke:#EF4444
+    style E fill:#FEF3C7,stroke:#D97706
+  </pre>
+</div>
+
+<div class="insight-box">
+  <strong>📌 튜닝은 선언이 아니라 실행 속 검증이다</strong>
+  설정을 바꿨다고 바로 이전처럼 되는 게 아니다. 실제로 써보면서 달라진 점을 발견하고 다시 수정하는 사이클이 필요하다.
+</div>
+
+<div class="insight-box">
+  <strong>📌 기획 문서가 있으면 구현이 흔들리지 않는다</strong>
+  BUG-001/002가 빠르게 끝난 이유가 여기에 있다. 반대로 Codex 사고는 "어떻게 막을지" 명세가 없어서 발생했다.
+</div>
+
+<!-- 배운 것 -->
+<h2>배운 것</h2>
+<ul>
+  <li><code>emitLocalSessionAsInitialSession</code> — Supabase iOS SDK 세션 방출 타이밍 옵션</li>
+  <li><code>AppBootstrap</code> enum 패턴 — Swift <code>init throws</code> 제약 우회 (FrankApp이 throw를 직접 받을 수 없어 결과를 열거형으로 전달)</li>
+  <li><code>#if targetEnvironment(simulator)</code> — Swift 컴파일 타임 환경 분기 관용구</li>
+  <li>에이전트 역할 경계 — tool use 상한 없이 실행 권한을 주면 루프가 생긴다는 것을 실전으로 체득</li>
+</ul>
+
+<!-- 느낀 점 -->
+<h2>느낀 점</h2>
+<div class="feeling">
+  MVP11 완주. 11번째 MVP다. 사고도 있었고 흐름 조정도 있었지만 결국 오늘 안에 다 끝냈다.
+  <br><br>
+  기획 문서를 먼저 쓰는 습관이 점점 힘이 되고 있다는 걸 오늘 특히 느꼈다. 문서가 있으면 구현 중에 "이게 맞나?" 하는 흔들림이 없다. 그 대비가 오늘 하루에서 뚜렷하게 보였다.
+  <br><br>
+  다음은 스킬 세팅 재점검. 이번 MVP를 거치면서 달라져야 할 흐름들이 눈에 들어왔으니, 다음 MVP 시작 전에 정리하는 게 맞겠다.
+</div>
+
+<!-- 내일 할 일 -->
+<h2>내일 할 일</h2>
+<div class="card" style="padding: 12px 16px;">
+  <div class="tomorrow-item">
+    <div class="tomorrow-dot"></div>
+    <div><strong>스킬 세팅 재점검</strong> — 이번 MVP에서 발견된 워크플로우 흐름 차이를 기록해둔 노트 기반으로 수정</div>
+  </div>
+  <div class="tomorrow-item">
+    <div class="tomorrow-dot"></div>
+    <div><strong>BUG-004 처리 결정</strong> — 고아 selectedTagId (iOS + Web), MVP12 포함 또는 별도 처리 여부</div>
+  </div>
+  <div class="tomorrow-item">
+    <div class="tomorrow-dot"></div>
+    <div><strong>MVP12 기획 준비</strong> — 세팅 정리 후 /milestone으로 시작</div>
+  </div>
+</div>
+
+<script type="module">
+  import mermaid from 'https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.esm.min.mjs';
+  mermaid.initialize({
+    startOnLoad: true,
+    theme: 'base',
+    themeVariables: {
+      primaryColor: '#FEF3C7',
+      primaryTextColor: '#2D2926',
+      primaryBorderColor: '#D97706',
+      lineColor: '#A0856A',
+      secondaryColor: '#FDF6F0',
+      tertiaryColor: '#FFFFFF',
+      fontFamily: '-apple-system, BlinkMacSystemFont, sans-serif',
+      fontSize: '13px'
+    }
+  });
+</script>
+
+</body>
+</html>

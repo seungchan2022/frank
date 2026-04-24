@@ -203,6 +203,7 @@
 | 메인태스크 | [M4 메인태스크](mvp11/260424_MVP11_M4_iOS즐겨찾기오답태그필터.md) | 구현 상세 기록 |
 | 분석 | [검색 파이프라인 아키텍처](mvp11/260423_architecture_search_pipeline.md) | M1 Exa+Tavily 파이프라인 설계 결정 기록 |
 | 회고 | [일일 회고 260418](mvp11/260418_daily_retro.md) | MVP11 기획 전 환경 점검 회고 |
+| 회고 | [일일 회고 260424](../history/260424_daily_retro.html) | MVP11 완주 · BUG-001/002 수정 · Codex 무한 루프 사고 · 튜닝은 실행 속 검증 |
 | 버그 | BUG-004 고아 태그 버그 (progress/bugs/ 미결) | 즐겨찾기 삭제 후 고아 selectedTagId — 다음 MVP 수정 예정 |
 
 ---
@@ -285,3 +286,5 @@
 | Feature List 체계 (안정 ID·4상태·소형 스킵) | `harness/260420_g1_feature_list_skill.md` |
 | Feature List 미체크 커밋 차단 구조 | `harness/260420_g8_2_commit_block.md` |
 | /critical-review 스킬 설계 + step-5 연계 | `harness/analysis/260417_하네스_비교분석.md` |
+| Codex 무한 루프 사고 경위 + 에이전트 역할 경계 | `260424_daily_retro.md` |
+| 세팅 튜닝 후 첫 MVP 검증 사이클 교훈 | `260424_daily_retro.md` |
