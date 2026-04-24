@@ -3,26 +3,38 @@ import Supabase
 
 @main
 struct FrankApp: App {
-    @State private var dependencies: AppDependencies
-    @State private var authFeature: AuthFeature
+    @State private var bootstrap: AppBootstrap
 
     init() {
         Log.app.notice("FrankApp launched")
-        let deps = AppDependencies.live()
-        _dependencies = State(initialValue: deps)
-        _authFeature = State(initialValue: AuthFeature(auth: deps.auth))
+        _bootstrap = State(initialValue: AppDependencies.bootstrap())
     }
 
     var body: some Scene {
         WindowGroup {
-            RootView(feature: authFeature, dependencies: dependencies)
+            switch bootstrap {
+            case .ready(let deps):
+                RootView(
+                    feature: AuthFeature(auth: deps.auth),
+                    dependencies: deps
+                )
+            case .configError(let error):
+                ConfigErrorView(error: error)
+            }
         }
     }
 }
 
+// MARK: - RootView
+
 struct RootView: View {
-    let feature: AuthFeature
+    @State var feature: AuthFeature
     let dependencies: AppDependencies
+
+    init(feature: AuthFeature, dependencies: AppDependencies) {
+        _feature = State(initialValue: feature)
+        self.dependencies = dependencies
+    }
 
     var body: some View {
         switch feature.state {
@@ -45,6 +57,43 @@ struct RootView: View {
         }
     }
 }
+
+// MARK: - ConfigErrorView
+
+/// 서버 URL 설정 오류 시 표시하는 전용 에러 화면.
+/// API 어댑터가 생성되지 않으므로 빈 화면이나 크래시 없이 안내 메시지를 유지한다.
+struct ConfigErrorView: View {
+    let error: ServerConfigError
+
+    private var message: String {
+        switch error {
+        case .missing:
+            return "서버 URL이 설정되어 있지 않습니다.\nInfo.plist 또는 Secrets.plist에 SERVER_URL을 추가해주세요."
+        case .invalidURL(let raw):
+            return "서버 URL이 올바르지 않습니다: \(raw)\nInfo.plist 또는 Secrets.plist에서 SERVER_URL을 확인해주세요."
+        }
+    }
+
+    var body: some View {
+        VStack(spacing: 24) {
+            Image(systemName: "exclamationmark.triangle.fill")
+                .font(.system(size: 56))
+                .foregroundStyle(.yellow)
+
+            Text("설정 오류")
+                .font(.title2.bold())
+
+            Text(message)
+                .font(.body)
+                .foregroundStyle(.secondary)
+                .multilineTextAlignment(.center)
+                .padding(.horizontal, 32)
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+    }
+}
+
+// MARK: - OnboardingContainerView
 
 struct OnboardingContainerView: View {
     let dependencies: AppDependencies
@@ -70,6 +119,8 @@ struct OnboardingContainerView: View {
         }
     }
 }
+
+// MARK: - MainTabView
 
 /// MVP5 M3: MainTabView — 피드 탭 + 스크랩 탭.
 /// FavoritesFeature + LikesFeature는 여기서 1개씩 생성 → 양쪽 탭에 공유.
@@ -114,6 +165,8 @@ struct MainTabView: View {
     }
 }
 
+// MARK: - FeedContainerView
+
 struct FeedContainerView: View {
     let authFeature: AuthFeature
     let dependencies: AppDependencies
@@ -157,6 +210,8 @@ struct FeedContainerView: View {
         }
     }
 }
+
+// MARK: - FavoritesContainerView
 
 struct FavoritesContainerView: View {
     let feature: FavoritesFeature

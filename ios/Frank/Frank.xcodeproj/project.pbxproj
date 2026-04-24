@@ -141,6 +141,7 @@
 		F4D869C143D4AAAAB0CC015B /* APIArticleAdapter.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2E263E898F6D5800C26DF0E6 /* APIArticleAdapter.swift */; };
 		F61A117B318AEC21D2D35E01 /* SummarySessionCache.swift in Sources */ = {isa = PBXBuildFile; fileRef = 327690E060C64CDC0FDBEE98 /* SummarySessionCache.swift */; };
 		F61B3F00F42CE2041EECD0C9 /* Helpers.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 453555520004369FD2FDEC52 /* Helpers.framework */; };
+		F724BF40845F1A838045141A /* ServerConfigTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = EA1DD160599BFA14FFD87433 /* ServerConfigTests.swift */; };
 		FAC93F707D226D0667A1BAE1 /* FeedView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 63A97D01A3235A7A6B855EFD /* FeedView.swift */; };
 		FD799E9E37F4F9C529371701 /* SupabaseTagAdapter.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5275EA43ADDCAF090BC47676 /* SupabaseTagAdapter.swift */; };
 /* End PBXBuildFile section */
@@ -334,6 +335,7 @@
 		E8015A7E829FCD30E0F18482 /* XCTestDynamicOverlay.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; includeInIndex = 0; path = XCTestDynamicOverlay.framework; sourceTree = BUILT_PRODUCTS_DIR; };
 		E8FF3D35FC32543DDD17FA89 /* RelatedArticlesView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RelatedArticlesView.swift; sourceTree = "<group>"; };
 		E910979DCC81EFEA39CBEAFD /* ArticleFilter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ArticleFilter.swift; sourceTree = "<group>"; };
+		EA1DD160599BFA14FFD87433 /* ServerConfigTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ServerConfigTests.swift; sourceTree = "<group>"; };
 		EB0DD21ECF33383D24DB0B37 /* Clocks.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; includeInIndex = 0; path = Clocks.framework; sourceTree = BUILT_PRODUCTS_DIR; };
 		EB8DDF05C2814294A438BC72 /* LoginFlowUITest.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LoginFlowUITest.swift; sourceTree = "<group>"; };
 		ED5BDAD7F3E1D18846B9064D /* MockQuizAdapter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MockQuizAdapter.swift; sourceTree = "<group>"; };
@@ -406,6 +408,7 @@
 				0AE828DEA72FF568B1362F37 /* OnboardingFeatureTests.swift */,
 				EEC784286BBC209A404AB018 /* PortContractTests.swift */,
 				79D5C79E85E0034E9700F2DB /* RouterTests.swift */,
+				EA1DD160599BFA14FFD87433 /* ServerConfigTests.swift */,
 				4F6D48A16FC2913ABB3FD07D /* SettingsFeatureTests.swift */,
 			);
 			path = Features;
@@ -1025,6 +1028,7 @@
 				53119E9C1E41C06646E29EC1 /* QuizViewSessionTests.swift in Sources */,
 				3F44A323F3D189F3EFB33AFB /* RelatedFeatureTests.swift in Sources */,
 				BC690A7AACBE0A5ED04A3815 /* RouterTests.swift in Sources */,
+				F724BF40845F1A838045141A /* ServerConfigTests.swift in Sources */,
 				B78E36AC158110DDDE250C4E /* SettingsFeatureTests.swift in Sources */,
 				1488D0923B78634521B53B5F /* HTTPTestHelpers.swift in Sources */,
 				D1ABA765CC9AA8817F7B2B04 /* MockURLProtocol.swift in Sources */,

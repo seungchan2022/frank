@@ -17,7 +17,7 @@ struct SupabaseAuthAdapter: AuthPort {
 
     init(
         client: SupabaseClient,
-        serverConfig: ServerConfig = .live,
+        serverConfig: ServerConfig,
         session: URLSession = .shared
     ) {
         self.client = client

@@ -1,6 +1,17 @@
 import Foundation
 import Supabase
 
+// MARK: - Bootstrap
+
+/// 앱 시작 시 의존성 초기화 결과.
+/// 설정 오류가 있으면 `.configError`를 반환하고 API 어댑터는 생성하지 않는다.
+enum AppBootstrap {
+    case ready(AppDependencies)
+    case configError(ServerConfigError)
+}
+
+// MARK: - AppDependencies
+
 @MainActor
 final class AppDependencies {
     let auth: any AuthPort
@@ -38,17 +49,29 @@ final class AppDependencies {
         self.wrongAnswer = wrongAnswer
     }
 
-    static func live() -> AppDependencies {
+    /// 앱 시작 시 호출. 설정 오류 시 `.configError`를 반환한다.
+    static func bootstrap() -> AppBootstrap {
         // FRANK_USE_MOCK=1 환경변수 설정 시 Mock 어댑터 사용 (병렬 개발/UI 테스트 격리)
         // Xcode scheme: Edit Scheme → Run → Arguments → Environment Variables
         if ProcessInfo.processInfo.environment["FRANK_USE_MOCK"] == "1" {
-            return mock()
+            return .ready(mock())
         }
 
+        do {
+            return .ready(try live())
+        } catch {
+            Log.app.error("AppDependencies bootstrap failed: \(error)")
+            return .configError(error)
+        }
+    }
+
+    // MARK: - Private
+
+    private static func live() throws(ServerConfigError) -> AppDependencies {
         // MVP5 M1: 인증은 Supabase SDK, 데이터는 Rust API 어댑터.
         // CollectPort 제거 — 피드는 GET /api/me/feed 직접 호출.
         let config = SupabaseConfig.live
-        let serverConfig = ServerConfig.live
+        let serverConfig = try ServerConfig.live()
         let client = SupabaseClient(supabaseURL: config.url, supabaseKey: config.anonKey)
         let authAdapter = SupabaseAuthAdapter(
             client: client,
