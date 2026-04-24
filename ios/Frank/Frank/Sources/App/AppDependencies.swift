@@ -72,7 +72,13 @@ final class AppDependencies {
         // CollectPort 제거 — 피드는 GET /api/me/feed 직접 호출.
         let config = SupabaseConfig.live
         let serverConfig = try ServerConfig.live()
-        let client = SupabaseClient(supabaseURL: config.url, supabaseKey: config.anonKey)
+        let client = SupabaseClient(
+            supabaseURL: config.url,
+            supabaseKey: config.anonKey,
+            options: SupabaseClientOptions(
+                auth: .init(emitLocalSessionAsInitialSession: true)
+            )
+        )
         let authAdapter = SupabaseAuthAdapter(
             client: client,
             serverConfig: serverConfig
