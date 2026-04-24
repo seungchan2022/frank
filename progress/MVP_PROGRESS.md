@@ -1,7 +1,7 @@
 # Frank MVP 전체 진행 현황
 
 > 최종 갱신: 2026-04-24
-> 활성 MVP: MVP11 · 활성 마일스톤: M4
+> 활성 MVP: 없음 (MVP11 완료, 아카이빙됨)
 
 ---
 
@@ -20,21 +20,21 @@
 | MVP8 | UX 개선 + 오답 아카이빙 + 퀴즈 배지 | 260412~260413 | ✅ done | 서버 280 / 웹 203 / iOS 200 |
 | MVP9 | 실사용 장벽 제거 + 퀴즈 루프 완성 | 260413 | ✅ done | 서버 269 / 웹 216 / iOS 211 |
 | MVP10 | 버그 수정 + 피드 TTL 캐시 | 260414 | ✅ done | 서버 285 / 웹 221 / iOS - |
-| **MVP11** | **버그 수정 + 뉴스 품질 개선** | **260423~** | **🟡 in-progress** | 서버 - / 웹 231 / iOS - |
+| MVP11 | 버그 수정 + 뉴스 품질 개선 | 260423~260424 | ✅ done | 서버 - / 웹 231 / iOS - |
 
 ---
 
-## MVP11 마일스톤 현황
+## MVP11 마일스톤 현황 (완료)
 
 > 목표: 실기기/시뮬레이터 테스트에서 발견된 버그 4개 수정 + 뉴스 수집 품질 개선
-> 로드맵: [progress/mvp11/_roadmap.md](mvp11/_roadmap.md)
+> 아카이브: [history/mvp11/_roadmap.md](../history/mvp11/_roadmap.md)
 
 | 마일스톤 | 주제 | 버그 | 앱 | 상태 |
 |----------|------|------|----|------|
 | M1 | 검색엔진 뉴스 품질 개선 | BUG-004 | 서버 | ✅ done |
 | M2 | iOS 초기화·환경설정 버그 수정 | BUG-001, BUG-002 | iOS | ✅ done |
 | M3 | 웹 즐겨찾기·오답 태그 필터 | BUG-003 | 웹 | ✅ done |
-| **M4** | **iOS 즐겨찾기·오답 태그 필터** | **BUG-003** | **iOS** | **🟡 in-progress** |
+| M4 | iOS 즐겨찾기·오답 태그 필터 | BUG-003 | iOS | ✅ done |
 
 ---
 
@@ -47,12 +47,12 @@
 | MVP8 완료 | 280 | 203 | 200 |
 | MVP9 완료 | 269 | 216 | 211 |
 | MVP10 완료 | 285 | 221 | - |
-| MVP11 M3 완료 | - | 231 | - |
+| MVP11 완료 | - | 231 | - |
 
 ---
 
 ## 참조
 
 - 완료 MVP 상세 아카이브: [history/INDEX.md](../history/INDEX.md)
-- 현재 MVP 로드맵: [progress/mvp11/_roadmap.md](mvp11/_roadmap.md)
-- 알려진 버그 목록: [progress/bugs.md](bugs.md)
+- 알려진 버그 목록: [progress/bugs/](bugs/)
+- 미결 버그: BUG-004 (orphan selectedTagId, iOS+웹 — 다음 MVP 예정)
