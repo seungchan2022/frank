@@ -185,19 +185,25 @@
 
 ---
 
-## MVP11 — 버그 수정 + 뉴스 품질 개선 (260423~, 진행 중)
+## MVP11 — 버그 수정 + 뉴스 품질 개선 (260423~260424)
 
-> 목표: 실기기/시뮬레이터 테스트 발견 버그 4건 수정 + 검색엔진 뉴스 수집 품질 개선.
-> M1(서버) 완료 → M2·M3·M4 병렬 진행. 현재 M4(iOS 태그 필터) in-progress.
+> 기간 2일. BUG-001~003 수정 + 검색엔진 뉴스 수집 품질 개선. M1~M4 전체 완료.
+> M1(서버 품질) → M2·M3·M4 병렬(iOS 버그·웹 태그필터·iOS 태그필터). 239 단위 테스트 통과.
 
 | 유형 | 파일 | 핵심 내용 |
 |------|------|----------|
-| 로드맵 | [MVP11 로드맵](../progress/mvp11/_roadmap.md) | M1~M4 마일스톤, BUG-001~004, 병렬 전략 |
-| 마일스톤 | [M1 검색엔진 품질](../progress/mvp11/M1_검색엔진뉴스품질개선.md) | Exa category:news + Tavily topic:news + URL 패턴 필터 — ✅ done |
-| 마일스톤 | [M2 iOS 버그수정](../progress/mvp11/M2_iOS초기화환경설정버그.md) | BUG-001 콜드스타트·BUG-002 ServerConfig — ✅ done |
-| 마일스톤 | [M3 웹 태그필터](../progress/mvp11/M3_웹즐겨찾기오답태그필터.md) | 즐겨찾기·오답 태그 칩 필터, favorites-filter.ts — ✅ done |
-| 마일스톤 | [M4 iOS 태그필터](../progress/mvp11/M4_iOS즐겨찾기오답태그필터.md) | iOS 즐겨찾기·오답 태그 필터 — 🟡 in-progress |
-| 회고 | [일일 회고 260418](mvp11/260418_daily_retro.md) | MVP11 기획 전 환경 점검 회고. 하네스 튜닝 방향 탐색 |
+| 로드맵 | [MVP11 로드맵](mvp11/_roadmap.md) | M1~M4 마일스톤, BUG-001~004, 병렬 전략 — ✅ done |
+| 마일스톤 | [M1 검색엔진 품질](mvp11/M1_검색엔진뉴스품질개선.md) | Exa category:news + Tavily topic:news + URL 패턴 필터 |
+| 마일스톤 | [M2 iOS 버그수정](mvp11/M2_iOS초기화환경설정버그.md) | BUG-001 콜드스타트·BUG-002 ServerConfig 분기 수정 |
+| 마일스톤 | [M3 웹 태그필터](mvp11/M3_웹즐겨찾기오답태그필터.md) | 즐겨찾기·오답 태그 칩 필터, favorites-filter.ts |
+| 마일스톤 | [M4 iOS 태그필터](mvp11/M4_iOS즐겨찾기오답태그필터.md) | WrongAnswerTagFilter 순수 함수, @State 단일 소스 |
+| 메인태스크 | [M1 메인태스크](mvp11/260423_M1_검색엔진뉴스품질개선.md) | 구현 상세 기록 |
+| 메인태스크 | [M2 메인태스크](mvp11/260423_MVP11_M2_iOS초기화환경설정버그수정.md) | 구현 상세 기록 |
+| 메인태스크 | [M3 메인태스크](mvp11/260423_MVP11_M3_웹즐겨찾기오답태그필터.md) | 구현 상세 기록 |
+| 메인태스크 | [M4 메인태스크](mvp11/260424_MVP11_M4_iOS즐겨찾기오답태그필터.md) | 구현 상세 기록 |
+| 분석 | [검색 파이프라인 아키텍처](mvp11/260423_architecture_search_pipeline.md) | M1 Exa+Tavily 파이프라인 설계 결정 기록 |
+| 회고 | [일일 회고 260418](mvp11/260418_daily_retro.md) | MVP11 기획 전 환경 점검 회고 |
+| 버그 | BUG-004 고아 태그 버그 (progress/bugs/ 미결) | 즐겨찾기 삭제 후 고아 selectedTagId — 다음 MVP 수정 예정 |
 
 ---
 
@@ -231,7 +237,7 @@
 | MVP8 | UX 개선 + 오답 아카이빙 + 퀴즈 완료 배지 | ✅ 완료 |
 | MVP9 | 실사용 장벽 제거 + 퀴즈 학습 루프 완성 | ✅ 완료 |
 | MVP10 | 버그 수정 + 피드 TTL 캐시 | ✅ 완료 |
-| MVP11 | 버그 수정 + 뉴스 품질 개선 | 🟡 in-progress (M4 진행 중) |
+| MVP11 | 버그 수정 + 뉴스 품질 개선 | ✅ 완료 |
 
 - MVP1.5, MVP2.5는 역사적 기록으로 유지. 이후 .5 버전 신규 생성 안 함.
 - MVP2.5 부채 10건은 MVP3에서 흡수 해소.
