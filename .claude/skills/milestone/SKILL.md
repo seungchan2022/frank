@@ -390,6 +390,19 @@ progress/
         └── ...
 ```
 
+### M{X}_*.md 생성 후 active_subtask.txt 자동 기록 (필수)
+
+M{X}_{마일스톤명}.md 생성 완료 직후, 해당 파일 경로를 `active_subtask.txt`에 기록한다:
+
+```bash
+echo "progress/mvp{N}/M{X}_{마일스톤명}.md" > progress/active_subtask.txt
+```
+
+- 경로는 **repo 루트 상대경로** (절대경로 금지)
+- 이후 `/workflow [0]`이 이 경로를 읽어 아이템 표를 Feature List 원본으로 자동 참조한다
+- 마일스톤 기획이 여러 개(M1, M2, ...)이면 **각 M{X}_*.md 생성 직후 즉시 갱신** (마지막 것이 남도록)
+- MVP 완료 아카이빙 시 `/milestone-review`가 `none`으로 초기화
+
 ### _vision.md 형식
 
 ```markdown
@@ -498,6 +511,19 @@ progress/
 | 1 | {아이템A} | feature | /workflow | 대기 |
 | 2 | {아이템B} | decision | /debate | 대기 |
 | 3 | {아이템C} | chore | 직접 실행 | 대기 |
+
+## 워크플로우 진입점
+
+> 이 마일스톤의 feature 아이템 착수 시 사용하는 첫 번째 `/workflow` 호출:
+
+```
+/workflow "M{N}-{메인태스크명}"
+```
+
+**메인태스크**: {이 마일스톤에서 구현할 핵심 내용을 한 문장으로 정의}
+
+- feature 아이템이 여럿이면 의존성 순서대로 순차 착수
+- decision/research 아이템은 `/debate`, `/deep-analysis`로 선착수 후 feature 진행
 
 ## 리스크
 | 리스크 | 영향(H/M/L) | 대응 |
