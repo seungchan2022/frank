@@ -56,7 +56,13 @@ allowed-tools:
    - `progress/mvp{N}/M{X}_*.md` 파일 존재 확인 — 없으면 `/milestone`으로 먼저 기획 요청
    - `echo "M{X}:in-progress" > progress/active_milestone.txt`
 
-4. 이후 step-1~step-9는 이 마일스톤 KPI로 게이트 검증
+4. **active_subtask.txt 자동 갱신 (Option A — self-contained)**:
+   - `progress/mvp{N}/M{X}_*.md` glob으로 파일 탐색
+   - 파일 발견 시: `echo "progress/mvp{N}/M{X}_{마일스톤명}.md" > progress/active_subtask.txt`
+   - 파일 없을 시: `active_subtask.txt` 갱신 생략 (이미 `/milestone`이 기록했거나 없는 경우)
+   - 이미 올바른 M{X} 경로가 기록돼 있으면 재기록 생략
+
+5. 이후 step-1~step-9는 이 마일스톤 KPI로 게이트 검증
 
 ### step-9 (커밋) 직후 MVP 완료 자동 체크
 
@@ -108,6 +114,12 @@ step-9 커밋 성공 시 시스템이 자동으로:
 - **스킵 금지**: 설령 다음 스텝이 명백히 간단해 보여도 사용자 확인 없이 건너뛰지 않는다.
 - **자동 연속 실행 금지**: "계속", "진행", "다음" 같은 지시를 받아도 한 스텝씩만 처리하고 다시 확인한다.
 - **현재 스텝 명시**: 매 응답 첫 줄에 `[현재 스텝: N/9 — /step-N]` 형식으로 표시한다.
+
+### 스텝 강제 원칙 (기획 문서 존재 여부 무관)
+
+- **무조건 step 1부터 시작**: M{X}_*.md나 기획 문서가 이미 있어도 step 1부터 순서대로 실행
+- **해당 없는 스텝 명시 선언**: 건너뛸 때 "이 스텝은 해당 없어 패스합니다 — [이유]" 명시 후 다음으로
+- **스텝 압축 금지**: 사용자 확인 없이 여러 스텝 묶음 처리 금지
 
 ---
 
