@@ -44,14 +44,24 @@ fi
 SUBTASK_REL="$(cat "$ACTIVE_SUBTASK_FILE" | tr -d '[:space:]')"
 
 if [[ -z "$SUBTASK_REL" || "$SUBTASK_REL" == "none" ]]; then
+  echo "[feature-list-check] 경고: active_subtask.txt 가 none — Feature List 검증 생략"
   exit 0
 fi
 
 # ── 경로 검증 — repo 밖 파일 접근 방지 ───────────────────────────────────
-if [[ "$SUBTASK_REL" != progress/subtask/* ]] || [[ "$SUBTASK_REL" == *".."* ]]; then
-  echo "❌ active_subtask.txt 경로 위반: progress/subtask/ 접두사 필수, '..' 금지"
+IS_MILESTONE_DOC=0
+if [[ "$SUBTASK_REL" == *".."* ]]; then
+  echo "❌ active_subtask.txt 경로 위반: '..' 금지"
   echo "   현재 값: $SUBTASK_REL"
-  echo "→ active_subtask.txt 를 올바른 progress/subtask/ 경로로 수정한 뒤 재진행하세요."
+  exit 1
+elif [[ "$SUBTASK_REL" == progress/mvp*/M*_*.md ]]; then
+  IS_MILESTONE_DOC=1
+elif [[ "$SUBTASK_REL" == progress/subtask/* ]]; then
+  IS_MILESTONE_DOC=0
+else
+  echo "❌ active_subtask.txt 경로 위반: progress/subtask/ 또는 progress/mvp*/M*_*.md 접두사 필수"
+  echo "   현재 값: $SUBTASK_REL"
+  echo "→ active_subtask.txt 를 올바른 경로로 수정한 뒤 재진행하세요."
   exit 1
 fi
 
@@ -63,7 +73,71 @@ if [[ ! -f "$SUBTASK_DOC" ]]; then
   exit 0
 fi
 
-# ── Feature List 섹션 추출 ─────────────────────────────────────────────────
+# ── 마일스톤 문서(M{X}_*.md) 처리 ────────────────────────────────────────
+if [[ "$IS_MILESTONE_DOC" -eq 1 ]]; then
+  # ## 아이템 표 파싱 — 상태 칸에 "done" 없는 행 = 미체크
+  ITEM_SECTION=""
+  in_item_section=0
+  while IFS= read -r line; do
+    if [[ "$line" =~ ^##[[:space:]]아이템 ]]; then
+      in_item_section=1
+      continue
+    fi
+    if [[ $in_item_section -eq 1 ]]; then
+      if [[ "$line" =~ ^##[[:space:]] ]]; then
+        break
+      fi
+      ITEM_SECTION+="$line"$'\n'
+    fi
+  done <"$SUBTASK_DOC"
+
+  if [[ -z "$ITEM_SECTION" ]]; then
+    echo "[feature-list-check] 마일스톤 문서에 ## 아이템 표 없음 — 검증 생략"
+    exit 0
+  fi
+
+  milestone_unchecked=()
+  while IFS= read -r line; do
+    # 표 행만 처리 (| 로 시작)
+    [[ "$line" =~ ^\| ]] || continue
+    # 헤더 행 (| # |) 및 구분자 행 (|---|) 스킵
+    if echo "$line" | grep -qE '^\|[[:space:]]*#[[:space:]]*\|' ; then
+      continue
+    fi
+    if echo "$line" | grep -qE '^\|[-[:space:]|]+\|$'; then
+      continue
+    fi
+    # 상태 칸 (마지막 |...| 의 내용) 추출
+    status="$(echo "$line" | awk -F'|' '{
+      for(i=NF;i>=1;i--) {
+        gsub(/^[[:space:]]+|[[:space:]]+$/, "", $i)
+        if($i != "") { print $i; break }
+      }
+    }')"
+    if ! echo "$status" | grep -qi "done"; then
+      milestone_unchecked+=("$line")
+    fi
+  done <<<"$ITEM_SECTION"
+
+  if [[ ${#milestone_unchecked[@]} -gt 0 ]]; then
+    echo "❌ 마일스톤 아이템 미완료 ${#milestone_unchecked[@]}개 — 커밋 차단"
+    echo "   문서: $SUBTASK_REL"
+    echo ""
+    for uline in "${milestone_unchecked[@]}"; do
+      echo "   $uline"
+    done
+    echo ""
+    echo "→ 선택지:"
+    echo "   1) 아이템 구현 완료 후 상태를 '✅ done'으로 갱신하고 재진입"
+    echo "   2) FEATURE_LIST_BYPASS=1 git commit ... (사유를 progress/feature-list/bypass.log 에 기록)"
+    exit 1
+  fi
+
+  echo "[feature-list-check] PASS — 마일스톤 아이템 미완료 없음"
+  exit 0
+fi
+
+# ── Feature List 섹션 추출 (레거시 subtask/* 모드) ──────────────────────────
 # "## Feature List" 이후 다음 "## " 섹션 전까지 추출
 FEATURE_SECTION=""
 in_section=0
