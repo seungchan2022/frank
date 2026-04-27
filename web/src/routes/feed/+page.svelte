@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { tick } from 'svelte';
+	import { tick, onMount, onDestroy } from 'svelte';
 	import { getAuth } from '$lib/stores/auth.svelte';
 	import { goto } from '$app/navigation';
 	import { feedStore } from '$lib/stores/feedStore.svelte';
@@ -34,6 +34,7 @@
 		feedStore.selectTag(tagId);
 	}
 
+
 	// refresh 성공 시 상단 스크롤 (stale-while-revalidate UX)
 	async function handleRefresh() {
 		const ok = await feedStore.refresh();
@@ -55,6 +56,37 @@
 		const path = `/feed/article?${params.toString()}`;
 		goto(path, { state: { feedItem: JSON.parse(JSON.stringify(item)) } });
 	}
+
+	// MVP12 M2: 무한 스크롤 IntersectionObserver
+	let sentinel: HTMLDivElement | undefined = $state();
+	let observer: IntersectionObserver | undefined;
+
+	onMount(() => {
+		observer = new IntersectionObserver(
+			(entries) => {
+				const entry = entries[0];
+				if (entry?.isIntersecting && feedStore.hasMore && !feedStore.isLoadingMore) {
+					void feedStore.loadMore();
+				}
+			},
+			{ rootMargin: '200px' }
+		);
+	});
+
+	// sentinel이 DOM에 바인딩될 때(feedItems 첫 렌더 후) observer 연결.
+	// onMount 시점에는 sentinel이 없으므로 $effect로 처리.
+	// 주의: cleanup 시점에 sentinel은 이미 undefined일 수 있으므로 로컬 캡처 필수.
+	$effect(() => {
+		const el = sentinel;
+		if (observer && el) {
+			observer.observe(el);
+			return () => observer?.unobserve(el);
+		}
+	});
+
+	onDestroy(() => {
+		observer?.disconnect();
+	});
 </script>
 
 <div class="min-h-screen bg-gray-50">
@@ -177,7 +209,7 @@
 									<span>{formatArticleDate(item.published_at)}</span>
 								{/if}
 							</div>
-							<!-- 하트 버튼 -->
+							<!-- 좋아요 버튼 (MVP12 M2 UX 재설계: 역할 명확화) -->
 							<button
 								onclick={(e) => {
 									e.stopPropagation();
@@ -188,18 +220,42 @@
 										tag_id: item.tag_id ?? null
 									});
 								}}
-								aria-label={likedStore.isLiked(item.url) ? '좋아요 완료' : '좋아요'}
-								class="text-sm transition-colors {likedStore.isLiked(item.url)
+								aria-label={likedStore.isLiked(item.url) ? '추천 완료' : '추천에 반영'}
+								title="추천에 반영"
+								class="flex items-center gap-0.5 text-xs transition-colors {likedStore.isLiked(item.url)
 									? 'text-red-500'
 									: 'text-gray-300 hover:text-red-400'}"
 							>
-								{likedStore.isLiked(item.url) ? '♥' : '♡'}
+								<span>{likedStore.isLiked(item.url) ? '♥' : '♡'}</span>
+								{#if likedStore.isLiked(item.url)}
+									<span class="text-red-400">추천중</span>
+								{/if}
 							</button>
 						</div>
 						</div>
 					</article>
 				{/each}
 			</div>
+
+			<!-- MVP12 M2: 무한 스크롤 sentinel + 상태 표시 -->
+			{#if feedStore.isLoadingMore}
+				<!-- loadingMore 스피너 (U-03) -->
+				<div class="mt-6 flex justify-center py-4">
+					<svg class="h-6 w-6 animate-spin text-blue-500" fill="none" viewBox="0 0 24 24">
+						<circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+						<path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"></path>
+					</svg>
+					<span class="ml-2 text-sm text-gray-500">더 불러오는 중...</span>
+				</div>
+			{:else if !feedStore.hasMore}
+				<!-- 모든 기사 로드 완료 (U-04) -->
+				<div class="mt-6 py-4 text-center text-sm text-gray-400">
+					모든 기사를 읽었습니다
+				</div>
+			{/if}
+
+			<!-- sentinel 엘리먼트: IntersectionObserver 감지점 -->
+			<div bind:this={sentinel} class="h-1" aria-hidden="true"></div>
 		{/if}
 	</main>
 </div>

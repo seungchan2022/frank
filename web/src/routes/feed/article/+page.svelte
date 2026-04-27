@@ -300,25 +300,25 @@
 			{/if}
 		</div>
 
-		<!-- 즐겨찾기 -->
+		<!-- 스크랩 버튼 (MVP12 M2 UX: 아이콘·레이블 재설계) -->
 		<div class="mt-4">
 			<button
 				onclick={handleFavoriteToggle}
 				disabled={favoriteLoading}
 				class={[
-					'w-full rounded-lg px-4 py-2 text-sm font-medium transition-colors',
+					'w-full rounded-lg px-4 py-2 text-sm font-medium transition-colors flex items-center justify-center gap-2',
 					favoritesStore.isLiked(feedItem.url)
-						? 'border border-yellow-400 bg-yellow-50 text-yellow-700 hover:bg-yellow-100'
-						: 'border border-gray-200 bg-white text-gray-700 hover:bg-gray-50',
+						? 'border border-indigo-300 bg-indigo-50 text-indigo-700 hover:bg-red-50 hover:border-red-300 hover:text-red-700'
+						: 'border border-gray-200 bg-white text-gray-700 hover:bg-indigo-50 hover:border-indigo-200 hover:text-indigo-700',
 					favoriteLoading ? 'cursor-not-allowed opacity-50' : ''
 				].join(' ')}
 			>
 				{#if favoriteLoading}
-					⏳ 처리 중...
+					<span>⏳</span><span>처리 중...</span>
 				{:else if favoritesStore.isLiked(feedItem.url)}
-					★ 즐겨찾기 해제
+					<span>🔖</span><span>스크랩 해제</span>
 				{:else}
-					☆ 즐겨찾기 추가
+					<span>🔖</span><span>스크랩 저장</span>
 				{/if}
 			</button>
 		</div>

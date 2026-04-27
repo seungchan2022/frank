@@ -12,8 +12,10 @@
 		buildFavTagIds,
 		buildFilterTags,
 		buildWrongAnswerTagMap,
+		buildWrongAnswerFilterTags,
 		filterFavorites,
-		filterWrongAnswers
+		filterWrongAnswers,
+		shouldResetTagId
 	} from '$lib/utils/favorites-filter';
 	import type { Favorite } from '$lib/types/favorite';
 	import type { WrongAnswer } from '$lib/types/quiz';
@@ -108,9 +110,15 @@
 		});
 	}
 
+	// MVP12 M2: BUG-C — removeFavorite 후 남은 favorites에 selectedTagId 매칭 항목 없으면 null 초기화
 	async function handleRemoveFavorite(url: string, event: MouseEvent) {
 		event.stopPropagation();
 		await favoritesStore.removeFavorite(url);
+		// E-01: shouldResetTagId — 같은 태그 다른 기사가 남아있으면 초기화 안 함
+		// BUG-C 스코프: 즐겨찾기 탭에서만 리셋. 오답 탭 필터는 wrongAnswers 기반이므로 영향 없음
+		if (activeTab === 'articles' && shouldResetTagId(favoritesStore.favorites, selectedTagId)) {
+			selectedTagId = null;
+		}
 	}
 
 	function handleRetry() {
@@ -153,6 +161,8 @@
 	const filteredFavorites = $derived(filterFavorites(favoritesStore.favorites, selectedTagId));
 	const wrongAnswerTagMap = $derived(buildWrongAnswerTagMap(favoritesStore.favorites));
 	const filteredWrongAnswers = $derived(filterWrongAnswers(wrongAnswers, wrongAnswerTagMap, selectedTagId));
+	// MVP12 M2: BUG-F — 오답 탭용 태그 칩 (실제 오답에 매핑된 태그만 노출)
+	const wrongAnswerFilterTags = $derived(buildWrongAnswerFilterTags(allTags, wrongAnswers, wrongAnswerTagMap));
 
 	onMount(async () => {
 		try {
@@ -324,12 +334,14 @@
 										</div>
 									</div>
 								</button>
+								<!-- 즐겨찾기 해제 버튼 (MVP12 M2 UX: 스크랩 레이블 명시) -->
 								<button
 									onclick={(e) => handleRemoveFavorite(fav.url, e)}
-									class="flex-shrink-0 px-4 text-yellow-400 transition-colors hover:bg-red-50 hover:text-red-500"
-									title="즐겨찾기 해제"
+									class="flex flex-col items-center justify-center flex-shrink-0 px-3 text-indigo-500 transition-colors hover:bg-red-50 hover:text-red-500 gap-0.5"
+									title="스크랩 해제"
 								>
-									★
+									<span class="text-base">🔖</span>
+									<span class="text-xs font-medium">스크랩</span>
 								</button>
 							</div>
 
@@ -384,8 +396,8 @@
 					<p class="mt-2 text-sm text-gray-500">퀴즈를 풀고 오답을 아카이빙해보세요.</p>
 				</div>
 			{:else}
-				<!-- 태그 칩 필터 (MVP11 M3) -->
-				{#if filterTags.length > 0}
+				<!-- 태그 칩 필터 — 오답 탭용 (MVP12 M2: wrongAnswerFilterTags) -->
+				{#if wrongAnswerFilterTags.length > 0}
 					<div class="mb-4 flex flex-wrap gap-2">
 						<button
 							onclick={() => (selectedTagId = null)}
@@ -395,7 +407,7 @@
 						>
 							전체
 						</button>
-						{#each filterTags as tag (tag.id)}
+						{#each wrongAnswerFilterTags as tag (tag.id)}
 							<button
 								onclick={() => (selectedTagId = tag.id)}
 								class="rounded-full px-3 py-1 text-sm font-medium transition-colors {selectedTagId === tag.id

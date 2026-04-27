@@ -27,14 +27,16 @@ export function createLikedStore() {
 	let likedUrls = $state<Set<string>>(new Set());
 
 	/**
-	 * 기사 좋아요 처리.
-	 * - 이미 좋아요한 url이면 API 호출 없이 즉시 반환.
-	 * - 성공 시 likedUrls에 url 추가 (참조 교체).
-	 * - 실패 시 error 설정, likedUrls 변경 없음.
+	 * 기사 좋아요 토글.
+	 * - 이미 좋아요한 url이면 UI에서만 취소 (서버 unlike API 없음 — 이벤트 누적 모델).
+	 * - 새 좋아요는 즉시 UI 반영 후 백그라운드 API 호출.
 	 */
 	function likeArticle(input: LikeArticleInput): void {
-		// 중복 방지 — 이미 liked url이면 no-op
-		if (likedUrls.has(input.url)) return;
+		if (likedUrls.has(input.url)) {
+			// 토글 취소 — 클라이언트 상태만 변경 (서버 unlike API 미지원)
+			likedUrls = new Set([...likedUrls].filter((u) => u !== input.url));
+			return;
+		}
 
 		// 즉시 UI 반영 (fire-and-forget)
 		likedUrls = new Set([...likedUrls, input.url]);
