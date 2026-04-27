@@ -251,38 +251,38 @@ ST5 ──┘
 <!-- size: 중형 | count: 45 | skip: false | all-checked: false -->
 
 ### 기능
-- [ ] F-01 BUG-D: FavoritesFeature에 recomputeTags() 추가 — addFavorite/removeFavorite 후 items 기반 tags 재계산 (allTagsCache 재사용, fetchAllTags 재호출 없음)
-- [ ] F-02 BUG-E: removeFavorite 성공 후 shouldResetTagId 판단 → selectedTagId nil 초기화
-- [ ] F-03 BUG-F: WrongAnswerTagFilter.apply() favorites 미등록 오답 → 제외 (return false)
-- [ ] F-04 BUG-F: FavoritesView wrongAnswerTags computed 추가 (wrongAnswersFeature.items → tagMap 조인 → feature.tags 교집합) [소스 정정]
-- [ ] F-05 BUG-F: wrongAnswersContent tagChipBar 소스를 wrongAnswerTags로 교체
-- [ ] F-06 UX: ArticleDetailView 좋아요 레이블 "추천에 반영" / "추천 완료"
-- [ ] F-06b UX: FeedView 피드 카드 좋아요 accessibilityLabel "추천에 반영" / "추천 완료" [step-5 추가]
-- [ ] F-07 UX: ArticleDetailView 즐겨찾기 레이블 "스크랩 저장" / "스크랩 해제" + bookmark 아이콘
-- [ ] F-08 ArticlePort.fetchFeed에 limit?/offset? Optional 파라미터 추가
-- [ ] F-09 APIArticleAdapter: limit/offset query parameter 전달
-- [ ] F-10 FeedFeature: TagState 타입 도입 (items, nextOffset, hasMore, status)
-- [ ] F-11 FeedFeature: tagCache → tagStates 교체, feedItems $derived 투영
-- [ ] F-12 FeedFeature: loadInitial — 전체 탭만 즉시, 구독 태그 프리패치 제거
-- [ ] F-13 FeedFeature: selectTag — 캐시 미스 시 lazy fetch 첫 페이지
-- [ ] F-14 FeedFeature: loadMore() — 현재 탭 nextOffset 기준 다음 페이지 append
-- [ ] F-15 FeedFeature: refresh() — 현재 탭 TagState 리셋 후 첫 페이지 재요청
-- [ ] F-16 FeedView: sentinel onAppear → loadMore() 호출
-- [ ] F-17 FeedView: loadingMore 스피너 + hasMore=false "모든 기사를 읽었습니다" 메시지
+- [x] F-01 BUG-D: FavoritesFeature에 recomputeTags() 추가 — addFavorite/removeFavorite 후 items 기반 tags 재계산 (allTagsCache 재사용, fetchAllTags 재호출 없음)
+- [x] F-02 BUG-E: removeFavorite 성공 후 shouldResetTagId 판단 → selectedTagId nil 초기화
+- [x] F-03 BUG-F: WrongAnswerTagFilter.apply() favorites 미등록 오답 → 제외 (return false)
+- [x] F-04 BUG-F: FavoritesView wrongAnswerTags computed 추가 (wrongAnswersFeature.items → tagMap 조인 → feature.tags 교집합) [소스 정정]
+- [x] F-05 BUG-F: wrongAnswersContent tagChipBar 소스를 wrongAnswerTags로 교체
+- [x] F-06 UX: ArticleDetailView 좋아요 레이블 "추천에 반영" / "추천 완료"
+- [x] F-06b UX: FeedView 피드 카드 좋아요 accessibilityLabel "추천에 반영" / "추천 완료" [step-5 추가]
+- [x] F-07 UX: ArticleDetailView 즐겨찾기 레이블 "스크랩 저장" / "스크랩 해제" + bookmark 아이콘
+- [x] F-08 ArticlePort.fetchFeed에 limit?/offset? Optional 파라미터 추가
+- [x] F-09 APIArticleAdapter: limit/offset query parameter 전달
+- [x] F-10 FeedFeature: TagState 타입 도입 (items, nextOffset, hasMore, status)
+- [x] F-11 FeedFeature: tagCache → tagStates 교체, feedItems $derived 투영
+- [x] F-12 FeedFeature: loadInitial — 전체 탭만 즉시, 구독 태그 프리패치 제거
+- [x] F-13 FeedFeature: selectTag — 캐시 미스 시 lazy fetch 첫 페이지
+- [x] F-14 FeedFeature: loadMore() — 현재 탭 nextOffset 기준 다음 페이지 append
+- [x] F-15 FeedFeature: refresh() — 현재 탭 TagState 리셋 후 첫 페이지 재요청
+- [x] F-16 FeedView: sentinel onAppear → loadMore() 호출
+- [x] F-17 FeedView: loadingMore 스피너 + hasMore=false "모든 기사를 읽었습니다" 메시지
 
 ### 엣지
-- [ ] E-01 shouldResetTagId: 같은 태그의 다른 기사 남아있으면 초기화 안 함
-- [ ] E-02 loadMore: hasMore=false 또는 status=loadingMore 시 재진입 차단
-- [ ] E-03 loadMore: PAGE_SIZE(20) 미만 응답 시 hasMore=false 즉시 설정
-- [ ] E-04 selectTag: lazy fetch 중 key 먼저 캡처 후 await (다른 탭 전환 시 결과 올바른 key에 기록)
-- [ ] E-05 wrongAnswerTags: wrongAnswers 빈 배열일 때 칩 미표시
-- [ ] E-06 sentinel 중복 발화: onAppear 재호출 시 이전 loadMoreTask cancel 후 재생성 [step-5 추가]
-- [ ] E-07 recomputeTags: addFavorite/removeFavorite 후 tags가 items와 동기화됨 (allTagsCache 기반) [step-5 추가]
-- [ ] E-08 wrongAnswerTags 변경 시 selectedTagId 무효화 — 새 집합에 없는 태그 선택 시 nil 초기화 [step-5 추가]
+- [x] E-01 shouldResetTagId: 같은 태그의 다른 기사 남아있으면 초기화 안 함
+- [x] E-02 loadMore: hasMore=false 또는 status=loadingMore 시 재진입 차단
+- [x] E-03 loadMore: PAGE_SIZE(20) 미만 응답 시 hasMore=false 즉시 설정
+- [x] E-04 selectTag: lazy fetch 중 key 먼저 캡처 후 await (다른 탭 전환 시 결과 올바른 key에 기록)
+- [x] E-05 wrongAnswerTags: wrongAnswers 빈 배열일 때 칩 미표시
+- [x] E-06 sentinel 중복 발화: onAppear 재호출 시 이전 loadMoreTask cancel 후 재생성 [step-5 추가]
+- [x] E-07 recomputeTags: addFavorite/removeFavorite 후 tags가 items와 동기화됨 (allTagsCache 기반) [step-5 추가]
+- [x] E-08 wrongAnswerTags 변경 시 selectedTagId 무효화 — 새 집합에 없는 태그 선택 시 nil 초기화 [step-5 추가]
 
 ### 에러
-- [ ] R-01 loadMore API 실패 시 status=error, 에러 메시지 표시
-- [ ] R-02 addFavorite 후 fetchAllTags 실패 시 tags 변경 없음 (폴백)
+- [x] R-01 loadMore API 실패 시 status=error, 에러 메시지 표시
+- [x] R-02 addFavorite 후 fetchAllTags 실패 시 tags 변경 없음 (폴백)
 
 ### 테스트
 - [ ] T-01 FavoritesFeature 유닛: addFavorite 후 새 tagId tags 반영 (recomputeTags 호출)
@@ -297,15 +297,15 @@ ST5 ──┘
 - [ ] T-09 ArticleDetailView 레이블 검증: ViewInspector 의존성 없으면 XCUITest 또는 스냅샷 테스트로 대체 (step-5 권고)
 
 ### UI·UX
-- [ ] U-01 시뮬레이터 스크린샷: 기사 상세 좋아요·즐겨찾기 버튼 레이블 확인
-- [ ] U-02 시뮬레이터 스크린샷: 피드 무한 스크롤 동작 확인
-- [ ] U-03 시뮬레이터 스크린샷: 오답 탭 태그 칩 (wrongAnswerTags 기준) 확인
+- [x] U-01 시뮬레이터 E2E: 기사 상세 좋아요("추천에 반영") · 즐겨찾기("스크랩 저장") 레이블·아이콘 확인
+- [x] U-02 시뮬레이터 E2E: 피드 무한 스크롤 동작 확인
+- [ ] U-03 시뮬레이터 E2E: 오답 탭 태그 칩 (wrongAnswerTags 기준) 확인 — defer (오답노트 태그 칩 근본 수정은 다음 MVP)
 
 ### 회귀
-- [ ] G-01 FeedFeature.refresh() 동작 유지 — 현재 탭 초기화 + 새 페이지 로드
-- [ ] G-02 FeedFeature.reloadAfterTagChange() 동작 유지
-- [ ] G-03 FavoritesFeature.filteredItems() 기존 동작 유지
-- [ ] G-04 WrongAnswerTagFilter.buildTagMap() 기존 동작 변경 없음
+- [x] G-01 FeedFeature.refresh() 동작 유지 — 현재 탭 초기화 + 새 페이지 로드
+- [x] G-02 FeedFeature.reloadAfterTagChange() 동작 유지
+- [x] G-03 FavoritesFeature.filteredItems() 기존 동작 유지
+- [x] G-04 WrongAnswerTagFilter.buildTagMap() 기존 동작 변경 없음
 
 ---
 
