@@ -145,12 +145,16 @@ export const realApiClient: ApiClient = {
 		});
 	},
 
-	async fetchFeed(tagId?: string, options?: { noCache?: boolean }): Promise<FeedItem[]> {
-		const qs = tagId ? `?tag_id=${encodeURIComponent(tagId)}` : '';
+	async fetchFeed(tagId?: string, options?: { noCache?: boolean; limit?: number; offset?: number }): Promise<FeedItem[]> {
+		const params = new URLSearchParams();
+		if (tagId) params.set('tag_id', tagId);
+		if (options?.limit !== undefined) params.set('limit', String(options.limit));
+		if (options?.offset !== undefined) params.set('offset', String(options.offset));
+		const qs = params.toString();
 		const extraHeaders: Record<string, string> = options?.noCache
 			? { 'Cache-Control': 'no-cache' }
 			: {};
-		return request<FeedItem[]>(`/api/me/feed${qs}`, { headers: extraHeaders });
+		return request<FeedItem[]>(`/api/me/feed${qs ? `?${qs}` : ''}`, { headers: extraHeaders });
 	},
 
 	async fetchArticles(opts: FetchArticlesOptions = {}): Promise<Article[]> {

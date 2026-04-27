@@ -173,3 +173,88 @@ describe('MockApiClient: summarize (MVP5 M2)', () => {
 		expect(result.insight.length).toBeGreaterThan(0);
 	});
 });
+
+describe('MockApiClient: favorites (MVP8)', () => {
+	const sampleItem = {
+		title: '테스트 기사',
+		url: 'https://example.com/test',
+		snippet: '테스트 스니펫',
+		source: 'test',
+		published_at: '2026-04-27T00:00:00Z',
+		tag_id: '11111111-1111-1111-1111-111111111111',
+		image_url: null
+	};
+
+	it('addFavorite — 즐겨찾기 추가 후 listFavorites에 포함', async () => {
+		const fav = await mockApiClient.addFavorite(sampleItem, '요약', '인사이트');
+		expect(fav.url).toBe(sampleItem.url);
+		expect(fav.title).toBe(sampleItem.title);
+		expect(fav.summary).toBe('요약');
+		expect(fav.insight).toBe('인사이트');
+
+		const list = await mockApiClient.listFavorites();
+		expect(list.some((f) => f.url === sampleItem.url)).toBe(true);
+	});
+
+	it('addFavorite — 같은 URL 중복 추가 시 409 오류', async () => {
+		await mockApiClient.addFavorite(sampleItem);
+		await expect(mockApiClient.addFavorite(sampleItem)).rejects.toThrow(
+			'이미 즐겨찾기에 추가된 기사입니다.'
+		);
+	});
+
+	it('deleteFavorite — 삭제 후 listFavorites에서 제거', async () => {
+		await mockApiClient.addFavorite(sampleItem);
+		await mockApiClient.deleteFavorite(sampleItem.url);
+		const list = await mockApiClient.listFavorites();
+		expect(list.some((f) => f.url === sampleItem.url)).toBe(false);
+	});
+
+	it('listFavorites — 초기 상태는 빈 배열', async () => {
+		const list = await mockApiClient.listFavorites();
+		expect(list).toHaveLength(0);
+	});
+
+	it('markQuizDone — quizCompleted=true로 업데이트', async () => {
+		await mockApiClient.addFavorite(sampleItem);
+		await mockApiClient.markQuizDone(sampleItem.url);
+		const list = await mockApiClient.listFavorites();
+		const fav = list.find((f) => f.url === sampleItem.url);
+		expect((fav as Record<string, unknown>)?.quizCompleted).toBe(true);
+	});
+});
+
+describe('MockApiClient: wrongAnswers (MVP9)', () => {
+	const sampleBody = {
+		article_url: 'https://example.com/test',
+		article_title: '테스트 기사',
+		question: '질문입니다',
+		options: ['A', 'B', 'C', 'D'],
+		correct_index: 0,
+		user_index: 1,
+		explanation: '해설입니다'
+	};
+
+	it('saveWrongAnswer — 저장 후 listWrongAnswers에 포함', async () => {
+		const wa = await mockApiClient.saveWrongAnswer(sampleBody);
+		expect(wa.articleUrl).toBe(sampleBody.article_url);
+		expect(wa.question).toBe(sampleBody.question);
+		expect(wa.correctIndex).toBe(0);
+		expect(wa.userIndex).toBe(1);
+
+		const list = await mockApiClient.listWrongAnswers();
+		expect(list.some((w) => w.id === wa.id)).toBe(true);
+	});
+
+	it('deleteWrongAnswer — 삭제 후 listWrongAnswers에서 제거', async () => {
+		const wa = await mockApiClient.saveWrongAnswer(sampleBody);
+		await mockApiClient.deleteWrongAnswer(wa.id);
+		const list = await mockApiClient.listWrongAnswers();
+		expect(list.some((w) => w.id === wa.id)).toBe(false);
+	});
+
+	it('listWrongAnswers — 초기 상태는 빈 배열', async () => {
+		const list = await mockApiClient.listWrongAnswers();
+		expect(list).toHaveLength(0);
+	});
+});

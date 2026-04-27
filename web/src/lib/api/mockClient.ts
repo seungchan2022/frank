@@ -71,9 +71,9 @@ export const mockApiClient: ApiClient = {
 		return delay({ ...profile });
 	},
 
-	async fetchFeed(_tagId?: string, _options?: { noCache?: boolean }): Promise<FeedItem[]> {
+	async fetchFeed(_tagId?: string, _options?: { noCache?: boolean; limit?: number; offset?: number }): Promise<FeedItem[]> {
 		// Mock: 현재 articles fixture를 FeedItem 형태로 변환 (ephemeral 시뮬레이션)
-		const feedItems: FeedItem[] = articles.map((a) => ({
+		let feedItems: FeedItem[] = articles.map((a) => ({
 			title: a.title,
 			url: a.url,
 			snippet: a.snippet,
@@ -81,6 +81,10 @@ export const mockApiClient: ApiClient = {
 			published_at: a.published_at,
 			tag_id: a.tag_id
 		}));
+		// limit/offset 페이지네이션 시뮬레이션
+		const offset = _options?.offset ?? 0;
+		const limit = _options?.limit ?? feedItems.length;
+		feedItems = feedItems.slice(offset, offset + limit);
 		return delay([...feedItems]);
 	},
 

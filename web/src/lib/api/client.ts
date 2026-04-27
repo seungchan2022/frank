@@ -30,7 +30,8 @@ export interface ApiClient {
 	// Feed (MVP5 M1: ephemeral, DB 저장 없음)
 	// MVP6 M3: tagId 있으면 해당 태그만 서버에서 필터링
 	// MVP10 M3: noCache:true → Cache-Control: no-cache 헤더 (수동 새로고침 캐시 우회)
-	fetchFeed(tagId?: string, options?: { noCache?: boolean }): Promise<FeedItem[]>;
+	// MVP12 M2: limit/offset 페이지네이션 파라미터 추가
+	fetchFeed(tagId?: string, options?: { noCache?: boolean; limit?: number; offset?: number }): Promise<FeedItem[]>;
 
 	// Summarize (MVP5 M2: 온디맨드 URL 크롤링 + LLM 요약)
 	summarize(url: string, title: string): Promise<SummaryResult>;
