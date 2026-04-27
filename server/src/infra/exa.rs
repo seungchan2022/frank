@@ -34,8 +34,10 @@ struct ExaResult {
 
 /// MVP9 M1: snippet 정제 함수.
 /// 1. HTML 태그(<...>) 제거 — 문자 단위 파싱
-/// 2. 줄바꿈·연속 공백 정리
-/// 3. 300자 문장 경계 절단 (마침표/느낌표/물음표 기준, 초과 시 단어 경계로 폴백)
+/// 2. 줄 단위 메타 텍스트 제거 (헤더·저자·댓글수·목차·인라인 출처)
+/// 3. [...] 플레이스홀더 제거
+/// 4. 줄바꿈·연속 공백 정리
+/// 5. 300자 문장 경계 절단 (마침표/느낌표/물음표 기준, 초과 시 단어 경계로 폴백)
 pub fn clean_snippet(s: &str) -> String {
     // 1. HTML 태그 제거 (문자 단위 파싱)
     let mut no_html = String::with_capacity(s.len());
@@ -49,28 +51,134 @@ pub fn clean_snippet(s: &str) -> String {
         }
     }
 
-    // 2. 줄바꿈 → 공백, 연속 공백 정리
-    let normalized: String = no_html.split_whitespace().collect::<Vec<_>>().join(" ");
+    // 2. 줄 단위 메타 텍스트 제거
+    let filtered: String = no_html
+        .lines()
+        .filter_map(process_snippet_line)
+        .collect::<Vec<_>>()
+        .join(" ");
 
-    // 3. 300자 이하면 그대로 반환
+    // 3. [...] 플레이스홀더 제거
+    let no_placeholders = filtered.replace("[...]", "");
+
+    // 4. 줄바꿈 → 공백, 연속 공백 정리
+    let normalized: String = no_placeholders
+        .split_whitespace()
+        .collect::<Vec<_>>()
+        .join(" ");
+
+    // 5. 300자 이하면 그대로 반환
     if normalized.chars().count() <= 300 {
         return normalized;
     }
 
-    // 4. 300자 이내에서 문장 경계로 절단
+    // 6. 300자 이내에서 문장 경계로 절단
     let cutoff: String = normalized.chars().take(300).collect();
-
-    // 마지막 문장 종결 부호 위치 (바이트 인덱스)
     if let Some(pos) = cutoff.rfind(['.', '!', '?']) {
-        // 종결 부호 포함하여 반환 (ASCII 단일 바이트)
         cutoff[..pos + 1].to_string()
+    } else if let Some(last_space) = cutoff.rfind(' ') {
+        cutoff[..last_space].to_string()
     } else {
-        // 문장 경계 없으면 단어 경계로 폴백
-        if let Some(last_space) = cutoff.rfind(' ') {
-            cutoff[..last_space].to_string()
-        } else {
-            cutoff
-        }
+        cutoff
+    }
+}
+
+/// 스니펫 한 줄을 처리한다.
+/// None → 줄 전체 제거, Some(s) → s로 교체 (인라인 출처는 본문만 추출)
+fn process_snippet_line(line: &str) -> Option<String> {
+    let trimmed = line.trim();
+    if trimmed.is_empty() {
+        return None;
+    }
+
+    // 마크다운 헤더
+    if trimmed.starts_with('#') {
+        return None;
+    }
+
+    // 인라인 출처: [city=agency] reporter 기자 = content → content만 반환
+    if let Some(content) = trimmed
+        .starts_with('[')
+        .then(|| extract_after_inline_source(trimmed))
+        .flatten()
+    {
+        return (!content.is_empty()).then_some(content);
+    }
+
+    let lower = trimmed.to_lowercase();
+
+    // Published: / Author: / Language: 라인
+    if lower.starts_with("published:")
+        || lower.starts_with("author:")
+        || lower.starts_with("language:")
+    {
+        return None;
+    }
+
+    // 영어 저자: By ... / Written by ...
+    if lower.starts_with("by ") || lower.starts_with("written by ") {
+        return None;
+    }
+
+    // 영어 댓글수: "5 comments" / "10 replies"
+    if is_english_comment_count(&lower) {
+        return None;
+    }
+
+    // Table of Contents
+    if lower.contains("table of contents") {
+        return None;
+    }
+
+    // 한국어 저자 줄
+    if trimmed.starts_with("작성자:") || trimmed.starts_with("글쓴이:") {
+        return None;
+    }
+
+    // 한국어 댓글수: "댓글 N개" / "댓글N개"
+    if is_korean_comment_count(trimmed) {
+        return None;
+    }
+
+    // 한국어 목차
+    if trimmed.starts_with("목차") {
+        return None;
+    }
+
+    Some(line.to_string())
+}
+
+/// `[city=agency] reporter 기자 = content` 패턴에서 content만 추출.
+fn extract_after_inline_source(line: &str) -> Option<String> {
+    let bracket_end = line.find(']')?;
+    if !line[1..bracket_end].contains('=') {
+        return None;
+    }
+    let after_bracket = &line[bracket_end + 1..];
+    let reporter_pos = after_bracket.find("기자")?;
+    let after_reporter = &after_bracket[reporter_pos + "기자".len()..];
+    let eq_pos = after_reporter.find('=')?;
+    Some(after_reporter[eq_pos + 1..].trim().to_string())
+}
+
+fn is_english_comment_count(lower_trimmed: &str) -> bool {
+    if !lower_trimmed.starts_with(|c: char| c.is_ascii_digit()) {
+        return false;
+    }
+    let digit_end = lower_trimmed
+        .find(|c: char| !c.is_ascii_digit())
+        .unwrap_or(lower_trimmed.len());
+    let rest = lower_trimmed[digit_end..].trim_start_matches(' ');
+    rest.starts_with("comment") || rest.starts_with("repl")
+}
+
+fn is_korean_comment_count(line: &str) -> bool {
+    if let Some(pos) = line.find("댓글") {
+        line[pos + "댓글".len()..]
+            .trim_start_matches(' ')
+            .starts_with(|c: char| c.is_ascii_digit())
+    } else {
+        false
     }
 }
 
@@ -250,6 +358,103 @@ mod tests {
         assert!(result.contains("Apple이"));
         assert!(result.contains("iOS 18"));
         assert!(result.contains("AI 기능"));
+    }
+
+    #[test]
+    fn clean_snippet_removes_markdown_headers() {
+        let input = "# 제목\n## 소제목\n본문 내용입니다.\n### 세부 제목\n추가 내용.";
+        let result = clean_snippet(input);
+        assert!(!result.contains("# 제목"), "# 헤더가 제거돼야 함");
+        assert!(!result.contains("## 소제목"), "## 헤더가 제거돼야 함");
+        assert!(!result.contains("### 세부 제목"), "### 헤더가 제거돼야 함");
+        assert!(result.contains("본문 내용입니다."), "본문은 유지돼야 함");
+        assert!(result.contains("추가 내용."), "본문은 유지돼야 함");
+    }
+
+    #[test]
+    fn clean_snippet_removes_placeholders() {
+        let input = "기사 내용입니다. [...] 추가 내용도 있습니다. [...] 마지막 내용.";
+        let result = clean_snippet(input);
+        assert!(!result.contains("[...]"), "[...] 패턴이 제거돼야 함");
+        assert!(result.contains("기사 내용입니다."), "본문은 유지돼야 함");
+        assert!(result.contains("마지막 내용."), "본문은 유지돼야 함");
+    }
+
+    #[test]
+    fn clean_snippet_real_world_pattern() {
+        let input = "# AI 열풍 기사 제목\nPublished: 2026-04-27T08:43:44+09:00 [...] Author: 이민우 기자\n## Summary\n올해 1분기 VC 투자가 급증했다. [...] 역대 최대치를 기록했다.\n## Story\n세부 내용.";
+        let result = clean_snippet(input);
+        assert!(!result.contains("# AI 열풍"), "# 헤더 제거");
+        assert!(!result.contains("## Summary"), "## 헤더 제거");
+        assert!(!result.contains("## Story"), "## 헤더 제거");
+        assert!(!result.contains("[...]"), "[...] 제거");
+        assert!(result.contains("올해 1분기"), "본문 유지");
+        assert!(result.contains("역대 최대치를 기록했다."), "본문 유지");
+    }
+
+    #[test]
+    fn clean_snippet_removes_published_author_language() {
+        let input = "Published: 2026-04-27T08:43:44+09:00\nAuthor: 이민우 기자\nLanguage: ko\n오늘의 뉴스입니다.";
+        let result = clean_snippet(input);
+        assert!(!result.contains("Published:"), "Published: 라인 제거");
+        assert!(!result.contains("Author:"), "Author: 라인 제거");
+        assert!(!result.contains("Language:"), "Language: 라인 제거");
+        assert!(result.contains("오늘의 뉴스입니다."), "본문 유지");
+    }
+
+    #[test]
+    fn clean_snippet_removes_english_author_lines() {
+        let input = "By John Smith\nArticle content here.\nWritten by Jane Doe\nMore content.";
+        let result = clean_snippet(input);
+        assert!(!result.contains("By John Smith"), "By 저자 라인 제거");
+        assert!(
+            !result.contains("Written by Jane Doe"),
+            "Written by 라인 제거"
+        );
+        assert!(result.contains("Article content here."), "본문 유지");
+        assert!(result.contains("More content."), "본문 유지");
+    }
+
+    #[test]
+    fn clean_snippet_removes_comment_count_lines() {
+        let input =
+            "5 comments\nThis is the news.\n10 replies\n더 많은 내용.\n댓글 3개\n한국어 기사 본문.";
+        let result = clean_snippet(input);
+        assert!(!result.contains("5 comments"), "영어 댓글수 제거");
+        assert!(!result.contains("10 replies"), "영어 replies 제거");
+        assert!(!result.contains("댓글 3개"), "한국어 댓글수 제거");
+        assert!(result.contains("This is the news."), "본문 유지");
+        assert!(result.contains("한국어 기사 본문."), "본문 유지");
+    }
+
+    #[test]
+    fn clean_snippet_removes_korean_author_lines() {
+        let input = "작성자: 이민우 기자\n오늘의 뉴스입니다.\n글쓴이: 홍길동\n추가 기사 내용.";
+        let result = clean_snippet(input);
+        assert!(!result.contains("작성자:"), "작성자: 라인 제거");
+        assert!(!result.contains("글쓴이:"), "글쓴이: 라인 제거");
+        assert!(result.contains("오늘의 뉴스입니다."), "본문 유지");
+        assert!(result.contains("추가 기사 내용."), "본문 유지");
+    }
+
+    #[test]
+    fn clean_snippet_extracts_content_after_inline_source() {
+        let input = "[서울=뉴스핌] 송은정 기자 = 구글이 AI 기반 웹 탐색 기능을 강화한 크롬 브라우저를 출시했다.";
+        let result = clean_snippet(input);
+        assert!(!result.contains("[서울=뉴스핌]"), "인라인 출처 제거");
+        assert!(!result.contains("송은정 기자"), "기자명 제거");
+        assert!(result.contains("구글이 AI 기반"), "기사 본문 유지");
+    }
+
+    #[test]
+    fn clean_snippet_preserves_by_in_sentence() {
+        // "by"가 문장 중간에 있으면 제거하면 안 됨
+        let input = "The result was driven by the new policy.\nAnother sentence.";
+        let result = clean_snippet(input);
+        assert!(
+            result.contains("driven by the new policy"),
+            "문장 중간 by 보존"
+        );
     }
 
     #[tokio::test]
