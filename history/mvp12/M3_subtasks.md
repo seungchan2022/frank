@@ -285,16 +285,16 @@ ST5 ──┘
 - [x] R-02 addFavorite 후 fetchAllTags 실패 시 tags 변경 없음 (폴백)
 
 ### 테스트
-- [ ] T-01 FavoritesFeature 유닛: addFavorite 후 새 tagId tags 반영 (recomputeTags 호출)
-- [ ] T-01b FavoritesFeature 유닛: removeFavorite 후 마지막 기사 삭제 시 해당 태그 tags에서 제거 [step-5 추가]
-- [ ] T-02 FavoritesFeature 유닛: shouldResetTagId 회귀 5건 (BUG-E 시나리오)
-- [ ] T-03 WrongAnswerTagFilterTests 업데이트: favorites 미등록 오답 → 제외 / wrongAnswerTags 소스 검증 (오답 없는 태그 미포함)
-- [ ] T-04 FeedFeature 유닛: loadMore() 정상 누적 (read-modify-write 패턴 검증), hasMore=false 정지, 중복 가드, 여러 페이지 누적 후 캐시 키 일치
-- [ ] T-05 FeedFeature 유닛: selectTag 캐시 미스 fetch, 캐시 히트 (fetch 없음)
-- [ ] T-06 FeedFeature 유닛: loadMore API 실패 시 status=error (R-01)
-- [ ] T-07 FavoritesFeature 유닛: addFavorite 후 fetchAllTags 실패 시 tags 변경 없음 (R-02)
-- [ ] T-08 APIArticleAdapter 유닛: limit/offset 있을 때 query parameter 포함 확인
-- [ ] T-09 ArticleDetailView 레이블 검증: ViewInspector 의존성 없으면 XCUITest 또는 스냅샷 테스트로 대체 (step-5 권고)
+- [x] T-01 FavoritesFeature 유닛: addFavorite 후 새 tagId tags 반영 (recomputeTags 호출)
+- [x] T-01b FavoritesFeature 유닛: removeFavorite 후 마지막 기사 삭제 시 해당 태그 tags에서 제거 [step-5 추가]
+- [x] T-02 FavoritesFeature 유닛: shouldResetTagId 회귀 5건 (BUG-E 시나리오)
+- [x] T-03 WrongAnswerTagFilterTests 업데이트: favorites 미등록 오답 → 제외 / wrongAnswerTags 소스 검증 (오답 없는 태그 미포함)
+- [x] T-04 FeedFeature 유닛: loadMore() 정상 누적 (read-modify-write 패턴 검증), hasMore=false 정지, 중복 가드, 여러 페이지 누적 후 캐시 키 일치
+- [x] T-05 FeedFeature 유닛: selectTag 캐시 미스 fetch, 캐시 히트 (fetch 없음)
+- [x] T-06 FeedFeature 유닛: loadMore API 실패 시 status=error (R-01)
+- [x] T-07 FavoritesFeature 유닛: addFavorite 후 fetchAllTags 실패 시 tags 변경 없음 (R-02)
+- [x] T-08 APIArticleAdapter 유닛: limit/offset 있을 때 query parameter 포함 확인
+- [x] T-09 ArticleDetailView 레이블 검증: U-01 E2E(시뮬레이터)로 대체 완료 (ViewInspector 미사용)
 
 ### UI·UX
 - [x] U-01 시뮬레이터 E2E: 기사 상세 좋아요("추천에 반영") · 즐겨찾기("스크랩 저장") 레이블·아이콘 확인

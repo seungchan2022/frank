@@ -1,0 +1,304 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>일일 회고 — 2026-04-27</title>
+<style>
+  :root {
+    --bg: #0f1117;
+    --surface: #1a1d27;
+    --surface2: #22263a;
+    --accent: #7c6ef8;
+    --accent2: #4ecdc4;
+    --text: #e2e8f0;
+    --muted: #718096;
+    --border: #2d3148;
+    --green: #48bb78;
+    --yellow: #ecc94b;
+    --red: #fc8181;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: -apple-system, 'Noto Sans KR', sans-serif;
+    line-height: 1.7;
+    padding: 2rem 1rem;
+  }
+  .container { max-width: 760px; margin: 0 auto; }
+
+  header {
+    border-left: 4px solid var(--accent);
+    padding-left: 1.2rem;
+    margin-bottom: 2.5rem;
+  }
+  header .date { color: var(--muted); font-size: 0.85rem; letter-spacing: 0.05em; }
+  header h1 { font-size: 1.6rem; font-weight: 700; margin: 0.3rem 0 0.5rem; }
+  header .summary { color: var(--muted); font-size: 0.9rem; }
+
+  .stat-bar {
+    display: flex; gap: 1rem; flex-wrap: wrap;
+    margin-bottom: 2.5rem;
+  }
+  .stat {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 0.8rem 1.2rem;
+    flex: 1; min-width: 120px;
+    text-align: center;
+  }
+  .stat .val { font-size: 1.8rem; font-weight: 700; color: var(--accent); }
+  .stat .label { font-size: 0.75rem; color: var(--muted); margin-top: 0.2rem; }
+
+  .section { margin-bottom: 2rem; }
+  .section-title {
+    font-size: 0.75rem; font-weight: 600;
+    letter-spacing: 0.1em; text-transform: uppercase;
+    color: var(--muted); margin-bottom: 1rem;
+  }
+
+  .decision-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 1.2rem 1.4rem;
+    margin-bottom: 1rem;
+    position: relative;
+  }
+  .decision-card:hover { border-color: var(--accent); transition: border-color 0.2s; }
+  .decision-num {
+    position: absolute; top: -10px; left: 1.2rem;
+    background: var(--accent);
+    color: #fff; font-size: 0.7rem; font-weight: 700;
+    padding: 2px 8px; border-radius: 999px;
+  }
+  .decision-title { font-weight: 600; margin-bottom: 0.5rem; font-size: 0.95rem; }
+  .decision-body { color: #a0aec0; font-size: 0.875rem; line-height: 1.65; }
+  .tag {
+    display: inline-block;
+    font-size: 0.7rem; font-weight: 600;
+    padding: 2px 8px; border-radius: 999px;
+    margin-right: 0.4rem; margin-bottom: 0.4rem;
+  }
+  .tag-defer { background: #2d3748; color: var(--yellow); }
+  .tag-adopt { background: #1a3a2a; color: var(--green); }
+  .tag-rule { background: #2d2250; color: var(--accent); }
+  .tag-arch { background: #3a2020; color: var(--red); }
+
+  .rule-table {
+    width: 100%; border-collapse: collapse;
+    font-size: 0.875rem;
+  }
+  .rule-table th {
+    text-align: left; padding: 0.6rem 0.8rem;
+    background: var(--surface2); color: var(--muted);
+    font-size: 0.75rem; font-weight: 600;
+  }
+  .rule-table td {
+    padding: 0.7rem 0.8rem;
+    border-bottom: 1px solid var(--border);
+    vertical-align: top;
+  }
+  .rule-table tr:last-child td { border-bottom: none; }
+  .rule-code {
+    font-family: 'SF Mono', monospace;
+    font-size: 0.78rem; color: var(--accent2);
+    background: var(--surface2);
+    padding: 2px 6px; border-radius: 4px;
+  }
+
+  .insight-box {
+    background: linear-gradient(135deg, #1a1d27 0%, #1e1a3a 100%);
+    border: 1px solid var(--accent);
+    border-radius: 12px;
+    padding: 1.4rem 1.6rem;
+  }
+  .insight-label {
+    font-size: 0.7rem; font-weight: 700;
+    letter-spacing: 0.1em; text-transform: uppercase;
+    color: var(--accent); margin-bottom: 0.6rem;
+  }
+  .insight-text { font-size: 0.9rem; color: #cbd5e0; line-height: 1.7; }
+
+  .debt-list { list-style: none; }
+  .debt-list li {
+    display: flex; align-items: flex-start; gap: 0.7rem;
+    padding: 0.6rem 0; border-bottom: 1px solid var(--border);
+    font-size: 0.875rem;
+  }
+  .debt-list li:last-child { border-bottom: none; }
+  .debt-id {
+    font-family: 'SF Mono', monospace;
+    font-size: 0.72rem; color: var(--yellow);
+    background: #2d2a1a; padding: 2px 7px;
+    border-radius: 4px; white-space: nowrap; margin-top: 2px;
+  }
+
+  .milestone-badge {
+    display: inline-flex; align-items: center; gap: 0.4rem;
+    background: #1a3a2a; color: var(--green);
+    font-size: 0.78rem; font-weight: 600;
+    padding: 4px 10px; border-radius: 999px;
+    border: 1px solid #2a5a3a;
+  }
+  .dot { width: 6px; height: 6px; border-radius: 50%; background: var(--green); }
+</style>
+</head>
+<body>
+<div class="container">
+
+  <header>
+    <div class="date">2026-04-27 (일)</div>
+    <h1>MVP12 완료일 — 방향을 정한 하루</h1>
+    <div class="summary">23개 커밋 · M1(서버) → M2(웹) → M3(iOS) 전 마일스톤 완료 + 아카이빙</div>
+  </header>
+
+  <div class="stat-bar">
+    <div class="stat">
+      <div class="val">23</div>
+      <div class="label">커밋</div>
+    </div>
+    <div class="stat">
+      <div class="val">3</div>
+      <div class="label">완료 마일스톤</div>
+    </div>
+    <div class="stat">
+      <div class="val">6</div>
+      <div class="label">버그 처리</div>
+    </div>
+    <div class="stat">
+      <div class="val">4</div>
+      <div class="label">신설 규칙</div>
+    </div>
+  </div>
+
+  <!-- 의사결정 -->
+  <div class="section">
+    <div class="section-title">오늘의 의사결정</div>
+
+    <div class="decision-card">
+      <div class="decision-num">01</div>
+      <div class="decision-title">BUG-F 오답 태그 필터 — 근본 수정 defer 확정</div>
+      <div style="margin-bottom: 0.6rem;">
+        <span class="tag tag-defer">defer → MVP13</span>
+        <span class="tag tag-arch">발견 시점 문제</span>
+      </div>
+      <div class="decision-body">
+        근본 원인은 <code style="font-size:0.8em;color:var(--accent2)">wrong_answers</code> 테이블에 <code style="font-size:0.8em;color:var(--accent2)">tag_id</code>가 없는 서버 스키마 문제. 문제를 발견한 시점이 너무 늦었다 — 서버·DB 작업 완료 + 웹 구현까지 다 끝낸 후에야 이슈를 발견했고, 근본 수정을 하려면 이미 완료된 단계들을 전부 되돌아가 재수정해야 하는 상황이었다. 범위와 비용이 MVP12에서 감당하기 어려운 수준이라 클라이언트 필터 정책 통일(B안)까지만 처리하고 스키마 변경은 다음 MVP로 넘겼다.
+      </div>
+    </div>
+
+    <div class="decision-card">
+      <div class="decision-num">02</div>
+      <div class="decision-title">피드 탭 필터 방식 — 클라이언트 필터링 유지, 재검토는 다음 MVP</div>
+      <div style="margin-bottom: 0.6rem;">
+        <span class="tag tag-defer">재검토 → MVP13</span>
+        <span class="tag tag-arch">사이드 이펙트 발견</span>
+      </div>
+      <div class="decision-body">
+        <strong style="color:var(--text)">이전 방식(MVP6~):</strong> 탭 선택 시 서버에 <code style="font-size:0.8em;color:var(--accent2)">?tag_id=xxx</code> 요청 → 서버가 필터링해서 반환.<br><br>
+        <strong style="color:var(--text)">MVP12 변경:</strong> 전체만 한 번 API 요청 + 클라이언트 <code style="font-size:0.8em;color:var(--accent2)">filter()</code>로 다른 탭 처리. 서버 요청 횟수를 줄이고 탭 전환을 빠르게 하려는 의도였다.<br><br>
+        <strong style="color:var(--yellow)">사이드 이펙트:</strong> 전체 데이터 로딩 완료 전에 탭을 선택하면 기사가 표시되지 않음. 클라이언트가 필터링할 원본 데이터 자체가 아직 없는 타이밍 문제.<br><br>
+        이전 방식으로 되돌리는 게 맞는지 재검토가 필요하지만, 지금 분석하면 작업 흐름이 늦어지므로 현재 방식 유지 + 다음 MVP에서 재결정.
+      </div>
+    </div>
+
+    <div class="decision-card">
+      <div class="decision-num">03</div>
+      <div class="decision-title">BUG-F 최종 방식 — 클라이언트 B안 확정</div>
+      <div style="margin-bottom: 0.6rem;">
+        <span class="tag tag-adopt">아키텍처 원칙 우선</span>
+      </div>
+      <div class="decision-body">
+        분석 문서에서 A(서버 스키마) / B(클라이언트 필터) / C(혼합) 비교. A안은 방향은 맞지만 MVP12 범위 초과. B-1(즐겨찾기 등록 기사로 태그 필터 한정) + B-2(orphan selectedTagId 자동 초기화)로 확정. "지금 고칠 수 없는 건 명확히 defer, 할 수 있는 건 깔끔하게" 원칙 적용.
+      </div>
+    </div>
+
+    <div class="decision-card">
+      <div class="decision-num">04</div>
+      <div class="decision-title">iOS 피드 탭 필터 방식 — 동일하게 다음 MVP 재검토</div>
+      <div style="margin-bottom: 0.6rem;">
+        <span class="tag tag-defer">재검토 → MVP13</span>
+      </div>
+      <div class="decision-body">
+        웹과 동일한 이슈. 클라이언트 필터링 유지. 이전 방식(탭별 서버 요청)과의 비교 분석은 다음 MVP에서 진행.
+      </div>
+    </div>
+
+    <div class="decision-card">
+      <div class="decision-num">05</div>
+      <div class="decision-title">MVP12 완료·아카이빙 결정</div>
+      <div style="margin-bottom: 0.6rem;">
+        <span class="milestone-badge"><span class="dot"></span>MVP12 done</span>
+      </div>
+      <div class="decision-body">
+        23개 커밋, M1~M3 전체 완료. retro.md 작성 후 <code style="font-size:0.8em;color:var(--accent2)">history/mvp12/</code>로 이관. 상태 전이: <code style="font-size:0.8em;color:var(--accent2)">active_mvp.txt: 12:done</code>. 다음 세션부터 MVP13 기획 시작.
+      </div>
+    </div>
+
+    <div class="decision-card">
+      <div class="decision-num">06</div>
+      <div class="decision-title">워크플로우 강제 규칙 4개 신설 (§9)</div>
+      <div style="margin-bottom: 0.6rem;">
+        <span class="tag tag-rule">rules/0_CODEX_RULES.md</span>
+      </div>
+      <div class="decision-body" style="margin-bottom: 1rem;">
+        MVP12 회고에서 반복 패턴을 발견하고 즉시 규칙으로 기계화.
+      </div>
+      <table class="rule-table">
+        <thead>
+          <tr><th>규칙</th><th>내용</th></tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><span class="rule-code">9.1</span> 스텝 헤더</td>
+            <td>매 응답 첫 줄에 <code style="font-size:0.8em">[Step N/9 — /step-N]</code> 표시</td>
+          </tr>
+          <tr>
+            <td><span class="rule-code">9.2</span> 인터뷰 게이트</td>
+            <td>인터뷰 완료 전 다음 스텝 전환 절대 금지, Q카운터 표시</td>
+          </tr>
+          <tr>
+            <td><span class="rule-code">9.3</span> 피드백 후 구현</td>
+            <td>피드백 수신 → 분석 먼저 → 확인 후 구현 진입</td>
+          </tr>
+          <tr>
+            <td><span class="rule-code">9.4</span> 에이전트 알림</td>
+            <td>서브에이전트 호출 전 30초 이상 소요 시 사전 안내</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- 핵심 인사이트 -->
+  <div class="section">
+    <div class="section-title">오늘의 핵심 인사이트</div>
+    <div class="insight-box">
+      <div class="insight-label">Key Insight</div>
+      <div class="insight-text">
+        회고에서 발견한 문제를 즉시 설정·hook으로 기계화하는 것의 가치. 코드를 짜는 것보다, 어떤 순서로 어떤 규칙을 적용해서 결과를 도출할지를 설계하는 게 더 중요한 날이었다. 규칙이 없으면 같은 실수가 반복되고, 규칙이 있으면 에이전트가 자동으로 맞게 행동한다. 오늘 신설한 4개 규칙은 MVP12에서 실제로 문제가 됐던 패턴을 구조화한 것이다.
+      </div>
+    </div>
+  </div>
+
+  <!-- 다음 MVP 부채 -->
+  <div class="section">
+    <div class="section-title">MVP13 이관 부채</div>
+    <ul class="debt-list">
+      <li>
+        <span class="debt-id">DEBT-01</span>
+        <div>오답 태그 칩 근본 수정 — <code style="font-size:0.8em;color:var(--accent2)">wrong_answers</code> 테이블 tag_id + 4레이어 통합</div>
+      </li>
+      <li>
+        <span class="debt-id">DEBT-02</span>
+        <div>피드 탭 필터 방식 재검토 — 클라이언트 필터링 vs 탭별 서버 요청 비교 분석</div>
+      </li>
+    </ul>
+  </div>
+
+</div>
+</body>
+</html>
