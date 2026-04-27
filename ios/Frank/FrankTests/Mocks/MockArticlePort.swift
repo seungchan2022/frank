@@ -13,12 +13,28 @@ final class MockArticlePort: ArticlePort, @unchecked Sendable {
     /// 마지막으로 전달된 noCache 값 (검증용)
     var lastFetchNoCache: Bool = false
 
-    func fetchFeed(tagId: UUID?, noCache: Bool = false) async throws -> [FeedItem] {
+    var lastFetchLimit: Int? = nil
+    var lastFetchOffset: Int? = nil
+
+    func fetchFeed(tagId: UUID?, noCache: Bool = false, limit: Int? = nil, offset: Int? = nil) async throws -> [FeedItem] {
         fetchFeedCallCount += 1
         lastFetchTagId = tagId
         lastFetchNoCache = noCache
+        lastFetchLimit = limit
+        lastFetchOffset = offset
         if let error = fetchError { throw error }
-        guard let tagId else { return feedItems }
-        return feedItems.filter { $0.tagId == tagId }
+        let filtered: [FeedItem]
+        if let tagId {
+            filtered = feedItems.filter { $0.tagId == tagId }
+        } else {
+            filtered = feedItems
+        }
+        // limit/offset 적용
+        let start = offset ?? 0
+        guard start < filtered.count else { return [] }
+        if let limit {
+            return Array(filtered[start..<min(start + limit, filtered.count)])
+        }
+        return Array(filtered[start...])
     }
 }

@@ -51,6 +51,10 @@ final class FavoritesFeature {
     /// MVP11 M4: 즐겨찾기 기사에 실제 존재하는 태그만 표시.
     private(set) var tags: [Tag] = []
 
+    /// ST1 BUG-D: loadFavorites 시 fetchAllTags 결과를 보관.
+    /// addFavorite/removeFavorite 후 recomputeTags()에서 재사용.
+    private var allTagsCache: [Tag] = []
+
     /// items에서 url 추출한 Set. isLiked 조회에 O(1).
     var likedUrls: Set<String> {
         Set(items.map(\.url))
@@ -94,9 +98,10 @@ final class FavoritesFeature {
 
             // items에 실제 존재하는 tagId 교집합만 칩으로 표시.
             // fetchAllTags 실패 시 tags = [] 로 degrade — items 로드 결과에 영향 없음.
+            let allTags = (try? await tagPort.fetchAllTags()) ?? []
+            allTagsCache = allTags
             let favTagIds = Set(fetchedItems.compactMap(\.tagId))
-            let allTags = try? await tagPort.fetchAllTags()
-            tags = allTags?.filter { favTagIds.contains($0.id) } ?? []
+            tags = allTags.filter { favTagIds.contains($0.id) }
         } catch {
             phase = .failed(FavoritesErrorMessage.loadFailed)
         }
@@ -126,6 +131,7 @@ final class FavoritesFeature {
         do {
             let added = try await favorites.addFavorite(item: feedItem, summary: summary, insight: insight)
             items = [added] + items
+            recomputeTags()
         } catch {
             operationError = errorMessage(from: error)
         }
@@ -168,12 +174,30 @@ final class FavoritesFeature {
         do {
             try await favorites.deleteFavorite(url: url)
             items = items.filter { $0.url != url }
+            recomputeTags()
         } catch {
             operationError = FavoritesErrorMessage.removeFailed
         }
     }
 
     // MARK: - Private
+
+    /// ST1 BUG-D: items 변경 후 tags를 allTagsCache 기반으로 재계산.
+    /// addFavorite / removeFavorite 성공 후 호출.
+    private func recomputeTags() {
+        let favTagIds = Set(items.compactMap(\.tagId))
+        tags = allTagsCache.filter { favTagIds.contains($0.id) }
+    }
+
+    /// ST2 BUG-E: removeFavorite 후 selectedTagId를 nil로 초기화해야 하는지 판단.
+    /// - Parameters:
+    ///   - remaining: 삭제 후 남은 즐겨찾기 아이템 목록
+    ///   - current: 현재 선택된 tagId (nil이면 전체 탭)
+    /// - Returns: nil로 초기화해야 하면 true
+    static func shouldResetTagId(remaining: [FavoriteItem], current: UUID?) -> Bool {
+        guard let tagId = current else { return false }
+        return !remaining.contains { $0.tagId == tagId }
+    }
 
     private func errorMessage(from error: Error) -> String {
         if let favError = error as? APIFavoritesError, favError == .conflict {

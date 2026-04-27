@@ -40,8 +40,8 @@ enum WrongAnswerTagFilter {
         let urlSet = Set(tagMap.compactMap { url, tid in tid == tagId ? url : nil })
 
         return items.filter { wrongAnswer in
-            // favorites에 없는 오답은 항상 표시
-            if tagMap[wrongAnswer.articleUrl] == nil { return true }
+            // favorites에 없는 오답은 제외 (BUG-F 수정: 미등록 오답을 항상 포함하던 정책 제거)
+            if tagMap[wrongAnswer.articleUrl] == nil { return false }
             // 선택된 태그의 url과 일치하는 오답만 표시
             return urlSet.contains(wrongAnswer.articleUrl)
         }

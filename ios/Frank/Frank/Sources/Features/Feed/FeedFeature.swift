@@ -8,11 +8,17 @@ import Observation
 /// MVP6 M3: 탭별 캐시 (tagCache) + 초기 프리패치.
 /// - loadInitial 시 구독 태그 전체를 병렬 프리패치 → 탭 전환 항상 즉시 표시
 /// - pull-to-refresh만 현재 탭 캐시 갱신 + 재요청
+///
+/// MVP12 M3 ST5: 무한 스크롤 (TagState 기반 페이지네이션).
+/// - tagCache → tagStates: [String: TagState] 교체
+/// - loadMore() → 현재 탭 다음 페이지 로드
+/// - 프리패치 제거 (C안): loadInitial은 전체 탭 첫 페이지만 로드
 enum FeedAction {
     case loadInitial
     case selectTag(UUID?)
     case refresh
     case reloadAfterTagChange
+    case loadMore
 }
 
 /// Feed의 주(主) 로딩 phase. 동시에 한 가지 phase만 가질 수 있다.
@@ -22,6 +28,25 @@ enum LoadingPhase: Equatable, Sendable {
     case refreshing
 }
 
+/// 탭별 무한 스크롤 상태.
+enum TagStatus: Equatable, Sendable {
+    case idle
+    case loading      // 첫 페이지 또는 탭 전환 로딩
+    case loadingMore  // 추가 페이지 로딩 중
+    case done         // 더 이상 불러올 페이지 없음
+}
+
+/// MVP12 M3 ST5: 탭별 페이지네이션 상태.
+struct TagState: Sendable {
+    var items: [FeedItem] = []
+    var nextOffset: Int = 0
+    var hasMore: Bool = true
+    var status: TagStatus = .idle
+}
+
+/// 한 번에 가져올 기사 수. 서버 MAX_FEED_LIMIT(50) 이하.
+private let PAGE_SIZE = 20
+
 @Observable
 @MainActor
 final class FeedFeature {
@@ -30,7 +55,6 @@ final class FeedFeature {
 
     private(set) var tags: [Tag] = []
     private(set) var selectedTagId: UUID?
-    private(set) var feedItems: [FeedItem] = []
 
     // MARK: - Loading State
 
@@ -46,10 +70,27 @@ final class FeedFeature {
 
     private(set) var errorMessage: String?
 
-    // MARK: - Cache
+    // MARK: - TagState Store
 
-    /// 탭별 피드 캐시. 키: tagId?.uuidString ?? "all"
-    private var tagCache: [String: [FeedItem]] = [:]
+    /// 탭별 페이지네이션 상태. 키: tagId?.uuidString ?? "all"
+    private var tagStates: [String: TagState] = [:]
+
+    // MARK: - Derived Feed Items
+
+    /// 현재 탭 아이템 목록. tagStates에서 투영.
+    var feedItems: [FeedItem] {
+        tagStates[currentKey]?.items ?? []
+    }
+
+    /// 현재 탭에 더 불러올 페이지가 있는지.
+    var hasMore: Bool {
+        tagStates[currentKey]?.hasMore ?? true
+    }
+
+    /// 현재 탭의 추가 로딩 중 여부 (sentinel ProgressView 표시용).
+    var isLoadingMore: Bool {
+        tagStates[currentKey]?.status == .loadingMore
+    }
 
     // MARK: - Dependencies
 
@@ -79,6 +120,8 @@ final class FeedFeature {
             await refresh()
         case .reloadAfterTagChange:
             await reloadAfterTagChange()
+        case .loadMore:
+            await loadMore()
         }
     }
 
@@ -115,6 +158,10 @@ final class FeedFeature {
 
     // MARK: - Cache Helpers
 
+    private var currentKey: String {
+        cacheKey(for: selectedTagId)
+    }
+
     private func cacheKey(for tagId: UUID?) -> String {
         tagId?.uuidString ?? "all"
     }
@@ -133,25 +180,14 @@ final class FeedFeature {
             let myTagIds = try await myTagIdsTask
             tags = allTags.filter { myTagIds.contains($0.id) }
 
-            let items = try await article.fetchFeed(tagId: nil, noCache: false)
-            feedItems = items
-            tagCache["all"] = items
-
-            // 구독 태그 전체 병렬 프리패치 → 탭 전환 항상 즉시 표시
-            await withTaskGroup(of: (String, [FeedItem]?).self) { group in
-                for tagId in myTagIds {
-                    group.addTask {
-                        let key = tagId.uuidString
-                        let result = try? await self.article.fetchFeed(tagId: tagId, noCache: false)
-                        return (key, result)
-                    }
-                }
-                for await (key, result) in group {
-                    if let result {
-                        tagCache[key] = result
-                    }
-                }
-            }
+            // ST5 C안: 전체 탭 첫 페이지만 로드 (구독 태그 프리패치 제거)
+            let items = try await article.fetchFeed(tagId: nil, noCache: false, limit: PAGE_SIZE, offset: 0)
+            var state = TagState()
+            state.items = items
+            state.nextOffset = items.count
+            state.hasMore = items.count == PAGE_SIZE
+            state.status = .idle
+            tagStates["all"] = state
 
             selectedTagId = nil
             phase = .idle
@@ -166,19 +202,29 @@ final class FeedFeature {
         let key = cacheKey(for: tagId)
 
         // 캐시 히트 → 즉시 표시, 재요청 없음
-        if let cached = tagCache[key] {
-            feedItems = cached
+        if tagStates[key] != nil {
             selectedTagId = tagId
             return
         }
 
-        // 캐시 미스 → 조용히 fetch (로딩 표시 없음, 프리패치 실패 시 fallback)
+        // 캐시 미스 → 첫 페이지 조용히 fetch (status = .loading, 로딩 표시 없음)
+        var state = TagState()
+        state.status = .loading
+        tagStates[key] = state
+        selectedTagId = tagId
+
         do {
-            let items = try await article.fetchFeed(tagId: tagId, noCache: false)
-            feedItems = items
-            tagCache[key] = items
-            selectedTagId = tagId
+            let items = try await article.fetchFeed(tagId: tagId, noCache: false, limit: PAGE_SIZE, offset: 0)
+            var updated = tagStates[key] ?? TagState()
+            updated.items = items
+            updated.nextOffset = items.count
+            updated.hasMore = items.count == PAGE_SIZE
+            updated.status = .idle
+            tagStates[key] = updated
         } catch {
+            var updated = tagStates[key] ?? TagState()
+            updated.status = .idle
+            tagStates[key] = updated
             errorMessage = "태그 피드를 불러오지 못했습니다."
         }
     }
@@ -187,13 +233,17 @@ final class FeedFeature {
         guard phase == .idle else { return }
         beginRefresh()
 
-        let key = cacheKey(for: selectedTagId)
+        let key = currentKey
 
         do {
-            // MVP10 M3: pull-to-refresh는 서버 TTL 캐시 우회
-            let items = try await article.fetchFeed(tagId: selectedTagId, noCache: true)
-            feedItems = items
-            tagCache[key] = items
+            // MVP10 M3: pull-to-refresh는 서버 TTL 캐시 우회. 첫 페이지만 다시 로드.
+            let items = try await article.fetchFeed(tagId: selectedTagId, noCache: true, limit: PAGE_SIZE, offset: 0)
+            var state = TagState()
+            state.items = items
+            state.nextOffset = items.count
+            state.hasMore = items.count == PAGE_SIZE
+            state.status = .idle
+            tagStates[key] = state
             finishRefresh()
         } catch {
             failRefresh("새로고침에 실패했습니다.")
@@ -202,8 +252,38 @@ final class FeedFeature {
 
     private func reloadAfterTagChange() async {
         selectedTagId = nil
-        tagCache = [:]
+        tagStates = [:]
         hasLoadedInitially = false
         await loadInitial()
+    }
+
+    /// ST5: 현재 탭의 다음 페이지를 로드해 items에 누적.
+    private func loadMore() async {
+        let key = currentKey
+        guard var state = tagStates[key],
+              state.hasMore,
+              state.status == .idle else { return }
+
+        state.status = .loadingMore
+        tagStates[key] = state
+
+        do {
+            let items = try await article.fetchFeed(
+                tagId: selectedTagId,
+                noCache: false,
+                limit: PAGE_SIZE,
+                offset: state.nextOffset
+            )
+            var updated = tagStates[key] ?? TagState()
+            updated.items += items
+            updated.nextOffset += items.count
+            updated.hasMore = items.count == PAGE_SIZE
+            updated.status = .idle
+            tagStates[key] = updated
+        } catch {
+            var updated = tagStates[key] ?? TagState()
+            updated.status = .idle
+            tagStates[key] = updated
+        }
     }
 }

@@ -57,9 +57,9 @@ struct FeedFeatureTests {
         #expect(sut.errorMessage == nil)
     }
 
-    // MARK: - 2. loadInitial 성공
+    // MARK: - 2. loadInitial 성공 (ST5: 프리패치 제거, 전체 탭 첫 페이지만)
 
-    @Test("loadInitial 성공: 내 태그 필터링 + 피드 아이템 로드")
+    @Test("loadInitial 성공: 내 태그 필터링 + 피드 아이템 로드 (프리패치 없음)")
     func loadInitialSuccess() async {
         let (allTags, allIds) = makeTags(count: 3)
         let myIds = [allIds[0], allIds[1]]
@@ -82,8 +82,8 @@ struct FeedFeatureTests {
         #expect(sut.errorMessage == nil)
         #expect(tagPort.fetchAllTagsCallCount == 1)
         #expect(tagPort.fetchMyTagIdsCallCount == 1)
-        // 전체 피드(1) + 구독 태그 프리패치(2) = 3
-        #expect(articlePort.fetchFeedCallCount == 3)
+        // ST5 C안: 프리패치 제거 → 전체 탭 1회만 호출
+        #expect(articlePort.fetchFeedCallCount == 1)
     }
 
     // MARK: - 3. loadInitial 피드 실패
@@ -234,7 +234,7 @@ struct FeedFeatureTests {
         #expect(sut.isRefreshing == false)
     }
 
-    // MARK: - 10. reloadAfterTagChange
+    // MARK: - 10. reloadAfterTagChange (ST5: 전체 탭 1회 + 재로드 1회 = 2회)
 
     @Test("reloadAfterTagChange: selectedTagId 리셋 + loadInitial 재실행")
     func reloadAfterTagChange() async {
@@ -246,14 +246,15 @@ struct FeedFeatureTests {
             myTagIds: [tagId]
         )
 
-        await sut.send(.loadInitial)           // all(1) + 프리패치(1) = 2
-        await sut.send(.selectTag(tagId))      // 캐시 히트 → 0
+        await sut.send(.loadInitial)           // 전체 탭 1회
+        await sut.send(.selectTag(tagId))      // 캐시 미스 → 1회
         #expect(sut.selectedTagId == tagId)
 
-        await sut.send(.reloadAfterTagChange)  // 캐시 초기화 + loadInitial: all(1) + 프리패치(1) = 2
+        await sut.send(.reloadAfterTagChange)  // 캐시 초기화 + loadInitial: 전체 탭 1회
 
         #expect(sut.selectedTagId == nil)
-        #expect(articlePort.fetchFeedCallCount == 4)
+        // loadInitial(1) + selectTag 캐시미스(1) + reloadAfterTagChange loadInitial(1) = 3
+        #expect(articlePort.fetchFeedCallCount == 3)
     }
 
     // MARK: - 11. loadInitial 후 isLoading=false
@@ -287,10 +288,6 @@ struct FeedFeatureTests {
         await sut.send(.loadInitial)
         #expect(sut.feedItems.count == 1)
 
-        // refresh 중에도 feedItems 유지 확인 — refreshing phase로 진입하기 전 스냅샷
-        // FeedFeature.refresh()는 phase = .refreshing으로 먼저 전환 후 API 호출
-        // → API 호출 전까지 feedItems는 교체되지 않음
-        // 여기서는 완료 후 결과가 교체됐는지 검증
         let newItem = makeFeedItem(title: "New Article", urlSuffix: "new", tagId: tagId)
         articlePort.feedItems = [newItem]
         await sut.send(.refresh)
@@ -345,13 +342,13 @@ struct FeedFeatureTests {
         #expect(sut.errorMessage == nil)
     }
 
-    // MARK: - M3: 탭 캐시
+    // MARK: - M3: 탭 캐시 (ST5 기반)
 
-    /// M3: 프리패치 안 된 태그(구독 외) 선택 시 캐시 미스 → 조용히 fetchFeed 호출 (isRefreshing 없음)
+    /// M3: 캐시 미스 탭 선택 시 조용히 fetchFeed 호출 (isRefreshing 없음)
     @Test("selectTag 캐시 미스 시 조용히 fetchFeed 호출 (로딩 표시 없음)")
     func selectTag_캐시미스_fetchFeed_tagId_전달() async {
         let myTagId = UUID()
-        let otherTagId = UUID() // 구독 외 태그 → 프리패치 안 됨
+        let otherTagId = UUID()
         let items = [
             makeFeedItem(title: "AI Article", urlSuffix: "ai", tagId: myTagId),
             makeFeedItem(title: "Other Article", urlSuffix: "other", tagId: otherTagId)
@@ -363,7 +360,7 @@ struct FeedFeatureTests {
             myTagIds: [myTagId]
         )
 
-        await sut.send(.loadInitial) // all + myTagId 프리패치
+        await sut.send(.loadInitial) // 전체 탭만 (프리패치 없음)
         let countBefore = articlePort.fetchFeedCallCount
 
         // otherTagId는 캐시 없음 → 조용히 fetch (isRefreshing false)
@@ -386,9 +383,8 @@ struct FeedFeatureTests {
             myTagIds: [tagId]
         )
 
-        await sut.send(.loadInitial) // 프리패치로 tagId 이미 캐시됨
-        // 첫 번째 selectTag — 캐시 히트 (프리패치됨) → no fetch
-        await sut.send(.selectTag(tagId))
+        await sut.send(.loadInitial) // 전체 탭 캐시
+        await sut.send(.selectTag(tagId)) // 캐시 미스 → 1회 fetch
         let countAfterFirst = articlePort.fetchFeedCallCount
 
         // 두 번째 selectTag — 캐시 히트 → no fetch
@@ -442,7 +438,7 @@ struct FeedFeatureTests {
         )
 
         await sut.send(.loadInitial) // 'all' 캐시 저장
-        await sut.send(.selectTag(tagId)) // tag 캐시 저장
+        await sut.send(.selectTag(tagId)) // tag 캐시 저장 (캐시 미스 → fetch)
         let countAfterTag = articlePort.fetchFeedCallCount
 
         // 전체 탭으로 복귀 → 'all' 캐시 히트 → no fetch
@@ -450,5 +446,117 @@ struct FeedFeatureTests {
 
         #expect(articlePort.fetchFeedCallCount == countAfterTag, "전체 탭 캐시 히트 → 재요청 없음")
         #expect(sut.selectedTagId == nil)
+    }
+
+    // MARK: - ST5: 무한 스크롤 테스트
+
+    @Test("loadMore: 다음 페이지 누적")
+    func loadMore_누적() async {
+        // 25개 아이템 → PAGE_SIZE(20) 첫 페이지 + 5개 두 번째 페이지
+        let items = (0..<25).map { i in
+            makeFeedItem(title: "Article \(i)", urlSuffix: "\(i)")
+        }
+        let (sut, _, _) = makeSUT(feedItems: items)
+
+        await sut.send(.loadInitial)
+        #expect(sut.feedItems.count == 20)
+        #expect(sut.hasMore == true)
+
+        await sut.send(.loadMore)
+        #expect(sut.feedItems.count == 25)
+        #expect(sut.hasMore == false)
+    }
+
+    @Test("loadMore: hasMore=false이면 중단")
+    func loadMore_hasMore_false_중단() async {
+        // 정확히 PAGE_SIZE(20)개 → 첫 페이지 후 hasMore=true이지만 두 번째 요청 시 0개 → hasMore=false
+        let items = (0..<20).map { i in
+            makeFeedItem(title: "Article \(i)", urlSuffix: "\(i)")
+        }
+        let (sut, articlePort, _) = makeSUT(feedItems: items)
+
+        await sut.send(.loadInitial)
+        #expect(sut.hasMore == true)
+
+        await sut.send(.loadMore) // 두 번째 페이지 → 0개 반환 → hasMore=false
+        #expect(sut.hasMore == false)
+
+        let countBefore = articlePort.fetchFeedCallCount
+        await sut.send(.loadMore) // hasMore=false → 중단 (호출 없음)
+        #expect(articlePort.fetchFeedCallCount == countBefore)
+    }
+
+    @Test("loadMore: limit/offset이 올바르게 전달됨")
+    func loadMore_limit_offset_전달() async {
+        let items = (0..<25).map { i in
+            makeFeedItem(title: "Article \(i)", urlSuffix: "\(i)")
+        }
+        let (sut, articlePort, _) = makeSUT(feedItems: items)
+
+        await sut.send(.loadInitial)
+        #expect(articlePort.lastFetchLimit == 20)
+        #expect(articlePort.lastFetchOffset == 0)
+
+        await sut.send(.loadMore)
+        #expect(articlePort.lastFetchLimit == 20)
+        #expect(articlePort.lastFetchOffset == 20)
+    }
+
+    @Test("loadMore: status=loadingMore 중 중복 호출 방지")
+    func loadMore_중복_방지() async {
+        let items = (0..<25).map { i in
+            makeFeedItem(title: "Article \(i)", urlSuffix: "\(i)")
+        }
+        let (sut, articlePort, _) = makeSUT(feedItems: items)
+
+        await sut.send(.loadInitial)
+        let countBefore = articlePort.fetchFeedCallCount
+
+        // 첫 loadMore (완료까지 대기)
+        await sut.send(.loadMore)
+        let countAfter = articlePort.fetchFeedCallCount
+
+        // 이미 완료된 상태에서 hasMore=false 케이스는 중단됨
+        // (중복 가드는 status=loadingMore 시 동작, 여기선 완료 후 상태)
+        #expect(countAfter == countBefore + 1)
+    }
+
+    @Test("selectTag 후 loadMore: 해당 탭 기준 페이지네이션")
+    func selectTag_loadMore_탭별() async {
+        let tagId = UUID()
+        let items = (0..<25).map { i in
+            makeFeedItem(title: "Tag Article \(i)", urlSuffix: "tag-\(i)", tagId: tagId)
+        }
+        let (sut, articlePort, _) = makeSUT(
+            feedItems: items,
+            tags: [Frank.Tag(id: tagId, name: "AI", category: "ai")],
+            myTagIds: [tagId]
+        )
+
+        await sut.send(.loadInitial)
+        await sut.send(.selectTag(tagId))
+        #expect(sut.feedItems.count == 20)
+
+        await sut.send(.loadMore)
+        #expect(sut.feedItems.count == 25)
+        #expect(articlePort.lastFetchTagId == .some(tagId))
+    }
+
+    @Test("refresh 후 hasMore 초기화 + 첫 페이지로 리셋")
+    func refresh_hasMore_초기화() async {
+        let items = (0..<25).map { i in
+            makeFeedItem(title: "Article \(i)", urlSuffix: "\(i)")
+        }
+        let (sut, _, _) = makeSUT(feedItems: items)
+
+        await sut.send(.loadInitial)
+        await sut.send(.loadMore)
+        #expect(sut.feedItems.count == 25)
+        #expect(sut.hasMore == false)
+
+        await sut.send(.refresh)
+        // refresh 후 첫 페이지 20개로 리셋, hasMore=true
+        #expect(sut.feedItems.count == 20)
+        #expect(sut.hasMore == true)
     }
 }

@@ -45,9 +45,18 @@ struct FavoritesView: View {
         WrongAnswerTagFilter.buildTagMap(from: feature.items)
     }
 
+    /// 오답 탭에 표시할 태그 칩 소스.
+    /// wrongAnswersFeature.items의 articleUrl → tagMap → tagId 조인으로 실제 오답 기사에 존재하는 태그만 표시.
+    /// BUG-F 수정: feature.tags(즐겨찾기 전체 태그)가 아닌, 오답 기사 URL에 해당하는 태그만 표시.
+    var wrongAnswerTags: [Tag] {
+        let map = wrongAnswerTagMap
+        let usedTagIds = Set(wrongAnswersFeature.items.compactMap { map[$0.articleUrl] })
+        return feature.tags.filter { usedTagIds.contains($0.id) }
+    }
+
     /// 오답 탭 필터 결과.
     /// - selectedTagId == nil: 전체 반환
-    /// - selectedTagId != nil: 해당 태그 url Set 교집합 + favorites에 없는 오답 항상 포함
+    /// - selectedTagId != nil: 해당 태그 url Set 교집합 (favorites 미등록 오답은 제외)
     var filteredWrongAnswers: [WrongAnswer] {
         WrongAnswerTagFilter.apply(
             items: wrongAnswersFeature.items,
@@ -131,7 +140,13 @@ struct FavoritesView: View {
             }
             .swipeActions(edge: .trailing) {
                 Button(role: .destructive) {
-                    Task { await feature.removeFavorite(url: item.url) }
+                    Task {
+                        await feature.removeFavorite(url: item.url)
+                        // ST2 BUG-E: 삭제 후 남은 아이템에 현재 태그가 없으면 selectedTagId 초기화
+                        if FavoritesFeature.shouldResetTagId(remaining: feature.items, current: selectedTagId) {
+                            selectedTagId = nil
+                        }
+                    }
                 } label: {
                     Label("삭제", systemImage: "trash")
                 }
@@ -186,7 +201,7 @@ struct FavoritesView: View {
                 wrongAnswersEmptyView
             } else {
                 VStack(spacing: 0) {
-                    tagChipBar { tagId in
+                    wrongAnswerTagChipBar { tagId in
                         selectedTagId = tagId
                     }
                     wrongAnswersList
@@ -288,10 +303,9 @@ struct FavoritesView: View {
             .transition(.move(edge: .bottom).combined(with: .opacity))
     }
 
-    // MARK: - Shared Tag Chip Bar
+    // MARK: - Tag Chip Bars
 
-    /// 기사·오답 탭 공용 TagChipBarView + Divider 블록.
-    /// - Parameter onSelect: 태그 선택 시 호출되는 콜백. 탭마다 다른 부수 효과를 주입한다.
+    /// 기사 탭용 TagChipBarView + Divider 블록 (feature.tags 기준).
     @ViewBuilder
     private func tagChipBar(onSelect: @escaping (UUID?) -> Void) -> some View {
         if !feature.tags.isEmpty {
@@ -301,6 +315,28 @@ struct FavoritesView: View {
                 onSelect: onSelect
             )
             .padding(.vertical, 8)
+            Divider()
+        }
+    }
+
+    /// 오답 탭용 TagChipBarView + Divider 블록 (wrongAnswerTags 기준).
+    /// BUG-F 수정: 오답 탭은 feature.tags 전체가 아닌 오답 기사에 실제 존재하는 태그만 표시.
+    @ViewBuilder
+    private func wrongAnswerTagChipBar(onSelect: @escaping (UUID?) -> Void) -> some View {
+        if !wrongAnswerTags.isEmpty {
+            TagChipBarView(
+                tags: wrongAnswerTags,
+                selectedTagId: selectedTagId,
+                onSelect: onSelect
+            )
+            .padding(.vertical, 8)
+            .onChange(of: wrongAnswerTags) { _, newTags in
+                // 현재 선택된 태그가 오답 탭에서 유효하지 않으면 nil로 초기화
+                if let current = selectedTagId,
+                   !newTags.contains(where: { $0.id == current }) {
+                    selectedTagId = nil
+                }
+            }
             Divider()
         }
     }

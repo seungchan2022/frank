@@ -9,10 +9,21 @@ actor MockArticleAdapter: ArticlePort {
         self.feedItems = seed
     }
 
-    func fetchFeed(tagId: UUID?, noCache: Bool = false) async throws -> [FeedItem] {
+    func fetchFeed(tagId: UUID?, noCache: Bool = false, limit: Int? = nil, offset: Int? = nil) async throws -> [FeedItem] {
         // tagId 있으면 해당 태그 아이템만 반환 (서버 동작 시뮬레이션)
-        guard let tagId else { return feedItems }
-        return feedItems.filter { $0.tagId == tagId }
+        let filtered: [FeedItem]
+        if let tagId {
+            filtered = feedItems.filter { $0.tagId == tagId }
+        } else {
+            filtered = feedItems
+        }
+        // limit/offset 적용 (무한 스크롤 시뮬레이션)
+        let start = offset ?? 0
+        guard start < filtered.count else { return [] }
+        if let limit {
+            return Array(filtered[start..<min(start + limit, filtered.count)])
+        }
+        return Array(filtered[start...])
     }
 }
 

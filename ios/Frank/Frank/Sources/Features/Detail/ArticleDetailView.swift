@@ -148,7 +148,7 @@ extension ArticleDetailView {
                     .font(.system(size: 22))
                 }
                 .accessibilityLabel(
-                    likesFeature.isLiked(feedItem.url.absoluteString) ? "좋아요 완료" : "좋아요"
+                    likesFeature.isLiked(feedItem.url.absoluteString) ? "추천 완료" : "추천에 반영"
                 )
             }
 
@@ -328,9 +328,9 @@ extension ArticleDetailView {
             }
         } label: {
             HStack {
-                Image(systemName: isLiked ? "star.fill" : "star")
-                    .foregroundStyle(isLiked ? .yellow : .primary)
-                Text(isLiked ? "즐겨찾기 해제" : "즐겨찾기 추가")
+                Image(systemName: isLiked ? "bookmark.fill" : "bookmark")
+                    .foregroundStyle(isLiked ? .blue : .primary)
+                Text(isLiked ? "스크랩 해제" : "스크랩 저장")
             }
             .frame(maxWidth: .infinity)
         }

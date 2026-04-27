@@ -246,4 +246,131 @@ struct FavoritesFeatureTests {
         #expect(sut.filteredItems(selectedTagId: tagId).count == 1)
         #expect(sut.filteredItems(selectedTagId: nil).count == 2)
     }
+
+    // MARK: - 8. BUG-D: addFavorite/removeFavorite 후 tags 갱신 (ST1)
+
+    @Test("T-01: addFavorite 성공 후 tags에 새 태그 반영")
+    func addFavorite_후_tags_갱신() async {
+        let tagId = UUID()
+        let tag = Tag(id: tagId, name: "AI", category: "ai")
+        let port = MockFavoritesPort()
+        let tagPort = MockTagPort()
+        tagPort.allTags = [tag]
+        let (sut, _, _) = makeSUT(port: port, tagPort: tagPort)
+
+        // loadFavorites 먼저 호출 (allTagsCache 초기화)
+        await sut.loadFavorites()
+        #expect(sut.tags.isEmpty) // 즐겨찾기 없으므로 tags 비어있음
+
+        // addFavorite → tags에 반영
+        await sut.addFavorite(feedItem: makeFeedItem(url: "https://a.com", tagId: tagId), summary: nil, insight: nil)
+
+        #expect(sut.tags.count == 1)
+        #expect(sut.tags[0].id == tagId)
+    }
+
+    @Test("T-01b: removeFavorite 성공 후 해당 태그의 마지막 기사 삭제 시 tags에서 제거")
+    func removeFavorite_후_tags_제거() async {
+        let tagId = UUID()
+        let tag = Tag(id: tagId, name: "AI", category: "ai")
+        let port = MockFavoritesPort()
+        let tagPort = MockTagPort()
+        tagPort.allTags = [tag]
+        let (sut, _, _) = makeSUT(port: port, tagPort: tagPort)
+
+        await sut.loadFavorites()
+        await sut.addFavorite(feedItem: makeFeedItem(url: "https://a.com", tagId: tagId), summary: nil, insight: nil)
+        #expect(sut.tags.count == 1)
+
+        await sut.removeFavorite(url: "https://a.com")
+        #expect(sut.tags.isEmpty)
+    }
+
+    // MARK: - 9. BUG-E: shouldResetTagId 순수 함수 (ST2)
+
+    @Test("T-02a: shouldResetTagId - 남은 아이템에 현재 태그 있으면 false")
+    func shouldResetTagId_tagExists_false() {
+        let tagId = UUID()
+        let items = [
+            makeFeedItem(url: "https://a.com", tagId: tagId)
+        ]
+        let fakeItems = items.map { feedItem -> FavoriteItem in
+            FavoriteItem(
+                id: UUID(), userId: UUID(), title: feedItem.title,
+                url: feedItem.url.absoluteString, snippet: nil, source: feedItem.source,
+                publishedAt: nil, tagId: tagId, summary: nil, insight: nil,
+                likedAt: nil, createdAt: nil, imageUrl: nil, quizCompleted: false
+            )
+        }
+        #expect(FavoritesFeature.shouldResetTagId(remaining: fakeItems, current: tagId) == false)
+    }
+
+    @Test("T-02b: shouldResetTagId - 남은 아이템에 현재 태그 없으면 true")
+    func shouldResetTagId_tagMissing_true() {
+        let tagId = UUID()
+        let otherTagId = UUID()
+        let fakeItems = [
+            FavoriteItem(
+                id: UUID(), userId: UUID(), title: "Test",
+                url: "https://b.com", snippet: nil, source: "Test",
+                publishedAt: nil, tagId: otherTagId, summary: nil, insight: nil,
+                likedAt: nil, createdAt: nil, imageUrl: nil, quizCompleted: false
+            )
+        ]
+        #expect(FavoritesFeature.shouldResetTagId(remaining: fakeItems, current: tagId) == true)
+    }
+
+    @Test("T-02c: shouldResetTagId - 빈 배열 + 태그 있으면 true")
+    func shouldResetTagId_emptyItems_true() {
+        let tagId = UUID()
+        #expect(FavoritesFeature.shouldResetTagId(remaining: [], current: tagId) == true)
+    }
+
+    @Test("T-02d: shouldResetTagId - selectedTagId=nil이면 항상 false")
+    func shouldResetTagId_nil_selectedTag_false() {
+        #expect(FavoritesFeature.shouldResetTagId(remaining: [], current: nil) == false)
+    }
+
+    @Test("T-02e: shouldResetTagId - tagId=nil인 아이템만 남아있으면 true")
+    func shouldResetTagId_noTagItems_true() {
+        let tagId = UUID()
+        let fakeItems = [
+            FavoriteItem(
+                id: UUID(), userId: UUID(), title: "Test",
+                url: "https://c.com", snippet: nil, source: "Test",
+                publishedAt: nil, tagId: nil, summary: nil, insight: nil,
+                likedAt: nil, createdAt: nil, imageUrl: nil, quizCompleted: false
+            )
+        ]
+        #expect(FavoritesFeature.shouldResetTagId(remaining: fakeItems, current: tagId) == true)
+    }
+
+    // MARK: - 10. BUG-D: fetchAllTags 실패 시 tags 변경 없음 (T-07)
+
+    @Test("T-07: addFavorite 후 fetchAllTags 실패 시 기존 tags 유지")
+    func addFavorite_fetchAllTags_실패_tags_유지() async {
+        let tagId = UUID()
+        let tag = Tag(id: tagId, name: "AI", category: "ai")
+        let port = MockFavoritesPort()
+        let tagPort = MockTagPort()
+        tagPort.allTags = [tag]
+        let (sut, _, _) = makeSUT(port: port, tagPort: tagPort)
+
+        // loadFavorites 성공 → allTagsCache에 tag 저장
+        await sut.loadFavorites()
+
+        // 첫 번째 기사 추가 → tags에 반영
+        await sut.addFavorite(feedItem: makeFeedItem(url: "https://a.com", tagId: tagId), summary: nil, insight: nil)
+        #expect(sut.tags.count == 1)
+
+        // fetchAllTags 실패 설정 (이후 fetchAllTags가 실패해도 allTagsCache 기반으로 recomputeTags 동작)
+        tagPort.fetchError = URLError(.notConnectedToInternet)
+
+        // 두 번째 기사 추가 (같은 tagId)
+        await sut.addFavorite(feedItem: makeFeedItem(url: "https://b.com", tagId: tagId), summary: nil, insight: nil)
+
+        // allTagsCache 기반 recomputeTags → tags 유지
+        #expect(sut.tags.count == 1)
+        #expect(sut.tags[0].id == tagId)
+    }
 }

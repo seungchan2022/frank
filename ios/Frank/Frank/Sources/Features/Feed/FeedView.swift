@@ -121,9 +121,35 @@ struct FeedView: View {
                                 .padding(8)
                         }
                         .buttonStyle(.plain)
-                        .accessibilityLabel(likesFeature.isLiked(item.url.absoluteString) ? "좋아요 완료" : "좋아요")
+                        .accessibilityLabel(likesFeature.isLiked(item.url.absoluteString) ? "추천 완료" : "추천에 반영")
                     }
                     .listRowInsets(EdgeInsets())
+            }
+
+            // ST5: 무한 스크롤 sentinel
+            if feature.isLoadingMore {
+                HStack {
+                    Spacer()
+                    ProgressView()
+                    Spacer()
+                }
+                .listRowSeparator(.hidden)
+                .listRowInsets(EdgeInsets(top: 8, leading: 0, bottom: 8, trailing: 0))
+            } else if !feature.hasMore {
+                Text("모든 기사를 읽었습니다")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .frame(maxWidth: .infinity, alignment: .center)
+                    .listRowSeparator(.hidden)
+                    .listRowInsets(EdgeInsets(top: 8, leading: 0, bottom: 8, trailing: 0))
+            } else {
+                Color.clear
+                    .frame(height: 1)
+                    .listRowSeparator(.hidden)
+                    .listRowInsets(EdgeInsets())
+                    .onAppear {
+                        Task { await feature.send(.loadMore) }
+                    }
             }
         }
         .listStyle(.plain)

@@ -138,5 +138,5 @@ private struct PlaceholderTagPort: TagPort {
 }
 
 private struct PlaceholderArticlePort: ArticlePort {
-    func fetchFeed(tagId: UUID?, noCache: Bool) async throws -> [FeedItem] { [] }
+    func fetchFeed(tagId: UUID?, noCache: Bool, limit: Int? = nil, offset: Int? = nil) async throws -> [FeedItem] { [] }
 }

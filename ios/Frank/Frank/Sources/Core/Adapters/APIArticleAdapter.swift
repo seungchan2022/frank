@@ -55,12 +55,24 @@ struct APIArticleAdapter: ArticlePort {
         return String(str[..<truncEnd]) + String(str[zoneIdx...])
     }
 
-    func fetchFeed(tagId: UUID?, noCache: Bool = false) async throws -> [FeedItem] {
+    func fetchFeed(tagId: UUID?, noCache: Bool = false, limit: Int? = nil, offset: Int? = nil) async throws -> [FeedItem] {
         var components = URLComponents()
         components.path = "/api/me/feed"
+
+        var queryItems: [URLQueryItem] = []
         // MVP6 M3: tag_id 있으면 해당 태그만 서버에서 필터링
         if let tagId {
-            components.queryItems = [URLQueryItem(name: "tag_id", value: tagId.uuidString)]
+            queryItems.append(URLQueryItem(name: "tag_id", value: tagId.uuidString))
+        }
+        // MVP12 M3 ST5: 페이지네이션 파라미터
+        if let limit {
+            queryItems.append(URLQueryItem(name: "limit", value: "\(limit)"))
+        }
+        if let offset {
+            queryItems.append(URLQueryItem(name: "offset", value: "\(offset)"))
+        }
+        if !queryItems.isEmpty {
+            components.queryItems = queryItems
         }
 
         var request = try await makeRequest(components: components, method: "GET")
