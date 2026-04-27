@@ -35,11 +35,32 @@ fn is_no_cache(headers: &HeaderMap) -> bool {
         .unwrap_or(false)
 }
 
+/// 피드 한 번 요청에 가져올 최대 기사 수
+const MAX_FEED_LIMIT: u32 = 50;
+
 /// GET /me/feed 쿼리 파라미터
 #[derive(Debug, Deserialize, Default)]
 pub struct FeedQuery {
     /// 특정 태그만 필터링. 없으면 전체 태그 검색 (하위 호환)
     pub tag_id: Option<Uuid>,
+    /// 한 번에 가져올 최대 기사 수. 없으면 전체 반환 (하위 호환). 최대 50.
+    pub limit: Option<u32>,
+    /// 건너뛸 기사 수 (0-based). 기본값 0.
+    pub offset: Option<u32>,
+}
+
+/// 전체 피드 items에서 limit/offset 슬라이싱을 적용한다.
+/// limit이 없으면 전체 반환 (하위 호환).
+fn apply_pagination(
+    items: Vec<FeedItem>,
+    limit: Option<u32>,
+    offset: Option<u32>,
+) -> Vec<FeedItem> {
+    let offset = offset.unwrap_or(0) as usize;
+    match limit {
+        None => items,
+        Some(lim) => items.into_iter().skip(offset).take(lim as usize).collect(),
+    }
 }
 
 /// 클라이언트 노출용 FeedItem DTO.
@@ -82,6 +103,13 @@ pub async fn get_feed<D: DbPort>(
     Query(feed_query): Query<FeedQuery>,
     headers: HeaderMap,
 ) -> Result<Json<Vec<FeedItemResponse>>, AppError> {
+    // limit 상한 검증
+    if feed_query.limit.is_some_and(|l| l > MAX_FEED_LIMIT) {
+        return Err(AppError::BadRequest(format!(
+            "limit must be ≤ {MAX_FEED_LIMIT}"
+        )));
+    }
+
     let user_tags = state.db.get_user_tags(user.id).await?;
     if user_tags.is_empty() {
         // 태그 없으면 빈 피드 반환 (에러 아님)
@@ -117,11 +145,9 @@ pub async fn get_feed<D: DbPort>(
     if !no_cache {
         if let Some(cached_items) = state.feed_cache.get(&cache_key) {
             tracing::info!(cache_key = %cache_key, "feed cache HIT — skipping search API");
+            let paginated = apply_pagination(cached_items, feed_query.limit, feed_query.offset);
             return Ok(Json(
-                cached_items
-                    .into_iter()
-                    .map(FeedItemResponse::from)
-                    .collect(),
+                paginated.into_iter().map(FeedItemResponse::from).collect(),
             ));
         }
         tracing::info!(cache_key = %cache_key, "feed cache MISS — calling search API");
@@ -252,8 +278,9 @@ pub async fn get_feed<D: DbPort>(
     }
     // ────────────────────────────────────────────────────────────────────────
 
+    let paginated = apply_pagination(items, feed_query.limit, feed_query.offset);
     Ok(Json(
-        items.into_iter().map(FeedItemResponse::from).collect(),
+        paginated.into_iter().map(FeedItemResponse::from).collect(),
     ))
 }
 
@@ -306,6 +333,10 @@ fn url_path_segments(url: &str) -> Vec<String> {
 /// Rule 2: 마지막 세그먼트가 순수 정수(페이지 번호)이고 앞에 listing 관련 세그먼트가 있으면 차단
 ///   예) `/blog/latest/2` → 차단, `/category/news/3` → 차단
 ///   예) `/2026/04/23` → 통과 (앞 세그먼트 모두 날짜/숫자, listing 키워드 없음)
+///
+/// Rule 3: 경로 중간에 `topic`/`topics`가 있고 그 바로 뒤 세그먼트가 해시처럼 생겼으면 차단
+///   예) `/news/topics/c9qd23k0` → 차단 (c9qd23k0 = 8자 영숫자 혼합 해시)
+///   예) `/topic/technology` → 통과 (technology = 의미 있는 슬러그)
 pub(super) fn is_listing_url(url: &str) -> bool {
     // 단수·복수 쌍 순서로 나열. Rule 1 판별 대상.
     const LISTING_SEGMENTS: &[&str] = &[
@@ -338,6 +369,14 @@ pub(super) fn is_listing_url(url: &str) -> bool {
 
     let segments = url_path_segments(url);
 
+    // Rule 3: topic/topics 뒤에 해시 세그먼트가 오면 차단
+    for i in 0..segments.len().saturating_sub(1) {
+        let seg = segments[i].as_str();
+        if (seg == "topic" || seg == "topics") && is_hash_segment(&segments[i + 1]) {
+            return true;
+        }
+    }
+
     match segments.last() {
         None => false,
         Some(last) => {
@@ -356,23 +395,13 @@ pub(super) fn is_listing_url(url: &str) -> bool {
                     return true;
                 }
             }
-            // Rule 3: 경로 중간에 topic/topics가 있고 바로 다음 세그먼트가 해시/UUID이면 차단
-            //   예) /news/topics/c9qd23k0 → 차단 (BBC 토픽 인덱스)
-            //   예) /topic/technology → 통과 (슬러그, 순수 알파벳)
-            //   category/tag/tags는 제외 — 기존 슬러그 통과 정책 유지
-            for i in 0..segments.len().saturating_sub(1) {
-                let seg = segments[i].as_str();
-                if (seg == "topic" || seg == "topics") && is_hash_segment(&segments[i + 1]) {
-                    return true;
-                }
-            }
             false
         }
     }
 }
 
-/// 세그먼트가 UUID·해시 ID인지 판별한다.
-/// 기준: 8자 이상, 하이픈 없음, 전체 영숫자, 알파벳+숫자 혼합.
+/// 해시/UUID 세그먼트 판별: 8자 이상, 영숫자만, 하이픈 없음, 숫자와 알파벳 혼합.
+/// 슬러그(하이픈 포함, 순수 알파벳)와 구분하기 위함.
 fn is_hash_segment(s: &str) -> bool {
     if s.len() < 8 || s.contains('-') {
         return false;
@@ -1101,6 +1130,91 @@ mod tests {
             !is_listing_url("https://example.com/topic/tech/great-article"),
             "/topic/tech/great-article → 통과 (슬러그에 하이픈)"
         );
+    }
+
+    // MARK: - ST-M1-3: 피드 페이지네이션 테스트
+
+    #[tokio::test]
+    async fn get_feed_pagination_limit_offset() {
+        let db = FakeDbAdapter::new();
+        let user_id = Uuid::new_v4();
+        db.seed_profile(Profile {
+            id: user_id,
+            display_name: None,
+            onboarding_completed: true,
+        });
+
+        let tags = db.get_tags();
+        let tag_a = &tags[0];
+        db.seed_user_tag(user_id, tag_a.id);
+
+        let results: Vec<SearchResult> = (0..5u32)
+            .map(|i| SearchResult {
+                title: format!("기사 {i}"),
+                url: format!("https://example.com/news/article-{i}"),
+                snippet: None,
+                published_at: None,
+                image_url: None,
+            })
+            .collect();
+
+        let state = make_test_state(db, results);
+        let app = make_app(state, user_id);
+        let server = TestServer::new(app);
+
+        // limit=2, offset=0 → 2개
+        let resp = server
+            .get("/me/feed")
+            .add_query_params([("limit", "2"), ("offset", "0")])
+            .await;
+        resp.assert_status_ok();
+        let items: Vec<FeedItemResponse> = resp.json();
+        assert_eq!(items.len(), 2, "limit=2 → 2개 반환");
+
+        // limit=2, offset=2 → 2개 (3~4번째)
+        let resp = server
+            .get("/me/feed")
+            .add_query_params([("limit", "2"), ("offset", "2")])
+            .await;
+        resp.assert_status_ok();
+        let items: Vec<FeedItemResponse> = resp.json();
+        assert_eq!(items.len(), 2, "limit=2, offset=2 → 2개 반환");
+
+        // limit=2, offset=4 → 1개 (마지막 1개)
+        let resp = server
+            .get("/me/feed")
+            .add_query_params([("limit", "2"), ("offset", "4")])
+            .await;
+        resp.assert_status_ok();
+        let items: Vec<FeedItemResponse> = resp.json();
+        assert_eq!(items.len(), 1, "limit=2, offset=4 → 1개 반환");
+
+        // limit 없음 → 전체 5개
+        let resp = server.get("/me/feed").await;
+        resp.assert_status_ok();
+        let items: Vec<FeedItemResponse> = resp.json();
+        assert_eq!(items.len(), 5, "limit 없음 → 전체 반환");
+    }
+
+    #[tokio::test]
+    async fn get_feed_limit_over_max_returns_400() {
+        let db = FakeDbAdapter::new();
+        let user_id = Uuid::new_v4();
+        db.seed_profile(Profile {
+            id: user_id,
+            display_name: None,
+            onboarding_completed: true,
+        });
+
+        let state = make_test_state(db, vec![]);
+        let app = make_app(state, user_id);
+        let server = TestServer::new(app);
+
+        let resp = server
+            .get("/me/feed")
+            .add_query_params([("limit", "51")])
+            .await;
+        resp.assert_status(axum::http::StatusCode::BAD_REQUEST);
     }
 
     /// S1: 태그 2개 — 각 태그 쿼리에 서로 다른 결과 → 두 결과가 모두 합산됨
