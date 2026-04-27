@@ -248,7 +248,7 @@ ST5 ──┘
 ---
 
 ## Feature List
-<!-- size: 중형 | count: 0 | skip: false | all-checked: false -->
+<!-- size: 중형 | count: 45 | skip: false | all-checked: false -->
 
 ### 기능
 - [ ] F-01 BUG-D: FavoritesFeature에 recomputeTags() 추가 — addFavorite/removeFavorite 후 items 기반 tags 재계산 (allTagsCache 재사용, fetchAllTags 재호출 없음)
