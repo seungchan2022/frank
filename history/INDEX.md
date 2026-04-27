@@ -288,3 +288,20 @@
 | /critical-review 스킬 설계 + step-5 연계 | `harness/analysis/260417_하네스_비교분석.md` |
 | Codex 무한 루프 사고 경위 + 에이전트 역할 경계 | `260424_daily_retro.md` |
 | 세팅 튜닝 후 첫 MVP 검증 사이클 교훈 | `260424_daily_retro.md` |
+
+---
+
+## MVP12 — 버그 수정 + 좋아요/즐겨찾기 UX 재설계 + 피드 무한 스크롤 (260427)
+
+> 기간 1일. 서버+웹+iOS 3개 플랫폼. 버그 5건 수정(BUG-A~E), BUG-F 정책 싱크. 무한 스크롤 도입.
+
+| 유형 | 파일 | 핵심 내용 |
+|------|------|----------|
+| 로드맵 | [MVP12 로드맵](mvp12/_roadmap.md) | M1~M3 마일스톤, KPI, 기술 결정 기록 6건 |
+| 서브태스크 | [M1 서버](mvp12/M1_subtasks.md) | BUG-A(BBC 토픽 URL), BUG-B(snippet 오염), 피드 limit/offset API |
+| 서브태스크 | [M2 웹](mvp12/M2_subtasks.md) | BUG-C(스크랩 탭 먹통), BUG-F(웹 오답 필터), UX 재설계, 무한 스크롤 |
+| 서브태스크 | [M3 iOS](mvp12/M3_subtasks.md) | BUG-D/E, BUG-F 정책 싱크, UX 재설계, TagState 무한 스크롤 |
+| 회고 | [MVP12 회고](mvp12/retro.md) | 의사결정 4건, 부채 3건 (BUG-F 근본 수정, Lazy vs Prefetch, 유닛 테스트) |
+| 분석 | [BUG-F 태그 필터 아키텍처](mvp12/analysis_BUG-F-tag-filter.md) | 오답 태그 칩 소스 문제 분석, 서버 스키마 변경 필요 근거 |
+| 분석 | [M3 착수 전 품질 스캔](mvp12/analysis_mvp12-m3-prescan.md) | iOS 코드베이스 사전 분석 |
+| 토론 | [M2 피드 프리패치 전략](mvp12/debate_M2_feed_prefetch_strategy.md) | Prefetch vs Lazy Loading 비교, Lazy 유지 결정 |
