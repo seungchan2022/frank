@@ -194,3 +194,26 @@ describe('favoritesStore: reset', () => {
 		expect(favoritesStore.loaded).toBe(false);
 	});
 });
+
+describe('favoritesStore: loadFavorites 에러 브랜치', () => {
+	it('API 실패 — Error 인스턴스 아닌 경우 fallback 메시지', async () => {
+		vi.mocked(apiClient.listFavorites).mockRejectedValueOnce('string-error');
+
+		await favoritesStore.loadFavorites('user-1');
+
+		expect(favoritesStore.error).toBe('즐겨찾기를 불러오지 못했습니다.');
+	});
+});
+
+describe('favoritesStore: isQuizCompleted', () => {
+	it('퀴즈 완료 처리 전 — isQuizCompleted=false', async () => {
+		vi.mocked(apiClient.addFavorite).mockResolvedValueOnce(makeFavorite());
+		await favoritesStore.addFavorite(makeFeedItem());
+
+		expect(favoritesStore.isQuizCompleted('https://example.com')).toBe(false);
+	});
+
+	it('존재하지 않는 URL — isQuizCompleted=false', () => {
+		expect(favoritesStore.isQuizCompleted('https://nonexistent.com')).toBe(false);
+	});
+});
