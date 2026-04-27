@@ -559,4 +559,71 @@ struct FeedFeatureTests {
         #expect(sut.feedItems.count == 20)
         #expect(sut.hasMore == true)
     }
+
+    // MARK: - ST5 에러 경로
+
+    @Test("loadMore 실패: hasMore=false로 sentinel 비활성화 (무한 루프 방지)")
+    func loadMore_실패_hasMore_false() async {
+        // 정확히 PAGE_SIZE(20)개 → 첫 페이지 후 hasMore=true
+        let items = (0..<20).map { i in
+            makeFeedItem(title: "Article \(i)", urlSuffix: "\(i)")
+        }
+        let (sut, articlePort, _) = makeSUT(feedItems: items)
+
+        await sut.send(.loadInitial)
+        #expect(sut.hasMore == true)
+
+        // 두 번째 페이지 요청 시 에러 발생
+        articlePort.fetchError = URLError(.notConnectedToInternet)
+        await sut.send(.loadMore)
+
+        // 에러 후 hasMore=false → sentinel 비활성화
+        #expect(sut.hasMore == false)
+        // isLoadingMore도 false (status=.idle 복귀)
+        #expect(sut.isLoadingMore == false)
+
+        // 추가 loadMore 호출 없음 (hasMore=false로 가드됨)
+        let countBefore = articlePort.fetchFeedCallCount
+        await sut.send(.loadMore)
+        #expect(articlePort.fetchFeedCallCount == countBefore)
+    }
+
+    @Test("selectTag 실패: 캐시 제거 + selectedTagId 롤백")
+    func selectTag_실패_캐시제거_롤백() async {
+        let tagId1 = UUID()
+        let tagId2 = UUID()
+        let items = [
+            makeFeedItem(title: "AI Article", urlSuffix: "ai", tagId: tagId1),
+            makeFeedItem(title: "iOS Article", urlSuffix: "ios", tagId: tagId2),
+        ]
+        let (sut, articlePort, _) = makeSUT(
+            feedItems: items,
+            tags: [
+                Frank.Tag(id: tagId1, name: "AI", category: "ai"),
+                Frank.Tag(id: tagId2, name: "iOS", category: "ios"),
+            ],
+            myTagIds: [tagId1, tagId2]
+        )
+
+        await sut.send(.loadInitial)
+        await sut.send(.selectTag(tagId1)) // 캐시 미스 → 성공
+        #expect(sut.selectedTagId == tagId1)
+
+        // tagId2 선택 시 에러 발생
+        articlePort.fetchError = URLError(.notConnectedToInternet)
+        await sut.send(.selectTag(tagId2))
+
+        // selectedTagId가 이전 값(tagId1)으로 롤백됨
+        #expect(sut.selectedTagId == tagId1)
+        // errorMessage 설정
+        #expect(sut.errorMessage != nil)
+
+        // 에러 후 캐시가 제거됐으므로 다음 selectTag(tagId2)는 캐시 미스로 재시도
+        articlePort.fetchError = nil
+        let countBefore = articlePort.fetchFeedCallCount
+        await sut.send(.selectTag(tagId2))
+        // 캐시 없음 → 새 fetch 발생
+        #expect(articlePort.fetchFeedCallCount == countBefore + 1)
+        #expect(sut.selectedTagId == tagId2)
+    }
 }

@@ -126,7 +126,7 @@ struct FavoritesView: View {
                 articlesEmptyView
             } else {
                 VStack(spacing: 0) {
-                    tagChipBar { selectedTagId = $0 }
+                    tagChipBar(tags: feature.tags) { selectedTagId = $0 }
                     itemList
                 }
             }
@@ -201,8 +201,12 @@ struct FavoritesView: View {
                 wrongAnswersEmptyView
             } else {
                 VStack(spacing: 0) {
-                    wrongAnswerTagChipBar { tagId in
-                        selectedTagId = tagId
+                    tagChipBar(tags: wrongAnswerTags, onSelect: { selectedTagId = $0 }) { newTags in
+                        // 현재 선택된 태그가 오답 탭에서 유효하지 않으면 nil로 초기화
+                        if let current = selectedTagId,
+                           !newTags.contains(where: { $0.id == current }) {
+                            selectedTagId = nil
+                        }
                     }
                     wrongAnswersList
                 }
@@ -305,37 +309,26 @@ struct FavoritesView: View {
 
     // MARK: - Tag Chip Bars
 
-    /// 기사 탭용 TagChipBarView + Divider 블록 (feature.tags 기준).
+    /// TagChipBarView + Divider 블록 공용 헬퍼.
+    /// - Parameters:
+    ///   - tags: 표시할 태그 목록
+    ///   - onSelect: 태그 선택 콜백
+    ///   - onTagsChanged: tags 변경 시 현재 선택 태그 유효성 검사가 필요한 경우 주입.
+    ///                    nil이면 onChange 없이 렌더링 (기사 탭).
     @ViewBuilder
-    private func tagChipBar(onSelect: @escaping (UUID?) -> Void) -> some View {
-        if !feature.tags.isEmpty {
-            TagChipBarView(
-                tags: feature.tags,
-                selectedTagId: selectedTagId,
-                onSelect: onSelect
-            )
-            .padding(.vertical, 8)
-            Divider()
-        }
-    }
-
-    /// 오답 탭용 TagChipBarView + Divider 블록 (wrongAnswerTags 기준).
-    /// BUG-F 수정: 오답 탭은 feature.tags 전체가 아닌 오답 기사에 실제 존재하는 태그만 표시.
-    @ViewBuilder
-    private func wrongAnswerTagChipBar(onSelect: @escaping (UUID?) -> Void) -> some View {
-        if !wrongAnswerTags.isEmpty {
-            TagChipBarView(
-                tags: wrongAnswerTags,
-                selectedTagId: selectedTagId,
-                onSelect: onSelect
-            )
-            .padding(.vertical, 8)
-            .onChange(of: wrongAnswerTags) { _, newTags in
-                // 현재 선택된 태그가 오답 탭에서 유효하지 않으면 nil로 초기화
-                if let current = selectedTagId,
-                   !newTags.contains(where: { $0.id == current }) {
-                    selectedTagId = nil
-                }
+    private func tagChipBar(
+        tags: [Tag],
+        onSelect: @escaping (UUID?) -> Void,
+        onTagsChanged: (([Tag]) -> Void)? = nil
+    ) -> some View {
+        if !tags.isEmpty {
+            if let onTagsChanged {
+                TagChipBarView(tags: tags, selectedTagId: selectedTagId, onSelect: onSelect)
+                    .padding(.vertical, 8)
+                    .onChange(of: tags) { _, newTags in onTagsChanged(newTags) }
+            } else {
+                TagChipBarView(tags: tags, selectedTagId: selectedTagId, onSelect: onSelect)
+                    .padding(.vertical, 8)
             }
             Divider()
         }

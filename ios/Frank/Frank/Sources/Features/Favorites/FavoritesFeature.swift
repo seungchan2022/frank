@@ -98,10 +98,8 @@ final class FavoritesFeature {
 
             // items에 실제 존재하는 tagId 교집합만 칩으로 표시.
             // fetchAllTags 실패 시 tags = [] 로 degrade — items 로드 결과에 영향 없음.
-            let allTags = (try? await tagPort.fetchAllTags()) ?? []
-            allTagsCache = allTags
-            let favTagIds = Set(fetchedItems.compactMap(\.tagId))
-            tags = allTags.filter { favTagIds.contains($0.id) }
+            allTagsCache = (try? await tagPort.fetchAllTags()) ?? []
+            recomputeTags()
         } catch {
             phase = .failed(FavoritesErrorMessage.loadFailed)
         }

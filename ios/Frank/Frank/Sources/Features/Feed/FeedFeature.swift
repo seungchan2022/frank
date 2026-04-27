@@ -33,7 +33,6 @@ enum TagStatus: Equatable, Sendable {
     case idle
     case loading      // 첫 페이지 또는 탭 전환 로딩
     case loadingMore  // 추가 페이지 로딩 중
-    case done         // 더 이상 불러올 페이지 없음
 }
 
 /// MVP12 M3 ST5: 탭별 페이지네이션 상태.
@@ -42,6 +41,17 @@ struct TagState: Sendable {
     var nextOffset: Int = 0
     var hasMore: Bool = true
     var status: TagStatus = .idle
+
+    /// 첫 페이지 로드 결과로 TagState를 생성하는 팩토리.
+    /// `loadInitial`, `selectTag`, `refresh` 에서 반복되는 초기화 패턴을 통합.
+    static func firstPage(items: [FeedItem], pageSize: Int) -> TagState {
+        TagState(
+            items: items,
+            nextOffset: items.count,
+            hasMore: items.count == pageSize,
+            status: .idle
+        )
+    }
 }
 
 /// 한 번에 가져올 기사 수. 서버 MAX_FEED_LIMIT(50) 이하.
@@ -182,12 +192,7 @@ final class FeedFeature {
 
             // ST5 C안: 전체 탭 첫 페이지만 로드 (구독 태그 프리패치 제거)
             let items = try await article.fetchFeed(tagId: nil, noCache: false, limit: PAGE_SIZE, offset: 0)
-            var state = TagState()
-            state.items = items
-            state.nextOffset = items.count
-            state.hasMore = items.count == PAGE_SIZE
-            state.status = .idle
-            tagStates["all"] = state
+            tagStates["all"] = .firstPage(items: items, pageSize: PAGE_SIZE)
 
             selectedTagId = nil
             phase = .idle
@@ -208,6 +213,7 @@ final class FeedFeature {
         }
 
         // 캐시 미스 → 첫 페이지 조용히 fetch (status = .loading, 로딩 표시 없음)
+        let previousTagId = selectedTagId
         var state = TagState()
         state.status = .loading
         tagStates[key] = state
@@ -215,16 +221,15 @@ final class FeedFeature {
 
         do {
             let items = try await article.fetchFeed(tagId: tagId, noCache: false, limit: PAGE_SIZE, offset: 0)
-            var updated = tagStates[key] ?? TagState()
-            updated.items = items
-            updated.nextOffset = items.count
-            updated.hasMore = items.count == PAGE_SIZE
-            updated.status = .idle
-            tagStates[key] = updated
+            tagStates[key] = .firstPage(items: items, pageSize: PAGE_SIZE)
         } catch {
-            var updated = tagStates[key] ?? TagState()
-            updated.status = .idle
-            tagStates[key] = updated
+            // 에러 시 캐시를 제거해 다음 탭 전환 시 재시도 가능하게 함.
+            // selectedTagId 롤백은 현재 탭이 여전히 실패한 탭일 때만 수행
+            // — 동시 탭 전환으로 다른 탭이 선택된 경우 덮어쓰기 방지.
+            tagStates.removeValue(forKey: key)
+            if selectedTagId == tagId {
+                selectedTagId = previousTagId
+            }
             errorMessage = "태그 피드를 불러오지 못했습니다."
         }
     }
@@ -238,12 +243,7 @@ final class FeedFeature {
         do {
             // MVP10 M3: pull-to-refresh는 서버 TTL 캐시 우회. 첫 페이지만 다시 로드.
             let items = try await article.fetchFeed(tagId: selectedTagId, noCache: true, limit: PAGE_SIZE, offset: 0)
-            var state = TagState()
-            state.items = items
-            state.nextOffset = items.count
-            state.hasMore = items.count == PAGE_SIZE
-            state.status = .idle
-            tagStates[key] = state
+            tagStates[key] = .firstPage(items: items, pageSize: PAGE_SIZE)
             finishRefresh()
         } catch {
             failRefresh("새로고침에 실패했습니다.")
@@ -281,9 +281,13 @@ final class FeedFeature {
             updated.status = .idle
             tagStates[key] = updated
         } catch {
-            var updated = tagStates[key] ?? TagState()
-            updated.status = .idle
-            tagStates[key] = updated
+            // 에러 시 hasMore = false로 sentinel 비활성화 (무한 재시도 방지).
+            // pull-to-refresh로 복구 가능.
+            if var updated = tagStates[key] {
+                updated.status = .idle
+                updated.hasMore = false
+                tagStates[key] = updated
+            }
         }
     }
 }
