@@ -269,4 +269,74 @@ struct APIArticleAdapterTests {
 
         #expect(capturedRequest?.value(forHTTPHeaderField: "Cache-Control") == nil)
     }
+
+    // MARK: - T-08: limit/offset query parameter
+
+    @Test("T-08: limit/offset 있을 때 query parameter 포함")
+    func fetchFeed_limitOffset_queryParams() async throws {
+        MockURLProtocol.resetHandler(forHost: Self.testHost)
+        let (adapter, _) = try makeAdapter()
+
+        var capturedRequest: URLRequest?
+        MockURLProtocol.setHandler(forHost: Self.testHost) { request in
+            capturedRequest = request
+            let response = try self.makeResponse(
+                url: request.url ?? URL(fileURLWithPath: "/dev/null"),
+                statusCode: 200
+            )
+            return (response, Data("[]".utf8))
+        }
+
+        _ = try await adapter.fetchFeed(tagId: nil, limit: 20, offset: 40)
+
+        let urlString = capturedRequest?.url?.absoluteString ?? ""
+        #expect(urlString.contains("limit=20"))
+        #expect(urlString.contains("offset=40"))
+    }
+
+    @Test("T-08b: limit/offset 없으면 query parameter 미포함")
+    func fetchFeed_noLimitOffset_noQueryParams() async throws {
+        MockURLProtocol.resetHandler(forHost: Self.testHost)
+        let (adapter, _) = try makeAdapter()
+
+        var capturedRequest: URLRequest?
+        MockURLProtocol.setHandler(forHost: Self.testHost) { request in
+            capturedRequest = request
+            let response = try self.makeResponse(
+                url: request.url ?? URL(fileURLWithPath: "/dev/null"),
+                statusCode: 200
+            )
+            return (response, Data("[]".utf8))
+        }
+
+        _ = try await adapter.fetchFeed(tagId: nil)
+
+        let urlString = capturedRequest?.url?.absoluteString ?? ""
+        #expect(!urlString.contains("limit="))
+        #expect(!urlString.contains("offset="))
+    }
+
+    @Test("T-08c: tagId + limit + offset 동시 전달 시 세 파라미터 모두 포함")
+    func fetchFeed_tagId_limit_offset_allParams() async throws {
+        MockURLProtocol.resetHandler(forHost: Self.testHost)
+        let (adapter, _) = try makeAdapter()
+        let tagId = UUID()
+
+        var capturedRequest: URLRequest?
+        MockURLProtocol.setHandler(forHost: Self.testHost) { request in
+            capturedRequest = request
+            let response = try self.makeResponse(
+                url: request.url ?? URL(fileURLWithPath: "/dev/null"),
+                statusCode: 200
+            )
+            return (response, Data("[]".utf8))
+        }
+
+        _ = try await adapter.fetchFeed(tagId: tagId, limit: 20, offset: 0)
+
+        let urlString = capturedRequest?.url?.absoluteString ?? ""
+        #expect(urlString.contains("tag_id=\(tagId.uuidString)"))
+        #expect(urlString.contains("limit=20"))
+        #expect(urlString.contains("offset=0"))
+    }
 }
