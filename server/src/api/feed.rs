@@ -356,9 +356,29 @@ pub(super) fn is_listing_url(url: &str) -> bool {
                     return true;
                 }
             }
+            // Rule 3: 경로 중간에 topic/topics가 있고 바로 다음 세그먼트가 해시/UUID이면 차단
+            //   예) /news/topics/c9qd23k0 → 차단 (BBC 토픽 인덱스)
+            //   예) /topic/technology → 통과 (슬러그, 순수 알파벳)
+            //   category/tag/tags는 제외 — 기존 슬러그 통과 정책 유지
+            for i in 0..segments.len().saturating_sub(1) {
+                let seg = segments[i].as_str();
+                if (seg == "topic" || seg == "topics") && is_hash_segment(&segments[i + 1]) {
+                    return true;
+                }
+            }
             false
         }
     }
+}
+
+/// 세그먼트가 UUID·해시 ID인지 판별한다.
+/// 기준: 8자 이상, 하이픈 없음, 전체 영숫자, 알파벳+숫자 혼합.
+fn is_hash_segment(s: &str) -> bool {
+    if s.len() < 8 || s.contains('-') {
+        return false;
+    }
+    let all_alnum = s.chars().all(|c| c.is_ascii_alphanumeric());
+    all_alnum && s.chars().any(|c| c.is_ascii_digit()) && s.chars().any(|c| c.is_ascii_alphabetic())
 }
 
 /// 홈페이지/단순 목록 URL을 판별한다.
@@ -1054,6 +1074,32 @@ mod tests {
         assert!(
             is_listing_url("https://example.com/archive"),
             "/archive → 차단 (Rule 1)"
+        );
+    }
+
+    // MARK: - Rule 3: topic/topics + 해시 세그먼트 차단 테스트
+
+    #[test]
+    fn listing_url_topics_hash_filtered() {
+        assert!(
+            is_listing_url("https://www.bbc.com/news/topics/c9qd23k0"),
+            "BBC /news/topics/c9qd23k0 → 차단 (Rule 3: 해시 세그먼트)"
+        );
+        assert!(
+            is_listing_url("https://example.com/news/topics/abc12345"),
+            "/news/topics/abc12345 → 차단 (8자 영숫자 혼합)"
+        );
+    }
+
+    #[test]
+    fn listing_url_topics_slug_not_filtered() {
+        assert!(
+            !is_listing_url("https://example.com/topic/technology"),
+            "/topic/technology → 통과 (슬러그, 순수 알파벳)"
+        );
+        assert!(
+            !is_listing_url("https://example.com/topic/tech/great-article"),
+            "/topic/tech/great-article → 통과 (슬러그에 하이픈)"
         );
     }
 
