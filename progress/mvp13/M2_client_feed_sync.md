@@ -112,6 +112,36 @@ M1에서 서버+DB 기반을 완성했다. 이제 웹·iOS 클라이언트가 fa
 
 ---
 
+## 실 테스트 후 버그 수정 (2026-04-28)
+
+step-9 커밋 완료 후 실제 기기/시뮬레이터 테스트에서 3가지 버그 발견 및 수정.
+
+### Bug 1 — 웹 피드 태그 탭 캐시 미스 시 빈 화면
+
+**현상**: 특정 태그 탭 클릭 시 "No articles yet." 즉시 노출.  
+**원인**: 초기 fetch 20개 안에 해당 태그 기사가 없으면 `tagCache` 엔트리가 생성되지 않음. `selectTag()`가 `activeTagId`만 바꾸고 서버 재요청 없이 끝남.  
+**수정**:
+- `feedStore.svelte.ts` `selectTag()` → async로 변경, 캐시 미스 시 해당 태그 서버 재요청 + `status: 'loading'` 중간 상태 추가
+- `feedStore.svelte.ts` `isTagLoading` derived 추가 (태그 탭 로딩 중 여부)
+- `feed/+page.svelte` → `isTagLoading` 중 "Loading feed..." 스피너 표시 (기존 `feedStore.loading`만 체크하던 조건 확장)
+
+### Bug 2 — iOS 피드 새로고침 후 현재 태그 탭 빈 화면
+
+**현상**: 특정 태그 탭 선택 상태에서 당겨서 새로고침 시 "이 키워드의 뉴스가 아직 없습니다" 표시. 다른 탭 갔다 돌아와야 기사 표시됨.  
+**원인**: `refresh()` 후 `rebuildTagStates(from:)`로 전체 캐시 재구성 시, 새로 받은 20개에 현재 태그 기사가 없으면 해당 탭 캐시 엔트리가 사라짐. `selectedTagId`는 그대로여서 빈 배열이 표시됨.  
+**수정**: `FeedFeature.swift` `refresh()` — `rebuildTagStates` 완료 후 현재 `selectedTagId` 탭이 없으면 해당 태그만 추가 fetch. `selectedTagId = nil` 리셋 없음.
+
+### Bug 3 — iOS 이미 오답 탭에 있을 때 퀴즈 오답 저장 후 태그 칩 미갱신
+
+**현상**: 오답 탭에 있는 상태에서 다른 탭으로 이동해 퀴즈 오답을 추가해도, 오답 탭으로 돌아왔을 때 새 태그 칩이 없음.  
+**원인**: `.task(id: selectedTab)`은 탭이 전환될 때만 실행됨. 이미 오답 탭에 있으면 재실행 안 됨.  
+**수정**:
+- `Core/AppNotifications.swift` 신규: `Notification.Name.wrongAnswerSaved` 정의
+- `QuizFeature.swift` `saveWrongAnswer()` — 오답 서버 저장 성공 후 `wrongAnswerSaved` 노티 발송
+- `FavoritesView.swift` — `.onReceive(wrongAnswerSaved)` 구독: 오답 탭 선택 중이면 `wrongAnswersFeature.load()` 자동 호출
+
+---
+
 ## 다음 단계
 
 M2 완료 후 → M3 (클라우드 배포)
