@@ -77,6 +77,8 @@ pub struct QuizWrongAnswer {
     pub user_index: i32,
     pub explanation: Option<String>,
     pub created_at: DateTime<Utc>,
+    /// MVP13 M1: 오답이 발생한 퀴즈의 태그 ID (NULL 허용 — 미전달 시 NULL 저장)
+    pub tag_id: Option<Uuid>,
 }
 
 /// MVP8 M1: 오답 저장 파라미터 DTO.
@@ -90,6 +92,8 @@ pub struct SaveWrongAnswerParams {
     pub correct_index: i32,
     pub user_index: i32,
     pub explanation: Option<String>,
+    /// MVP13 M1: 오답이 발생한 퀴즈의 태그 ID. 클라이언트 미전달 시 None.
+    pub tag_id: Option<Uuid>,
 }
 
 /// LLM 요약 결과

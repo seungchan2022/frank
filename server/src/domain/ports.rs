@@ -214,10 +214,13 @@ pub trait QuizWrongAnswerPort: Send + Sync {
     ) -> Pin<Box<dyn Future<Output = Result<QuizWrongAnswer, AppError>> + Send + 'a>>;
 
     /// 오답 목록 조회 (created_at DESC).
-    fn list(
-        &self,
+    /// MVP13 M1: tag_id가 Some이면 해당 태그 오답만 반환 (NULL 행 제외).
+    ///           tag_id가 None이면 전체 오답 반환.
+    fn list<'a>(
+        &'a self,
         user_id: Uuid,
-    ) -> Pin<Box<dyn Future<Output = Result<Vec<QuizWrongAnswer>, AppError>> + Send + '_>>;
+        tag_id: Option<Uuid>,
+    ) -> Pin<Box<dyn Future<Output = Result<Vec<QuizWrongAnswer>, AppError>> + Send + 'a>>;
 
     /// 오답 1건 삭제 (본인 데이터만 — WHERE id = $1 AND user_id = $2).
     /// 존재하지 않는 id여도 Ok(()) 반환 (no-op).
