@@ -59,9 +59,16 @@ HTTPS/도메인 없이 IP + HTTP 직접 사용. iOS ATS 예외를 Info.plist에 
 ### 사용자 직접 수행 (코드 작업 아님, 워크플로우 전에 완료)
 
 **P-01: Oracle 계정 생성 + PAYG 업그레이드**
-1. oracle.com/kr/cloud/free 접속 → 계정 생성
-2. 신용카드 등록 (체크카드 Visa/Mastercard 가능)
-3. PAYG로 업그레이드 (실제 청구 없음, $1 지출 알림 설정 권장)
+1. oracle.com/kr/cloud/free 접속 → 계정 생성 ✅ 완료 (2026-04-28)
+2. 신용카드 등록 ✅ 완료 (카드 만료 05/29)
+3. PAYG로 업그레이드 ❌ 미완료 — Oracle 서버 오류로 크롬/사파리 모두 실패. 나중에 재시도.
+   - 업그레이드 후 $1 예산 알림 설정 필수
+   - Free Tier는 리전 추가 불가 → PAYG 필수
+   - 춘천 리전은 AD 1개 + Free Tier 우선순위 낮아 인스턴스 생성 불가
+
+> **재시도 시 참고**: 계정명 `anstmdcks12`, 홈 리전 춘천(ap-chuncheon-1).
+> PAYG 업그레이드 성공 후 서울(ap-seoul-1) 리전 구독 추가 → 새 Stack으로 인스턴스 생성.
+> 기존 `frank-server` Stack(춘천)은 그대로 두거나 삭제.
 
 **P-02: A1 인스턴스 생성**
 1. OCI 콘솔 → Compute → Instances → Create Instance
