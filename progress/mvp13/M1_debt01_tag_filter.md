@@ -1,7 +1,7 @@
 # MVP13 M1 — DEBT-01 오답 태그 필터 (서버+DB)
 
 > 기획일: 2026-04-28
-> 상태: in-progress
+> 상태: done
 > 목표: quiz_wrong_answers에 tag_id 저장 + 서버 필터 API 지원 (M2 웹+iOS 전환의 기반)
 
 ---

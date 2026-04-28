@@ -1,7 +1,7 @@
 # MVP13 M2 — 오답 태그 필터 클라이언트 전환 + 피드 싱크
 
 > 기획일: 2026-04-28
-> 상태: in-progress
+> 상태: done
 > 목표: 웹+iOS 오답 필터를 favorites 브릿지 없이 WrongAnswer.tagId 기반으로 전환 + 피드 fetch 전략 웹-iOS 통일
 
 ---

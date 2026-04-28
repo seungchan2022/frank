@@ -306,3 +306,17 @@
 | 분석 | [M3 착수 전 품질 스캔](mvp12/analysis_mvp12-m3-prescan.md) | iOS 코드베이스 사전 분석 |
 | 토론 | [M2 피드 프리패치 전략](mvp12/debate_M2_feed_prefetch_strategy.md) | Prefetch vs Lazy Loading 비교, Lazy 유지 결정 |
 | 발견 | [MVP12 Discovery](mvp12/discovery.md) | 앱 사용 중 발견한 버그 6건(BUG-A~F) + CHECK 항목 원본 메모 |
+
+---
+
+## MVP13 — 실사용 전환: 오답 태그 + 피드 품질 + 클라우드 배포 (260428~)
+
+> M1(서버+DB), M2(웹+iOS) 완료. M3(클라우드 배포) planning 중.
+
+| 유형 | 파일 | 핵심 내용 |
+|------|------|----------|
+| 로드맵 | [MVP13 로드맵](mvp13/_roadmap.md) | M1~M3 마일스톤, 실사용 전환 목표 |
+| 마일스톤 | [M1 오답 태그 필터](mvp13/M1_debt01_tag_filter.md) | quiz_wrong_answers tag_id 컬럼 + 서버 필터 API (DEBT-01 해소) |
+| 마일스톤 | [M2 피드 싱크](mvp13/M2_client_feed_sync.md) | 웹+iOS 오답 필터 전환 + 피드 하이브리드 캐싱 |
+| 마일스톤 | [M3 클라우드 배포](mvp13/M3_cloud_deploy.md) | Oracle Always Free A1, HTTP 직접 사용, $0 배포 |
+| 회고 | [260428 일일 회고](../history/260428_daily_retro.md) | "써봐야 없는 게 보인다" · 흐름 중단 기준 |
