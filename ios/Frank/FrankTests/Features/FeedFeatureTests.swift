@@ -246,15 +246,16 @@ struct FeedFeatureTests {
             myTagIds: [tagId]
         )
 
-        await sut.send(.loadInitial)           // 전체 탭 1회
-        await sut.send(.selectTag(tagId))      // 캐시 미스 → 1회
+        await sut.send(.loadInitial)           // 전체 탭 1회 (분리 저장 포함)
+        // MVP13 M2: selectTag(tagId) → 캐시 히트 (API 없음)
+        await sut.send(.selectTag(tagId))
         #expect(sut.selectedTagId == tagId)
 
         await sut.send(.reloadAfterTagChange)  // 캐시 초기화 + loadInitial: 전체 탭 1회
 
         #expect(sut.selectedTagId == nil)
-        // loadInitial(1) + selectTag 캐시미스(1) + reloadAfterTagChange loadInitial(1) = 3
-        #expect(articlePort.fetchFeedCallCount == 3)
+        // loadInitial(1) + reloadAfterTagChange loadInitial(1) = 2 (selectTag 캐시 히트 → API 없음)
+        #expect(articlePort.fetchFeedCallCount == 2)
     }
 
     // MARK: - 11. loadInitial 후 isLoading=false
@@ -345,25 +346,25 @@ struct FeedFeatureTests {
     // MARK: - M3: 탭 캐시 (ST5 기반)
 
     /// M3: 캐시 미스 탭 선택 시 조용히 fetchFeed 호출 (isRefreshing 없음)
+    /// MVP13 M2: loadInitial 시 feedItems에 없는 tagId → 캐시 미스 → 서버 재요청
     @Test("selectTag 캐시 미스 시 조용히 fetchFeed 호출 (로딩 표시 없음)")
     func selectTag_캐시미스_fetchFeed_tagId_전달() async {
         let myTagId = UUID()
         let otherTagId = UUID()
+        // feedItems에는 myTagId 아이템만 포함 → loadInitial 시 otherTagId 캐시 없음
         let items = [
-            makeFeedItem(title: "AI Article", urlSuffix: "ai", tagId: myTagId),
-            makeFeedItem(title: "Other Article", urlSuffix: "other", tagId: otherTagId)
+            makeFeedItem(title: "AI Article", urlSuffix: "ai", tagId: myTagId)
         ]
-        // myTagIds에는 myTagId만 포함 → otherTagId는 프리패치 안 됨
         let (sut, articlePort, _) = makeSUT(
             feedItems: items,
             tags: [Frank.Tag(id: myTagId, name: "AI", category: "ai")],
             myTagIds: [myTagId]
         )
 
-        await sut.send(.loadInitial) // 전체 탭만 (프리패치 없음)
+        await sut.send(.loadInitial) // 'all' + myTagId 분리 저장 (otherTagId 없음)
         let countBefore = articlePort.fetchFeedCallCount
 
-        // otherTagId는 캐시 없음 → 조용히 fetch (isRefreshing false)
+        // otherTagId는 feedItems에 없어 캐시 없음 → 조용히 fetch (isRefreshing false)
         await sut.send(.selectTag(otherTagId))
 
         #expect(articlePort.fetchFeedCallCount == countBefore + 1)
@@ -372,8 +373,8 @@ struct FeedFeatureTests {
         #expect(sut.selectedTagId == otherTagId)
     }
 
-    /// M3 S6: selectTag 캐시 히트 → fetchFeed 재호출 없음
-    @Test("selectTag 캐시 히트 시 fetchFeed 재호출 없음")
+    /// MVP13 M2: loadInitial 시 분리 저장 → 모든 selectTag가 캐시 히트
+    @Test("selectTag 캐시 히트 시 fetchFeed 재호출 없음 (MVP13 M2: loadInitial 분리 저장)")
     func selectTag_캐시히트_재요청없음() async {
         let tagId = UUID()
         let items = [makeFeedItem(urlSuffix: "ai", tagId: tagId)]
@@ -383,18 +384,20 @@ struct FeedFeatureTests {
             myTagIds: [tagId]
         )
 
-        await sut.send(.loadInitial) // 전체 탭 캐시
-        await sut.send(.selectTag(tagId)) // 캐시 미스 → 1회 fetch
-        let countAfterFirst = articlePort.fetchFeedCallCount
+        await sut.send(.loadInitial) // 전체 탭 + tagId 분리 저장 (1회만 API 호출)
+        let countAfterInit = articlePort.fetchFeedCallCount
 
-        // 두 번째 selectTag — 캐시 히트 → no fetch
+        // MVP13 M2: 첫 selectTag도 캐시 히트 (loadInitial 시 분리 저장)
         await sut.send(.selectTag(tagId))
+        #expect(articlePort.fetchFeedCallCount == countAfterInit, "loadInitial 분리 저장 → 캐시 히트")
 
-        #expect(articlePort.fetchFeedCallCount == countAfterFirst, "캐시 히트 시 재요청 없음")
+        // 두 번째 selectTag — 여전히 캐시 히트
+        await sut.send(.selectTag(tagId))
+        #expect(articlePort.fetchFeedCallCount == countAfterInit, "캐시 히트 시 재요청 없음")
     }
 
-    /// M3 S6: refresh → 현재 탭 캐시 무효화 + 재요청
-    @Test("refresh 현재 탭 캐시 무효화 후 재요청")
+    /// MVP13 M2: refresh는 항상 tagId=nil로 전체 피드 재요청 + 태그별 재분리 저장
+    @Test("refresh: tagId=nil로 전체 피드 재요청 + 태그별 재분리 저장 (MVP13 M2)")
     func refresh_현재탭_캐시무효화_후_재요청() async {
         let tagId = UUID()
         let items = [makeFeedItem(urlSuffix: "ai", tagId: tagId)]
@@ -405,14 +408,17 @@ struct FeedFeatureTests {
         )
 
         await sut.send(.loadInitial)
+        // MVP13 M2: loadInitial 시 분리 저장 → 캐시 히트
         await sut.send(.selectTag(tagId))
         let countAfterSelect = articlePort.fetchFeedCallCount
 
-        // refresh → 현재 탭(tagId) 캐시 무효화 + 재요청
+        // MVP13 M2: refresh는 tagId=nil로 전체 재요청
         await sut.send(.refresh)
 
         #expect(articlePort.fetchFeedCallCount == countAfterSelect + 1)
-        #expect(articlePort.lastFetchTagId == .some(tagId))
+        // MVP13 M2: refresh는 항상 nil(전체 탭)로 요청
+        // lastFetchTagId는 UUID?? 타입: .some(nil) = tagId:nil로 호출됨
+        #expect(articlePort.lastFetchTagId == .some(nil))
     }
 
     /// MVP10 M3: refresh는 noCache: true로 fetchFeed 호출해야 함
@@ -437,8 +443,9 @@ struct FeedFeatureTests {
             myTagIds: [tagId]
         )
 
-        await sut.send(.loadInitial) // 'all' 캐시 저장
-        await sut.send(.selectTag(tagId)) // tag 캐시 저장 (캐시 미스 → fetch)
+        await sut.send(.loadInitial) // 'all' + tagId 분리 캐시 저장 (1회만)
+        // MVP13 M2: selectTag(tagId) → 캐시 히트 (추가 fetch 없음)
+        await sut.send(.selectTag(tagId))
         let countAfterTag = articlePort.fetchFeedCallCount
 
         // 전체 탭으로 복귀 → 'all' 캐시 히트 → no fetch
@@ -521,7 +528,8 @@ struct FeedFeatureTests {
         #expect(countAfter == countBefore + 1)
     }
 
-    @Test("selectTag 후 loadMore: 해당 탭 기준 페이지네이션")
+    /// MVP13 M2: 태그 탭은 loadInitial 시 hasMore=false 고정 → loadMore no-op
+    @Test("selectTag 후 loadMore: 태그 탭은 hasMore=false — loadMore no-op (MVP13 M2 F-08)")
     func selectTag_loadMore_탭별() async {
         let tagId = UUID()
         let items = (0..<25).map { i in
@@ -534,12 +542,15 @@ struct FeedFeatureTests {
         )
 
         await sut.send(.loadInitial)
+        // MVP13 M2: loadInitial 시 tag별 분리 저장 (hasMore=false) → 캐시 히트
         await sut.send(.selectTag(tagId))
-        #expect(sut.feedItems.count == 20)
+        #expect(sut.feedItems.count == 20) // 첫 페이지 20개 (hasMore=false)
 
+        // 태그 탭 hasMore=false → loadMore no-op
+        let countBefore = articlePort.fetchFeedCallCount
         await sut.send(.loadMore)
-        #expect(sut.feedItems.count == 25)
-        #expect(articlePort.lastFetchTagId == .some(tagId))
+        #expect(articlePort.fetchFeedCallCount == countBefore, "태그 탭 loadMore no-op")
+        #expect(sut.feedItems.count == 20)
     }
 
     @Test("refresh 후 hasMore 초기화 + 첫 페이지로 리셋")
@@ -588,13 +599,104 @@ struct FeedFeatureTests {
         #expect(articlePort.fetchFeedCallCount == countBefore)
     }
 
-    @Test("selectTag 실패: 캐시 제거 + selectedTagId 롤백")
-    func selectTag_실패_캐시제거_롤백() async {
+    /// MVP13 M2: selectTag 캐시 미스 에러 롤백 — loadInitial items에 없는 tagId만 캐시 미스 발생
+    // MARK: - MVP13 M2: loadInitial 태그별 분리 저장
+
+    @Test("MVP13 M2: loadInitial 후 tag별 분리 저장 — selectTag 캐시 히트")
+    func loadInitial_태그별_분리저장_캐시히트() async {
         let tagId1 = UUID()
         let tagId2 = UUID()
         let items = [
-            makeFeedItem(title: "AI Article", urlSuffix: "ai", tagId: tagId1),
-            makeFeedItem(title: "iOS Article", urlSuffix: "ios", tagId: tagId2),
+            makeFeedItem(title: "AI Article 1", urlSuffix: "ai1", tagId: tagId1),
+            makeFeedItem(title: "AI Article 2", urlSuffix: "ai2", tagId: tagId1),
+            makeFeedItem(title: "iOS Article", urlSuffix: "ios", tagId: tagId2)
+        ]
+        let (sut, articlePort, _) = makeSUT(
+            feedItems: items,
+            tags: [
+                Frank.Tag(id: tagId1, name: "AI", category: "ai"),
+                Frank.Tag(id: tagId2, name: "iOS", category: "ios")
+            ],
+            myTagIds: [tagId1, tagId2]
+        )
+
+        await sut.send(.loadInitial)
+        let countAfterInit = articlePort.fetchFeedCallCount
+
+        // tagId1 탭 → 캐시 히트 (API 없음)
+        await sut.send(.selectTag(tagId1))
+        #expect(articlePort.fetchFeedCallCount == countAfterInit)
+        #expect(sut.feedItems.count == 2) // tagId1 기사 2개
+
+        // tagId2 탭 → 캐시 히트 (API 없음)
+        await sut.send(.selectTag(tagId2))
+        #expect(articlePort.fetchFeedCallCount == countAfterInit)
+        #expect(sut.feedItems.count == 1) // tagId2 기사 1개
+
+        // 전체 탭 복귀 → 캐시 히트
+        await sut.send(.selectTag(nil))
+        #expect(articlePort.fetchFeedCallCount == countAfterInit)
+        #expect(sut.feedItems.count == 3)
+    }
+
+    @Test("MVP13 M2: 태그 탭 hasMore=false 고정 (F-08: 태그 탭 loadMore 없음)")
+    func 태그탭_hasMore_false_고정() async {
+        let tagId = UUID()
+        // PAGE_SIZE(20)개 모두 같은 태그
+        let items = (0..<20).map { i in
+            makeFeedItem(title: "Article \(i)", urlSuffix: "\(i)", tagId: tagId)
+        }
+        let (sut, articlePort, _) = makeSUT(
+            feedItems: items,
+            tags: [Frank.Tag(id: tagId, name: "AI", category: "ai")],
+            myTagIds: [tagId]
+        )
+
+        await sut.send(.loadInitial)
+        await sut.send(.selectTag(tagId))
+
+        // 태그 탭은 hasMore=false (F-08)
+        #expect(sut.hasMore == false)
+        // loadMore no-op
+        let countBefore = articlePort.fetchFeedCallCount
+        await sut.send(.loadMore)
+        #expect(articlePort.fetchFeedCallCount == countBefore)
+    }
+
+    @Test("MVP13 M2: refresh 후 태그별 재분리 저장")
+    func refresh_후_태그별_재분리저장() async {
+        let tagId = UUID()
+        let items = [makeFeedItem(urlSuffix: "ai", tagId: tagId)]
+        let (sut, articlePort, _) = makeSUT(
+            feedItems: items,
+            tags: [Frank.Tag(id: tagId, name: "AI", category: "ai")],
+            myTagIds: [tagId]
+        )
+
+        await sut.send(.loadInitial)
+
+        // 새 아이템으로 refresh
+        let newItem = makeFeedItem(title: "New AI Article", urlSuffix: "ai-new", tagId: tagId)
+        articlePort.feedItems = [newItem]
+        await sut.send(.refresh)
+
+        // 전체 탭 갱신됨
+        #expect(sut.feedItems.count == 1)
+
+        // 태그 탭도 재분리 저장 → 캐시 히트 (API 없음)
+        let countAfterRefresh = articlePort.fetchFeedCallCount
+        await sut.send(.selectTag(tagId))
+        #expect(articlePort.fetchFeedCallCount == countAfterRefresh)
+        #expect(sut.feedItems[0].title == "New AI Article")
+    }
+
+    @Test("selectTag 실패: 캐시 제거 + selectedTagId 롤백 (캐시 미스 경우)")
+    func selectTag_실패_캐시제거_롤백() async {
+        let tagId1 = UUID()
+        let tagId2 = UUID() // loadInitial items에 없음 → 캐시 미스 발생
+        // tagId1 아이템만 포함 → loadInitial 시 tagId1 분리 저장, tagId2는 미포함
+        let items = [
+            makeFeedItem(title: "AI Article", urlSuffix: "ai", tagId: tagId1)
         ]
         let (sut, articlePort, _) = makeSUT(
             feedItems: items,
@@ -606,10 +708,11 @@ struct FeedFeatureTests {
         )
 
         await sut.send(.loadInitial)
-        await sut.send(.selectTag(tagId1)) // 캐시 미스 → 성공
+        // tagId1은 캐시 히트 (분리 저장)
+        await sut.send(.selectTag(tagId1))
         #expect(sut.selectedTagId == tagId1)
 
-        // tagId2 선택 시 에러 발생
+        // tagId2는 캐시 미스 → fetch 시도 → 에러 발생
         articlePort.fetchError = URLError(.notConnectedToInternet)
         await sut.send(.selectTag(tagId2))
 

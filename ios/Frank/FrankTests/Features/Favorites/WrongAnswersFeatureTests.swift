@@ -35,7 +35,8 @@ struct WrongAnswersFeatureTests {
             options: ["A", "B"],
             correctIndex: 0,
             userIndex: 1,
-            explanation: "해설"
+            explanation: "해설",
+            tagId: nil
         ))
         let (sut, _) = makeSUT(port: port)
 
@@ -82,7 +83,8 @@ struct WrongAnswersFeatureTests {
             options: ["A", "B"],
             correctIndex: 0,
             userIndex: 1,
-            explanation: "해설"
+            explanation: "해설",
+            tagId: nil
         ))
         let (sut, _) = makeSUT(port: port)
         await sut.load()
@@ -104,7 +106,8 @@ struct WrongAnswersFeatureTests {
             options: ["A", "B"],
             correctIndex: 0,
             userIndex: 1,
-            explanation: "해설"
+            explanation: "해설",
+            tagId: nil
         ))
         let (sut, _) = makeSUT(port: port)
         await sut.load()
@@ -128,7 +131,8 @@ struct WrongAnswersFeatureTests {
             options: ["A", "B"],
             correctIndex: 0,
             userIndex: 1,
-            explanation: "해설"
+            explanation: "해설",
+            tagId: nil
         ))
         let (sut, _) = makeSUT(port: port)
         await sut.load()

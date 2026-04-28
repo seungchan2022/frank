@@ -23,7 +23,8 @@ final class MockWrongAnswerPort: WrongAnswerPort, @unchecked Sendable {
             correctIndex: params.correctIndex,
             userIndex: params.userIndex,
             explanation: params.explanation,
-            createdAt: Date()
+            createdAt: Date(),
+            tagId: params.tagId
         )
         store[wa.id] = wa
         insertOrder.append(wa.id)

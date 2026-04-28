@@ -204,8 +204,8 @@ describe('feedStore: loadMore (T-03)', () => {
 	});
 });
 
-describe('feedStore: selectTag — 클라이언트 필터링 (T-04)', () => {
-	it('T-04a: selectTag → API 재호출 없이 activeTagId만 변경, feedItems 클라이언트 필터링', async () => {
+describe('feedStore: selectTag — 캐시 직접 참조 (T-04, MVP13 M2)', () => {
+	it('T-04a: selectTag → API 재호출 없이 activeTagId만 변경, 캐시에서 직접 조회', async () => {
 		const items: FeedItem[] = [
 			{ ...makeFeedItem('https://a.com/1'), tag_id: 'tag-1' },
 			{ ...makeFeedItem('https://a.com/2'), tag_id: 'tag-1' },
@@ -219,9 +219,11 @@ describe('feedStore: selectTag — 클라이언트 필터링 (T-04)', () => {
 		vi.mocked(apiClient.fetchFeed).mockClear();
 		feedStore.selectTag('tag-1');
 
+		// MVP13 M2: API 재호출 없음 (loadFeed 시 분리 저장)
 		expect(vi.mocked(apiClient.fetchFeed)).not.toHaveBeenCalled();
 		expect(feedStore.activeTagId).toBe('tag-1');
-		expect(feedStore.feedItems).toHaveLength(2); // tag-1 기사만 클라이언트 필터링
+		// 캐시에서 직접 조회 — tag-1 기사 2개
+		expect(feedStore.feedItems).toHaveLength(2);
 	});
 
 	it('T-04b: 같은 태그 재선택 → API 없음, activeTagId 유지', async () => {
@@ -429,6 +431,84 @@ describe('feedStore: loadMore 에러 처리 (lines 161-177)', () => {
 		await feedStore.loadMore();
 
 		expect(feedStore.error).toBe('Failed to load more');
+	});
+});
+
+describe('feedStore: MVP13 M2 — 초기 로드 시 태그별 분리 저장', () => {
+	it('loadFeed 후 tag_id별 캐시 분리 저장 — selectTag 시 API 없음', async () => {
+		const items: FeedItem[] = [
+			{ ...makeFeedItem('https://a.com/1'), tag_id: 'tag-1' },
+			{ ...makeFeedItem('https://a.com/2'), tag_id: 'tag-1' },
+			{ ...makeFeedItem('https://a.com/3'), tag_id: 'tag-2' },
+			{ ...makeFeedItem('https://a.com/4'), tag_id: null } // 태그 없음
+		];
+		vi.mocked(apiClient.fetchFeed).mockResolvedValueOnce(items);
+		vi.mocked(apiClient.fetchTags).mockResolvedValueOnce([
+			makeTag('tag-1', 'AI'),
+			makeTag('tag-2', '경제')
+		]);
+		vi.mocked(apiClient.fetchMyTagIds).mockResolvedValueOnce(['tag-1', 'tag-2']);
+		await feedStore.loadFeed('user-1');
+
+		// 전체 탭: 4개 모두
+		expect(feedStore.feedItems).toHaveLength(4);
+
+		vi.mocked(apiClient.fetchFeed).mockClear();
+
+		// tag-1 탭으로 전환 — API 없음, 분리 캐시에서 직접 조회
+		feedStore.selectTag('tag-1');
+		expect(vi.mocked(apiClient.fetchFeed)).not.toHaveBeenCalled();
+		expect(feedStore.feedItems).toHaveLength(2); // tag-1 기사 2개
+
+		// tag-2 탭으로 전환
+		feedStore.selectTag('tag-2');
+		expect(vi.mocked(apiClient.fetchFeed)).not.toHaveBeenCalled();
+		expect(feedStore.feedItems).toHaveLength(1); // tag-2 기사 1개
+	});
+
+	it('태그 탭의 hasMore는 false (태그 탭 loadMore 없음 — F-08)', async () => {
+		const items: FeedItem[] = Array.from({ length: 20 }, (_, i) => ({
+			...makeFeedItem(`https://a.com/${i}`),
+			tag_id: 'tag-1'
+		}));
+		vi.mocked(apiClient.fetchFeed).mockResolvedValueOnce(items);
+		vi.mocked(apiClient.fetchTags).mockResolvedValueOnce([makeTag('tag-1', 'AI')]);
+		vi.mocked(apiClient.fetchMyTagIds).mockResolvedValueOnce(['tag-1']);
+		await feedStore.loadFeed('user-1');
+
+		feedStore.selectTag('tag-1');
+
+		// 태그 탭 hasMore=false (loadMore 없음)
+		expect(feedStore.hasMore).toBe(false);
+	});
+
+	it('refresh 후 태그별 캐시 재분리 저장', async () => {
+		const initialItems: FeedItem[] = [
+			{ ...makeFeedItem('https://a.com/1'), tag_id: 'tag-1' }
+		];
+		vi.mocked(apiClient.fetchFeed).mockResolvedValueOnce(initialItems);
+		vi.mocked(apiClient.fetchTags).mockResolvedValueOnce([makeTag('tag-1', 'AI')]);
+		vi.mocked(apiClient.fetchMyTagIds).mockResolvedValueOnce(['tag-1']);
+		await feedStore.loadFeed('user-1');
+
+		// refresh 후 새 아이템 (tag-1 + tag-2)
+		const refreshedItems: FeedItem[] = [
+			{ ...makeFeedItem('https://b.com/1'), tag_id: 'tag-1' },
+			{ ...makeFeedItem('https://b.com/2'), tag_id: 'tag-2' }
+		];
+		vi.mocked(apiClient.fetchFeed).mockResolvedValueOnce(refreshedItems);
+		await feedStore.refresh();
+
+		// 전체 탭
+		expect(feedStore.feedItems).toHaveLength(2);
+
+		vi.mocked(apiClient.fetchFeed).mockClear();
+
+		// tag-1 탭 — refresh 후 재분리 저장 확인
+		feedStore.selectTag('tag-1');
+		expect(vi.mocked(apiClient.fetchFeed)).not.toHaveBeenCalled();
+		expect(feedStore.feedItems).toHaveLength(1);
+		expect(feedStore.feedItems[0].url).toBe('https://b.com/1');
 	});
 });
 
