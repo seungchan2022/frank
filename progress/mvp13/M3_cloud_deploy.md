@@ -183,6 +183,7 @@ sudo systemctl enable frank-keepalive --now
 - [ ] `http://{VM_IP}:8080/health` → `{"status":"ok"}`
 - [ ] iOS 실기기 — Mac 꺼진 상태에서 앱 실행 → 피드 로드 정상
 - [ ] iOS 실기기 — 로그인 → 퀴즈 → 오답노트 정상
+- [ ] **[M1 R-03 이월]** DB 연결 실패 시 500 반환 — VM에서 Supabase 연결 끊음(방화벽 차단 또는 DB URL 임시 오염) 후 API 호출 → 500 응답 확인
 
 ---
 
