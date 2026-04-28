@@ -9,18 +9,44 @@
 ## [DEBT-01] 오답 태그 필터링 — DB 컬럼 방식(A안) 보류
 
 **발생**: MVP12 BUG-F 처리 시점
-**상태**: 🟡 **DEFERRED** — 오답 페이지네이션 구현 시점에 재검토
+**상태**: 🟡 **DEFERRED** → MVP13 M1에서 흡수 예정
 **관련 버그**: BUG-003 (RESOLVED), BUG-F (RESOLVED)
 
-**현재 B안**: `favorites.tag_id` 브릿지 방식으로 클라이언트 필터링
-- 오답 목록 전체를 받아 클라이언트에서 tag_id 기준 필터
-- 문제: 페이지네이션 부정확 (offset 20 요청해도 필터 후 실제 3개일 수 있음)
+### 현상
 
-**보류된 A안**: `wrong_answers` 테이블에 `tag_id` 컬럼 추가
-- 서버가 `WHERE tag_id = ?`로 직접 필터 → 페이지네이션 정확
-- 비용: DB 마이그레이션 + 서버/웹/iOS 4레이어 수정
+웹·iOS 오답노트에서 태그 필터가 제대로 동작하지 않음.
+- favorites에 없는 기사의 오답은 태그 필터에서 아예 제외됨
+- 태그 칩 자체가 안 나오는 경우 발생
 
-**흡수 조건**: 오답노트 무한 스크롤 또는 페이지네이션 구현 시 A안 전환 필수
+### 근본 원인 (260428 코드 탐색 확인)
+
+`quiz_wrong_answers` 테이블에 **tag_id 컬럼이 없음**.
+
+오답 저장 시점에 어느 태그 기사인지 기록하지 않아서,
+웹·iOS 모두 `favorites.tag_id`를 브릿지로 삼아 `article_url` 기준 간접 매핑으로 클라이언트 필터링 중.
+
+```
+현재(B안):
+  서버 → 전체 오답 반환
+  클라이언트 → favorites[url → tag_id] 맵 생성 → 필터링
+  문제: favorites에 없는 기사 오답은 태그 정보 없음 → 필터 제외
+```
+
+**관련 파일**:
+- DB: `supabase/migrations/20260412_mvp8_m1_schema.sql` (tag_id 컬럼 없음)
+- 서버: `server/src/infra/postgres_quiz_wrong_answers.rs` (WHERE user_id 만 필터)
+- 서버: `server/src/domain/models.rs` (QuizWrongAnswer, SaveWrongAnswerParams — tag_id 필드 없음)
+- 웹: `web/src/lib/utils/favorites-filter.ts` (favorites 기반 클라이언트 필터)
+- iOS: `ios/Frank/Frank/Sources/Features/Favorites/WrongAnswerTagFilter.swift` (favorites 기반 클라이언트 필터)
+
+### 해결 방향 (A안)
+
+1. **DB 마이그레이션**: `quiz_wrong_answers`에 `tag_id UUID` 컬럼 추가
+2. **서버**: 오답 저장 시 tag_id 함께 저장, API에 `?tag_id=` 쿼리 파라미터 추가
+3. **웹**: 클라이언트 필터 로직 제거 → 서버 필터 사용
+4. **iOS**: 동일하게 클라이언트 필터 제거 → 서버 필터 사용
+
+**흡수 조건**: MVP13 M1에서 구현
 
 ---
 
