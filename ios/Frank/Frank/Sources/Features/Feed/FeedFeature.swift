@@ -275,6 +275,13 @@ final class FeedFeature {
             let items = try await article.fetchFeed(tagId: nil, noCache: true, limit: PAGE_SIZE, offset: 0)
             rebuildTagStates(from: items)
 
+            // 현재 선택 탭이 전체 재구성 후에도 없으면 별도 fetch (selectedTagId 리셋 금지).
+            // 구독 태그가 많아 첫 20개에 현재 태그 기사가 포함되지 않을 때 발생.
+            if let tagId = selectedTagId, tagStates[cacheKey(for: tagId)] == nil {
+                let tagItems = try await article.fetchFeed(tagId: tagId, noCache: true, limit: PAGE_SIZE, offset: 0)
+                tagStates[cacheKey(for: tagId)] = .firstPage(items: tagItems, pageSize: PAGE_SIZE)
+            }
+
             finishRefresh()
         } catch {
             failRefresh("새로고침에 실패했습니다.")

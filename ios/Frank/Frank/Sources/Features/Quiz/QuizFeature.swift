@@ -90,6 +90,7 @@ final class QuizFeature {
         )
         Task {
             try? await wrongAnswer.save(params: params)
+            NotificationCenter.default.post(name: .wrongAnswerSaved, object: nil)
         }
     }
 

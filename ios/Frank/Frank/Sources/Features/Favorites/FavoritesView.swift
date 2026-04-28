@@ -86,6 +86,13 @@ struct FavoritesView: View {
                     await wrongAnswersFeature.load()
                 }
             }
+            .onReceive(NotificationCenter.default.publisher(for: .wrongAnswerSaved)) { _ in
+                // 퀴즈 오답 저장 직후 오답 탭이 이미 선택되어 있어도 리로드.
+                // .task(id: selectedTab)은 탭 전환 시만 실행되므로 별도 트리거 필요.
+                if selectedTab == .wrongAnswers {
+                    Task { await wrongAnswersFeature.load() }
+                }
+            }
             .overlay(alignment: .bottom) {
                 if let errorMsg = feature.operationError {
                     operationErrorBanner(message: errorMsg)
