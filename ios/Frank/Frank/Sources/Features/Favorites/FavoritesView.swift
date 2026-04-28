@@ -38,29 +38,21 @@ struct FavoritesView: View {
         self._wrongAnswersFeature = State(initialValue: WrongAnswersFeature(wrongAnswer: wrongAnswer))
     }
 
-    // MARK: - MVP11 M4: 오답 탭 필터 computed
-
-    /// url → tagId 매핑. tagId가 없는 즐겨찾기는 포함하지 않음.
-    var wrongAnswerTagMap: [String: UUID] {
-        WrongAnswerTagFilter.buildTagMap(from: feature.items)
-    }
+    // MARK: - MVP13 M2: 오답 탭 필터 computed (favorites 브릿지 제거)
 
     /// 오답 탭에 표시할 태그 칩 소스.
-    /// wrongAnswersFeature.items의 articleUrl → tagMap → tagId 조인으로 실제 오답 기사에 존재하는 태그만 표시.
-    /// BUG-F 수정: feature.tags(즐겨찾기 전체 태그)가 아닌, 오답 기사 URL에 해당하는 태그만 표시.
+    /// WrongAnswer.tagId 직접 집계 — favorites 브릿지(buildTagMap) 제거.
     var wrongAnswerTags: [Tag] {
-        let map = wrongAnswerTagMap
-        let usedTagIds = Set(wrongAnswersFeature.items.compactMap { map[$0.articleUrl] })
+        let usedTagIds = Set(wrongAnswersFeature.items.compactMap { $0.tagId })
         return feature.tags.filter { usedTagIds.contains($0.id) }
     }
 
     /// 오답 탭 필터 결과.
     /// - selectedTagId == nil: 전체 반환
-    /// - selectedTagId != nil: 해당 태그 url Set 교집합 (favorites 미등록 오답은 제외)
+    /// - selectedTagId != nil: wa.tagId == selectedTagId 인 항목만 반환
     var filteredWrongAnswers: [WrongAnswer] {
-        WrongAnswerTagFilter.apply(
+        WrongAnswerTagFilter.filter(
             items: wrongAnswersFeature.items,
-            tagMap: wrongAnswerTagMap,
             selectedTagId: selectedTagId
         )
     }

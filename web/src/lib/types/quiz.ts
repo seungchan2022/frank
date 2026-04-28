@@ -11,6 +11,7 @@ export interface QuizResponse {
 
 /// MVP8 M3: 오답 아카이빙 타입.
 /// 서버 quiz_wrong_answers 테이블과 1:1 대응.
+/// MVP13 M2: tagId 직접 포함 — favorites 브릿지 제거.
 export interface WrongAnswer {
 	id: string;
 	userId: string;
@@ -22,9 +23,11 @@ export interface WrongAnswer {
 	userIndex: number;
 	explanation: string | null;
 	createdAt: string;
+	tagId: string | null;
 }
 
 /// POST /me/quiz/wrong-answers 요청 바디.
+/// MVP13 M2: tag_id 직접 전송 — 오답 저장 시 태그 연결.
 export interface SaveWrongAnswerBody {
 	article_url: string;
 	article_title: string;
@@ -33,4 +36,5 @@ export interface SaveWrongAnswerBody {
 	correct_index: number;
 	user_index: number;
 	explanation: string | null;
+	tag_id: string | null;
 }

@@ -388,6 +388,7 @@
 		questions={quizQuestions}
 		articleUrl={feedItem?.url}
 		articleTitle={feedItem?.title}
+		tagId={feedItem?.tag_id ?? null}
 		onClose={() => { quizQuestions = null; }}
 	/>
 {/if}

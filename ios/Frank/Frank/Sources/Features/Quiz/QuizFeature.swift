@@ -35,6 +35,8 @@ final class QuizFeature {
 
     private var articleUrl: String = ""
     private var articleTitle: String = ""
+    /// MVP13 M2: 오답 저장 시 tag_id 직접 전달 — favorites 브릿지 제거.
+    private var articleTagId: UUID?
 
     // MARK: - Init
 
@@ -50,10 +52,12 @@ final class QuizFeature {
     /// - Parameters:
     ///   - url: 즐겨찾기한 기사 URL 문자열
     ///   - title: 기사 제목 (오답 저장용)
-    func generateQuiz(url: String, title: String = "") async {
+    ///   - tagId: 기사에 연결된 태그 ID (MVP13 M2: 오답 저장 시 직접 전달)
+    func generateQuiz(url: String, title: String = "", tagId: UUID? = nil) async {
         guard phase != .loading else { return }
         articleUrl = url
         articleTitle = title
+        articleTagId = tagId
         phase = .loading
         questions = []
 
@@ -81,7 +85,8 @@ final class QuizFeature {
             options: question.options,
             correctIndex: question.answerIndex,
             userIndex: userIndex,
-            explanation: question.explanation
+            explanation: question.explanation,
+            tagId: articleTagId
         )
         Task {
             try? await wrongAnswer.save(params: params)
@@ -104,5 +109,6 @@ final class QuizFeature {
         questions = []
         articleUrl = ""
         articleTitle = ""
+        articleTagId = nil
     }
 }

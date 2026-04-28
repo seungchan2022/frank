@@ -188,7 +188,8 @@ export const mockApiClient: ApiClient = {
 			correctIndex: body.correct_index,
 			userIndex: body.user_index,
 			explanation: body.explanation,
-			createdAt: now
+			createdAt: now,
+			tagId: body.tag_id ?? null
 		};
 		mockWrongAnswers = [wa, ...mockWrongAnswers];
 		return delay({ ...wa });

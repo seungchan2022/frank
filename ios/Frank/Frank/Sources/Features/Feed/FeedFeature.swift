@@ -13,6 +13,9 @@ import Observation
 /// - tagCache → tagStates: [String: TagState] 교체
 /// - loadMore() → 현재 탭 다음 페이지 로드
 /// - 프리패치 제거 (C안): loadInitial은 전체 탭 첫 페이지만 로드
+///
+/// MVP13 M2: 초기 로드 시 tagId 기준 완전 재분리 저장 (rebuildTagStates) — 탭 전환 즉시 표시.
+/// - refresh도 rebuildTagStates로 완전 재구성 — stale 태그 캐시 자동 제거
 enum FeedAction {
     case loadInitial
     case selectTag(UUID?)
@@ -176,6 +179,32 @@ final class FeedFeature {
         tagId?.uuidString ?? "all"
     }
 
+    /// items를 tagId 기준으로 그룹핑해 tagStates를 완전 재구성.
+    /// "all" 탭 + 각 tagId 탭 포함. 태그 탭은 hasMore=false 고정 (F-08).
+    /// loadInitial/refresh 공통 — 항상 완전 재구성해 stale 캐시 제거.
+    /// items를 tagId 기준으로 그룹핑해 tagStates를 완전 재구성.
+    /// "all" 탭 + 각 tagId 탭 포함. 태그 탭은 hasMore=false 고정 (F-08).
+    /// loadInitial/refresh 공통 — 항상 완전 재구성해 stale 캐시 제거.
+    ///
+    /// Trade-off (F-08): selectTag 캐시 미스 폴백으로 fetch된 풍부한 태그 캐시도
+    /// refresh 시 all-feed 첫 페이지 분할분으로 축소됨 (의도적, 전체 재요청 정책).
+    private func rebuildTagStates(from items: [FeedItem]) {
+        // 'all' 탭 + tagId별 새 캐시 구성 후 교체 — 이전 캐시 완전 제거 (stale 방지)
+        var newStates: [String: TagState] = ["all": .firstPage(items: items, pageSize: PAGE_SIZE)]
+        let grouped = Dictionary(grouping: items) { $0.tagId }
+        for (tagId, group) in grouped {
+            if let tid = tagId {
+                newStates[tid.uuidString] = TagState(
+                    items: group,
+                    nextOffset: group.count,
+                    hasMore: false,
+                    status: .idle
+                )
+            }
+        }
+        tagStates = newStates
+    }
+
     // MARK: - Core Logic
 
     private func loadInitial() async {
@@ -192,7 +221,8 @@ final class FeedFeature {
 
             // ST5 C안: 전체 탭 첫 페이지만 로드 (구독 태그 프리패치 제거)
             let items = try await article.fetchFeed(tagId: nil, noCache: false, limit: PAGE_SIZE, offset: 0)
-            tagStates["all"] = .firstPage(items: items, pageSize: PAGE_SIZE)
+            // MVP13 M2: tagId 기준 완전 재구성 — 탭 전환 즉시 표시 (hasMore=false 고정)
+            rebuildTagStates(from: items)
 
             selectedTagId = nil
             phase = .idle
@@ -238,12 +268,13 @@ final class FeedFeature {
         guard phase == .idle else { return }
         beginRefresh()
 
-        let key = currentKey
-
         do {
             // MVP10 M3: pull-to-refresh는 서버 TTL 캐시 우회. 첫 페이지만 다시 로드.
-            let items = try await article.fetchFeed(tagId: selectedTagId, noCache: true, limit: PAGE_SIZE, offset: 0)
-            tagStates[key] = .firstPage(items: items, pageSize: PAGE_SIZE)
+            // MVP13 M2: 항상 전체 재요청 후 rebuildTagStates로 완전 재구성.
+            // stale 태그 캐시(이전에 있었지만 새 fetch에 없는 태그) 자동 제거.
+            let items = try await article.fetchFeed(tagId: nil, noCache: true, limit: PAGE_SIZE, offset: 0)
+            rebuildTagStates(from: items)
+
             finishRefresh()
         } catch {
             failRefresh("새로고침에 실패했습니다.")

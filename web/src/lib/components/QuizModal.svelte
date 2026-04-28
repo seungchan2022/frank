@@ -10,9 +10,11 @@
 		/// 없으면 fire-and-forget 호출을 건너뜀 (하위 호환).
 		articleUrl?: string;
 		articleTitle?: string;
+		/// MVP13 M2: 오답 저장 시 tag_id 직접 전달 — favorites 브릿지 제거.
+		tagId?: string | null;
 	}
 
-	let { questions, onClose, articleUrl, articleTitle }: Props = $props();
+	let { questions, onClose, articleUrl, articleTitle, tagId }: Props = $props();
 
 	let currentIndex = $state(0);
 	let selectedIndex = $state<number | null>(null);
@@ -54,7 +56,8 @@
 						options: q.options,
 						correct_index: q.answer_index,
 						user_index: uIdx,
-						explanation: q.explanation ?? null
+						explanation: q.explanation ?? null,
+						tag_id: tagId ?? null
 					})
 					.catch(() => {
 						// fire-and-forget: 실패해도 퀴즈 진행 차단 안 함

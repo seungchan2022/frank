@@ -11,7 +11,6 @@
 	import {
 		buildFavTagIds,
 		buildFilterTags,
-		buildWrongAnswerTagMap,
 		buildWrongAnswerFilterTags,
 		filterFavorites,
 		filterWrongAnswers,
@@ -159,10 +158,9 @@
 	const favTagIds = $derived(buildFavTagIds(favoritesStore.favorites));
 	const filterTags = $derived(buildFilterTags(allTags, favTagIds));
 	const filteredFavorites = $derived(filterFavorites(favoritesStore.favorites, selectedTagId));
-	const wrongAnswerTagMap = $derived(buildWrongAnswerTagMap(favoritesStore.favorites));
-	const filteredWrongAnswers = $derived(filterWrongAnswers(wrongAnswers, wrongAnswerTagMap, selectedTagId));
-	// MVP12 M2: BUG-F — 오답 탭용 태그 칩 (실제 오답에 매핑된 태그만 노출)
-	const wrongAnswerFilterTags = $derived(buildWrongAnswerFilterTags(allTags, wrongAnswers, wrongAnswerTagMap));
+	// MVP13 M2: favorites 브릿지(tagMap) 제거 — WrongAnswer.tagId 직접 사용
+	const filteredWrongAnswers = $derived(filterWrongAnswers(wrongAnswers, selectedTagId));
+	const wrongAnswerFilterTags = $derived(buildWrongAnswerFilterTags(allTags, wrongAnswers));
 
 	onMount(async () => {
 		try {

@@ -228,7 +228,7 @@ extension ArticleDetailView {
         HStack(spacing: 10) {
             Button {
                 Task {
-                    await quizFeature.generateQuiz(url: feedItem.url.absoluteString, title: feedItem.title)
+                    await quizFeature.generateQuiz(url: feedItem.url.absoluteString, title: feedItem.title, tagId: feedItem.tagId)
                 }
             } label: {
                 HStack {
@@ -260,7 +260,7 @@ extension ArticleDetailView {
         case .idle, .done:
             Button {
                 Task {
-                    await quizFeature.generateQuiz(url: feedItem.url.absoluteString, title: feedItem.title)
+                    await quizFeature.generateQuiz(url: feedItem.url.absoluteString, title: feedItem.title, tagId: feedItem.tagId)
                 }
             } label: {
                 HStack {
@@ -282,7 +282,7 @@ extension ArticleDetailView {
                     .foregroundStyle(.red)
                 Button {
                     Task {
-                        await quizFeature.generateQuiz(url: feedItem.url.absoluteString, title: feedItem.title)
+                        await quizFeature.generateQuiz(url: feedItem.url.absoluteString, title: feedItem.title, tagId: feedItem.tagId)
                     }
                 } label: {
                     HStack {

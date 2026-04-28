@@ -8,6 +8,12 @@
  * - 'all' 탭 결과만 서버에서 가져오고, 태그 탭은 클라이언트 필터링
  * - selectTag: API 재호출 없이 activeTagId만 변경
  * - loadMore(): 항상 'all' 탭 기준으로 페이지 append
+ *
+ * MVP13 M2: 초기 로드 시 tag_id 기준 분리 저장 — 탭 전환 즉시 표시.
+ * - loadFeed 후 items를 tag_id 별로 그룹핑해 tagCache에 완전 재분리 저장
+ * - feedItems: tagCache.get(activeTagId ?? 'all')?.items 직접 참조 (클라이언트 필터링 제거)
+ * - hasMore/isLoadingMore: activeTagId 기반 (태그 탭은 hasMore=false 고정)
+ * - refresh: 전체 재요청 후 tagCache 완전 재구성 (stale 태그 캐시 없음)
  */
 
 import { apiClient } from '$lib/api';
@@ -16,6 +22,9 @@ import type { Tag } from '$lib/types/tag';
 
 /** 페이지당 기사 수 */
 const PAGE_SIZE = 20;
+
+/** 전체 탭 캐시 키. tagCache 키 하드코딩 방지. */
+const ALL_TAB_KEY = 'all';
 
 /** 탭별 페이지네이션 상태 */
 export interface TabState {
@@ -39,16 +48,12 @@ let activeTagId = $state<string | null>(null);
  */
 let tagCache = $state(new Map<string, TabState>());
 
-/** 'all' 탭 전체 아이템 */
-let allItems = $derived(tagCache.get('all')?.items ?? []);
-/** feedItems: activeTagId가 있으면 'all' 기준 클라이언트 필터링 */
-let feedItems = $derived(
-	activeTagId ? allItems.filter((item) => item.tag_id === activeTagId) : allItems
-);
-/** hasMore: 항상 'all' 탭 기준 */
-let hasMore = $derived(tagCache.get('all')?.hasMore ?? true);
-/** isLoadingMore: 'all' 탭 기준 */
-let isLoadingMore = $derived(tagCache.get('all')?.status === 'loadingMore');
+/** feedItems: 현재 탭의 캐시 직접 참조 (클라이언트 필터링 제거) */
+let feedItems = $derived(tagCache.get(activeTagId ?? ALL_TAB_KEY)?.items ?? []);
+/** hasMore: 현재 탭 기준 (태그 탭은 hasMore=false 고정) */
+let hasMore = $derived(tagCache.get(activeTagId ?? ALL_TAB_KEY)?.hasMore ?? true);
+/** isLoadingMore: 현재 탭 기준 */
+let isLoadingMore = $derived(tagCache.get(activeTagId ?? ALL_TAB_KEY)?.status === 'loadingMore');
 
 let loadedForUserId = $state<string | null>(null);
 
@@ -59,6 +64,32 @@ function makeTabState(items: FeedItem[]): TabState {
 		hasMore: items.length >= PAGE_SIZE,
 		status: 'idle'
 	};
+}
+
+/**
+ * items를 tag_id 기준으로 그룹핑해 tagCache Map을 완전 재구성.
+ * 'all' 탭 + 각 tag_id 탭 포함. 태그 탭은 hasMore=false 고정 (F-08).
+ * refresh/loadFeed 공통 사용 — 항상 새 Map으로 반환해 stale 캐시 제거.
+ */
+function buildTagCache(items: FeedItem[]): Map<string, TabState> {
+	const cache = new Map<string, TabState>([[ALL_TAB_KEY, makeTabState(items)]]);
+	const grouped = new Map<string, FeedItem[]>();
+	for (const item of items) {
+		if (item.tag_id) {
+			const existing = grouped.get(item.tag_id) ?? [];
+			existing.push(item);
+			grouped.set(item.tag_id, existing);
+		}
+	}
+	for (const [tagId, groupItems] of grouped) {
+		cache.set(tagId, {
+			items: groupItems,
+			nextOffset: groupItems.length,
+			hasMore: false,
+			status: 'idle'
+		});
+	}
+	return cache;
 }
 
 /**
@@ -89,8 +120,8 @@ async function loadFeed(userId?: string): Promise<void> {
 		tags = allTags;
 		myTagIds = tagIds;
 
-		// 전체 탭만 즉시 캐시 (다른 탭은 selectTag 시 lazy fetch)
-		tagCache = new Map<string, TabState>([['all', makeTabState(items)]]);
+		// MVP13 M2: 'all' 탭 + tag_id별 분리 저장 — 탭 전환 즉시 표시
+		tagCache = buildTagCache(items);
 
 		loaded = true;
 		loadedForUserId = userId ?? null;
@@ -104,7 +135,7 @@ async function loadFeed(userId?: string): Promise<void> {
 
 /**
  * 탭 선택.
- * 'all' 탭 결과를 클라이언트에서 필터링 — API 재호출 없이 activeTagId만 변경.
+ * MVP13 M2: loadFeed 시 buildTagCache로 분리 저장 완료 → 캐시 히트 보장.
  */
 function selectTag(tagId: string | null): void {
 	if (loading || isRefreshing) return;
@@ -113,14 +144,14 @@ function selectTag(tagId: string | null): void {
 
 /**
  * 다음 페이지 로드 (무한 스크롤용).
- * 항상 'all' 탭 기준 — 태그 필터는 클라이언트 필터링이므로 서버 요청은 'all'만.
+ * ALL_TAB_KEY('all') 탭 기준 — 태그 탭은 hasMore=false 고정 (F-08: 태그 탭 loadMore 없음).
  * E-02: hasMore=false 또는 isLoadingMore 중이면 재진입 차단.
  * E-03: capturedOffset으로 refresh race condition 방지.
  */
 async function loadMore(): Promise<void> {
 	if (isRefreshing) return;
 
-	const key = 'all';
+	const key = ALL_TAB_KEY;
 	const current = tagCache.get(key);
 
 	// E-02: 재진입 가드
@@ -158,8 +189,11 @@ async function loadMore(): Promise<void> {
 }
 
 /**
- * 새 뉴스 가져오기 — 강제 재요청. 현재 탭 pagination 리셋 후 첫 페이지 재요청.
+ * 새 뉴스 가져오기 — 강제 재요청. tagCache 완전 재구성.
  * loadingMore 진행 중에도 차단 — loadMore의 stale 응답이 refresh 결과를 덮어쓰는 역방향 race 방지.
+ *
+ * MVP13 M2: 항상 전체 재요청 후 buildTagCache로 tagCache 완전 재구성.
+ * 이전에 존재했다가 사라진 태그 캐시도 자동 제거됨 (stale 없음).
  */
 async function refresh(): Promise<boolean> {
 	if (loading || isRefreshing) return false;
@@ -174,8 +208,9 @@ async function refresh(): Promise<boolean> {
 			undefined,
 			{ noCache: true, limit: PAGE_SIZE, offset: 0 }
 		);
-		// 'all' 탭 pagination 리셋 (태그 탭은 클라이언트 필터링)
-		tagCache = new Map([...tagCache, ['all', makeTabState(items)]]);
+		// MVP13 M2: 완전 재구성 — stale 태그 캐시 제거, loadMore 진행 중이던 'all' 상태 포함
+		// loadMore 중인 'all' 탭 상태는 refresh 완료로 초기화 (역방향 race 방지)
+		tagCache = buildTagCache(items);
 		return true;
 	} catch (e) {
 		error = e instanceof Error ? e.message : 'Failed to refresh feed';

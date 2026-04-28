@@ -280,6 +280,7 @@ function snakeToCamelFavorite(raw: Record<string, unknown>): Favorite {
 }
 
 /// 서버 snake_case 응답 → WrongAnswer camelCase 변환.
+/// MVP13 M2: tag_id 직접 매핑 추가.
 function snakeToCamelWrongAnswer(raw: Record<string, unknown>): WrongAnswer {
 	return {
 		id: raw.id as string,
@@ -291,6 +292,7 @@ function snakeToCamelWrongAnswer(raw: Record<string, unknown>): WrongAnswer {
 		correctIndex: raw.correct_index as number,
 		userIndex: raw.user_index as number,
 		explanation: (raw.explanation as string | null) ?? null,
-		createdAt: raw.created_at as string
+		createdAt: raw.created_at as string,
+		tagId: (raw.tag_id as string | null) ?? null
 	};
 }
