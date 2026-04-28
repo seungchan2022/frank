@@ -130,10 +130,7 @@ impl QuizWrongAnswerPort for FakeQuizWrongAnswerAdapter {
                 .rev()
                 .filter_map(|id| store.get(id))
                 .filter(|r| r.user_id == user_id)
-                .filter(|r| match tag_id {
-                    Some(tid) => r.tag_id == Some(tid),
-                    None => true,
-                })
+                .filter(|r| tag_id.is_none_or(|tid| r.tag_id == Some(tid)))
                 .cloned()
                 .collect();
             // created_at DESC 정렬 (역순 삽입 순서로 충분하지만 명시적 정렬)

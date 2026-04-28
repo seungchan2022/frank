@@ -66,27 +66,24 @@ impl QuizWrongAnswerPort for PostgresQuizWrongAnswerAdapter {
         tag_id: Option<Uuid>,
     ) -> Pin<Box<dyn Future<Output = Result<Vec<QuizWrongAnswer>, AppError>> + Send + 'a>> {
         Box::pin(async move {
-            // MVP13 M1: tag_id 필터 지원
-            // tag_id = Some → 해당 태그만 반환 (NULL 행 제외)
-            // tag_id = None → 전체 반환
-            match tag_id {
-                Some(tid) => sqlx::query_as::<_, QuizWrongAnswer>(
+            // MVP13 M1: tag_id = Some → 해당 태그만 반환 (NULL 행 제외), None → 전체 반환
+            let rows = if let Some(tid) = tag_id {
+                sqlx::query_as::<_, QuizWrongAnswer>(
                     "SELECT * FROM quiz_wrong_answers WHERE user_id = $1 AND tag_id = $2 ORDER BY created_at DESC",
                 )
                 .bind(user_id)
                 .bind(tid)
                 .fetch_all(&self.pool)
                 .await
-                .map_err(|e| AppError::Internal(format!("quiz_wrong_answers list failed: {e}"))),
-
-                None => sqlx::query_as::<_, QuizWrongAnswer>(
+            } else {
+                sqlx::query_as::<_, QuizWrongAnswer>(
                     "SELECT * FROM quiz_wrong_answers WHERE user_id = $1 ORDER BY created_at DESC",
                 )
                 .bind(user_id)
                 .fetch_all(&self.pool)
                 .await
-                .map_err(|e| AppError::Internal(format!("quiz_wrong_answers list failed: {e}"))),
-            }
+            };
+            rows.map_err(|e| AppError::Internal(format!("quiz_wrong_answers list failed: {e}")))
         })
     }
 

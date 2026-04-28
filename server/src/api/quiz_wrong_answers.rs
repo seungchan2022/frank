@@ -12,6 +12,20 @@ use crate::middleware::auth::AuthUser;
 
 use super::AppState;
 
+/// `Option<&str>` → `Option<Uuid>` 파싱 헬퍼 (tag_id 전용).
+/// - `None` 또는 빈 문자열(`""`) → `None` (미전달과 동일 처리)
+/// - 공백 포함 등 UUID로 파싱 불가 → `AppError::BadRequest`
+/// - 유효한 UUID 문자열 → `Some(Uuid)`
+fn parse_optional_tag_id(s: Option<&str>) -> Result<Option<Uuid>, AppError> {
+    match s {
+        Some(v) if !v.is_empty() => v
+            .parse::<Uuid>()
+            .map(Some)
+            .map_err(|_| AppError::BadRequest("tag_id: invalid UUID format".to_string())),
+        _ => Ok(None),
+    }
+}
+
 /// POST /me/quiz/wrong-answers 요청 바디.
 #[derive(Debug, Deserialize)]
 pub struct SaveWrongAnswerRequest {
@@ -60,13 +74,7 @@ pub async fn save_wrong_answer<D: DbPort>(
     }
 
     // MVP13 M1: tag_id 문자열 → Uuid 파싱. 잘못된 형식 → 400
-    let tag_id: Option<Uuid> = match body.tag_id {
-        Some(ref s) if !s.is_empty() => Some(
-            s.parse::<Uuid>()
-                .map_err(|_| AppError::BadRequest("tag_id: invalid UUID format".to_string()))?,
-        ),
-        _ => None,
-    };
+    let tag_id = parse_optional_tag_id(body.tag_id.as_deref())?;
 
     let params = SaveWrongAnswerParams {
         article_url: body.article_url.trim().to_string(),
@@ -93,13 +101,7 @@ pub async fn list_wrong_answers<D: DbPort>(
     Query(query): Query<WrongAnswersQuery>,
 ) -> Result<Json<Vec<WrongAnswerResponse>>, AppError> {
     // MVP13 M1: ?tag_id= 파라미터 파싱 + 형식 검증
-    let tag_id_filter: Option<Uuid> = match query.tag_id {
-        Some(ref s) if !s.is_empty() => Some(
-            s.parse::<Uuid>()
-                .map_err(|_| AppError::BadRequest("tag_id: invalid UUID format".to_string()))?,
-        ),
-        _ => None,
-    };
+    let tag_id_filter = parse_optional_tag_id(query.tag_id.as_deref())?;
 
     let records = state
         .quiz_wrong_answers
