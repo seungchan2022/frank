@@ -305,3 +305,4 @@
 | 분석 | [BUG-F 태그 필터 아키텍처](mvp12/analysis_BUG-F-tag-filter.md) | 오답 태그 칩 소스 문제 분석, 서버 스키마 변경 필요 근거 |
 | 분석 | [M3 착수 전 품질 스캔](mvp12/analysis_mvp12-m3-prescan.md) | iOS 코드베이스 사전 분석 |
 | 토론 | [M2 피드 프리패치 전략](mvp12/debate_M2_feed_prefetch_strategy.md) | Prefetch vs Lazy Loading 비교, Lazy 유지 결정 |
+| 발견 | [MVP12 Discovery](mvp12/discovery.md) | 앱 사용 중 발견한 버그 6건(BUG-A~F) + CHECK 항목 원본 메모 |
