@@ -147,7 +147,7 @@
 			</div>
 		{/if}
 
-		{#if feedStore.loading && feedStore.feedItems.length === 0}
+		{#if (feedStore.loading || feedStore.isTagLoading) && feedStore.feedItems.length === 0}
 			<div class="py-12 text-center text-gray-500">
 				<p>Loading feed...</p>
 			</div>

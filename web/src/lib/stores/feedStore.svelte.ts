@@ -54,6 +54,8 @@ let feedItems = $derived(tagCache.get(activeTagId ?? ALL_TAB_KEY)?.items ?? []);
 let hasMore = $derived(tagCache.get(activeTagId ?? ALL_TAB_KEY)?.hasMore ?? true);
 /** isLoadingMore: 현재 탭 기준 */
 let isLoadingMore = $derived(tagCache.get(activeTagId ?? ALL_TAB_KEY)?.status === 'loadingMore');
+/** isTagLoading: 태그 탭 캐시 미스 후 서버 재요청 중 여부 */
+let isTagLoading = $derived(tagCache.get(activeTagId ?? ALL_TAB_KEY)?.status === 'loading');
 
 let loadedForUserId = $state<string | null>(null);
 
@@ -135,11 +137,26 @@ async function loadFeed(userId?: string): Promise<void> {
 
 /**
  * 탭 선택.
- * MVP13 M2: loadFeed 시 buildTagCache로 분리 저장 완료 → 캐시 히트 보장.
+ * 캐시 히트 시 즉시 전환. 캐시 미스(초기 20개에 없는 태그) 시 서버 재요청.
  */
-function selectTag(tagId: string | null): void {
+async function selectTag(tagId: string | null): Promise<void> {
 	if (loading || isRefreshing) return;
 	activeTagId = tagId;
+
+	const key = tagId ?? ALL_TAB_KEY;
+	if (!tagCache.has(key)) {
+		const state: TabState = { items: [], nextOffset: 0, hasMore: true, status: 'loading' };
+		tagCache = new Map([...tagCache, [key, state]]);
+		try {
+			const items = await apiClient.fetchFeed(tagId ?? undefined, { limit: PAGE_SIZE, offset: 0 });
+			tagCache = new Map([
+				...tagCache,
+				[key, { items, nextOffset: items.length, hasMore: items.length >= PAGE_SIZE, status: 'idle' as const }]
+			]);
+		} catch {
+			tagCache = new Map([...tagCache, [key, { items: [], nextOffset: 0, hasMore: false, status: 'error' as const }]]);
+		}
+	}
 }
 
 /**
@@ -265,6 +282,9 @@ export const feedStore = {
 	},
 	get isLoadingMore() {
 		return isLoadingMore;
+	},
+	get isTagLoading() {
+		return isTagLoading;
 	},
 	loadFeed,
 	selectTag,
