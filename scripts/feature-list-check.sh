@@ -114,7 +114,7 @@ if [[ "$IS_MILESTONE_DOC" -eq 1 ]]; then
         if($i != "") { print $i; break }
       }
     }')"
-    if ! echo "$status" | grep -qi "done"; then
+    if ! echo "$status" | grep -qiE "done|완료"; then
       milestone_unchecked+=("$line")
     fi
   done <<<"$ITEM_SECTION"

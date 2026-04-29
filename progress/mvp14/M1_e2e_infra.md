@@ -22,12 +22,12 @@ M2(버그 수정)·M3(UX 개선) 작업 중 바로 활용할 수 있도록, 웹(
 
 | # | 아이템 | 유형 | 플랫폼 | 상태 |
 |---|--------|------|--------|------|
-| 1 | 기존 iOS UITest 4개 실행 확인 (pass/fail 기록) | research | iOS | ✅ 완료 |
-| 2 | Playwright 실행 환경 구성 + 빈 테스트 파일 1개로 실행 검증 | chore | Web | ✅ 완료 |
-| 3 | XCUITest 파일 구조 정리 + 신규 파일 추가 위치 확정 | chore | iOS | ✅ 완료 |
-| 4 | `/e2e` 스킬 파일 뼈대 작성 | chore | — | ✅ 완료 |
-| 5 | E2E 리포트 형식 확립 + 빈 예시 1건 생성 | chore | — | ✅ 완료 |
-| 6 | E2E 격리 전략 문서화 (DB 초기화 방법) | chore | — | ✅ 완료 |
+| 1 | 기존 iOS UITest 4개 실행 확인 (pass/fail 기록) | research | iOS | ✅ done |
+| 2 | Playwright 실행 환경 구성 + 빈 테스트 파일 1개로 실행 검증 | chore | Web | ✅ done |
+| 3 | XCUITest 파일 구조 정리 + 신규 파일 추가 위치 확정 | chore | iOS | ✅ done |
+| 4 | `/e2e` 스킬 파일 뼈대 작성 | chore | — | ✅ done |
+| 5 | E2E 리포트 형식 확립 + 빈 예시 1건 생성 | chore | — | ✅ done |
+| 6 | E2E 격리 전략 문서화 (DB 초기화 방법) | chore | — | ✅ done |
 
 ## 서브태스크 분해 (Step 3)
 
