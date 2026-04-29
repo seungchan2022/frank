@@ -275,7 +275,8 @@ final class FeedFeature {
     }
 
     private func refresh() async {
-        guard phase == .idle else { return }
+        guard phase == .idle,
+              tagStates.values.allSatisfy({ $0.status != .loadingMore }) else { return }
         beginRefresh()
 
         do {
