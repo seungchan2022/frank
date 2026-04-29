@@ -78,7 +78,7 @@ DB 저장 없이는 "이미 본 기사"를 서버가 추적할 수 없다.
 | 문서 | 상태 |
 |------|------|
 | `progress/debts.md` DEBT-02 | ✅ **RESOLVED** — C안 적용 완료 |
-| `progress/mvp13/_roadmap.md` M2 | `iOS: 피드 fetch 방식 웹과 통일` **planned** |
+| `history/mvp13/_roadmap.md` M2 | `iOS: 피드 fetch 방식 웹과 통일` ✅ **done** |
 
 실제 코드 확인:
 - iOS `FeedFeature.swift`: "all" 탭 첫 페이지만 즉시 로드, 나머지 lazy — C안 적용 완료

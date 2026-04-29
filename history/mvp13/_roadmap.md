@@ -67,7 +67,7 @@ favorites에 없는 기사의 오답은 태그 필터에서 제외됨.
 
 ## M3 — 클라우드 배포
 
-기획 완료 → `progress/mvp13/M3_cloud_deploy.md` 참조.
+기획 완료 → `history/mvp13/M3_cloud_deploy.md` 참조.
 
 **범위**: GitHub Actions / 도메인 / HTTPS 없는 최소 구성 (개인 사용 목적)  
 **플랫폼**: Oracle Cloud Always Free A1 (4 OCPU / 24 GB, ARM64) + PAYG 업그레이드  
