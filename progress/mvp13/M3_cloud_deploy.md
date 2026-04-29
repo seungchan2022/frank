@@ -1,9 +1,10 @@
 # MVP13 M3 — 클라우드 배포 (개인 사용 최소 경로)
 
 > 기획일: 2026-04-28  
-> 상태: planning  
+> 상태: deferred (보류)  
 > 목표: Mac 없이도 iPhone에서 항상 앱 사용 가능. 비용 $0.  
-> 범위: GitHub Actions / 도메인 / HTTPS 없는 최소 구성. 개인 사용 목적.
+> 범위: GitHub Actions / 도메인 / HTTPS 없는 최소 구성. 개인 사용 목적.  
+> 보류 사유: Oracle PAYG 업그레이드 서버 오류 지속. 지원팀 이메일 문의 완료 (2026-04-29). 답변 후 재개.
 
 ---
 
@@ -61,10 +62,12 @@ HTTPS/도메인 없이 IP + HTTP 직접 사용. iOS ATS 예외를 Info.plist에 
 **P-01: Oracle 계정 생성 + PAYG 업그레이드**
 1. oracle.com/kr/cloud/free 접속 → 계정 생성 ✅ 완료 (2026-04-28)
 2. 신용카드 등록 ✅ 완료 (카드 만료 05/29)
-3. PAYG로 업그레이드 ❌ 미완료 — Oracle 서버 오류로 크롬/사파리 모두 실패. 나중에 재시도.
+3. PAYG로 업그레이드 ❌ 미완료 — Oracle 서버 오류로 크롬/사파리/Playwright 모두 실패.
+   - 새 계정 생성 시도 → Oracle이 동일 계정으로 감지하여 차단
+   - 직접 Compute 인스턴스 생성 시도 → 춘천 AD-1 용량 부족으로 실패
+   - Oracle 지원팀 이메일 문의 완료 (2026-04-29, cloud-free-tier-support_ww@oracle.com)
+   - 답변 대기 중. 해결되면 도쿄(ap-tokyo-1) 리전으로 A1 인스턴스 생성 예정
    - 업그레이드 후 $1 예산 알림 설정 필수
-   - Free Tier는 리전 추가 불가 → PAYG 필수
-   - 춘천 리전은 AD 1개 + Free Tier 우선순위 낮아 인스턴스 생성 불가
 
 > **재시도 시 참고**: 계정명 `anstmdcks12`, 홈 리전 춘천(ap-chuncheon-1).
 > PAYG 업그레이드 성공 후 서울(ap-seoul-1) 리전 구독 추가 → 새 Stack으로 인스턴스 생성.
