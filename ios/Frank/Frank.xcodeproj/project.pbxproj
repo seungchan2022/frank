@@ -482,8 +482,8 @@
 		2DFF0E19ECD8B376C24A1D45 = {
 			isa = PBXGroup;
 			children = (
-				4C569306A81CDA5D88BC99A9 /* Products */,
 				F24E2D27B8C9E820E21B559D /* Project */,
+				4C569306A81CDA5D88BC99A9 /* Products */,
 			);
 			sourceTree = "<group>";
 		};
@@ -880,8 +880,8 @@
 			buildPhases = (
 				E312B855EF9CFBE56B206946 /* Sources */,
 				E5B024BF517918AE1BB1EA03 /* Resources */,
-				0F1DA4EC47CBAAA1E1C7FC7E /* Frameworks */,
 				E8F82BDA2662954B6CA420FA /* Embed Frameworks */,
+				0F1DA4EC47CBAAA1E1C7FC7E /* Frameworks */,
 				D179C50EA10C79B41BCB03B1 /* Dependencies */,
 			);
 			buildRules = (
@@ -901,8 +901,8 @@
 			buildPhases = (
 				CB8286869882E28DAFD36CED /* Sources */,
 				611250BFD4F96873F819F7A8 /* Resources */,
-				B40091715D0B8414D47DFC12 /* Frameworks */,
 				749A4351EC2916DFCAD0308C /* Embed Frameworks */,
+				B40091715D0B8414D47DFC12 /* Frameworks */,
 			);
 			buildRules = (
 			);
@@ -922,8 +922,8 @@
 			buildPhases = (
 				6A0CB2780317A4399CEC4E94 /* Sources */,
 				09F94D11204DC8ED3AA2E462 /* Resources */,
-				3BE1323142DEC7F3DFF64305 /* Frameworks */,
 				D0F0D5709E78DBE0474D9E7F /* Embed Frameworks */,
+				3BE1323142DEC7F3DFF64305 /* Frameworks */,
 			);
 			buildRules = (
 			);
@@ -1167,7 +1167,6 @@
 			baseConfigurationReference = C2DB80083A3BCDBA77E2A509 /* Config.xcconfig */;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
-				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_ENTITLEMENTS = Frank/Frank.entitlements;
 				CODE_SIGN_IDENTITY = "iPhone Developer";
 				CODE_SIGN_STYLE = Automatic;
@@ -1179,10 +1178,6 @@
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				OTHER_LDFLAGS = (
-					"$(inherited)",
-					"-L$(DT_TOOLCHAIN_DIR)/usr/lib/swift/$(PLATFORM_NAME)",
-				);
 				PRODUCT_BUNDLE_IDENTIFIER = dev.frank.app;
 				PRODUCT_NAME = Frank;
 				SDKROOT = iphoneos;
@@ -1190,8 +1185,8 @@
 				SUPPORTS_MAC_DESIGNED_FOR_IPHONE_IPAD = YES;
 				SUPPORTS_XR_DESIGNED_FOR_IPHONE_IPAD = NO;
 				SWIFT_COMPILATION_MODE = wholemodule;
-				SWIFT_OPTIMIZATION_LEVEL = "-O";
-				SWIFT_VERSION = 5;
+				SWIFT_OPTIMIZATION_LEVEL = "-Owholemodule";
+				SWIFT_VERSION = 5.0;
 				TARGETED_DEVICE_FAMILY = "1,2";
 			};
 			name = Release;
@@ -1209,10 +1204,6 @@
 					"@executable_path/Frameworks",
 					"@loader_path/Frameworks",
 				);
-				OTHER_LDFLAGS = (
-					"$(inherited)",
-					"-L$(DT_TOOLCHAIN_DIR)/usr/lib/swift/$(PLATFORM_NAME)",
-				);
 				PRODUCT_BUNDLE_IDENTIFIER = dev.frank.app.tests;
 				PRODUCT_NAME = FrankTests;
 				SDKROOT = iphoneos;
@@ -1225,7 +1216,7 @@
 				);
 				SWIFT_COMPILATION_MODE = singlefile;
 				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
-				SWIFT_VERSION = 5;
+				SWIFT_VERSION = 5.0;
 				TARGETED_DEVICE_FAMILY = "1,2";
 				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/Frank.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/Frank";
 				TEST_TARGET_NAME = Frank;
@@ -1296,10 +1287,6 @@
 					"@executable_path/Frameworks",
 					"@loader_path/Frameworks",
 				);
-				OTHER_LDFLAGS = (
-					"$(inherited)",
-					"-L$(DT_TOOLCHAIN_DIR)/usr/lib/swift/$(PLATFORM_NAME)",
-				);
 				PRODUCT_BUNDLE_IDENTIFIER = dev.frank.app.uitests;
 				PRODUCT_NAME = FrankUITests;
 				SDKROOT = iphoneos;
@@ -1312,7 +1299,7 @@
 				);
 				SWIFT_COMPILATION_MODE = singlefile;
 				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
-				SWIFT_VERSION = 5;
+				SWIFT_VERSION = 5.0;
 				TARGETED_DEVICE_FAMILY = "1,2";
 				TEST_TARGET_NAME = Frank;
 			};
@@ -1323,7 +1310,6 @@
 			baseConfigurationReference = C2DB80083A3BCDBA77E2A509 /* Config.xcconfig */;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
-				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_ENTITLEMENTS = Frank/Frank.entitlements;
 				CODE_SIGN_IDENTITY = "iPhone Developer";
 				CODE_SIGN_STYLE = Automatic;
@@ -1334,10 +1320,6 @@
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
-				);
-				OTHER_LDFLAGS = (
-					"$(inherited)",
-					"-L$(DT_TOOLCHAIN_DIR)/usr/lib/swift/$(PLATFORM_NAME)",
 				);
 				PRODUCT_BUNDLE_IDENTIFIER = dev.frank.app;
 				PRODUCT_NAME = Frank;
@@ -1351,7 +1333,7 @@
 				);
 				SWIFT_COMPILATION_MODE = singlefile;
 				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
-				SWIFT_VERSION = 5;
+				SWIFT_VERSION = 5.0;
 				TARGETED_DEVICE_FAMILY = "1,2";
 			};
 			name = Debug;
@@ -1369,10 +1351,6 @@
 					"@executable_path/Frameworks",
 					"@loader_path/Frameworks",
 				);
-				OTHER_LDFLAGS = (
-					"$(inherited)",
-					"-L$(DT_TOOLCHAIN_DIR)/usr/lib/swift/$(PLATFORM_NAME)",
-				);
 				PRODUCT_BUNDLE_IDENTIFIER = dev.frank.app.tests;
 				PRODUCT_NAME = FrankTests;
 				SDKROOT = iphoneos;
@@ -1380,8 +1358,8 @@
 				SUPPORTS_MAC_DESIGNED_FOR_IPHONE_IPAD = YES;
 				SUPPORTS_XR_DESIGNED_FOR_IPHONE_IPAD = NO;
 				SWIFT_COMPILATION_MODE = wholemodule;
-				SWIFT_OPTIMIZATION_LEVEL = "-O";
-				SWIFT_VERSION = 5;
+				SWIFT_OPTIMIZATION_LEVEL = "-Owholemodule";
+				SWIFT_VERSION = 5.0;
 				TARGETED_DEVICE_FAMILY = "1,2";
 				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/Frank.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/Frank";
 				TEST_TARGET_NAME = Frank;
@@ -1458,10 +1436,6 @@
 					"@executable_path/Frameworks",
 					"@loader_path/Frameworks",
 				);
-				OTHER_LDFLAGS = (
-					"$(inherited)",
-					"-L$(DT_TOOLCHAIN_DIR)/usr/lib/swift/$(PLATFORM_NAME)",
-				);
 				PRODUCT_BUNDLE_IDENTIFIER = dev.frank.app.uitests;
 				PRODUCT_NAME = FrankUITests;
 				SDKROOT = iphoneos;
@@ -1469,8 +1443,8 @@
 				SUPPORTS_MAC_DESIGNED_FOR_IPHONE_IPAD = YES;
 				SUPPORTS_XR_DESIGNED_FOR_IPHONE_IPAD = NO;
 				SWIFT_COMPILATION_MODE = wholemodule;
-				SWIFT_OPTIMIZATION_LEVEL = "-O";
-				SWIFT_VERSION = 5;
+				SWIFT_OPTIMIZATION_LEVEL = "-Owholemodule";
+				SWIFT_VERSION = 5.0;
 				TARGETED_DEVICE_FAMILY = "1,2";
 				TEST_TARGET_NAME = Frank;
 			};
