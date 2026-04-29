@@ -512,6 +512,59 @@ describe('feedStore: MVP13 M2 — 초기 로드 시 태그별 분리 저장', ()
 	});
 });
 
+// MARK: - ST-07 BUG-008: 탭 전환 깜빡임 제거 테스트
+
+describe('feedStore: BUG-008 — 탭 전환 캐시 미스 깜빡임 방지', () => {
+	it('캐시 미스 selectTag: isTagLoading이 true인 상태로 activeTagId가 바뀌어야 함 (EmptyState 미노출)', async () => {
+		// loadFeed 없이 selectTag 직접 호출 — 캐시 미스 상황
+		let fetchResolveFn!: (value: FeedItem[]) => void;
+		const fetchPromise = new Promise<FeedItem[]>((resolve) => {
+			fetchResolveFn = resolve;
+		});
+		vi.mocked(apiClient.fetchFeed).mockReturnValueOnce(fetchPromise);
+
+		// selectTag 호출 (비동기, 아직 완료 안 됨)
+		const selectPromise = feedStore.selectTag('tag-unknown');
+
+		// fetch 완료 전: isTagLoading=true여야 함 (EmptyState 미표시 보장)
+		expect(feedStore.activeTagId).toBe('tag-unknown');
+		expect(feedStore.isTagLoading).toBe(true);
+		expect(feedStore.feedItems).toHaveLength(0); // 로딩 중은 items=[] 허용
+
+		// fetch 완료
+		fetchResolveFn([makeFeedItem('https://example.com/news/loaded')]);
+		await selectPromise;
+
+		expect(feedStore.isTagLoading).toBe(false);
+		expect(feedStore.feedItems).toHaveLength(1);
+	});
+
+	it('캐시 미스 selectTag 에러: 에러 캐시 저장 없이 키 제거 → 재시도 가능', async () => {
+		vi.mocked(apiClient.fetchFeed).mockRejectedValueOnce(new Error('network error'));
+		vi.mocked(apiClient.fetchTags).mockResolvedValueOnce([makeTag('tag-1', 'AI')]);
+		vi.mocked(apiClient.fetchMyTagIds).mockResolvedValueOnce(['tag-1']);
+		await feedStore.loadFeed('user-1');
+
+		const originalTagId = feedStore.activeTagId;
+
+		// 캐시에 없는 태그로 selectTag — 에러 발생
+		vi.mocked(apiClient.fetchFeed).mockRejectedValueOnce(new Error('tag fetch error'));
+		await feedStore.selectTag('tag-nonexistent');
+
+		// 에러 시: activeTagId가 원래 탭으로 롤백되어야 함
+		expect(feedStore.activeTagId).toBe(originalTagId);
+
+		// 에러 시: 캐시에 status=error인 항목이 남으면 안 됨 (재시도 불가 차단 방지)
+		// 다음 selectTag 재호출 시 API를 다시 호출해야 함
+		vi.mocked(apiClient.fetchFeed).mockResolvedValueOnce([makeFeedItem('https://example.com/retry')]);
+		await feedStore.selectTag('tag-nonexistent');
+
+		expect(feedStore.activeTagId).toBe('tag-nonexistent');
+		expect(feedStore.feedItems).toHaveLength(1);
+		expect(feedStore.feedItems[0].url).toBe('https://example.com/retry');
+	});
+});
+
 describe('feedStore: G-03 전체 탭 재방문 캐시 히트', () => {
 	it('G-03: selectTag(null) 복귀 시 API 없음, 전체 items 반환', async () => {
 		vi.mocked(apiClient.fetchFeed).mockResolvedValueOnce(makeFeedItems(3));
