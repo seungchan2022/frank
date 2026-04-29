@@ -76,7 +76,14 @@ final class FeedFeature {
 
     // MARK: - Derived
 
-    var isLoading: Bool { phase == .initialLoading }
+    /// 초기 로딩 중이거나 탭 전환 캐시 미스로 인한 로딩 중이면 true.
+    /// FeedView는 isLoading = true 시 ShimmerListView를 표시한다.
+    /// BUG-008: 탭 전환 캐시 미스 시 빈 TagState(items=[])가 먼저 세팅되면
+    /// FeedView가 EmptyStateView를 보여주는 깜빡임이 발생했다.
+    /// currentKey의 status가 .loading이면 ShimmerView를 표시해 빈 상태 노출을 막는다.
+    var isLoading: Bool {
+        phase == .initialLoading || tagStates[currentKey]?.status == .loading
+    }
     var isRefreshing: Bool { phase == .refreshing }
 
     // MARK: - Error
@@ -239,6 +246,7 @@ final class FeedFeature {
         // 캐시 히트 → 즉시 표시, 재요청 없음
         if tagStates[key] != nil {
             selectedTagId = tagId
+            errorMessage = nil
             return
         }
 
@@ -252,6 +260,8 @@ final class FeedFeature {
         do {
             let items = try await article.fetchFeed(tagId: tagId, noCache: false, limit: PAGE_SIZE, offset: 0)
             tagStates[key] = .firstPage(items: items, pageSize: PAGE_SIZE)
+            // 이전 탭 전환 에러가 남아 있을 수 있으므로 성공 시 클리어
+            errorMessage = nil
         } catch {
             // 에러 시 캐시를 제거해 다음 탭 전환 시 재시도 가능하게 함.
             // selectedTagId 롤백은 현재 탭이 여전히 실패한 탭일 때만 수행
