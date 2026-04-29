@@ -309,14 +309,14 @@
 
 ---
 
-## MVP13 — 실사용 전환: 오답 태그 + 피드 품질 + 클라우드 배포 (260428~)
+## MVP13 — 실사용 전환: 오답 태그 + 피드 품질 + 클라우드 배포 (260428~260429)
 
-> M1(서버+DB), M2(웹+iOS) 완료. M3(클라우드 배포) planning 중.
+> M1(서버+DB) ✅ + M2(웹+iOS) ✅ 완료. M3(클라우드 배포) ⏸ deferred — Oracle PAYG 업그레이드 오류, 지원팀 문의 중. 재개 조건: Oracle 답변 후 도쿄(ap-tokyo-1) 리전으로 재시도.
 
 | 유형 | 파일 | 핵심 내용 |
 |------|------|----------|
 | 로드맵 | [MVP13 로드맵](mvp13/_roadmap.md) | M1~M3 마일스톤, 실사용 전환 목표 |
 | 마일스톤 | [M1 오답 태그 필터](mvp13/M1_debt01_tag_filter.md) | quiz_wrong_answers tag_id 컬럼 + 서버 필터 API (DEBT-01 해소) |
 | 마일스톤 | [M2 피드 싱크](mvp13/M2_client_feed_sync.md) | 웹+iOS 오답 필터 전환 + 피드 하이브리드 캐싱 |
-| 마일스톤 | [M3 클라우드 배포](mvp13/M3_cloud_deploy.md) | Oracle Always Free A1, HTTP 직접 사용, $0 배포 |
-| 회고 | [260428 일일 회고](../history/260428_daily_retro.md) | "써봐야 없는 게 보인다" · 흐름 중단 기준 |
+| 마일스톤 | [M3 클라우드 배포](mvp13/M3_cloud_deploy.md) | Oracle Always Free A1, HTTP 직접 사용, $0 배포 — ⏸ deferred |
+| 회고 | [260428 일일 회고](260428_daily_retro.md) | "써봐야 없는 게 보인다" · 흐름 중단 기준 |
