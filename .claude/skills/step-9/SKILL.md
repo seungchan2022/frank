@@ -122,6 +122,30 @@ Write 도구로 직접 갱신해도 된다. **이 단계를 잊으면 다음 커
 
 ---
 
+## [6] 마일스톤 완료 여부 확인 ★ 필수
+
+커밋 성공 직후 반드시 물어본다:
+
+```
+이 커밋으로 M{N} 마일스톤 작업이 완전히 완료됐나요? (y/n)
+```
+
+**y인 경우**:
+```bash
+# 현재 마일스톤 번호 읽기
+MILESTONE=$(cat progress/active_milestone.txt | cut -d: -f1)
+echo "${MILESTONE}:done" > progress/active_milestone.txt
+```
+→ 이 변경도 커밋에 포함하거나, 즉시 `docs:` 단독 커밋으로 추가.
+
+**n인 경우**:
+→ `active_milestone.txt` 유지 (추가 커밋 예정).
+
+**왜 중요한가**: 이를 누락하면 새 채팅 `/init` 시 이전 마일스톤이 `in-progress`로 잘못 표시되어
+`/workflow "M{N+1}-..."` 호출 전까지 컨텍스트가 틀린 상태로 세션이 시작된다.
+
+---
+
 ## 완료
 
 서브태스크 완료 시:

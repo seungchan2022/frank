@@ -49,7 +49,11 @@ allowed-tools:
    - `progress/active_milestone.txt`를 읽어 이전 M 확인
    - 이전이 `M{Y}:in-progress` 이고 새 호출이 다른 `M{X}`면:
      → 시스템이 **"이전 M{Y} 완료된 것으로 처리합니다. 수동 E2E 테스트 통과 + 문서 갱신 + 커밋 완료됐나요? (y/n)"** 확인
-     → `y`면 `M{Y}:done`으로 전이 후 계속. 기록은 직전 커밋으로 남김
+     → `y`면 **반드시 아래 명령 실행** 후 계속:
+       ```bash
+       echo "M{Y}:done" > progress/active_milestone.txt
+       ```
+       그리고 이 변경을 `docs:` 커밋으로 즉시 추가 (또는 다음 커밋에 포함)
      → `n`이면 중단하고 사용자에게 M{Y} 마무리 안내
 
 3. **새 마일스톤 active 전이**:
