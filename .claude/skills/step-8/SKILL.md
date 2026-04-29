@@ -24,8 +24,16 @@ git diff --cached --name-only 2>/dev/null || git diff --name-only HEAD
 
 ### Swift (iOS/macOS)
 ```bash
-swift test                          # 단위 테스트
-swiftlint lint                      # 린트
+# 단위/통합 테스트
+cd ios/Frank && ~/.tuist/Versions/4.31.0/tuist generate --no-open
+xcodebuild test -workspace Frank.xcworkspace -scheme Frank \
+  -destination 'platform=iOS Simulator,name=iPhone 17 Pro' \
+  -only-testing:FrankTests
+
+# E2E (XCUITest) — ios/ 변경 포함 시 실행
+xcodebuild test -workspace Frank.xcworkspace -scheme Frank \
+  -destination 'platform=iOS Simulator,name=iPhone 17 Pro' \
+  -only-testing:FrankUITests
 ```
 
 ### Svelte (프론트엔드)
@@ -33,7 +41,8 @@ swiftlint lint                      # 린트
 cd {프론트엔드_경로}
 npm run lint                        # ESLint
 npm run check                       # svelte-check
-npm run test                        # Vitest
+npm run test                        # Vitest (단위/통합)
+npm run test:e2e                    # Playwright E2E — web/ 변경 포함 시 실행
 ```
 
 ### Rust (서버)
