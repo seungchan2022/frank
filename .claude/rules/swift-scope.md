@@ -18,6 +18,17 @@
 - 네트워크 레이어: URLSession 또는 Alamofire
 - 데이터 모델: Codable 프로토콜 필수
 
+## LSP 도구 금지 ★
+
+Swift 파일 작업 시 **LSP 도구 호출 절대 금지**.
+SourceKit 재인덱스 지연이 발생해 각 스텝 응답이 수십 초 느려진다.
+일시적으로 오류처럼 보이는 메시지는 재인덱스 전 노이즈이며 실제 빌드 오류가 아니다.
+
+타입 검증은 LSP 대신 아래 명령만 사용:
+```bash
+xcodebuild build -scheme Frank -destination 'platform=iOS Simulator,name=iPhone 17 Pro'
+```
+
 ## 필수 검증 (커밋 전)
 
 ```bash
