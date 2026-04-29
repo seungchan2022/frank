@@ -13,8 +13,10 @@ use crate::middleware::auth::AuthUser;
 
 use super::AppState;
 
-/// 피드 TTL: 5분
+/// 피드 TTL: 완전 성공 5분
 const FEED_CACHE_TTL: Duration = Duration::from_secs(300);
+/// 피드 TTL: 부분 실패(일부 태그 검색 오류) 1분
+const FEED_CACHE_TTL_PARTIAL: Duration = Duration::from_secs(60);
 
 /// 캐시 키 생성: 특정 태그 → `"{user_id}:{tag_id}"`, 전체 피드 → `"{user_id}:{sorted_tag_ids}"`
 fn make_cache_key(user_id: Uuid, tag_ids: &[Uuid]) -> String {
@@ -218,12 +220,14 @@ pub async fn get_feed<D: DbPort>(
     let results = futures::future::join_all(futures).await;
 
     let mut items: Vec<FeedItem> = vec![];
+    let mut search_failed_count: usize = 0;
 
     for (tag_id, tag_name, search_result) in results {
         let (search_items, source) = match search_result {
             Ok(pair) => pair,
             Err(e) => {
                 tracing::warn!(tag = %tag_name, error = %e, "search failed for tag, skipping");
+                search_failed_count += 1;
                 continue;
             }
         };
@@ -271,10 +275,23 @@ pub async fn get_feed<D: DbPort>(
 
     // ── 피드 캐시 저장 ──────────────────────────────────────────────────────
     // no-cache 요청도 결과는 저장 (다음 일반 요청에서 HIT)
+    // 완전 실패(items 빈 배열) → 저장 스킵
+    // 부분 실패(일부 태그 검색 오류) → 1분 단축 TTL (불완전 결과 조기 만료)
+    // 완전 성공 → 5분 TTL
     if !items.is_empty() {
-        state
-            .feed_cache
-            .set(&cache_key, items.clone(), FEED_CACHE_TTL);
+        let ttl = if search_failed_count > 0 {
+            FEED_CACHE_TTL_PARTIAL
+        } else {
+            FEED_CACHE_TTL
+        };
+        if search_failed_count > 0 {
+            tracing::info!(
+                failed_tags = search_failed_count,
+                ttl_secs = ttl.as_secs(),
+                "partial search failure — caching with short TTL"
+            );
+        }
+        state.feed_cache.set(&cache_key, items.clone(), ttl);
     }
     // ────────────────────────────────────────────────────────────────────────
 
@@ -492,6 +509,30 @@ mod tests {
             "test",
             search_results,
             false,
+        ))]);
+        let cache = Arc::new(InMemoryFeedCache::new(10));
+        let state = super::super::AppState {
+            db,
+            search_chain: Arc::new(chain) as Arc<dyn SearchChainPort>,
+            llm: Arc::new(FakeLlmAdapter::new()),
+            crawl: Arc::new(FakeCrawlAdapter::new()),
+            notifier: Arc::new(FakeNotificationAdapter::new()),
+            favorites: Arc::new(FakeFavoritesAdapter::new()),
+            quiz_wrong_answers: Arc::new(FakeQuizWrongAnswerAdapter::new()),
+            feed_cache: Arc::clone(&cache) as Arc<dyn crate::domain::ports::FeedCachePort>,
+        };
+        (state, cache)
+    }
+
+    fn make_test_state_with_cache_and_query_map(
+        db: FakeDbAdapter,
+        query_map: HashMap<String, Result<Vec<SearchResult>, String>>,
+    ) -> (
+        super::super::AppState<FakeDbAdapter>,
+        Arc<InMemoryFeedCache>,
+    ) {
+        let chain = SearchFallbackChain::new(vec![Box::new(FakeSearchAdapter::with_query_map(
+            "test", query_map,
         ))]);
         let cache = Arc::new(InMemoryFeedCache::new(10));
         let state = super::super::AppState {
@@ -1619,6 +1660,146 @@ mod tests {
             "tag_id 지정 시 키워드 boost 없는 기본 쿼리로 검색돼야 한다"
         );
         assert_eq!(items[0].url, "https://example.com/news/ai");
+    }
+
+    // MARK: - ST-02 BUG-006 F-03: 부분 실패 TTL 분기 테스트
+
+    /// F-02: 완전 성공 시 5분 TTL 저장 확인
+    #[tokio::test]
+    async fn feed_cache_full_success_uses_5min_ttl() {
+        let db = FakeDbAdapter::new();
+        let user_id = Uuid::new_v4();
+        db.seed_profile(Profile {
+            id: user_id,
+            display_name: None,
+            onboarding_completed: true,
+        });
+
+        let tags = db.get_tags();
+        let tag_a = &tags[0];
+        db.seed_user_tag(user_id, tag_a.id);
+
+        let query_a = format!("{} latest news", tag_a.name);
+        let mut query_map: HashMap<String, Result<Vec<SearchResult>, String>> = HashMap::new();
+        query_map.insert(
+            query_a.clone(),
+            Ok(vec![SearchResult {
+                title: "AI Article".to_string(),
+                url: "https://example.com/news/ai".to_string(),
+                snippet: None,
+                published_at: None,
+                image_url: None,
+            }]),
+        );
+
+        let (state, cache) = make_test_state_with_cache_and_query_map(db, query_map);
+        let cache_key = format!("{}:{}", user_id, tag_a.id);
+        let app = make_app(state, user_id);
+        let server = TestServer::new(app);
+
+        let resp = server.get("/me/feed").await;
+        resp.assert_status_ok();
+
+        // 완전 성공 → 남은 TTL이 4분 이상 (5분에서 약간 경과)
+        let remaining = cache.remaining_ttl(&cache_key);
+        assert!(remaining.is_some(), "완전 성공 → 캐시에 저장되어야 함");
+        let secs = remaining.unwrap().as_secs();
+        assert!(
+            secs > 4 * 60,
+            "완전 성공 TTL은 5분(300초)에 가까워야 함, 실제: {secs}초"
+        );
+    }
+
+    /// F-03: 부분 실패(일부 태그 검색 오류) 시 1분 단축 TTL 저장 확인
+    #[tokio::test]
+    async fn feed_cache_partial_failure_uses_1min_ttl() {
+        let db = FakeDbAdapter::new();
+        let user_id = Uuid::new_v4();
+        db.seed_profile(Profile {
+            id: user_id,
+            display_name: None,
+            onboarding_completed: true,
+        });
+
+        let tags = db.get_tags();
+        let tag_a = &tags[0]; // 실패
+        let tag_b = &tags[1]; // 성공
+        db.seed_user_tag(user_id, tag_a.id);
+        db.seed_user_tag(user_id, tag_b.id);
+
+        let query_a = format!("{} latest news", tag_a.name);
+        let query_b = format!("{} latest news", tag_b.name);
+
+        let mut query_map: HashMap<String, Result<Vec<SearchResult>, String>> = HashMap::new();
+        query_map.insert(query_a, Err("search engine error".to_string()));
+        query_map.insert(
+            query_b,
+            Ok(vec![SearchResult {
+                title: "Web Article".to_string(),
+                url: "https://example.com/news/web".to_string(),
+                snippet: None,
+                published_at: None,
+                image_url: None,
+            }]),
+        );
+
+        let mut sorted_ids = vec![tag_a.id.to_string(), tag_b.id.to_string()];
+        sorted_ids.sort();
+        let cache_key = format!("{}:{}", user_id, sorted_ids.join(","));
+
+        let (state, cache) = make_test_state_with_cache_and_query_map(db, query_map);
+        let app = make_app(state, user_id);
+        let server = TestServer::new(app);
+
+        let resp = server.get("/me/feed").await;
+        resp.assert_status_ok();
+        let items: Vec<FeedItemResponse> = resp.json();
+        assert_eq!(items.len(), 1, "부분 실패: 성공한 태그 결과만 반환");
+
+        // 부분 실패 → 남은 TTL이 1분(60초) 이하
+        let remaining = cache.remaining_ttl(&cache_key);
+        assert!(remaining.is_some(), "부분 실패도 성공 결과 있으면 캐시에 저장되어야 함");
+        let secs = remaining.unwrap().as_secs();
+        assert!(
+            secs <= 60,
+            "부분 실패 TTL은 1분(60초) 이하여야 함, 실제: {secs}초"
+        );
+    }
+
+    /// F-02: 완전 실패(모든 태그 검색 실패) 시 캐시 저장 안 함
+    #[tokio::test]
+    async fn feed_cache_complete_failure_not_cached() {
+        let db = FakeDbAdapter::new();
+        let user_id = Uuid::new_v4();
+        db.seed_profile(Profile {
+            id: user_id,
+            display_name: None,
+            onboarding_completed: true,
+        });
+
+        let tags = db.get_tags();
+        let tag_a = &tags[0];
+        db.seed_user_tag(user_id, tag_a.id);
+
+        let query_a = format!("{} latest news", tag_a.name);
+        let mut query_map: HashMap<String, Result<Vec<SearchResult>, String>> = HashMap::new();
+        query_map.insert(query_a, Err("total failure".to_string()));
+
+        let cache_key = format!("{}:{}", user_id, tag_a.id);
+        let (state, cache) = make_test_state_with_cache_and_query_map(db, query_map);
+        let app = make_app(state, user_id);
+        let server = TestServer::new(app);
+
+        let resp = server.get("/me/feed").await;
+        resp.assert_status_ok();
+        let items: Vec<FeedItemResponse> = resp.json();
+        assert!(items.is_empty(), "완전 실패 → 빈 결과");
+
+        // 완전 실패 → 캐시에 저장 안 함
+        assert!(
+            cache.remaining_ttl(&cache_key).is_none(),
+            "완전 실패 시 캐시 저장 안 함"
+        );
     }
 
     /// S1: 태그 A 쿼리 실패, 태그 B 쿼리 성공 → B 결과만 반환

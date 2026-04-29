@@ -115,6 +115,22 @@ impl FeedCachePort for InMemoryFeedCache {
     }
 }
 
+impl InMemoryFeedCache {
+    /// 테스트용: 특정 키의 남은 TTL을 반환. 만료되었거나 키가 없으면 None.
+    #[cfg(test)]
+    pub fn remaining_ttl(&self, key: &str) -> Option<Duration> {
+        let store = self.store.lock().expect("feed cache lock poisoned");
+        store.get(key).and_then(|entry| {
+            let now = Instant::now();
+            if entry.expires_at > now {
+                Some(entry.expires_at - now)
+            } else {
+                None
+            }
+        })
+    }
+}
+
 // ── 단위 테스트 ────────────────────────────────────────────────────────────────
 
 #[cfg(test)]
