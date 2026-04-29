@@ -138,15 +138,25 @@ async function loadFeed(userId?: string): Promise<void> {
 /**
  * 탭 선택.
  * 캐시 히트 시 즉시 전환. 캐시 미스(초기 20개에 없는 태그) 시 서버 재요청.
+ *
+ * BUG-008 수정:
+ * - tagCache를 activeTagId보다 먼저 업데이트해 isTagLoading이 true인 상태로
+ *   selectedTagId가 바뀌도록 함. 빈 상태(items=[]) + isTagLoading=false 구간 제거.
+ * - 에러 시 {status: 'error'} 저장 제거 → tagCache에서 키 삭제.
+ *   다음 탭 전환 시 재시도 가능. (iOS FeedFeature 동작과 통일)
  */
 async function selectTag(tagId: string | null): Promise<void> {
 	if (loading || isRefreshing) return;
-	activeTagId = tagId;
 
 	const key = tagId ?? ALL_TAB_KEY;
 	if (!tagCache.has(key)) {
-		const state: TabState = { items: [], nextOffset: 0, hasMore: true, status: 'loading' };
-		tagCache = new Map([...tagCache, [key, state]]);
+		// tagCache를 먼저 업데이트(loading 상태)한 뒤 activeTagId를 변경.
+		// 이 순서가 반대이면 activeTagId 변경 시점에 isTagLoading=false여서
+		// feedItems=[] + isTagLoading=false → EmptyStateView 깜빡임이 발생한다.
+		const previousTagId = activeTagId;
+		const loadingState: TabState = { items: [], nextOffset: 0, hasMore: true, status: 'loading' };
+		tagCache = new Map([...tagCache, [key, loadingState]]);
+		activeTagId = tagId;
 		try {
 			const items = await apiClient.fetchFeed(tagId ?? undefined, { limit: PAGE_SIZE, offset: 0 });
 			tagCache = new Map([
@@ -154,8 +164,15 @@ async function selectTag(tagId: string | null): Promise<void> {
 				[key, { items, nextOffset: items.length, hasMore: items.length >= PAGE_SIZE, status: 'idle' as const }]
 			]);
 		} catch {
-			tagCache = new Map([...tagCache, [key, { items: [], nextOffset: 0, hasMore: false, status: 'error' as const }]]);
+			// 에러 시 키 제거 → 다음 탭 전환 시 재시도 가능 (에러 캐시 저장 방지)
+			tagCache = new Map([...tagCache].filter(([k]) => k !== key));
+			// 에러 발생한 탭이 여전히 선택 중이면 이전 탭으로 롤백
+			if (activeTagId === tagId) {
+				activeTagId = previousTagId;
+			}
 		}
+	} else {
+		activeTagId = tagId;
 	}
 }
 
