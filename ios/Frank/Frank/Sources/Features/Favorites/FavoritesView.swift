@@ -6,6 +6,7 @@ import SwiftUI
 /// MVP8 M3: WrongAnswerPort + FavoritesPort 주입 — QuizFeature에 전달.
 ///           세그먼트 탭 ("기사" / "오답 노트") + quizCompleted 배지 + WrongAnswersFeature 통합.
 /// MVP11 M4: TagChipBarView 통합 — 기사·오답 탭 공유 selectedTagId 필터.
+/// MVP14 M3: DEBT-05 — swipeActions → contextMenu 전환, DragGesture → TabView(.page) 전환.
 struct FavoritesView: View {
     let feature: FavoritesFeature
     let summarize: any SummarizePort
@@ -17,9 +18,10 @@ struct FavoritesView: View {
     @State private var selectedTab: FavoritesTab = .articles
     @State private var wrongAnswersFeature: WrongAnswersFeature
 
-    /// MVP11 M4: 기사·오답 탭 공유 selectedTagId. 탭 전환 시 nil 초기화.
-    /// MVP11 M4: 기사·오답 탭 공유 선택 태그. 탭 전환 시 nil 초기화.
-    @State private var selectedTagId: UUID?
+    @State private var articlesPageIndex: Int = 0
+    @State private var articlesScrollID: Int? = 0
+    @State private var wrongAnswersPageIndex: Int = 0
+    @State private var wrongAnswersScrollID: Int? = 0
 
     init(
         feature: FavoritesFeature,
@@ -38,23 +40,29 @@ struct FavoritesView: View {
         self._wrongAnswersFeature = State(initialValue: WrongAnswersFeature(wrongAnswer: wrongAnswer))
     }
 
+    // MARK: - Tag ID Arrays
+
+    var articlesTagIds: [UUID?] {
+        [nil] + feature.tags.map { Optional($0.id) }
+    }
+
+    var wrongAnswerTagIds: [UUID?] {
+        [nil] + wrongAnswerTags.map { Optional($0.id) }
+    }
+
+    var articlesSelectedTagId: UUID? {
+        articlesPageIndex < articlesTagIds.count ? articlesTagIds[articlesPageIndex] : nil
+    }
+
+    var wrongAnswersSelectedTagId: UUID? {
+        wrongAnswersPageIndex < wrongAnswerTagIds.count ? wrongAnswerTagIds[wrongAnswersPageIndex] : nil
+    }
+
     // MARK: - MVP13 M2: 오답 탭 필터 computed (favorites 브릿지 제거)
 
-    /// 오답 탭에 표시할 태그 칩 소스.
-    /// WrongAnswer.tagId 직접 집계 — favorites 브릿지(buildTagMap) 제거.
     var wrongAnswerTags: [Tag] {
         let usedTagIds = Set(wrongAnswersFeature.items.compactMap { $0.tagId })
         return feature.tags.filter { usedTagIds.contains($0.id) }
-    }
-
-    /// 오답 탭 필터 결과.
-    /// - selectedTagId == nil: 전체 반환
-    /// - selectedTagId != nil: wa.tagId == selectedTagId 인 항목만 반환
-    var filteredWrongAnswers: [WrongAnswer] {
-        WrongAnswerTagFilter.filter(
-            items: wrongAnswersFeature.items,
-            selectedTagId: selectedTagId
-        )
     }
 
     var body: some View {
@@ -79,16 +87,20 @@ struct FavoritesView: View {
                 }
             }
             .navigationTitle("스크랩")
+            .navigationDestination(for: FavoriteItem.self) { item in
+                favoriteDetail(item: item)
+            }
             .task { await feature.loadFavorites() }
             .task(id: selectedTab) {
-                selectedTagId = nil
+                articlesPageIndex = 0
+                articlesScrollID = 0
+                wrongAnswersPageIndex = 0
+                wrongAnswersScrollID = 0
                 if selectedTab == .wrongAnswers {
                     await wrongAnswersFeature.load()
                 }
             }
             .onReceive(NotificationCenter.default.publisher(for: .wrongAnswerSaved)) { _ in
-                // 퀴즈 오답 저장 직후 오답 탭이 이미 선택되어 있어도 리로드.
-                // .task(id: selectedTab)은 탭 전환 시만 실행되므로 별도 트리거 필요.
                 if selectedTab == .wrongAnswers {
                     Task { await wrongAnswersFeature.load() }
                 }
@@ -125,25 +137,50 @@ struct FavoritesView: View {
                 articlesEmptyView
             } else {
                 VStack(spacing: 0) {
-                    tagChipBar(tags: feature.tags) { selectedTagId = $0 }
-                    itemList
+                    if !feature.tags.isEmpty {
+                        TagChipBarView(
+                            tags: feature.tags,
+                            selectedTagId: articlesSelectedTagId,
+                            onSelect: { newTagId in
+                                let idx = articlesTagIds.firstIndex(where: { $0 == newTagId }) ?? 0
+                                articlesPageIndex = idx
+                                articlesScrollID = idx
+                            }
+                        )
+                        .padding(.vertical, 8)
+                        Divider()
+                    }
+                    ScrollView(.horizontal, showsIndicators: false) {
+                        LazyHStack(spacing: 0) {
+                            ForEach(0..<articlesTagIds.count, id: \.self) { index in
+                                itemListForTag(articlesTagIds[index])
+                                    .containerRelativeFrame(.horizontal)
+                                    .id(index)
+                            }
+                        }
+                        .scrollTargetLayout()
+                    }
+                    .scrollTargetBehavior(.viewAligned(limitBehavior: .always))
+                    .scrollPosition(id: $articlesScrollID)
+                    .onChange(of: articlesScrollID) { _, newID in
+                        if let idx = newID { articlesPageIndex = idx }
+                    }
                 }
             }
         }
     }
 
-    private var itemList: some View {
-        List(feature.filteredItems(selectedTagId: selectedTagId)) { item in
+    private func itemListForTag(_ tagId: UUID?) -> some View {
+        List(feature.filteredItems(selectedTagId: tagId)) { item in
             NavigationLink(value: item) {
                 FavoriteRowView(item: item)
             }
-            .swipeActions(edge: .trailing) {
+            .contextMenu {
                 Button(role: .destructive) {
                     Task {
                         await feature.removeFavorite(url: item.url)
-                        // ST2 BUG-E: 삭제 후 남은 아이템에 현재 태그가 없으면 selectedTagId 초기화
-                        if FavoritesFeature.shouldResetTagId(remaining: feature.items, current: selectedTagId) {
-                            selectedTagId = nil
+                        if FavoritesFeature.shouldResetTagId(remaining: feature.items, current: tagId) {
+                            articlesPageIndex = 0
                         }
                     }
                 } label: {
@@ -152,9 +189,6 @@ struct FavoritesView: View {
             }
         }
         .listStyle(.plain)
-        .navigationDestination(for: FavoriteItem.self) { item in
-            favoriteDetail(item: item)
-        }
     }
 
     @ViewBuilder
@@ -200,24 +234,53 @@ struct FavoritesView: View {
                 wrongAnswersEmptyView
             } else {
                 VStack(spacing: 0) {
-                    tagChipBar(tags: wrongAnswerTags, onSelect: { selectedTagId = $0 }) { newTags in
-                        // 현재 선택된 태그가 오답 탭에서 유효하지 않으면 nil로 초기화
-                        if let current = selectedTagId,
-                           !newTags.contains(where: { $0.id == current }) {
-                            selectedTagId = nil
+                    if !wrongAnswerTags.isEmpty {
+                        TagChipBarView(
+                            tags: wrongAnswerTags,
+                            selectedTagId: wrongAnswersSelectedTagId,
+                            onSelect: { newTagId in
+                                let idx = wrongAnswerTagIds.firstIndex(where: { $0 == newTagId }) ?? 0
+                                wrongAnswersPageIndex = idx
+                            }
+                        )
+                        .padding(.vertical, 8)
+                        Divider()
+                    }
+                    ScrollView(.horizontal, showsIndicators: false) {
+                        LazyHStack(spacing: 0) {
+                            ForEach(0..<wrongAnswerTagIds.count, id: \.self) { index in
+                                wrongAnswersListForTag(wrongAnswerTagIds[index])
+                                    .containerRelativeFrame(.horizontal)
+                                    .id(index)
+                            }
+                        }
+                        .scrollTargetLayout()
+                    }
+                    .scrollTargetBehavior(.viewAligned(limitBehavior: .always))
+                    .scrollPosition(id: $wrongAnswersScrollID)
+                    .onChange(of: wrongAnswersScrollID) { _, newID in
+                        if let idx = newID { wrongAnswersPageIndex = idx }
+                    }
+                    .onChange(of: wrongAnswerTags) { _, newTags in
+                        if wrongAnswersPageIndex > newTags.count {
+                            wrongAnswersPageIndex = 0
+                            wrongAnswersScrollID = 0
                         }
                     }
-                    wrongAnswersList
                 }
             }
         }
     }
 
-    private var wrongAnswersList: some View {
-        List {
-            ForEach(filteredWrongAnswers) { item in
+    private func wrongAnswersListForTag(_ tagId: UUID?) -> some View {
+        let items = WrongAnswerTagFilter.filter(
+            items: wrongAnswersFeature.items,
+            selectedTagId: tagId
+        )
+        return List {
+            ForEach(items) { item in
                 WrongAnswerRow(item: item)
-                    .swipeActions(edge: .trailing) {
+                    .contextMenu {
                         Button(role: .destructive) {
                             Task { await wrongAnswersFeature.delete(id: item.id) }
                         } label: {
@@ -306,36 +369,8 @@ struct FavoritesView: View {
             .transition(.move(edge: .bottom).combined(with: .opacity))
     }
 
-    // MARK: - Tag Chip Bars
-
-    /// TagChipBarView + Divider 블록 공용 헬퍼.
-    /// - Parameters:
-    ///   - tags: 표시할 태그 목록
-    ///   - onSelect: 태그 선택 콜백
-    ///   - onTagsChanged: tags 변경 시 현재 선택 태그 유효성 검사가 필요한 경우 주입.
-    ///                    nil이면 onChange 없이 렌더링 (기사 탭).
-    @ViewBuilder
-    private func tagChipBar(
-        tags: [Tag],
-        onSelect: @escaping (UUID?) -> Void,
-        onTagsChanged: (([Tag]) -> Void)? = nil
-    ) -> some View {
-        if !tags.isEmpty {
-            if let onTagsChanged {
-                TagChipBarView(tags: tags, selectedTagId: selectedTagId, onSelect: onSelect)
-                    .padding(.vertical, 8)
-                    .onChange(of: tags) { _, newTags in onTagsChanged(newTags) }
-            } else {
-                TagChipBarView(tags: tags, selectedTagId: selectedTagId, onSelect: onSelect)
-                    .padding(.vertical, 8)
-            }
-            Divider()
-        }
-    }
-
     // MARK: - Summary Cache Injection
 
-    /// step-5 L: 저장된 요약 → SummarySessionCache 주입 (상세 진입 시 즉시 표시)
     @discardableResult
     private func injectSummaryCache(item: FavoriteItem, url: String) -> Bool {
         if let summary = item.summary, let insight = item.insight {

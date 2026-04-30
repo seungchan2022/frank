@@ -86,6 +86,7 @@
 		8B989BB895BFF8755AAD27E1 /* QuizPort.swift in Sources */ = {isa = PBXBuildFile; fileRef = 08A30E426C4576C05308000B /* QuizPort.swift */; };
 		8D295DF472EE4D23C74BC20C /* AuthFeature.swift in Sources */ = {isa = PBXBuildFile; fileRef = BD36781A45AF6DB6F8BBA8E1 /* AuthFeature.swift */; };
 		8E52AAEDB63027742C029C9B /* FavoritesView.swift in Sources */ = {isa = PBXBuildFile; fileRef = BF38FE942A61107648097352 /* FavoritesView.swift */; };
+		8F79EC0908671BD2C56E1C15 /* M3UXImprovementsUITest.swift in Sources */ = {isa = PBXBuildFile; fileRef = F814F1DF6BE3BC706A2FC458 /* M3UXImprovementsUITest.swift */; };
 		91A1BB91D96FD7BED4BAFF17 /* ArticlePort.swift in Sources */ = {isa = PBXBuildFile; fileRef = 51B78558CD59C61117F18399 /* ArticlePort.swift */; };
 		932F5AD8F02643F8D985525E /* APITagAdapter.swift in Sources */ = {isa = PBXBuildFile; fileRef = A9683C6B43DA974DCE5DD999 /* APITagAdapter.swift */; };
 		9391F18A5EBCADC127D57671 /* Storage.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 9CF4FFE942B3AA1EC2B85867 /* Storage.framework */; };
@@ -351,6 +352,7 @@
 		F105B33D24EF46FFD0CBD474 /* Supabase.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; includeInIndex = 0; path = Supabase.framework; sourceTree = BUILT_PRODUCTS_DIR; };
 		F1FFDBA544432F2C7535E63D /* WrongAnswerTagFilterTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WrongAnswerTagFilterTests.swift; sourceTree = "<group>"; };
 		F3DA3E4B4E1980D0F95D7BAF /* MockLikesPort.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MockLikesPort.swift; sourceTree = "<group>"; };
+		F814F1DF6BE3BC706A2FC458 /* M3UXImprovementsUITest.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = M3UXImprovementsUITest.swift; sourceTree = "<group>"; };
 		F9DFAAB732849E70B2B05605 /* IssueReportingPackageSupport.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; includeInIndex = 0; path = IssueReportingPackageSupport.framework; sourceTree = BUILT_PRODUCTS_DIR; };
 		FC5FE3CF1C8927930FE969DC /* MockWrongAnswerPort.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MockWrongAnswerPort.swift; sourceTree = "<group>"; };
 		FCECD344DC6F839CF9A42C87 /* CollectPort.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CollectPort.swift; sourceTree = "<group>"; };
@@ -454,6 +456,7 @@
 			children = (
 				FE4500A81F7D0FCAF50285F6 /* CrossFeatureFlowUITest.swift */,
 				EB8DDF05C2814294A438BC72 /* LoginFlowUITest.swift */,
+				F814F1DF6BE3BC706A2FC458 /* M3UXImprovementsUITest.swift */,
 				9573D714FA626A46DDE59685 /* OnboardingFlowUITest.swift */,
 			);
 			path = FrankUITests;
@@ -482,8 +485,8 @@
 		2DFF0E19ECD8B376C24A1D45 = {
 			isa = PBXGroup;
 			children = (
-				F24E2D27B8C9E820E21B559D /* Project */,
 				4C569306A81CDA5D88BC99A9 /* Products */,
+				F24E2D27B8C9E820E21B559D /* Project */,
 			);
 			sourceTree = "<group>";
 		};
@@ -880,8 +883,8 @@
 			buildPhases = (
 				E312B855EF9CFBE56B206946 /* Sources */,
 				E5B024BF517918AE1BB1EA03 /* Resources */,
-				E8F82BDA2662954B6CA420FA /* Embed Frameworks */,
 				0F1DA4EC47CBAAA1E1C7FC7E /* Frameworks */,
+				E8F82BDA2662954B6CA420FA /* Embed Frameworks */,
 				D179C50EA10C79B41BCB03B1 /* Dependencies */,
 			);
 			buildRules = (
@@ -901,8 +904,8 @@
 			buildPhases = (
 				CB8286869882E28DAFD36CED /* Sources */,
 				611250BFD4F96873F819F7A8 /* Resources */,
-				749A4351EC2916DFCAD0308C /* Embed Frameworks */,
 				B40091715D0B8414D47DFC12 /* Frameworks */,
+				749A4351EC2916DFCAD0308C /* Embed Frameworks */,
 			);
 			buildRules = (
 			);
@@ -922,8 +925,8 @@
 			buildPhases = (
 				6A0CB2780317A4399CEC4E94 /* Sources */,
 				09F94D11204DC8ED3AA2E462 /* Resources */,
-				D0F0D5709E78DBE0474D9E7F /* Embed Frameworks */,
 				3BE1323142DEC7F3DFF64305 /* Frameworks */,
+				D0F0D5709E78DBE0474D9E7F /* Embed Frameworks */,
 			);
 			buildRules = (
 			);
@@ -1006,6 +1009,7 @@
 			files = (
 				52DD9C96D32A278DDB993735 /* CrossFeatureFlowUITest.swift in Sources */,
 				3CD2EB50E5DEBCDD5A233A05 /* LoginFlowUITest.swift in Sources */,
+				8F79EC0908671BD2C56E1C15 /* M3UXImprovementsUITest.swift in Sources */,
 				B7BDA6546104C807CF303301 /* OnboardingFlowUITest.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -1167,6 +1171,7 @@
 			baseConfigurationReference = C2DB80083A3BCDBA77E2A509 /* Config.xcconfig */;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_ENTITLEMENTS = Frank/Frank.entitlements;
 				CODE_SIGN_IDENTITY = "iPhone Developer";
 				CODE_SIGN_STYLE = Automatic;
@@ -1178,6 +1183,10 @@
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
+				OTHER_LDFLAGS = (
+					"$(inherited)",
+					"-L$(DT_TOOLCHAIN_DIR)/usr/lib/swift/$(PLATFORM_NAME)",
+				);
 				PRODUCT_BUNDLE_IDENTIFIER = dev.frank.app;
 				PRODUCT_NAME = Frank;
 				SDKROOT = iphoneos;
@@ -1185,8 +1194,8 @@
 				SUPPORTS_MAC_DESIGNED_FOR_IPHONE_IPAD = YES;
 				SUPPORTS_XR_DESIGNED_FOR_IPHONE_IPAD = NO;
 				SWIFT_COMPILATION_MODE = wholemodule;
-				SWIFT_OPTIMIZATION_LEVEL = "-Owholemodule";
-				SWIFT_VERSION = 5.0;
+				SWIFT_OPTIMIZATION_LEVEL = "-O";
+				SWIFT_VERSION = 5;
 				TARGETED_DEVICE_FAMILY = "1,2";
 			};
 			name = Release;
@@ -1204,6 +1213,10 @@
 					"@executable_path/Frameworks",
 					"@loader_path/Frameworks",
 				);
+				OTHER_LDFLAGS = (
+					"$(inherited)",
+					"-L$(DT_TOOLCHAIN_DIR)/usr/lib/swift/$(PLATFORM_NAME)",
+				);
 				PRODUCT_BUNDLE_IDENTIFIER = dev.frank.app.tests;
 				PRODUCT_NAME = FrankTests;
 				SDKROOT = iphoneos;
@@ -1216,7 +1229,7 @@
 				);
 				SWIFT_COMPILATION_MODE = singlefile;
 				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
-				SWIFT_VERSION = 5.0;
+				SWIFT_VERSION = 5;
 				TARGETED_DEVICE_FAMILY = "1,2";
 				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/Frank.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/Frank";
 				TEST_TARGET_NAME = Frank;
@@ -1287,6 +1300,10 @@
 					"@executable_path/Frameworks",
 					"@loader_path/Frameworks",
 				);
+				OTHER_LDFLAGS = (
+					"$(inherited)",
+					"-L$(DT_TOOLCHAIN_DIR)/usr/lib/swift/$(PLATFORM_NAME)",
+				);
 				PRODUCT_BUNDLE_IDENTIFIER = dev.frank.app.uitests;
 				PRODUCT_NAME = FrankUITests;
 				SDKROOT = iphoneos;
@@ -1299,7 +1316,7 @@
 				);
 				SWIFT_COMPILATION_MODE = singlefile;
 				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
-				SWIFT_VERSION = 5.0;
+				SWIFT_VERSION = 5;
 				TARGETED_DEVICE_FAMILY = "1,2";
 				TEST_TARGET_NAME = Frank;
 			};
@@ -1310,6 +1327,7 @@
 			baseConfigurationReference = C2DB80083A3BCDBA77E2A509 /* Config.xcconfig */;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_ENTITLEMENTS = Frank/Frank.entitlements;
 				CODE_SIGN_IDENTITY = "iPhone Developer";
 				CODE_SIGN_STYLE = Automatic;
@@ -1320,6 +1338,10 @@
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
+				);
+				OTHER_LDFLAGS = (
+					"$(inherited)",
+					"-L$(DT_TOOLCHAIN_DIR)/usr/lib/swift/$(PLATFORM_NAME)",
 				);
 				PRODUCT_BUNDLE_IDENTIFIER = dev.frank.app;
 				PRODUCT_NAME = Frank;
@@ -1333,7 +1355,7 @@
 				);
 				SWIFT_COMPILATION_MODE = singlefile;
 				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
-				SWIFT_VERSION = 5.0;
+				SWIFT_VERSION = 5;
 				TARGETED_DEVICE_FAMILY = "1,2";
 			};
 			name = Debug;
@@ -1351,6 +1373,10 @@
 					"@executable_path/Frameworks",
 					"@loader_path/Frameworks",
 				);
+				OTHER_LDFLAGS = (
+					"$(inherited)",
+					"-L$(DT_TOOLCHAIN_DIR)/usr/lib/swift/$(PLATFORM_NAME)",
+				);
 				PRODUCT_BUNDLE_IDENTIFIER = dev.frank.app.tests;
 				PRODUCT_NAME = FrankTests;
 				SDKROOT = iphoneos;
@@ -1358,8 +1384,8 @@
 				SUPPORTS_MAC_DESIGNED_FOR_IPHONE_IPAD = YES;
 				SUPPORTS_XR_DESIGNED_FOR_IPHONE_IPAD = NO;
 				SWIFT_COMPILATION_MODE = wholemodule;
-				SWIFT_OPTIMIZATION_LEVEL = "-Owholemodule";
-				SWIFT_VERSION = 5.0;
+				SWIFT_OPTIMIZATION_LEVEL = "-O";
+				SWIFT_VERSION = 5;
 				TARGETED_DEVICE_FAMILY = "1,2";
 				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/Frank.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/Frank";
 				TEST_TARGET_NAME = Frank;
@@ -1436,6 +1462,10 @@
 					"@executable_path/Frameworks",
 					"@loader_path/Frameworks",
 				);
+				OTHER_LDFLAGS = (
+					"$(inherited)",
+					"-L$(DT_TOOLCHAIN_DIR)/usr/lib/swift/$(PLATFORM_NAME)",
+				);
 				PRODUCT_BUNDLE_IDENTIFIER = dev.frank.app.uitests;
 				PRODUCT_NAME = FrankUITests;
 				SDKROOT = iphoneos;
@@ -1443,8 +1473,8 @@
 				SUPPORTS_MAC_DESIGNED_FOR_IPHONE_IPAD = YES;
 				SUPPORTS_XR_DESIGNED_FOR_IPHONE_IPAD = NO;
 				SWIFT_COMPILATION_MODE = wholemodule;
-				SWIFT_OPTIMIZATION_LEVEL = "-Owholemodule";
-				SWIFT_VERSION = 5.0;
+				SWIFT_OPTIMIZATION_LEVEL = "-O";
+				SWIFT_VERSION = 5;
 				TARGETED_DEVICE_FAMILY = "1,2";
 				TEST_TARGET_NAME = Frank;
 			};

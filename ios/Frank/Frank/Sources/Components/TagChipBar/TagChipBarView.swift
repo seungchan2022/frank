@@ -6,18 +6,31 @@ struct TagChipBarView: View {
     let onSelect: (UUID?) -> Void
 
     var body: some View {
-        ScrollView(.horizontal, showsIndicators: false) {
-            HStack(spacing: 8) {
-                allButton
-                ForEach(tags) { tag in
-                    TagChipView(
-                        tag: tag,
-                        isSelected: selectedTagId == tag.id,
-                        onTap: { onSelect(tag.id) }
-                    )
+        ScrollViewReader { proxy in
+            ScrollView(.horizontal, showsIndicators: false) {
+                HStack(spacing: 8) {
+                    allButton
+                        .id("all")
+                    ForEach(tags) { tag in
+                        TagChipView(
+                            tag: tag,
+                            isSelected: selectedTagId == tag.id,
+                            onTap: { onSelect(tag.id) }
+                        )
+                        .id(tag.id)
+                    }
+                }
+                .padding(.horizontal, 16)
+            }
+            .onChange(of: selectedTagId) { _, newTagId in
+                withAnimation(.easeInOut(duration: 0.25)) {
+                    if let newTagId {
+                        proxy.scrollTo(newTagId, anchor: .center)
+                    } else {
+                        proxy.scrollTo("all", anchor: .center)
+                    }
                 }
             }
-            .padding(.horizontal, 16)
         }
     }
 

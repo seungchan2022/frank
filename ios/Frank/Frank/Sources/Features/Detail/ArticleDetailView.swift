@@ -62,11 +62,18 @@ struct ArticleDetailView: View {
                         .padding(.horizontal, 4)
                         .onTapGesture { favoritesFeature.clearOperationError() }
                 }
-                actionButtons
                 summarySection
             }
             .padding(.horizontal, 20)
-            .padding(.vertical, 16)
+            .padding(.top, 16)
+            .padding(.bottom, 8)
+        }
+        // DEBT-06: 액션버튼 항상 접근 가능하도록 하단 고정
+        .safeAreaInset(edge: .bottom) {
+            actionButtons
+                .padding(.horizontal, 20)
+                .padding(.vertical, 12)
+                .background(.regularMaterial)
         }
         .navigationBarTitleDisplayMode(.inline)
         .sheet(isPresented: $showSafari) {
@@ -169,16 +176,21 @@ extension ArticleDetailView {
     @ViewBuilder
     private var snippetSection: some View {
         if let snippet = feedItem.snippet {
+            // DEBT-07: 기사 소개 카드 — 회색 배경으로 AI 요약과 시각 구분
             VStack(alignment: .leading, spacing: 8) {
-                Text("기사 소개")
+                Label("기사 소개", systemImage: "newspaper")
                     .font(.subheadline)
-                    .fontWeight(.bold)
+                    .fontWeight(.semibold)
                     .foregroundStyle(.secondary)
 
                 Text(snippet)
+                    .font(.body)
             }
-
-            Divider()
+            .padding(14)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .background(Color(.systemGray6))
+            .clipShape(RoundedRectangle(cornerRadius: 10))
+            .overlay(RoundedRectangle(cornerRadius: 10).stroke(Color(.systemGray4), lineWidth: 1))
         }
     }
 }
@@ -394,18 +406,18 @@ extension ArticleDetailView {
     private var summarySection: some View {
         switch feature.phase {
         case .done(let result):
+            // DEBT-07: AI 요약+인사이트 카드 — 인디고 배경으로 기사 소개와 시각 구분
             VStack(alignment: .leading, spacing: 20) {
-                Divider()
-
-                Text("AI 요약 및 인사이트")
+                Label("AI 요약 및 인사이트", systemImage: "sparkles")
                     .font(.headline)
                     .fontWeight(.semibold)
+                    .foregroundStyle(.indigo)
 
                 VStack(alignment: .leading, spacing: 10) {
                     Text("요약")
                         .font(.caption)
                         .fontWeight(.semibold)
-                        .foregroundStyle(.secondary)
+                        .foregroundStyle(.indigo.opacity(0.7))
                         .kerning(1.2)
                         .textCase(.uppercase)
 
@@ -413,18 +425,24 @@ extension ArticleDetailView {
                 }
 
                 Divider()
+                    .overlay(Color.indigo.opacity(0.2))
 
                 VStack(alignment: .leading, spacing: 10) {
                     Text("인사이트")
                         .font(.caption)
                         .fontWeight(.semibold)
-                        .foregroundStyle(.secondary)
+                        .foregroundStyle(.indigo.opacity(0.7))
                         .kerning(1.2)
                         .textCase(.uppercase)
 
                     paragraphView(result.insight, secondary: true)
                 }
             }
+            .padding(14)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .background(Color.indigo.opacity(0.06))
+            .clipShape(RoundedRectangle(cornerRadius: 10))
+            .overlay(RoundedRectangle(cornerRadius: 10).stroke(Color.indigo.opacity(0.25), lineWidth: 1))
 
         case .failed(let message):
             Text(message)

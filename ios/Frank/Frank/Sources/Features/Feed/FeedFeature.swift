@@ -150,6 +150,16 @@ final class FeedFeature {
     /// 현재 피드 아이템. 서버에서 이미 태그 필터링된 결과.
     var articles: [FeedItem] { feedItems }
 
+    /// 특정 태그의 캐시된 아이템. TabView 각 페이지에서 독립 데이터 표시용.
+    func items(for tagId: UUID?) -> [FeedItem] {
+        tagStates[cacheKey(for: tagId)]?.items ?? []
+    }
+
+    /// 특정 태그가 첫 페이지 로딩 중인지 여부.
+    func isLoadingTag(_ tagId: UUID?) -> Bool {
+        tagStates[cacheKey(for: tagId)]?.status == .loading
+    }
+
     // MARK: - State Transition Helpers
 
     private func beginLoading() {
