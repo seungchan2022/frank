@@ -1,7 +1,7 @@
 # 워크플로우 강제성 도입 로드맵 (메타태스크)
 
 > 작성일: 2026-04-30
-> 활성 Phase: **Phase 3 (진입 예정)** — Phase 1, 2 완료
+> 활성 Phase: **전체 완료** — Phase 1, 2, 3 다 완료 (2026-04-30)
 > 메타태스크 면제: 워크플로우 9단계 진행 면제 (룰 자체 수정이라 자기참조 회피)
 > 세션 resume: 본 문서의 `## 변경 로그`와 각 Phase 체크박스로 진행 상태 복원
 > 인터뷰 완료: 2026-04-30 (Q1~Q6 결정 §1에 반영)
@@ -229,7 +229,7 @@ feat: UserPromptSubmit hook으로 step 상태 자동 주입
 
 ### 작업 목록
 
-- [ ] **3.1 `.claude/hooks/block-on-interview.sh` 작성**
+- [x] **3.1 `.claude/hooks/block-on-interview.sh` 작성** — chmod +x 적용. 안전장치 6개 모두 통합
   ```bash
   #!/bin/bash
   set -e
@@ -274,9 +274,9 @@ feat: UserPromptSubmit hook으로 step 상태 자동 주입
   exit 2
   ```
 
-- [ ] **3.2~3.7 안전장치 6개 위 스크립트에 모두 포함됨** (S1은 settings.json matcher로)
+- [x] **3.2~3.7 안전장치 6개 위 스크립트에 모두 포함됨** — S1=settings.json matcher, S2~S6=스크립트 내부
 
-- [ ] **3.8 `.claude/settings.json`에 PreToolUse hook 추가**
+- [x] **3.8 `.claude/settings.json`에 PreToolUse hook 추가** — Stop hook 다음 위치에 PreToolUse 신규 키. matcher `Edit|Write`. JSON valid 검증.
   ```json
   "PreToolUse": [
     {
@@ -291,15 +291,16 @@ feat: UserPromptSubmit hook으로 step 상태 자동 주입
   ]
   ```
 
-- [ ] **3.9 시나리오 테스트 5개**
+- [x] **3.9 시나리오 테스트 6개** — 5개 + 메모류 추가. 모두 통과.
 
-  | # | 시나리오 | 기대 동작 |
-  |---|---|---|
-  | T1 | 정상 — active_step=none | Edit 통과 |
-  | T2 | 차단 — step-1 + 인터뷰 Q2/4 | Edit 차단 + Q3, Q4 안내 |
-  | T3 | 메타 면제 — Edit 대상이 `.claude/skills/foo.md` | Edit 통과 (S4) |
-  | T4 | bypass — `WORKFLOW_BYPASS=1` | Edit 통과 (S5) |
-  | T5 | expire — started_at 25h 전 | Edit 통과 (S6) |
+  | # | 시나리오 | 기대 | 결과 |
+  |---|---|---|---|
+  | T1 | 정상 — active_step=none | Edit 통과 (exit 0) | ✅ |
+  | T2 | 차단 — step-1 + 인터뷰 Q2/4 + Edit src/main.rs | exit 2 + 안내 메시지 | ✅ |
+  | T3 | 메타 면제 — Edit `.claude/skills/test.md` | Edit 통과 (S4) | ✅ |
+  | T4 | bypass — `WORKFLOW_BYPASS=1` | Edit 통과 (S5) | ✅ |
+  | T5 | expire — started_at 25h 전 | Edit 통과 (S6) | ✅ |
+  | T6 | 메모류 면제 — Edit `progress/notes.md` | Edit 통과 (S4 메모) | ✅ |
 
 ### 커밋 단위
 
@@ -367,8 +368,8 @@ feat: UserPromptSubmit hook으로 step 상태 자동 주입
 | 2026-04-30 | 인터뷰 완료 (Q1~Q6) — §1 결정사항 반영 |
 | 2026-04-30 | **Phase 1 완료** (아래 상세) |
 | 2026-04-30 | **Phase 2 완료** (아래 상세) |
-| - | Phase 3 시작 |
-| - | Phase 3 완료 |
+| 2026-04-30 | **Phase 3 완료** (아래 상세) |
+| 2026-04-30 | **🎉 전체 완료** — Phase 1, 2, 3 다 진행 |
 
 ---
 
@@ -446,7 +447,60 @@ feat: UserPromptSubmit hook으로 step 상태 자동 주입
 
 **활성 Phase 갱신**: Phase 3 진입 (PreToolUse hook + 안전장치 6개).
 
-(Phase 완료 시 위 양식으로 본 섹션에 상세 추가)
+---
+
+### 2026-04-30 — Phase 3 완료
+
+**커밋**: 본 변경 직후 커밋 (`feat: Phase 3 — PreToolUse 차단 hook + 안전장치 6개`).
+
+**변경 파일**: 3개
+- 신규 `.claude/hooks/block-on-interview.sh`: PreToolUse hook (chmod +x). 안전장치 6개 통합.
+- 수정 `.claude/settings.json`: hooks.PreToolUse 신규 키 추가. matcher `Edit|Write`.
+- 수정 `progress/meta/260430_workflow_enforcement_roadmap.md`: Phase 3 완료 양식.
+
+**완료된 작업 항목**: §6 모든 항목 [x] (3.1~3.9).
+
+**검증 결과**: 6개 시나리오 모두 통과 (T1~T6).
+- T1 정상 (active_step=none): exit 0 ✅
+- T2 차단 (인터뷰 Q2/4 + Edit src/main.rs): exit 2 + 안내 ✅
+- T3 메타 면제 (.claude/): exit 0 ✅
+- T4 bypass (WORKFLOW_BYPASS=1): exit 0 ✅
+- T5 expire (25h 전): exit 0 ✅
+- T6 메모류 면제 (progress/notes.md): exit 0 ✅
+- jq settings.json valid ✅
+- hooks 키 5개 (PostToolUse, PreCompact, PreToolUse, Stop, UserPromptSubmit) ✅
+
+**발견한 함정·이슈**:
+- BSD date(macOS) `-j -f` 형식이 GNU date `-d`와 다름. 스크립트는 BSD 호환으로 작성. Linux 운영 시 GNU date `-d` 분기 추가 필요 (현재 macOS 단일 환경이라 미적용).
+- `start_epoch=0` (date 파싱 실패) 시 expire 검사 건너뜀 (보수적). started_at 형식이 ISO 8601 UTC가 아니면 차단 유지.
+- jq 비설치 환경에서는 hook이 stderr 로그 후 exit 1 가능 — macOS는 `/usr/bin/jq` 보장.
+
+**다음 작업 (선택)**:
+- 실제 워크플로우 1회 실행해 hook이 의도대로 동작하는지 end-to-end 검증
+- step-2/3/5/6/7/8 SKILL에 진입 시 active_step 갱신 코드 추가 (Phase 2 잔여 후속)
+- 1~2주 운영 후 망각 빈도 변화 측정. 차단 발생 빈도가 너무 잦으면 면제 경로·expire 시간 조정
+
+**활성 Phase 갱신**: 전체 완료. 추가 메타태스크 발생 시 별도 로드맵.
+
+---
+
+## 🎉 전체 완료 요약
+
+| 항목 | 결과 |
+|---|---|
+| Phase 1 (문서 정리) | ✅ docs `cacf8bf` (8 files, +69/-76) |
+| Phase 2 (state file + UserPromptSubmit hook) | ✅ feat `d3308a7` (9 files, +192/-40) |
+| Phase 3 (PreToolUse hook + 안전장치 6개) | ✅ 본 커밋 |
+| 인터뷰 결정 (Q1~Q6) | ✅ §1 D1~D6 |
+| 시나리오 테스트 | ✅ Phase 2: 4개 / Phase 3: 6개 모두 통과 |
+| 세션 인계 자료 | ✅ §9 resume 절차 강화 |
+
+**달성한 효과 (예상)**:
+- 인터뷰 망각 발생 빈도 ↓ (UserPromptSubmit 매 turn 안내)
+- 인터뷰 미완료 + 구현 직진 차단 (PreToolUse exit 2)
+- 5↔9단계 모순 자기합리화 차단 (단일 SSOT)
+- 룰 텍스트 길이 인플레이션 ↓ (workflow SKILL 한 곳 SSOT)
+- 잘못된 차단 위험 (안전장치 6개로 ~99% 차단)
 
 ---
 
