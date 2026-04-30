@@ -309,6 +309,23 @@
 
 ---
 
+## MVP14 — 버그 수정 + UX 개선 + E2E 자동화 (260428~260430)
+
+> 기간 3일. 서버+웹+iOS 3개 플랫폼. 버그 5건(BUG-006~010) 수정, 기술 부채 4건(DEBT-04~07) 해소. Playwright W-01~W-03 + XCUITest I-01~I-05 E2E 자동화 구축.
+
+| 유형 | 파일 | 핵심 내용 |
+|------|------|----------|
+| 로드맵 | [MVP14 로드맵](mvp14/_roadmap.md) | M1~M4 마일스톤, KPI, 버그/부채 목록 |
+| 마일스톤 | [M1 E2E 인프라](mvp14/M1_e2e_infra.md) | Playwright + XCUITest 환경 구축, FRANK_USE_MOCK=1 전략 |
+| 마일스톤 | [M2 버그 수정](mvp14/M2_bug_fixes.md) | BUG-006(에러 캐시), BUG-007(pull-to-refresh), BUG-008(탭 깜빡임), BUG-009(썸네일), BUG-010(비밀번호 변경) |
+| 마일스톤 | [M3 UX 개선](mvp14/M3_ux_improvements.md) | DEBT-04(좋아요 터치), DEBT-05(태그 스와이프), DEBT-06(버튼 하단 고정), DEBT-07(카드 UI 구분) |
+| 마일스톤 | [M4 E2E 시나리오](mvp14/M4_e2e_scenarios.md) | W-01~W-03 Playwright + I-01~I-05 XCUITest 완성. 22/25 항목 자동화 |
+| 분석 | [피드 캐싱 아키텍처](mvp14/analysis/260428_arch_feed-caching.md) | 에러 캐시 문제 분석, BUG-006 근거 |
+| 분석 | [부채+버그 전체 분석](mvp14/analysis/260428_full_debt-bugs.md) | MVP14 착수 전 전체 현황 |
+| 분석 | [피드 캐시 에러 품질](mvp14/analysis/260429_code-quality_feed-cache-error.md) | 코드 품질 스캔 |
+
+---
+
 ## MVP13 — 실사용 전환: 오답 태그 + 피드 품질 + 클라우드 배포 (260428~260429)
 
 > M1(서버+DB) ✅ + M2(웹+iOS) ✅ 완료. M3(클라우드 배포) ⏸ deferred — Oracle PAYG 업그레이드 오류, 지원팀 문의 중. 재개 조건: Oracle 답변 후 도쿄(ap-tokyo-1) 리전으로 재시도.
