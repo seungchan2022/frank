@@ -194,7 +194,8 @@
 <div class="min-h-screen bg-gray-50">
 	<Header />
 
-	<main class="mx-auto max-w-4xl px-6 py-8">
+	<!-- DEBT-06: pb-[calc(9rem+env(safe-area-inset-bottom))]으로 고정 패널 + 모바일 safe area 여백 확보 -->
+	<main class="mx-auto max-w-4xl px-6 py-8 pb-[calc(9rem+env(safe-area-inset-bottom))]">
 		<div class="mb-6">
 			<a href="/feed" class="text-sm text-gray-500 hover:text-gray-700">&larr; 피드로 돌아가기</a>
 		</div>
@@ -244,17 +245,21 @@
 			</div>
 		</div>
 
-		<!-- 기사 소개 -->
+		<!-- 기사 소개 (DEBT-07: 회색 배경으로 AI 요약과 시각 구분) -->
 		{#if feedItem.snippet}
-			<div class="mb-6 rounded-lg border border-gray-200 bg-white p-6">
-				<h2 class="mb-2 text-sm font-semibold tracking-wide text-gray-500 uppercase">기사 소개</h2>
+			<div class="mb-6 rounded-lg border-2 border-gray-200 bg-gray-50 p-6">
+				<h2 class="mb-2 flex items-center gap-1.5 text-sm font-semibold tracking-wide text-gray-500 uppercase">
+					<span>📰</span> 기사 소개
+				</h2>
 				<p class="text-sm leading-relaxed text-gray-600">{feedItem.snippet}</p>
 			</div>
 		{/if}
 
-		<!-- AI 요약 및 인사이트 섹션 -->
-		<div class="rounded-lg border border-gray-200 bg-white p-6">
-			<h2 class="mb-4 text-base font-semibold text-gray-800">AI 요약 및 인사이트</h2>
+		<!-- AI 요약 및 인사이트 섹션 (DEBT-07: 인디고 배경으로 기사 소개와 시각 구분) -->
+		<div class="rounded-lg border-2 border-indigo-200 bg-indigo-50/50 p-6">
+			<h2 class="mb-4 flex items-center gap-1.5 text-base font-semibold text-indigo-700">
+				<span>✨</span> AI 요약 및 인사이트
+			</h2>
 
 			{#if phase.tag === 'idle'}
 				<button
@@ -279,11 +284,11 @@
 			{:else if phase.tag === 'done'}
 				<div class="space-y-6">
 					<div>
-						<h3 class="mb-3 text-xs font-semibold tracking-widest text-gray-400 uppercase">요약</h3>
+						<h3 class="mb-3 text-xs font-semibold tracking-widest text-indigo-600 uppercase">요약</h3>
 						<div class="prose prose-base max-w-none leading-relaxed text-gray-700 [&_p]:mb-4 [&_p:last-child]:mb-0">{@html renderMarkdown(phase.result.summary)}</div>
 					</div>
-					<div class="border-t border-gray-100 pt-6">
-						<h3 class="mb-3 text-xs font-semibold tracking-widest text-gray-400 uppercase">인사이트</h3>
+					<div class="border-t border-indigo-100 pt-6">
+						<h3 class="mb-3 text-xs font-semibold tracking-widest text-indigo-600 uppercase">인사이트</h3>
 						<div class="prose prose-base max-w-none leading-relaxed text-gray-600 [&_p]:mb-4 [&_p:last-child]:mb-0">{@html renderMarkdown(phase.result.insight)}</div>
 					</div>
 				</div>
@@ -300,86 +305,85 @@
 			{/if}
 		</div>
 
-		<!-- 스크랩 버튼 (MVP12 M2 UX: 아이콘·레이블 재설계) -->
-		<div class="mt-4">
-			<button
-				onclick={handleFavoriteToggle}
-				disabled={favoriteLoading}
-				class={[
-					'w-full rounded-lg px-4 py-2 text-sm font-medium transition-colors flex items-center justify-center gap-2',
-					favoritesStore.isLiked(feedItem.url)
-						? 'border border-indigo-300 bg-indigo-50 text-indigo-700 hover:bg-red-50 hover:border-red-300 hover:text-red-700'
-						: 'border border-gray-200 bg-white text-gray-700 hover:bg-indigo-50 hover:border-indigo-200 hover:text-indigo-700',
-					favoriteLoading ? 'cursor-not-allowed opacity-50' : ''
-				].join(' ')}
-			>
-				{#if favoriteLoading}
-					<span>⏳</span><span>처리 중...</span>
-				{:else if favoritesStore.isLiked(feedItem.url)}
-					<span>🔖</span><span>스크랩 해제</span>
-				{:else}
-					<span>🔖</span><span>스크랩 저장</span>
-				{/if}
-			</button>
-		</div>
+	</main>
+</div>
 
-		<!-- 퀴즈 버튼 (즐겨찾기한 기사만 표시) -->
+<!-- DEBT-06: 스크랩·퀴즈 버튼 하단 고정 패널 — 액션 버튼 항상 접근 가능 -->
+<div class="fixed bottom-0 left-0 right-0 z-40 border-t border-gray-100 bg-white/95 backdrop-blur-sm pb-[env(safe-area-inset-bottom)]">
+	<div class="mx-auto max-w-4xl space-y-2 px-6 py-3">
+		<!-- 스크랩 버튼 -->
+		<button
+			onclick={handleFavoriteToggle}
+			disabled={favoriteLoading}
+			class={[
+				'flex w-full items-center justify-center gap-2 rounded-lg px-4 py-2 text-sm font-medium transition-colors',
+				favoritesStore.isLiked(feedItem.url)
+					? 'border border-indigo-300 bg-indigo-50 text-indigo-700 hover:border-red-300 hover:bg-red-50 hover:text-red-700'
+					: 'border border-gray-200 bg-white text-gray-700 hover:border-indigo-200 hover:bg-indigo-50 hover:text-indigo-700',
+				favoriteLoading ? 'cursor-not-allowed opacity-50' : ''
+			].join(' ')}
+		>
+			{#if favoriteLoading}
+				<span>⏳</span><span>처리 중...</span>
+			{:else if favoritesStore.isLiked(feedItem.url)}
+				<span>🔖</span><span>스크랩 해제</span>
+			{:else}
+				<span>🔖</span><span>스크랩 저장</span>
+			{/if}
+		</button>
+
+		<!-- 퀴즈 버튼 (스크랩 기사만 표시) -->
 		{#if favoritesStore.isLiked(feedItem.url)}
-			<div class="mt-3">
-				{#if favoritesStore.isQuizCompleted(feedItem.url)}
-					<!-- MVP9 M2: 퀴즈 완료 후 버튼 재설계 -->
-					<div class="flex gap-2">
-						<button
-							onclick={handleQuiz}
-							disabled={quizPhase === 'loading'}
-							class="flex-1 rounded-lg border border-indigo-300 bg-indigo-50 px-4 py-2 text-sm font-medium text-indigo-700 transition-colors hover:bg-indigo-100 disabled:cursor-not-allowed disabled:opacity-50"
-						>
-							{#if quizPhase === 'loading'}
-								<span class="flex items-center justify-center gap-2">
-									<span class="h-4 w-4 animate-spin rounded-full border-2 border-t-transparent border-indigo-600"></span>
-									{quizLoadingText}
-								</span>
-							{:else}
-								↺ 다시 풀기
-							{/if}
-						</button>
-						<button
-							onclick={openWrongAnswerSheet}
-							class="flex-1 rounded-lg border border-gray-300 bg-gray-50 px-4 py-2 text-sm font-medium text-gray-600 transition-colors hover:bg-gray-100"
-						>
-							오답 보기
-						</button>
-					</div>
-				{:else}
+			{#if favoritesStore.isQuizCompleted(feedItem.url)}
+				<div class="flex gap-2">
 					<button
 						onclick={handleQuiz}
 						disabled={quizPhase === 'loading'}
-						class={[
-							'w-full rounded-lg border border-indigo-300 bg-indigo-50 px-4 py-2 text-sm font-medium text-indigo-700 transition-colors',
-							quizPhase === 'loading'
-								? 'cursor-not-allowed opacity-50'
-								: 'hover:bg-indigo-100'
-						].join(' ')}
+						class="flex-1 rounded-lg border border-indigo-300 bg-indigo-50 px-4 py-2 text-sm font-medium text-indigo-700 transition-colors hover:bg-indigo-100 disabled:cursor-not-allowed disabled:opacity-50"
 					>
 						{#if quizPhase === 'loading'}
 							<span class="flex items-center justify-center gap-2">
-								<span class={[
-									'h-4 w-4 animate-spin rounded-full border-2 border-t-transparent',
-									quizLoadingText === '마무리 중…' ? 'border-orange-500' : 'border-indigo-600'
-								].join(' ')}></span>
-								<span class={quizLoadingText === '마무리 중…' ? 'text-orange-500' : ''}>{quizLoadingText}</span>
+								<span class="h-4 w-4 animate-spin rounded-full border-2 border-t-transparent border-indigo-600"></span>
+								{quizLoadingText}
 							</span>
 						{:else}
-							🧠 퀴즈 풀기
+							↺ 다시 풀기
 						{/if}
 					</button>
-				{/if}
-				{#if quizPhase === 'error' && quizError}
-					<p class="mt-1 text-xs text-red-600">{quizError}</p>
-				{/if}
-			</div>
+					<button
+						onclick={openWrongAnswerSheet}
+						class="flex-1 rounded-lg border border-gray-300 bg-gray-50 px-4 py-2 text-sm font-medium text-gray-600 transition-colors hover:bg-gray-100"
+					>
+						오답 보기
+					</button>
+				</div>
+			{:else}
+				<button
+					onclick={handleQuiz}
+					disabled={quizPhase === 'loading'}
+					class={[
+						'w-full rounded-lg border border-indigo-300 bg-indigo-50 px-4 py-2 text-sm font-medium text-indigo-700 transition-colors',
+						quizPhase === 'loading' ? 'cursor-not-allowed opacity-50' : 'hover:bg-indigo-100'
+					].join(' ')}
+				>
+					{#if quizPhase === 'loading'}
+						<span class="flex items-center justify-center gap-2">
+							<span class={[
+								'h-4 w-4 animate-spin rounded-full border-2 border-t-transparent',
+								quizLoadingText === '마무리 중…' ? 'border-orange-500' : 'border-indigo-600'
+							].join(' ')}></span>
+							<span class={quizLoadingText === '마무리 중…' ? 'text-orange-500' : ''}>{quizLoadingText}</span>
+						</span>
+					{:else}
+						🧠 퀴즈 풀기
+					{/if}
+				</button>
+			{/if}
+			{#if quizPhase === 'error' && quizError}
+				<p class="text-xs text-red-600">{quizError}</p>
+			{/if}
 		{/if}
-	</main>
+	</div>
 </div>
 
 <!-- 퀴즈 모달 -->
