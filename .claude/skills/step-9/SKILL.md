@@ -110,15 +110,21 @@ git commit -m "..."
 
 ---
 
-## [5] 커밋 성공 후 active_subtask.txt 클리어
+## [5] 커밋 성공 후 state 클리어
 
-커밋이 성공하면:
+커밋이 성공하면 state file 3종을 모두 클리어한다:
 
 ```bash
 echo "none" > progress/active_subtask.txt
+echo "none" > progress/active_step.txt        # Phase 2 — 활성 step 클리어
+echo '{}' > progress/active_interview.json    # Phase 2 — 인터뷰 큐 클리어
 ```
 
-Write 도구로 직접 갱신해도 된다. **이 단계를 잊으면 다음 커밋에서 오검증이 발생하므로 반드시 수행**.
+Write 도구로 직접 갱신해도 된다. **이 단계를 잊으면**:
+- `active_subtask.txt`: 다음 커밋에서 오검증 발생
+- `active_step.txt` / `active_interview.json`: Phase 3 PreToolUse hook이 stale로 오판해 다음 작업에서 잘못 차단 발생
+
+반드시 수행.
 
 ---
 

@@ -43,6 +43,14 @@
             "command": "msg=$(jq -r '.prompt // \"\"'); echo \"$msg\" | grep -qiE '실제[[:space:]]*기기|실기기|real device' || exit 0; lsof -ti :8080 >/dev/null 2>&1 && printf '{\"systemMessage\":\"✅ API 서버 이미 실행 중 (port 8080)\"}' && exit 0; cd \"${CLAUDE_PROJECT_DIR:-$(pwd)}\" && bash scripts/deploy.sh --target=api --native >/tmp/frank-api.log 2>&1 && printf '{\"systemMessage\":\"✅ API 서버 자동 시작 완료 → http://MacBook-Pro.local:8080\"}' || printf '{\"systemMessage\":\"⚠️ API 서버 시작 실패 — /tmp/frank-api.log 확인\"}'"
           }
         ]
+      },
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash \"${CLAUDE_PROJECT_DIR:-$(pwd)}/.claude/hooks/inject-step-status.sh\""
+          }
+        ]
       }
     ],
     "PreCompact": [

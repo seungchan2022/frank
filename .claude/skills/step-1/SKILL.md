@@ -61,6 +61,30 @@ C. {선택지 설명}
 - 질문은 **1개씩** 제시 (한 번에 여러 개 금지)
 - 사용자가 번호/알파벳으로 답하면 다음 질문으로 진행
 
+### 인터뷰 라이프사이클 (state file — Phase 2)
+
+단독 호출 시 (보통 `/workflow`가 진행하지만 step-1 단독 진입 가능):
+
+1. 인터뷰 시작 (총 질문 수 확정 직후):
+   ```bash
+   echo "step-1" > progress/active_step.txt
+   cat > progress/active_interview.json <<EOF
+   {
+     "step": "step-1",
+     "current": 1,
+     "total": {N},
+     "remaining": ["{Q1 제목}", "{Q2 제목}", "..."],
+     "started_at": "$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+   }
+   EOF
+   ```
+
+2. 매 답변 후: `current` 1 증가, `remaining` 첫 항목 제거.
+
+3. 인터뷰 완료: `echo '{}' > progress/active_interview.json`
+
+이 절차는 Phase 3 PreToolUse hook이 인터뷰 미완료 시 Edit/Write 차단에 사용. 누락 시 stale 오판으로 잘못 차단됨.
+
 ### 기본 질문 영역 (항상 포함)
 - 무엇을 구현하고 싶으신가요? (구체화)
 - 이 기능의 목적은 무엇인가요?

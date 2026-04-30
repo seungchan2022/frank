@@ -72,6 +72,34 @@ allowed-tools:
 
 5. 이후 step-1~step-9는 이 마일스톤 KPI로 게이트 검증
 
+6. **active_step 설정** (Phase 2 — state file 기반 강제):
+   ```bash
+   echo "step-1" > progress/active_step.txt
+   ```
+   이후 각 step SKILL이 진입 시 자기 step으로 갱신할 책임. step-9 SKILL이 커밋 성공 후 `none`으로 cleanup.
+
+### 인터뷰 라이프사이클 (state file 기반 — Phase 2)
+
+[3] 인터뷰 질문 생성 직후 (총 N개 질문 확정 시점):
+
+```bash
+cat > progress/active_interview.json <<EOF
+{
+  "step": "step-1",
+  "current": 1,
+  "total": {N},
+  "remaining": ["{Q1 제목}", "{Q2 제목}", "..."],
+  "started_at": "$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+}
+EOF
+```
+
+[4] 매 답변 후: `current` 1 증가, `remaining` 첫 항목 제거.
+
+인터뷰 완료 (마지막 답변 후): `echo '{}' > progress/active_interview.json`
+
+> 위 절차는 Phase 3 PreToolUse hook이 인터뷰 미완료 상태를 감지해 Edit/Write를 차단하는 데 사용된다. 누락 시 hook이 stale로 오판해 잘못된 차단 발생 가능.
+
 ### step-9 (커밋) 직후 MVP 완료 자동 체크
 
 step-9 커밋 성공 시 시스템이 자동으로:

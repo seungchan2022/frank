@@ -1,7 +1,7 @@
 # 워크플로우 강제성 도입 로드맵 (메타태스크)
 
 > 작성일: 2026-04-30
-> 활성 Phase: **Phase 2 (진입 예정)** — Phase 1 완료
+> 활성 Phase: **Phase 3 (진입 예정)** — Phase 1, 2 완료
 > 메타태스크 면제: 워크플로우 9단계 진행 면제 (룰 자체 수정이라 자기참조 회피)
 > 세션 resume: 본 문서의 `## 변경 로그`와 각 Phase 체크박스로 진행 상태 복원
 > 인터뷰 완료: 2026-04-30 (Q1~Q6 결정 §1에 반영)
@@ -160,24 +160,14 @@ grep -rln "인터뷰 완료 게이트" .claude/ rules/ CLAUDE.md
 
 ### 작업 목록
 
-- [ ] **2.1 `progress/active_step.txt` 생성 + `none` 초기화**
+- [x] **2.1 `progress/active_step.txt` 생성 + `none` 초기화** — Write 도구로 생성
+- [x] **2.2 `progress/active_interview.json` 생성 + `{}` 초기화** — Write 도구로 생성
+- [x] **2.3 `.claude/skills/workflow/SKILL.md` [0]단계에 active_step 갱신 명시** — [0]에 6번 항목 추가 + 인터뷰 라이프사이클 섹션
+- [x] **2.4 `.claude/skills/step-1/SKILL.md` 인터뷰 라이프사이클 추가** — 단독 호출 시 active_step + active_interview 갱신 절차
+- [x] **2.5 `.claude/skills/step-4/SKILL.md` 동일 라이프사이클 추가** — 진입 시 step-4 설정 + 인터뷰 큐 작성
+- [x] **2.6 `.claude/skills/step-9/SKILL.md` 커밋 성공 후 cleanup 추가** — [5]에서 active_step·active_interview 동시 클리어
 
-- [ ] **2.2 `progress/active_interview.json` 생성 + `{}` 초기화**
-
-- [ ] **2.3 `.claude/skills/workflow/SKILL.md` [0]단계에 active_step 갱신 명시**
-  - "echo 'step-1' > progress/active_step.txt" 명령 추가
-
-- [ ] **2.4 `.claude/skills/step-1/SKILL.md` 인터뷰 라이프사이클 추가**
-  - 인터뷰 시작 시: `active_interview.json` 작성 (Write tool로 JSON 직접 작성)
-  - 매 답변 후: current 갱신
-  - 인터뷰 완료 시: `{}`로 비우기
-
-- [ ] **2.5 `.claude/skills/step-4/SKILL.md` 동일 라이프사이클 추가**
-
-- [ ] **2.6 `.claude/skills/step-9/SKILL.md` 커밋 성공 후 cleanup 추가**
-  - `echo 'none' > progress/active_step.txt`
-
-- [ ] **2.7 `.claude/hooks/inject-step-status.sh` 작성**
+- [x] **2.7 `.claude/hooks/inject-step-status.sh` 작성** — chmod +x 적용. 4개 시나리오 통과 (none·인터뷰진행·인터뷰완료·step만)
   ```bash
   #!/bin/bash
   ROOT="${CLAUDE_PROJECT_DIR:-$(pwd)}"
@@ -197,24 +187,9 @@ grep -rln "인터뷰 완료 게이트" .claude/ rules/ CLAUDE.md
   jq -n --arg msg "$MSG" '{systemMessage: $msg}'
   ```
 
-- [ ] **2.8 `.claude/settings.json`에 UserPromptSubmit hook 추가**
-  - 기존 "실제 기기" hook과 같은 배열에 추가
-  ```json
-  {
-    "hooks": [
-      {
-        "type": "command",
-        "command": "bash \"${CLAUDE_PROJECT_DIR:-$(pwd)}/.claude/hooks/inject-step-status.sh\""
-      }
-    ]
-  }
-  ```
+- [x] **2.8 `.claude/settings.json`에 UserPromptSubmit hook 추가** — 기존 "실제 기기" hook과 같은 배열에 두 번째 객체로 추가. JSON valid 검증 통과.
 
-- [ ] **2.9 검증 — 모의 워크플로우**
-  - `echo 'step-1' > progress/active_step.txt`
-  - `echo '{"current":2,"total":4,"remaining":["Q3","Q4"]}' > progress/active_interview.json`
-  - 새 채팅 시작 → 시스템 메시지에 `활성: step-1 | 인터뷰 Q2/4 | 남은 질문: Q3, Q4` 출력 확인
-  - cleanup: state 둘 다 초기화
+- [x] **2.9 검증 — 모의 시나리오 4개** — none(무음), 인터뷰 진행, 인터뷰 완료, step만 모두 정상 출력. JSON 문법 valid. UserPromptSubmit 배열 길이 2 확인.
 
 ### 커밋 단위
 
@@ -391,8 +366,7 @@ feat: UserPromptSubmit hook으로 step 상태 자동 주입
 | 2026-04-30 | 로드맵 작성 (커밋 e9c9755) |
 | 2026-04-30 | 인터뷰 완료 (Q1~Q6) — §1 결정사항 반영 |
 | 2026-04-30 | **Phase 1 완료** (아래 상세) |
-| - | Phase 2 시작 |
-| - | Phase 2 완료 |
+| 2026-04-30 | **Phase 2 완료** (아래 상세) |
 | - | Phase 3 시작 |
 | - | Phase 3 완료 |
 
@@ -429,6 +403,48 @@ feat: UserPromptSubmit hook으로 step 상태 자동 주입
 - `.claude/settings.json` JSON syntax 변경 후 `jq . .claude/settings.json` 검증 필수
 
 **활성 Phase 갱신**: Phase 2 진입 (state file 도입 + UserPromptSubmit hook).
+
+---
+
+### 2026-04-30 — Phase 2 완료
+
+**커밋**: 본 변경 직후 커밋 (`feat: Phase 2 — state file + UserPromptSubmit hook`).
+
+**변경 파일**: 7개 (신규 3 + 수정 4)
+- 신규 `progress/active_step.txt`: state file. 초기값 `none`.
+- 신규 `progress/active_interview.json`: state file. 초기값 `{}`.
+- 신규 `.claude/hooks/inject-step-status.sh`: UserPromptSubmit hook 스크립트 (chmod +x).
+- 수정 `.claude/skills/workflow/SKILL.md`: [0]에 6번 active_step 설정, 인터뷰 라이프사이클 섹션 추가.
+- 수정 `.claude/skills/step-1/SKILL.md`: 단독 호출 시 인터뷰 라이프사이클 절차.
+- 수정 `.claude/skills/step-4/SKILL.md`: 진입 시 step-4 설정 + 인터뷰 큐 작성 절차.
+- 수정 `.claude/skills/step-9/SKILL.md`: [5]에서 active_step·active_interview cleanup.
+- 수정 `.claude/settings.json`: UserPromptSubmit 배열에 두 번째 hook 객체 추가.
+
+**완료된 작업 항목**: §5 모든 항목 [x] (2.1~2.9).
+
+**검증 결과**:
+- jq `.claude/settings.json` JSON valid ✅
+- UserPromptSubmit 배열 길이 2 (기존 + inject) ✅
+- 두 번째 hook command가 inject-step-status.sh를 정확히 가리킴 ✅
+- 모의 시나리오 4개 모두 정상 동작 ✅
+  - 시나리오 1 (active_step=none): 무음 통과 (exit 0, 출력 없음)
+  - 시나리오 2 (step-1 인터뷰 Q2/4): `📝 활성: step-1 | 인터뷰 Q2/4 | 남은 질문: Q3 제약사항, Q4 테스트 범위`
+  - 시나리오 3 (인터뷰 완료 remaining=[]): `📝 활성: step-1 | 인터뷰 Q4/4`
+  - 시나리오 4 (step-2 인터뷰 없음): `📝 활성 step: step-2`
+
+**발견한 함정·이슈**:
+- **잠재 함정**: 현재 `step-2/3/5/6/7/8` SKILL은 진입 시 active_step 갱신 코드가 없음. workflow가 [0]에서만 step-1 설정. 즉 step-2~8 진입 시 active_step.txt가 step-1로 남아있을 수 있음.
+  - 영향: 인터뷰 끝났으면 active_interview.json = {} 라 hook은 정상 동작. 단 hook 메시지가 "활성 step: step-1"로 부정확하게 표시될 수 있음.
+  - 후속 작업: step-2~8 SKILL에 진입 시 active_step.txt 갱신 코드 추가 (Phase 3 후 별도 메타태스크).
+- jq 의존성: macOS 1.7.1 확인. `command -v jq` 정상.
+
+**다음 Phase 진입 시 주의사항**:
+- Phase 3에서 PreToolUse hook 도입 — Edit/Write 차단형. 안전장치 6개 다 적용해야 잘못된 차단 방지.
+- 안전장치 S4(메타태스크 면제) 경로에 D3 인터뷰 결정 반영 (메모류 + history/ 포함).
+- 안전장치 S6(24h expire)의 `started_at` 파싱이 macOS `date` 명령과 호환되는지 검증 필수 (BSD date vs GNU date 차이).
+- Phase 3 완료 후 시나리오 5개 테스트(정상/차단/메타면제/bypass/expire) 필수.
+
+**활성 Phase 갱신**: Phase 3 진입 (PreToolUse hook + 안전장치 6개).
 
 (Phase 완료 시 위 양식으로 본 섹션에 상세 추가)
 
