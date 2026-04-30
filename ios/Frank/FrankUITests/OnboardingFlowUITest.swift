@@ -45,10 +45,6 @@ final class OnboardingFlowUITest: XCTestCase {
     }
 
     private func takeScreenshot(name: String) {
-        let screenshot = app.windows.firstMatch.screenshot()
-        let attachment = XCTAttachment(screenshot: screenshot)
-        attachment.name = name
-        attachment.lifetime = .keepAlways
-        add(attachment)
+        takeScreenshot(app: app, name: name)
     }
 }

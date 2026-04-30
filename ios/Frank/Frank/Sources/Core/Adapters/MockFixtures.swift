@@ -47,6 +47,31 @@ enum MockFixtures {
         [feedItem1, feedItem2, feedItem3, feedItem4, feedItem5, feedItem6]
     }
 
+    /// I-04 pull-to-refresh 2단계 fixture.
+    /// noCache=true(pull-to-refresh) 호출 시 이 목록을 반환하여
+    /// 새로고침 후 목록이 변경됨을 시뮬레이션한다.
+    static var refreshedFeedItems: [FeedItem] {
+        [feedItemRefresh1, feedItemRefresh2, feedItem1, feedItem2]
+    }
+
+    private static let feedItemRefresh1 = FeedItem(
+        title: "[새로고침] OpenAI GPT-5 Technical Report",
+        url: URL(string: "https://example.com/news/gpt5-technical-report")!,
+        source: "tavily",
+        publishedAt: parseDate("2026-04-06T09:00:00Z"),
+        tagId: tagAIML,
+        snippet: "OpenAI releases the technical report for GPT-5 with multimodal capabilities."
+    )
+
+    private static let feedItemRefresh2 = FeedItem(
+        title: "[새로고침] Xcode 17 Beta 2 Release Notes",
+        url: URL(string: "https://example.com/news/xcode-17-beta2")!,
+        source: "exa",
+        publishedAt: parseDate("2026-04-06T08:00:00Z"),
+        tagId: tagIOS,
+        snippet: "Xcode 17 Beta 2 brings performance improvements and new debugging tools."
+    )
+
     private static let feedItem1 = FeedItem(
         title: "Anthropic Releases Claude 4.6 with 1M Context Window",
         url: URL(string: "https://example.com/news/claude-4-6-release")!,

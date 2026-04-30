@@ -115,10 +115,24 @@ final class AppDependencies {
 
         let profile = scenario == "new_user" ? MockFixtures.newUserProfile : MockFixtures.profile
 
+        // I-04: feed_refresh_2step 시나리오 — pull-to-refresh 시 다른 fixture 반환
+        // E-03: empty_feed 시나리오 — 빈 피드에서 swipeDown 크래시 없음 검증
+        let articleAdapter: MockArticleAdapter
+        if scenario == "feed_refresh_2step" {
+            articleAdapter = MockArticleAdapter(
+                seed: MockFixtures.feedItems,
+                refreshSeed: MockFixtures.refreshedFeedItems
+            )
+        } else if scenario == "empty_feed" {
+            articleAdapter = MockArticleAdapter(seed: [])
+        } else {
+            articleAdapter = MockArticleAdapter()
+        }
+
         return AppDependencies(
             auth: MockAuthAdapter(profile: profile, scenario: scenario),
             tag: MockTagAdapter(),
-            article: MockArticleAdapter(),
+            article: articleAdapter,
             summarize: MockSummarizeAdapter(),
             favorites: MockFavoritesAdapter(),
             likes: MockLikesAdapter(),

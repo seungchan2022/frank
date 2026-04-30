@@ -55,13 +55,17 @@ final class LoginFlowUITest: XCTestCase {
             "로그인 후 피드 화면 진입 확인"
         )
         takeScreenshot(name: "04_피드화면")
+
+        // I-01: 피드 기사 로딩 확인 — Mock fixture 기사가 최소 1개 이상 표시되어야 함
+        let firstArticleCell = app.cells.firstMatch
+        XCTAssertTrue(
+            firstArticleCell.waitForExistence(timeout: 5),
+            "I-01: 로그인 후 피드에 기사가 1개 이상 로딩됨"
+        )
+        takeScreenshot(name: "05_피드_기사로딩확인")
     }
 
     private func takeScreenshot(name: String) {
-        let screenshot = app.windows.firstMatch.screenshot()
-        let attachment = XCTAttachment(screenshot: screenshot)
-        attachment.name = name
-        attachment.lifetime = .keepAlways
-        add(attachment)
+        takeScreenshot(app: app, name: name)
     }
 }
