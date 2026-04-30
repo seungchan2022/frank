@@ -1,0 +1,419 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>2026-04-30 개발 회고 — 하네스 엔지니어링</title>
+<script type="module">
+  import mermaid from 'https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.esm.min.mjs';
+  mermaid.initialize({
+    startOnLoad: true,
+    theme: 'base',
+    themeVariables: {
+      primaryColor: '#FEF3C7',
+      primaryTextColor: '#2D2926',
+      primaryBorderColor: '#D97706',
+      lineColor: '#92400E',
+      tertiaryColor: '#FFF7ED',
+      background: '#FDF6F0'
+    }
+  });
+</script>
+<style>
+  :root {
+    --bg: #FDF6F0;
+    --text: #2D2926;
+    --accent: #D97706;
+    --accent-light: #FEF3C7;
+    --heading: #92400E;
+    --border: #E5D5C5;
+    --code-bg: #FFF7ED;
+    --card-bg: #FFFFFF;
+  }
+  * { box-sizing: border-box; }
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: -apple-system, BlinkMacSystemFont, "Apple SD Gothic Neo", sans-serif;
+    margin: 0;
+    padding: 0;
+    line-height: 1.7;
+    -webkit-text-size-adjust: 100%;
+  }
+  .container {
+    max-width: 480px;
+    margin: 0 auto;
+    padding: 24px 20px 60px;
+  }
+  h1 {
+    color: var(--heading);
+    font-size: 1.6em;
+    margin: 0 0 8px;
+    line-height: 1.3;
+  }
+  h2 {
+    color: var(--heading);
+    font-size: 1.25em;
+    margin: 36px 0 12px;
+    padding-bottom: 6px;
+    border-bottom: 2px solid var(--accent);
+  }
+  h3 {
+    color: var(--heading);
+    font-size: 1.05em;
+    margin: 22px 0 10px;
+  }
+  h4 {
+    color: var(--accent);
+    font-size: 0.98em;
+    margin: 14px 0 6px;
+  }
+  p { margin: 10px 0; }
+  ul, ol { padding-left: 22px; margin: 10px 0; }
+  li { margin: 6px 0; }
+  strong { color: var(--heading); }
+  em { color: var(--accent); font-style: normal; font-weight: 600; }
+  code {
+    background: var(--code-bg);
+    color: var(--accent);
+    padding: 2px 6px;
+    border-radius: 4px;
+    font-size: 0.9em;
+    font-family: ui-monospace, "SF Mono", Menlo, monospace;
+  }
+  pre code { background: none; color: var(--text); padding: 0; }
+  pre {
+    background: var(--code-bg);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 12px;
+    overflow-x: auto;
+    font-size: 0.85em;
+    line-height: 1.5;
+  }
+  blockquote {
+    margin: 16px 0;
+    padding: 12px 14px;
+    background: var(--accent-light);
+    border-left: 4px solid var(--accent);
+    border-radius: 0 8px 8px 0;
+    font-size: 0.95em;
+  }
+  .meta {
+    background: var(--accent-light);
+    border-radius: 8px;
+    padding: 14px 16px;
+    margin: 16px 0 28px;
+    font-size: 0.92em;
+  }
+  .meta .label { color: var(--heading); font-weight: 600; }
+  .card {
+    background: var(--card-bg);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 16px 18px;
+    margin: 14px 0;
+  }
+  .card.decision {
+    border-left: 4px solid var(--accent);
+  }
+  .card.star {
+    border-left: 4px solid var(--heading);
+    background: linear-gradient(180deg, #FFFAF1 0%, #FFFFFF 100%);
+  }
+  .card-tag {
+    display: inline-block;
+    background: var(--accent);
+    color: white;
+    padding: 2px 8px;
+    border-radius: 4px;
+    font-size: 0.78em;
+    font-weight: 600;
+    margin-bottom: 8px;
+  }
+  .card-tag.b { background: var(--heading); }
+  .pro-con {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 8px;
+    margin: 8px 0;
+  }
+  .pro-con .item {
+    background: var(--code-bg);
+    border-radius: 6px;
+    padding: 8px 10px;
+    font-size: 0.92em;
+  }
+  .insight {
+    background: var(--accent-light);
+    border-radius: 6px;
+    padding: 10px 12px;
+    margin-top: 10px;
+    font-size: 0.93em;
+  }
+  .insight::before {
+    content: "💡 ";
+  }
+  .mermaid {
+    background: var(--card-bg);
+    border-radius: 10px;
+    padding: 16px;
+    margin: 18px 0;
+    text-align: center;
+    border: 1px solid var(--border);
+  }
+  hr {
+    border: none;
+    border-top: 1px solid var(--border);
+    margin: 32px 0;
+  }
+  .timeline {
+    background: var(--card-bg);
+    border-radius: 10px;
+    padding: 14px 18px;
+    border: 1px solid var(--border);
+    font-size: 0.9em;
+    margin: 14px 0;
+  }
+  .timeline .row {
+    display: flex;
+    gap: 12px;
+    padding: 4px 0;
+    border-bottom: 1px dashed var(--border);
+  }
+  .timeline .row:last-child { border-bottom: none; }
+  .timeline .time {
+    color: var(--accent);
+    font-weight: 600;
+    width: 56px;
+    flex-shrink: 0;
+    font-family: ui-monospace, monospace;
+  }
+  .shadow-box {
+    background: #FFF;
+    border: 2px dashed var(--accent);
+    border-radius: 10px;
+    padding: 16px 18px;
+    margin: 14px 0;
+  }
+  .shadow-box h4 { margin-top: 0; color: var(--accent); }
+  .checkbox-list { list-style: none; padding-left: 0; }
+  .checkbox-list li { padding-left: 26px; position: relative; }
+  .checkbox-list li::before {
+    content: "☐";
+    position: absolute;
+    left: 0;
+    color: var(--accent);
+    font-size: 1.1em;
+  }
+</style>
+</head>
+<body>
+<div class="container">
+
+<h1>🗓️ 2026-04-30 개발 회고</h1>
+<p style="color: var(--accent); font-weight: 600; font-size: 1.05em; margin-top: 0;">
+하네스 엔지니어링 — 위임과 강제는 같은 동전의 양면
+</p>
+
+<div class="meta">
+  <p style="margin:4px 0;"><span class="label">챕터 A</span> (17:05~22:10) — MVP14 M3 UX + M4 E2E + 아카이빙 · <strong>11 커밋</strong></p>
+  <p style="margin:4px 0;"><span class="label">챕터 B</span> (23:07~23:39) — 메타태스크: 워크플로우 강제성 Phase 1~3 · <strong>5 커밋</strong></p>
+</div>
+
+<h2>오늘 뭘 했나</h2>
+
+<p>오늘은 두 챕터로 갈렸다. 처음엔 그냥 MVP14 마무리만 하려던 날이었는데, 끝나고 나니 도구 자체를 다시 깎고 있었다.</p>
+
+<h3>📍 시간순 타임라인</h3>
+<div class="timeline">
+  <div class="row"><span class="time">17:05</span><span>M3 UX 개선 — DEBT-04~07 iOS 구현 (NavigationLink 제거 / viewAligned)</span></div>
+  <div class="row"><span class="time">17:05</span><span>M3 UITest 4개 추가 — DEBT-04~05 시나리오 검증</span></div>
+  <div class="row"><span class="time">17:06</span><span>M3 UX — DEBT-06~07 웹 구현 (fixed bottom 패널 / 카드 시각 구분)</span></div>
+  <div class="row"><span class="time">17:06</span><span>M3 완료 → active_milestone done, debts.md RESOLVED</span></div>
+  <div class="row"><span class="time">21:58</span><span>M4 Playwright W-01~W-03 / XCUITest I-01~I-05 시나리오 추가</span></div>
+  <div class="row"><span class="time">21:59</span><span>M4 완료 — E2E 리포트, active_milestone M4:done</span></div>
+  <div class="row"><span class="time">22:07</span><span>step-8 자동/수동 검증 분리</span></div>
+  <div class="row"><span class="time">22:10</span><span>MVP14 마무리 — progress/mvp14 → history/mvp14, active_mvp 14:done</span></div>
+  <div class="row"><span class="time">23:07</span><span><strong>★ 메타태스크 로드맵 작성 — Phase 1~3 정의</strong></span></div>
+  <div class="row"><span class="time">23:12</span><span>Phase 1 — 5↔9단계 모순 제거 + 강제 룰 SSOT 통일</span></div>
+  <div class="row"><span class="time">23:18</span><span>Phase 2 — state file + UserPromptSubmit hook</span></div>
+  <div class="row"><span class="time">23:21</span><span>Phase 3 — PreToolUse 차단 hook + 안전장치 6개</span></div>
+  <div class="row"><span class="time">23:39</span><span>MVP1.5 폴더명 충돌 해소 + MVP14 done 갱신</span></div>
+</div>
+
+<p><strong>챕터 A — 17시부터 22시까지, MVP14 M3·M4를 닫았다.</strong> M3 UX에서 iOS 피드의 좋아요 버튼이 카드 탭과 충돌하던 문제(DEBT-04)와 태그 스와이프가 다중 페이지를 건너뛰던 문제(DEBT-05)를 풀었다. M4 E2E에서는 Playwright W-01~W-03, XCUITest I-01~I-05 시나리오를 채우고 두 개의 블로커(W-02 MutationObserver 순서, I-04 RefreshControl)를 잡았다.</p>
+
+<p><strong>챕터 B — 23시부터 23시 39분까지, 도구를 다시 손봤다.</strong> 챕터 A 진행 중 또 단계 누락이 발생했고, 그 자리에서 결정이 굳어졌다. 메모리/룰북으로 버텨온 것의 결정타였다. 32분 만에 Phase 1~3 끝.</p>
+
+<hr>
+
+<h2>핵심 의사결정과 그 이유</h2>
+
+<div class="card decision">
+  <span class="card-tag">챕터 A · 결정 1</span>
+  <h3 style="margin-top: 4px;">DEBT-04 — NavigationLink 제거 → ZStack + onTapGesture</h3>
+  <p><strong>상황</strong>: iOS 피드 카드에서 좋아요 버튼을 탭하면 디테일 화면으로 같이 이동. NavigationLink가 카드 전체를 덮고 있어 좋아요 Button의 탭이 번져 들어갔다.</p>
+  <div class="pro-con">
+    <div class="item"><strong>A.</strong> simultaneousGesture로 좋아요 탭 가로채기 — 코드 적음, SwiftUI 버전 의존, 안정성 의문</div>
+    <div class="item"><strong>B. ✓</strong> NavigationLink 제거 → ZStack + onTapGesture — 좋아요 Button이 최상위 레이어. 제스처 충돌 원천 봉쇄</div>
+  </div>
+  <p><strong>왜</strong>: simultaneousGesture는 SwiftUI 버전마다 거동 차이가 크고, "버튼 단독 탭이 정말 단독"을 보장하기 어렵다. 제스처 우선순위에 의존하기보다 레이어 구조로 푸는 게 인지 부담이 적다.</p>
+  <div class="insight">UX 버그는 "기능이 안 됨"이 아니라 "사용자 의도가 안 통함"이다. 후자를 잡으려면 코드 변화량을 두려워하면 안 된다.</div>
+</div>
+
+<div class="card decision">
+  <span class="card-tag">챕터 A · 결정 2</span>
+  <h3 style="margin-top: 4px;">DEBT-05 — swipeActions / DragGesture 폐기 → ScrollView(.viewAligned) + contextMenu</h3>
+  <p><strong>상황</strong>: TabView 기반 태그 스와이프가 빠르게 밀면 2~3페이지를 건너뜀. swipeActions는 좋아요·삭제 버튼과 시각 충돌.</p>
+  <div class="pro-con">
+    <div class="item"><strong>A.</strong> TabView 그대로 + 속도 제한 코드 — 임의 임계값, 디바이스마다 다름</div>
+    <div class="item"><strong>B. ✓</strong> ScrollView + viewAligned(limitBehavior: .always) — OS-level 1페이지 스냅 보장</div>
+  </div>
+  <p><strong>왜</strong>: viewAligned의 <code>.always</code>는 페이지당 한 번 스냅을 OS 차원에서 보장한다. 직접 짜는 임계값 코드보다 신뢰도가 높다. swipeActions는 사용 빈도(삭제·해제) 낮은데 시각 면적은 컸다 — contextMenu가 더 맞다.</p>
+  <div class="insight">"직접 제스처 코드 vs OS 동작에 위임"이 둘 다 가능할 때, 후자가 늘 안전하다. 챕터 A 전체를 관통하는 위임 사고의 작은 사례.</div>
+</div>
+
+<div class="card decision">
+  <span class="card-tag">챕터 A · 결정 3</span>
+  <h3 style="margin-top: 4px;">M4 E2E 블로커 2건</h3>
+  <p><strong>W-02 MutationObserver 순서</strong>: 태그 탭 시 DOM 재마운트 없음을 검증하는데, MutationObserver가 클릭 <em>후</em> 설치되니 첫 mutation을 놓침.<br>→ Promise 기반으로 <em>전역 먼저</em> 설치 후 클릭. 이벤트 순서 보장.</p>
+  <p><strong>I-04 RefreshControl 미동작</strong>: swipeDown이 RefreshControl을 트리거 못 하는 경우.<br>→ retry 로직 3회 추가. 시뮬레이터 hit 확률 100% 아님을 인정.</p>
+  <div class="insight">E2E 자동화에서 비결정성은 "버그"가 아니라 "현실"이다. retry는 우회가 아니라 수용이다.</div>
+</div>
+
+<div class="card star">
+  <span class="card-tag b">챕터 B · 결정 4 ★</span>
+  <h3 style="margin-top: 4px;">5↔9단계 모순 해소 — 강제 룰 SSOT 통일</h3>
+  <p><strong>상황</strong>: <code>rules/0_CODEX_RULES.md</code> §3은 5단계, §9는 9단계가 각각 "유일한 강제 워크플로우"라고 자칭. <em>같은 파일 안에 모순</em>. LLM은 그때그때 한쪽 인용해 자기합리화 가능 — 강제력 0.</p>
+  <p><strong>결정</strong>:</p>
+  <ul>
+    <li>5단계는 Codex 호출 시 자동 작동하는 <em>내부 사고 모델</em>로 위치 정정</li>
+    <li>본 저장소 강제 워크플로우는 9단계(step-1~step-9)로 단일화</li>
+    <li>강제 룰 SSOT를 <code>.claude/skills/workflow/SKILL.md</code>로 통일. 나머지 파일은 SSOT 링크만</li>
+  </ul>
+  <p><strong>왜</strong>: 강제 룰이 두 곳에 있으면 어느 쪽이 진짜인지 모호해진다. SSOT를 한 곳으로 묶고 나머지는 링크만 두면, <em>모순 자체가 발생할 수 없는 구조</em>가 된다.</p>
+  <div class="insight">분산된 룰은 그 자체로 자기합리화의 빌미가 된다. SSOT는 "참조 편의"가 아니라 "모순 차단"이다.</div>
+</div>
+
+<div class="card star">
+  <span class="card-tag b">챕터 B · 결정 5 ★</span>
+  <h3 style="margin-top: 4px;">메모리/룰 → hook + state file 전환</h3>
+  <p><strong>상황</strong>: 인터뷰 망각의 본질은 <em>LLM이 자기 컨텍스트 안에서 자기를 감시 못 한다</em>는 것. "Q2/4 미완료" 같은 상태를 컨텍스트 텍스트로만 추적하면, 한 질문 깊이 토론하는 순간 그게 most recent로 남고 "남은 질문 스택"은 attention dilution으로 밀려난다.</p>
+  <div class="pro-con">
+    <div class="item"><strong>A.</strong> 메모리/룰북 추가 보강 — 지금까지 4번 시도. 같은 패턴 반복</div>
+    <div class="item"><strong>B. ✓</strong> state file 외부화 + hook 자동 주입/차단 — LLM이 자기를 감시할 필요 없음</div>
+  </div>
+  <p><strong>왜</strong>: A로 4번 이상 시도했지만 같은 패턴이 반복됐다. "LLM은 자기 컨텍스트에서 자기를 강제 못 한다"는 본질을 인정해야 했다.</p>
+  <div class="insight">같은 문제가 두 번 반복되면 문서가 아니라 기계로 막아야 한다 — 머리로는 알았지만 오늘에야 실행했다.</div>
+</div>
+
+<div class="card star">
+  <span class="card-tag b">챕터 B · 결정 6 ★</span>
+  <h3 style="margin-top: 4px;">hook + 안전장치 6개를 처음부터 동시에 설계</h3>
+  <p><strong>상황</strong>: PreToolUse hook은 잘못 만들면 작업 자체가 막혀서 진척이 0이 된다. 보통은 단순 시작 후 보완이지만, hook은 그 사이클이 안 도는 도구.</p>
+  <p><strong>결정</strong>: 안전장치 6개 통합.</p>
+  <ul style="font-size: 0.93em;">
+    <li><strong>S1</strong> matcher 좁히기 (Edit|Write만)</li>
+    <li><strong>S2</strong> 활성 step 체크 (none/empty 시 통과)</li>
+    <li><strong>S3</strong> step 전환 시 자동 cleanup</li>
+    <li><strong>S4</strong> 메타태스크 면제 (.claude/, scripts/, rules/, progress/meta/, history/, 메모류)</li>
+    <li><strong>S5</strong> bypass 환경변수 (<code>WORKFLOW_BYPASS=1</code>)</li>
+    <li><strong>S6</strong> 자동 expire (24h 넘으면 stale 무시, BSD date 호환)</li>
+  </ul>
+  <p><strong>왜</strong>: "리뷰 반영 + 실제 사용 후 재수정" 사이클을 빠르게 돌리려면, 첫 배치에서 <em>작업이 막히지 않을 수준의 안전망</em>은 깔려있어야 한다.</p>
+  <div class="insight">보수와 공격은 반대가 아니다 — 보수적 안전망 위에서야 공격적 반복이 가능하다.</div>
+</div>
+
+<hr>
+
+<h2>설계 시각 — 하네스 엔지니어링</h2>
+
+<p>오늘의 두 챕터는 표면적으로 다르다.</p>
+<ul>
+  <li><strong>챕터 A</strong>: 사용성 개선 + UITest/Playwright 자동화 추가 → <em>Claude에게 더 위임</em></li>
+  <li><strong>챕터 B</strong>: hook + state file로 워크플로우 강제 → <em>Claude를 강제로 묶음</em></li>
+</ul>
+<p>그런데 두 방향은 반대가 아니다. <strong>자율을 부여하려면 레일이 필요하다.</strong></p>
+
+<pre class="mermaid">
+graph TB
+    A["챕터 A<br/>위임 영역 확장<br/>(UITest, Playwright)"]
+    B["챕터 B<br/>방향 고정 강제<br/>(hook + state file)"]
+    H["하네스 엔지니어링<br/>━━━━━━━━━━━━<br/>Claude가 자율적으로<br/>작동할 환경 설계"]
+    A -.한 쌍.- B
+    A --> H
+    B --> H
+    style H fill:#FEF3C7,stroke:#D97706,stroke-width:3px,color:#92400E
+    style A fill:#FFF7ED,stroke:#D97706,color:#2D2926
+    style B fill:#FFF7ED,stroke:#92400E,color:#2D2926
+</pre>
+
+<p>챕터 A에서 UITest 자동화를 깔면서 "내가 매번 시뮬레이터 켜는 것보다 위임이 정확하다"는 인식이 굳어졌다. 단위 테스트는 "내가 정한 로직이 작동하나"까지지만, UITest는 "사용자가 실제로 쓸 때 동작하나"를 본다. 후자는 내가 직접 하면 엣지 케이스가 빈다 — Claude가 더 잘한다.</p>
+
+<p>그런데 "더 위임"의 다른 면은 "방향이 어긋날 때 큰 비용". 그래서 챕터 B의 hook이 따라온 것이다. <strong>위임 자유도가 커질수록 레일이 더 필요해진다.</strong></p>
+
+<p>이건 오늘 갑자기 생긴 시각이 아니다. 이전부터 enforce_workflow, branch_naming, deploy_script 같은 메모리들이 같은 방향으로 누적돼왔다. 오늘은 누적의 분기점이라기보다 <em>선언된 날</em>이다.</p>
+
+<hr>
+
+<h2>인사이트 & 피드백</h2>
+
+<h3>1. 도구를 손보러 시작한 게 아니라, 일하다가 손보게 된 것</h3>
+<p>챕터 B는 미리 잡힌 메타태스크가 아니었다. 챕터 A 진행 중 <em>또</em> 같은 문제(단계 누락)가 발생했고, 그 자리에서 "더는 문서로 안 된다"가 굳어졌다. 자정 전 32분 만에 Phase 1~3 끝.</p>
+<blockquote>다음에 비슷한 상황: "또 같은 문제다"가 들어오면, 그날 안에 도구 변경까지 가는 걸 기본 옵션으로. 미루지 말 것.</blockquote>
+
+<h3>2. SSOT는 편의가 아니라 모순 차단 장치</h3>
+<p>5↔9단계 모순은 같은 파일 안에 있었는데 한 번도 못 봤다. 분산된 룰은 자기합리화의 빌미가 된다. 강제 룰은 한 곳에만.</p>
+
+<h3>3. "LLM은 자기 컨텍스트 안에서 자기를 강제 못 한다"</h3>
+<p>가장 큰 깨달음. 메모리도 룰북도 같은 컨텍스트 안의 텍스트라 attention dilution을 못 막는다. 외부 state file + hook으로 매 turn 첫 줄에 자동 주입해야 한다. <em>컨텍스트 외부의 강제만이 진짜 강제다.</em></p>
+
+<h3>4. 보수와 공격은 반대가 아니다</h3>
+<p>PreToolUse hook을 만들 때 안전장치 6개를 같이 깐 건 보수적 결정. 하지만 이 보수 위에서 "리뷰 반영 → 실사용 → 재수정" 사이클이 빠르게 돈다. 안전망은 속도를 막지 않는다 — 오히려 가능하게 한다.</p>
+
+<hr>
+
+<h2>그림자 — 하네스 검증 부재</h2>
+
+<div class="shadow-box">
+  <h4>오늘의 의구심</h4>
+  <p>Playwright와 UITest 자동화가 <strong>제대로 깔렸는지 본인이 검증을 못 했다.</strong></p>
+  <p>단위 테스트는 "로직 작동 확인"까지. 오늘 한 사용성 테스트는 "실제 동작 확인"인데, 본인이 시뮬레이터를 직접 움직여서 매칭해보지 않았다. 앞으로 마일스톤마다 이 테스트 스킬을 돌릴 텐데 — 만약 시나리오 자체가 어긋나 있다면, <em>통과해도 통과한 게 아니다.</em></p>
+  <p>이게 단순한 "자동화 신뢰도" 문제는 아닌 것 같다. 한 단계 들어가면 <strong>"하네스를 깔았는데 하네스 자체를 누가 검증하지?"</strong> 라는 메타 위임의 빈자리다. Claude에게 위임은 했는데, 그 위임이 잘 됐는지 메타 검증은 빠져있다. 다음 MVP에서 한 번은 마주칠 질문이다.</p>
+</div>
+
+<hr>
+
+<h2>배운 것</h2>
+
+<ul>
+  <li><strong>SwiftUI</strong>: NavigationLink 제거 + ZStack/onTapGesture로 제스처 충돌 봉쇄가 simultaneousGesture보다 안정적</li>
+  <li><strong>SwiftUI</strong>: ScrollView + <code>viewAligned(limitBehavior: .always)</code>는 TabView 고속 스와이프 다중 스킵의 OS-level 해법</li>
+  <li><strong>Playwright</strong>: MutationObserver는 <em>클릭 전</em>에 전역 설치해야 첫 mutation을 놓치지 않음</li>
+  <li><strong>XCUITest</strong>: RefreshControl은 시뮬레이터 hit 확률 100% 아님 — retry는 현실 수용</li>
+  <li><strong>Claude Code 하네스</strong>: PreToolUse hook은 PostToolUse·UserPromptSubmit과 다르게 <em>물리적 차단</em>(exit 2)이 가능</li>
+  <li><strong>프로세스</strong>: 같은 문제가 두 번 반복되면 기계(hook/deny/스킬)로 막는다 — 오늘 처음 실행</li>
+</ul>
+
+<hr>
+
+<h2>느낀 점</h2>
+
+<p><strong>뿌듯한 점</strong>: 챕터 B를 32분에 끝낸 거. 미루지 않고 그날 안에 손본 게 컸다. 자정 직전 마지막 커밋 들어갈 때 후련함.</p>
+<p><strong>힘들었던 점</strong>: 챕터 A에서 UITest/Playwright 자동화를 깔고 나서 "이게 제대로 깔린 게 맞나?" 라는 의구심이 남았다. 위임을 더 했는데 <em>위임이 잘 됐는지</em>는 본인이 못 본 채로 끝났다.</p>
+<p><strong>재밌었던 점</strong>: 하네스 엔지니어링이라는 표현이 회고 도중에 입에서 나왔는데, 그게 오늘의 두 챕터를 한 큐에 묶었다. 이전부터 해온 일에 이름이 붙은 느낌.</p>
+
+<hr>
+
+<h2>내일 할 일</h2>
+
+<ul class="checkbox-list">
+  <li><strong>MVP15 시작 전 — 하네스 검증</strong>: Playwright W-01~W-03, XCUITest I-01~I-05 시나리오를 직접 한 번 돌려보고 의도된 동작을 검증하는지 매칭 확인 (그림자 해소)</li>
+  <li><strong>MVP15 기획</strong>: <code>/milestone-review</code> → <code>/milestone "MVP15 주제"</code></li>
+  <li><strong>PreToolUse hook 실전 검증</strong>: 실제 워크플로우에서 hook이 잘못 차단하는 경우 모니터링. 안전장치 6개가 충분한지 한 번 더 봄</li>
+</ul>
+
+</div>
+</body>
+</html>
