@@ -1,8 +1,8 @@
 # Frank MVP 전체 진행 현황
 
-> 최종 갱신: 2026-04-29
-> 활성 MVP: MVP14 (in-progress, M1:planning)
-> MVP14 방향: 실사용 버그 수정(BUG-006~010) + UX 개선(DEBT-04~07) + E2E 자동화 기반(DEBT-08)
+> 최종 갱신: 2026-04-30
+> 활성 MVP: 없음 (MVP14 ✅ 완료, MVP15 시작 대기)
+> 직전 완료: MVP14 — E2E 인프라 + 버그 수정 + UX 개선 + E2E 시나리오 (260429~260430)
 
 ---
 
@@ -24,21 +24,21 @@
 | MVP11 | 버그 수정 + 뉴스 품질 개선 | 260423~260424 | ✅ done | 서버 - / 웹 231 / iOS - |
 | MVP12 | 버그 수정 + 좋아요/즐겨찾기 UX 재설계 + 피드 페이지네이션 | 260427 | ✅ done | 서버 317 / 웹 261 / iOS - |
 | MVP13 | 실사용 전환 (오답 태그 수정 + 피드 품질 + 클라우드 배포) | 260428~260429 | ✅ done (M3 deferred) | - |
-| MVP14 | E2E 인프라 + 버그 수정 + UX 개선 + E2E 시나리오 완성 | 260429~ | 🔵 in-progress (M1:planning) | - |
+| MVP14 | E2E 인프라 + 버그 수정 + UX 개선 + E2E 시나리오 완성 | 260429~260430 | ✅ done | - |
 
 ---
 
-## MVP14 마일스톤 현황 (진행중)
+## MVP14 마일스톤 현황 (완료)
 
 > 목표: 실사용 버그 수정 + UX 개선 + E2E 자동화 기반 구축
-> 기획 문서: [progress/mvp14/_roadmap.md](mvp14/_roadmap.md)
+> 아카이브: [history/mvp14/](../history/mvp14/) (history/INDEX.md 참조)
 
 | 마일스톤 | 주제 | 앱 | 상태 |
 |----------|------|----|------|
-| M1 | E2E 인프라 세팅 (Playwright + XCUITest 환경, /e2e 뼈대) | 웹+iOS | 🟡 planning |
-| M2 | 실사용 버그 수정 (BUG-006~010) | 서버+웹+iOS | ⏳ 대기 |
-| M3 | UX 개선 (DEBT-04~07) | iOS+Web | ⏳ 대기 |
-| M4 | E2E 시나리오 완성 + 검증 | 웹+iOS | ⏳ 대기 |
+| M1 | E2E 인프라 세팅 (Playwright + XCUITest 환경, /e2e 뼈대) | 웹+iOS | ✅ done |
+| M2 | 실사용 버그 수정 (BUG-006~010) | 서버+웹+iOS | ✅ done |
+| M3 | UX 개선 (DEBT-04~07) | iOS+Web | ✅ done |
+| M4 | E2E 시나리오 완성 + 검증 | 웹+iOS | ✅ done |
 
 ---
 

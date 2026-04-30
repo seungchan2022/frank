@@ -28,10 +28,10 @@
 
 | 유형 | 파일 | 핵심 내용 |
 |------|------|----------|
-| 기획 | [MVP1.5 기획](mvp15/260405_MVP1.5_기획.md) | 부채 23건 중 9건 선별, A/B/C 마일스톤 정의, 완료 기준 |
-| 서브태스크 | [A 안정성확보](mvp15/260405_A_안정성확보_서브태스크.md) | A1~A4 상세 명세 (타임아웃, auth Client, 에러 마스킹, 구독 해제) |
-| 다이어그램 | [A 서브태스크 DAG](mvp15/260405_A_subtask_dag.svg) | 의존관계 시각화 (D2) |
-| 회고 | [MVP1.5 완료 회고](mvp15/260405_mvp15_completion_retro.md) | 숫자 비교, http_utils 분석, Keep/Problem/Surprise, 잔여 부채 12건 |
+| 기획 | [MVP1.5 기획](mvp1.5/260405_MVP1.5_기획.md) | 부채 23건 중 9건 선별, A/B/C 마일스톤 정의, 완료 기준 |
+| 서브태스크 | [A 안정성확보](mvp1.5/260405_A_안정성확보_서브태스크.md) | A1~A4 상세 명세 (타임아웃, auth Client, 에러 마스킹, 구독 해제) |
+| 다이어그램 | [A 서브태스크 DAG](mvp1.5/260405_A_subtask_dag.svg) | 의존관계 시각화 (D2) |
+| 회고 | [MVP1.5 완료 회고](mvp1.5/260405_mvp15_completion_retro.md) | 숫자 비교, http_utils 분석, Keep/Problem/Surprise, 잔여 부채 12건 |
 
 ---
 
@@ -253,13 +253,13 @@
 | 프로젝트 초기 기획/요구사항 | `mvp1/260404_MVP1_기획.md` |
 | 아키텍처 결정 (포트/어댑터, sqlx 전환) | `mvp1/260404_perf_db_access.md` |
 | 코드리뷰 이슈 전체 목록 | `mvp1/260404_step7_refactoring_review.md` |
-| 기술 부채 현황 + 해결 상태 | `mvp15/260405_MVP1.5_기획.md` |
+| 기술 부채 현황 + 해결 상태 | `mvp1.5/260405_MVP1.5_기획.md` |
 | 실전 버그 패턴 | `mvp1/260404_feed_loading_bug.md` |
-| 성능 분석 (DB, 병렬처리) | `mvp1/260404_perf_db_access.md`, `mvp15/260405_mvp15_completion_retro.md` |
+| 성능 분석 (DB, 병렬처리) | `mvp1/260404_perf_db_access.md`, `mvp1.5/260405_mvp15_completion_retro.md` |
 | MVP2 iOS 아키텍처/패턴 | `mvp2/260405_MVP2_iOS_로드맵.md`, `mvp2/260406_mvp2_completion_retro.md` |
 | MVP2.5 기술 부채 목록 | `mvp2/260406_mvp2_completion_retro.md` |
 | 3개 플랫폼 규모 비교 | `mvp2/260406_mvp2_completion_retro.md` (9,999줄, 333테스트) |
-| Claude Code 설정 자동화 | `mvp15/260405_claude_code_refactoring.md` |
+| Claude Code 설정 자동화 | `mvp1.5/260405_claude_code_refactoring.md` |
 | MVP3 전체 아키텍처 흐름 | `mvp3/260406_MVP3_통합_로드맵.md` |
 | Rust API 엔드포인트 명세 | `mvp3/260407_API_SPEC.md` |
 | Apple 로그인 트러블슈팅 | `mvp3/260408_M4_회고.md` |
