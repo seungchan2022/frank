@@ -74,9 +74,10 @@
 ## [DEBT-04] 피드 좋아요 버튼 터치포인트 — 디테일 화면으로 이동
 
 **발생**: 2026-04-29 실사용 테스트 중
-**상태**: 🔴 **OPEN**
+**상태**: ✅ **RESOLVED** (2026-04-30, MVP14 M3)
 **플랫폼**: iOS
 **현상**: 피드에서 좋아요 버튼을 누르면 버튼이 눌리지 않고 기사 디테일로 이동함. 터치 영역이 좁거나 이벤트가 상위 탭 제스처로 버블링되는 것으로 추정.
+**해결**: FeedView.swift — NavigationLink 제거 (SwiftUI에서 NavigationLink 내부 Button이 탐색을 막지 못하는 근본 한계 확인). `ZStack(ArticleCardView + Button[like])` 구조로 전환 후 ZStack에 `.onTapGesture { navigationPath.append(item.id) }` 적용. like Button이 ZStack 최상위 레이어로서 탭을 독점 처리, 카드 영역 탭은 ZStack.onTapGesture가 받아 navigate.
 **흡수 조건**: MVP14 M2
 
 ---
@@ -84,21 +85,24 @@
 ## [DEBT-05] 태그 스와이프 탐색 + 스와이프 삭제 충돌
 
 **발생**: 2026-04-29 실사용 테스트 중
-**상태**: 🟡 **OPEN** (UX 설계 필요)
+**상태**: ✅ **RESOLVED** (2026-04-30, MVP14 M3)
 **플랫폼**: iOS
 **현상**: 태그 바를 옆으로 스와이프하면 인접 태그로 이동하면 더 자연스러운데, 스크랩/오답노트 탭에서는 스와이프 삭제 기능과 충돌함.
 **결정 방향**: 태그 스와이프 탐색 우선 → 스와이프 삭제는 롱프레스 또는 편집 모드로 대체.
-**흡수 조건**: MVP14 M2
+**해결 1단계**: FavoritesView.swift — 기사 탭과 오답 탭 양쪽의 `.swipeActions` → `.contextMenu` 전환. 롱프레스로 삭제 메뉴 표시.
+**해결 2단계**: FeedView.swift + FavoritesView.swift — DragGesture 제거 → `TabView(selection:).tabViewStyle(.page(indexDisplayMode: .never))` 전환. iOS 네이티브 페이지 스와이프 물리 효과로 자연스러운 태그 탐색 UY 제공. FavoritesView는 클라이언트 필터링이므로 각 페이지가 즉시 올바른 데이터를 표시.
+**흡수 조건**: MVP14 M2 → MVP14 M3에서 완전 해소
 
 ---
 
 ## [DEBT-06] 요약 후 상단 버튼 사용성 저하
 
 **발생**: 2026-04-29 실사용 테스트 중
-**상태**: 🟡 **OPEN**
-**플랫폼**: iOS + Web 공통 (추정)
+**상태**: ✅ **RESOLVED** (2026-04-30, MVP14 M3)
+**플랫폼**: iOS + Web 공통
 **현상**: 기사 디테일에서 요약하기 실행 시 요약/인사이트 콘텐츠가 화면 하단에 쌓여, 그 위의 버튼(퀴즈 등)에 대한 접근성이 사실상 사라짐.
 **개선 방향**: 요약/인사이트를 스크롤 가능한 하단 영역 또는 Bottom Sheet로 분리. 버튼은 고정 위치 유지.
+**해결**: iOS — ArticleDetailView.swift에서 actionButtons를 ScrollView 밖으로 분리, `.safeAreaInset(edge: .bottom)`으로 하단 고정. 웹 — +page.svelte에서 스크랩/퀴즈 버튼을 `fixed bottom-0` 패널로 분리, main에 `pb-36` 추가.
 **흡수 조건**: MVP14 M2
 
 ---
@@ -106,10 +110,11 @@
 ## [DEBT-07] 기사 소개 vs 요약/인사이트 카드 구분 미흡
 
 **발생**: 2026-04-29 실사용 테스트 중
-**상태**: 🟡 **OPEN**
+**상태**: ✅ **RESOLVED** (2026-04-30, MVP14 M3)
 **플랫폼**: iOS + Web 공통
 **현상**: 기사 디테일에서 기사 소개(원문 요약)와 AI 요약/인사이트가 시각적으로 구분되지 않아 읽기 불편함.
 **개선 방향**: 카드 컴포넌트로 분리. 배경색·테두리·헤더 레이블로 명확히 구분.
+**해결**: iOS(ArticleDetailView.swift) — 기사 소개: `systemGray6` 배경 + `📰 기사 소개` Label. AI 요약+인사이트: `indigo.opacity(0.06)` 배경 + `✨ AI 요약 및 인사이트` Label(인디고). 웹(+page.svelte) — 기사 소개: `bg-gray-50` 배경. AI 요약+인사이트: `bg-indigo-50/50 border-indigo-100` 배경 + `✨ AI 요약 및 인사이트` 헤더(인디고).
 **흡수 조건**: MVP14 M2
 
 ---
