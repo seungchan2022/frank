@@ -70,7 +70,7 @@ KPI를 **두 층위**로 관리. 각 마일스톤 단위로 독립 검증되며,
 
 ## 규칙 체계
 
-- **`rules/0_CODEX_RULES.md`** — 최상위 강제 규칙 (워크플로우 5단계 + KPI 게이트 + 보안)
+- **`rules/0_CODEX_RULES.md`** — 최상위 강제 규칙 (워크플로우 9단계 + KPI 게이트 + 보안)
 - **`rules/sub/`** — 서브 룰북 (INDEX.md 참조)
   - `agents.md` — 에이전트 + MCP 정책 (Supabase, Chrome DevTools 포함)
   - `workflow.md` — 개발 사고 가이드
@@ -94,12 +94,12 @@ settings.json/hooks 기계적 강제:
 
 ## 워크플로우
 
-`rules/0_CODEX_RULES.md §3`의 **5단계가 유일한 강제 워크플로우**: Inspect → Specify → Implement → Verify → Report.
+본 저장소의 **강제 워크플로우는 9단계 (step-1~step-9)**. 강제 룰의 SSOT는 `.claude/skills/workflow/SKILL.md`. `rules/0_CODEX_RULES.md §3`은 이를 가리키고, §9는 핵심 게이트만 보유.
 
 핵심 명령 (`.claude/skills/`):
 - `/milestone "설명"` — Discovery → 로드맵 → 마일스톤 정의
 - `/milestone-review` — 로드맵 진행 검토
-- `/workflow "태스크"` — 5단계 실행
+- `/workflow "태스크"` — 9단계 진입
 - `/kpi` — 현재 MVP KPI 상태 대시보드
 - `/debate`, `/deep-analysis` — 3자 토론·심층 분석
 - `/study "MVPN"` — MVP별 흐름·개념 학습 (객관식 자가 확인 + 자동 critical-review)

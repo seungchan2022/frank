@@ -19,6 +19,8 @@ allowed-tools:
 # Step 1: 메인태스크 설정
 
 > **권장**: 새 워크플로우 시작 시 `/workflow`를 사용하세요.
+>
+> **인터뷰 강제 룰 SSOT**: 인터뷰 완료 게이트, Q{M}/{T} 카운터, 스텝 헤더 등 공통 강제 규칙은 `.claude/skills/workflow/SKILL.md` 참조. 본 SKILL은 step-1 고유 절차만 정의.
 
 ## 수행 작업
 

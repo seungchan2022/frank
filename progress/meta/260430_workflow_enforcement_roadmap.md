@@ -1,7 +1,7 @@
 # 워크플로우 강제성 도입 로드맵 (메타태스크)
 
 > 작성일: 2026-04-30
-> 활성 Phase: Phase 1 (진행 예정)
+> 활성 Phase: **Phase 2 (진입 예정)** — Phase 1 완료
 > 메타태스크 면제: 워크플로우 9단계 진행 면제 (룰 자체 수정이라 자기참조 회피)
 > 세션 resume: 본 문서의 `## 변경 로그`와 각 Phase 체크박스로 진행 상태 복원
 > 인터뷰 완료: 2026-04-30 (Q1~Q6 결정 §1에 반영)
@@ -93,29 +93,12 @@ pre-commit hook + scripts/kpi-*.sh
 
 ### 작업 목록
 
-- [ ] **1.1 `rules/0_CODEX_RULES.md §3` 정리** (5단계 → 1줄로 축소)
-  - 변경 전: 59~67라인 5단계 상세 + "유일한 강제 워크플로우" 문구
-  - 변경 후: "외부 Codex용 5단계 사고 원칙(Inspect→Specify→Implement→Verify→Report)은 §9 9단계 워크플로우 안에서 자연스럽게 충족된다." 1~2줄
-  - 영향: §9 9단계가 진짜 SSOT라는 것 명시
-
-- [ ] **1.2 `rules/0_CODEX_RULES.md §9` 9단계 SSOT 강화**
-  - "본 §9가 본 저장소의 강제 워크플로우. 세부 규칙은 `.claude/skills/workflow/SKILL.md`를 참조" 추가
-  - 인터뷰 게이트·스텝 헤더·피드백 처리 같은 세부 규칙은 workflow SKILL로 이관 후 §9는 링크만
-
-- [ ] **1.3 `CLAUDE.md` "워크플로우" 섹션 정리**
-  - "5단계가 유일한 강제" 문구 제거
-  - "9단계 워크플로우. 세부는 `.claude/skills/workflow/SKILL.md` + `rules/0_CODEX_RULES.md §9` 참조" 1줄
-
-- [ ] **1.4 `.claude/skills/workflow/SKILL.md` 강제 룰 SSOT 강화**
-  - 인터뷰 게이트 / 스텝 헤더 / 피드백 처리 / 스텝 강제 원칙 → 본 파일 한 곳에만 유지
-  - 다른 곳 중복 룰 제거
-
-- [ ] **1.5 `.claude/skills/step-1/SKILL.md`, `step-4/SKILL.md` 중복 룰 제거**
-  - "인터뷰 완료 게이트" 등 본문 → `.claude/skills/workflow/SKILL.md` 링크로 대체
-  - 본 SKILL은 자기 단계 고유 내용만
-
-- [ ] **1.6 `rules/sub/{workflow,milestone,agents,INDEX}.md`, `study/SKILL.md`, `agents/debate.md` 잔재 정리**
-  - "5단계" 표현 grep으로 찾아 9단계 표현으로 통일 또는 제거
+- [x] **1.1 `rules/0_CODEX_RULES.md §3` 정리** — 5단계 본문 7줄 → 한 줄 축소 + "Codex 내부 사고 모델" 명시. "유일한 강제" 표현 제거
+- [x] **1.2 `rules/0_CODEX_RULES.md §9` 9단계 SSOT 강화** — 9.1~9.4 본문 35줄 → 핵심 게이트 요약 8줄 + workflow SKILL 링크
+- [x] **1.3 `CLAUDE.md` "워크플로우" 섹션 정리** — 라인 73, 97, 102 세 곳 "5단계" → "9단계", "유일한 강제" 표현 제거, SSOT 위치 명시
+- [x] **1.4 `.claude/skills/workflow/SKILL.md` 강제 룰 SSOT 강화** — 헤더에 "본 SKILL이 강제 룰 SSOT" 4줄 추가. 본문 강제 룰은 그대로 유지 (이미 SSOT)
+- [x] **1.5 `step-1/SKILL.md`, `step-4/SKILL.md` 중복 룰 제거** — step-1: 헤더에 SSOT 링크 한 줄 / step-4: "인터뷰 완료 게이트" 본문 5줄 → SSOT 링크 1줄로
+- [x] **1.6 `rules/sub/workflow.md`, `INDEX.md`, `§7 sub rule 표기` 잔재 정리** — 4곳 "§3의 5단계" → "9단계 워크플로우" 일관 정리. (`agents.md`, `debate.md`, `study/SKILL.md`의 "5단계"는 토론/MVP 단계 의미라 무관 — 손 안 댐)
 
 ### 검증
 
@@ -405,14 +388,47 @@ feat: UserPromptSubmit hook으로 step 상태 자동 주입
 
 | 일시 | 이벤트 |
 |---|---|
-| 2026-04-30 | 로드맵 작성 |
+| 2026-04-30 | 로드맵 작성 (커밋 e9c9755) |
 | 2026-04-30 | 인터뷰 완료 (Q1~Q6) — §1 결정사항 반영 |
-| - | Phase 1 시작 |
-| - | Phase 1 완료 |
+| 2026-04-30 | **Phase 1 완료** (아래 상세) |
 | - | Phase 2 시작 |
 | - | Phase 2 완료 |
 | - | Phase 3 시작 |
 | - | Phase 3 완료 |
+
+---
+
+### 2026-04-30 — Phase 1 완료
+
+**커밋**: 본 변경 직후 커밋 (`docs: Phase 1 — 5↔9단계 모순 제거 + 강제 룰 SSOT 통일`). 커밋 후 git log로 hash 확인 가능.
+
+**변경 파일**: 7개
+- `rules/0_CODEX_RULES.md`: §3 5단계 7줄 → 한 줄 축소 + Codex 내부 사고 모델로 위치 정정. §9 본문 35줄 → 핵심 게이트 요약 8줄 + workflow SKILL 링크. §7 sub rule 표기 정정.
+- `CLAUDE.md`: 5단계 인용 3곳 → 9단계로 일관 정리. SSOT 위치(workflow SKILL) 명시.
+- `rules/sub/workflow.md`: "§3의 5단계 내부 참고" → "9단계 워크플로우 내부 사고 가이드".
+- `rules/sub/INDEX.md`: 5단계 표현 정리 + 강제 워크플로우 위치 갱신.
+- `.claude/skills/workflow/SKILL.md`: 헤더에 "강제 룰 SSOT" 4줄 명시.
+- `.claude/skills/step-1/SKILL.md`: 헤더에 SSOT 링크 한 줄 추가.
+- `.claude/skills/step-4/SKILL.md`: "인터뷰 완료 게이트" 본문 5줄 → SSOT 링크 1줄.
+
+**완료된 작업 항목**: §4 모든 항목 [x] 처리 완료 (1.1~1.6).
+
+**검증 결과**:
+- `grep "유일한 강제"`: **0건** ✅
+- `grep "5단계"` (워크플로우 의미만): **2곳** (둘 다 의도된 축소본 — `0_CODEX_RULES.md §3` 한 줄 + `rules/sub/workflow.md` 보충 설명) ✅
+- "인터뷰 완료 게이트" SSOT 단일성: workflow/SKILL.md (본문 SSOT), step-1·step-4·0_CODEX_RULES §9.1 (모두 링크/요약만) ✅
+- 변경 통계: `+24 -46` (룰 텍스트 22줄 순감)
+
+**발견한 함정·이슈**: 없음. 모든 grep 검증 통과.
+
+**다음 Phase 진입 시 주의사항**:
+- Phase 2에서 `step-1/SKILL.md`, `step-4/SKILL.md`에 인터뷰 라이프사이클 코드(active_interview.json 작성·갱신·삭제) 추가
+- `.claude/skills/workflow/SKILL.md` [0]단계에 `active_step.txt = "step-1"` 갱신 명령 추가
+- `.claude/skills/step-9/SKILL.md` 커밋 성공 후 `active_step.txt = none` cleanup 추가
+- jq 의존성 확인 (macOS는 `brew install jq`로 보장)
+- `.claude/settings.json` JSON syntax 변경 후 `jq . .claude/settings.json` 검증 필수
+
+**활성 Phase 갱신**: Phase 2 진입 (state file 도입 + UserPromptSubmit hook).
 
 (Phase 완료 시 위 양식으로 본 섹션에 상세 추가)
 

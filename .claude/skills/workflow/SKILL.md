@@ -17,6 +17,10 @@ allowed-tools:
 
 # 워크플로우 시작 (/workflow)
 
+> **본 SKILL은 9단계 워크플로우의 진입점이자 강제 룰의 SSOT.**
+> 스텝 헤더 / 인터뷰 완료 게이트 / 피드백 후 구현 진입 / 서브에이전트 알림 등 모든 강제 규칙의 정확한 형식·예외·복구 절차는 본 파일에서 정의된다.
+> `rules/0_CODEX_RULES.md §9`, `CLAUDE.md`, `step-1/SKILL.md`, `step-4/SKILL.md`는 본 SSOT를 가리키는 링크만 보유.
+
 ## 실행 흐름
 
 ```

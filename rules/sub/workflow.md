@@ -1,6 +1,8 @@
 # 개발 사고 가이드 (Thinking Guide)
 
-이 문서는 `rules/0_CODEX_RULES.md §3`에 정의된 **5단계 워크플로우**(Inspect → Specify → Implement → Verify → Report) 내부에서 참고하는 사고 가이드다. 별도의 단계 시스템이 **아니다**.
+이 문서는 본 저장소의 **9단계 워크플로우** (step-1~step-9, 진입점 `.claude/skills/workflow/SKILL.md`) 내부에서 참고하는 사고 가이드다. 별도의 단계 시스템이 **아니다**.
+
+(Codex 내부 사고 모델인 5단계 — Inspect → Specify → Implement → Verify → Report — 도 본 가이드 내용을 자연스럽게 충족한다.)
 
 ---
 
