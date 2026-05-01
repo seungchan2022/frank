@@ -1,7 +1,7 @@
 # Frank 미래 기능 아이디어
 
 > 기획 확정 전 아이디어 모음. `/milestone-review` 또는 새 MVP 기획 시 참고.
-> 최종 갱신: 2026-05-01 (MVP15 방향 확정 시점)
+> 최종 갱신: 2026-05-02 (IDEA-07 모델 효율 정책 추가)
 
 ---
 
@@ -76,3 +76,51 @@
 - M1: Tavily 실패 원인 점검, 엔진별 결과 비교 실측
 - M2: 폴백 → 병합 전환, 쿼리 다양화 (시간대/관점 변형), 양 5→20급
 - 사용자 의도: 기사 ephemeral 유지 (DB 영속 저장 안 함)
+
+---
+
+### [IDEA-07] 모델 효율 정책 — 작업 종류별 모델 차별화
+**상태**: 🟡 **다음 사이클 진행** (MVP15 완료 후 인프라 작업으로) — 2026-05-02 발견
+
+#### 배경
+
+워크플로우 진행 중 작업 종류에 따라 필요한 모델이 다름:
+- **사고 집약** (critical-review, milestone-review, milestone, debate, deep-analysis, step-2/5/7) → 강한 모델 (Opus)
+- **단순 작업** (step-6 구현, step-8 테스트, step-9 커밋, init, status) → 가벼운 모델 (Haiku/Sonnet)
+
+현재는 세션 단위 단일 모델로 진행 → 토큰 비효율.
+
+#### 심층 리서치 결과 (2026-05-02)
+
+공식 문서 기반 강제 메커니즘 신뢰성 등급:
+
+| 기법 | 강제 효과 | 비고 |
+|---|---|---|
+| **Subagent `model` 필드** | ★★★ 결정적 | `.claude/agents/*.md` frontmatter, 우선순위 최상 (env 변수 다음) |
+| **Skill `model` 필드** | ★★ 턴 단위 | 해당 스킬 호출 턴만 적용, 다음 프롬프트엔 세션 모델 복귀 |
+| `/model` 명령 | ★★★ 세션 단위 | 수동 전환 |
+| **Hook** | ✗ 불가능 | 도구 차단만, 모델 변경 권한 없음 |
+| CLAUDE.md 권고 | ✗ 자연어 | 강제력 0 |
+
+#### 적용 옵션 (다음 사이클에서 결정)
+
+1. **메인 세션 `--model opusplan` 시도** — Plan mode = Opus, Execution mode = Sonnet 자동 전환. 워크플로우 9단계와 자연 매칭
+2. **사고 집약 스킬 9개에 `model: opus`/`effort: high` frontmatter 추가**:
+   - critical-review, milestone, milestone-review, debate, deep-analysis
+   - step-2 (룰즈 검증), step-5 (서브태스크 리뷰), step-7 (리팩토링+코드리뷰)
+3. **단순 스킬에 `model: haiku`/`effort: low` 추가**:
+   - step-6, step-8, step-9, init, status
+4. **사고 집약 작업을 별도 subagent로 분리** (가장 강한 강제):
+   - `.claude/agents/heavy-reviewer.md` 등에 `model: opus`
+5. **`CLAUDE_CODE_SUBAGENT_MODEL` 환경변수**로 일괄 통제 (옵션)
+
+#### 진입 조건
+
+- MVP15 (현재) 완료 후
+- 단독 인프라 사이클로 진행 (워크플로우 9단계 적용 가능)
+
+#### 추가 발견
+
+- **`effort` 필드** (Skill frontmatter): low/medium/high/xhigh/max — 모델과 별개로 사고 깊이 조절
+- **`advisor()` 도구**: 시스템 프롬프트에 "stronger reviewer model"이라 적혀있으나 docs.anthropic.com에 공식 문서 없음. 내부 도구 가능성 — 강제 메커니즘으로 의존 X
+- **출처**: `code.claude.com/docs/en/skills`, `code.claude.com/docs/en/sub-agents`, `code.claude.com/docs/en/model-config`
