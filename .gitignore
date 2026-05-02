@@ -15,6 +15,7 @@ Thumbs.db
 # === Claude Code ===
 .claude/settings.local.json
 .claude/worktrees/
+.claude/scheduled_tasks.lock
 .playwright-mcp/
 .mcp.json
 
