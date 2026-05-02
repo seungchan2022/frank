@@ -129,3 +129,42 @@
 - iOS: XCUITest 시나리오 파일 자동 생성 → `xcodebuild test`로 실행
 - `/e2e` 스킬: 마일스톤 기능 목록 → 시나리오 생성 → 실행 → 리포트 (누적 시 리그레션 베이스)
 **흡수 조건**: MVP14 M3
+
+---
+
+## [DEBT-MVP15-01] 진단 retry_classifier 에러 카테고리 분류 — 4xx 세분화 부족
+
+**발생**: 2026-05-02 MVP15 M1 진단 실행 결과
+**상태**: 🟡 **OPEN** (중)
+**현상**: Exa 무료 한도 소진 시 HTTP 402 Payment Required 반환되는데, `retry_classifier`가 이를 `network` 카테고리로 오분류. 운영상 결제 만료/한도 소진은 별도 카테고리로 식별돼야 운영 알람과 진단 보고서 정확.
+**근본 원인**: `retry_classifier::categorize()`가 4xx 그룹 내에서 401/403만 `auth`로 분기하고 402/429 외 나머지는 일괄 처리. 402 Payment Required는 전용 카테고리 없어 fallback인 `network`로 잡힘.
+**개선 방향**:
+- `quota_exhausted` 카테고리 신설 (402 매핑)
+- 진단 보고서 실패 표에 4xx 세분화 컬럼 추가
+- 운영 코드(`feed.rs::SearchFallbackChain`)에서도 402 발생 시 즉시 알람
+**흡수 조건**: MVP15 M2 진입 시 또는 별도 chore PR
+
+---
+
+## [DEBT-MVP15-02] 진단 바이너리 실행 환경 가정 강함
+
+**발생**: 2026-05-02 MVP15 M1 진단 실행 시 cwd/`.env` 경로 문제
+**상태**: 🟡 **OPEN** (낮)
+**현상**: `cargo run --bin diagnose_search`를 자연스럽게 실행하면 두 가지 에러 발생:
+- `server/`에서 실행 → 출력 경로 `progress/mvp15/` 없음 (cwd가 server 기준)
+- repo 루트에서 실행 → `DATABASE_URL` 미발견 (`.env`가 `server/.env`인데 dotenvy는 cwd 기준)
+**임시 해결**: `cd <repo> && set -a && source server/.env && set +a && cargo run --manifest-path server/Cargo.toml --bin diagnose_search`
+**개선 방향 (택1)**:
+- 출력 경로·env 경로를 환경변수(`DIAGNOSE_OUTPUT_DIR`, `DIAGNOSE_ENV_PATH`) 또는 CLI 인자로 외부화
+- `server/src/bin/diagnose/README.md`에 정확한 실행 명령 1줄 명시 + 실행 스크립트(`scripts/run-diagnose.sh`) 제공
+**흡수 조건**: MVP15 후속 진단 사이클 진입 시
+
+---
+
+## [DEBT-MVP15-03] Tavily `effective_max` 동적 감지 부재
+
+**발생**: 2026-05-02 MVP15 M1 진단에서 `requested=100, effective=20` 패턴 발견
+**상태**: 🟡 **OPEN** (낮)
+**현상**: Tavily 무료 티어가 `max_results` 상한 20으로 silent clamp. 진단 코드는 응답 결과 수에서 `effective`를 추정. Tavily가 무료 티어 정책을 변경(예: 30으로 상향)하면 코드 자동 추적 안 됨.
+**개선 방향**: Tavily/Exa 응답 헤더(`X-Ratelimit-*`, `X-Plan-Limit` 등) 또는 첫 호출 응답 메타에서 plan limit 추출하여 진단 코드가 자동 갱신
+**흡수 조건**: 진단 다음 사이클 또는 무료 티어 정책 변경 감지 시
