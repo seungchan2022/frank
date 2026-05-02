@@ -1,0 +1,48 @@
+# MVP15 M1 서브태스크 의존성 DAG
+# 생성: step-3 (서브태스크 분리)
+
+direction: down
+
+S1: {
+  label: "S1\nBin skeleton +\nDB tag fetch"
+  shape: rectangle
+  style.fill: "#dbeafe"
+}
+
+S2: {
+  label: "S2\n쿼리 변형 생성기 +\n영어 번역 매핑"
+  shape: rectangle
+  style.fill: "#dbeafe"
+}
+
+S3: {
+  label: "S3\nPre-flight confirm\n(stdin y-only)"
+  shape: rectangle
+  style.fill: "#dbeafe"
+}
+
+S5: {
+  label: "S5\ndata.md writer\n(overwrite)"
+  shape: rectangle
+  style.fill: "#dbeafe"
+}
+
+S4: {
+  label: "S4\n측정 루프 +\n재시도 +\n실패 분류"
+  shape: rectangle
+  style.fill: "#fef3c7"
+}
+
+S6: {
+  label: "S6\n통합 (main)\nend-to-end 테스트"
+  shape: rectangle
+  style.fill: "#dcfce7"
+}
+
+S1 -> S4: "tags, db port"
+S2 -> S4: "variants(tag)"
+S1 -> S6
+S2 -> S6
+S3 -> S6
+S4 -> S5: "Vec<Measurement>"
+S5 -> S6
