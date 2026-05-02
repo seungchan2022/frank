@@ -168,3 +168,58 @@
 **현상**: Tavily 무료 티어가 `max_results` 상한 20으로 silent clamp. 진단 코드는 응답 결과 수에서 `effective`를 추정. Tavily가 무료 티어 정책을 변경(예: 30으로 상향)하면 코드 자동 추적 안 됨.
 **개선 방향**: Tavily/Exa 응답 헤더(`X-Ratelimit-*`, `X-Plan-Limit` 등) 또는 첫 호출 응답 메타에서 plan limit 추출하여 진단 코드가 자동 갱신
 **흡수 조건**: 진단 다음 사이클 또는 무료 티어 정책 변경 감지 시
+
+---
+
+## [DEBT-MVP15-04] Exa `reset_at` NULL semantics 미구현
+
+**발생**: 2026-05-02 MVP15 M2 step-7 코드 리뷰 (Codex P2 지적)
+**상태**: 🟡 **OPEN** (낮)
+**현상**: `CounterPort` 설계 의도는 "Exa 등 크레딧형 엔진은 `reset_at = NULL`로 자동 리셋 없음"이나, 현재 Postgres/InMemory 구현 모두 첫 `record_call`에서 모든 엔진에 `date_trunc('month', now()) + 1 month`로 reset_at을 세팅. 알림 메시지 "수동 (크레딧 갱신)" 분기는 사실상 실행 경로 없음.
+**리스크**: Exa 크레딧이 매월 자동 갱신되지 않는데도 카운터는 매월 0으로 reset됨 → 한도 보호 누락 가능성. 다만 현재 운영에서 Tavily 1순위·Exa 2순위로 호출 빈도 낮아 실제 위험 낮음.
+**개선 방향 (택1)**:
+- 엔진별 reset 정책 분리: `Engine::reset_policy()` enum (Monthly / CreditManual)
+- Exa는 `record_call`에서 reset_at NULL 유지 → 알림에서 "크레딧 갱신" 분기 실효성
+- 또는 설계 의도 폐기 후 모든 엔진 단일 month reset 정책 명문화 + 코멘트 정정
+**흡수 조건**: Exa 한도 도달 운영 시점 또는 다음 카운터 리팩토링
+
+---
+
+## [DEBT-MVP15-05] notification_service `spawn_blocking + timeout` task leak 가능성
+
+**발생**: 2026-05-02 MVP15 M2 step-7 코드 리뷰 (advisor + Codex P3 지적)
+**상태**: 🟡 **OPEN** (낮)
+**현상**: `services/notification_service.rs::send_with_timeout_retry`는 `tokio::time::timeout(spawn_blocking(...))` 패턴. `tokio::timeout`은 future를 drop할 뿐, spawn_blocking 작업 자체는 cancel 불가. `osascript`이 hang하면 timeout 발화 후에도 blocking 스레드는 계속 점유되어 재시도 시 누적 가능.
+**리스크**: 단일 사용자 + 알림 빈도 낮음 (월 1~2회) → 운영 위험 매우 낮음. 다만 blocking pool 크기(기본 512) 대비 leak 누적 시 알림 외 다른 blocking 작업까지 영향.
+**개선 방향**: `osascript`을 `std::process::Command` + `tokio::process::Child::kill()`로 교체하여 timeout 시 OS 레벨에서 강제 종료 가능하도록 변경
+**흡수 조건**: 운영에서 알림 hang 사례 발견 시 또는 알림 채널 다양화 시
+
+---
+
+## [DEBT-MVP15-06] `infra → services` 역방향 레이어 의존 위반
+
+**발생**: 2026-05-02 MVP15 M2 step-7 코드 리뷰 (advisor + Codex P6 지적)
+**상태**: 🟡 **OPEN** (낮)
+**현상**: `infra/counted_search.rs`(데코레이터)가 `services::notification_service::dispatch_threshold_alert`를 직접 import. CLAUDE.md 명시 의존 방향 `api → services → domain ← infra` 위반. infra 데코레이터가 service orchestration까지 짊어진 구조.
+**리스크**: 런타임 버그는 아님. 의존 그래프 정리 시 순환 가능성 + 신규 개발자 혼란.
+**개선 방향 (택1)**:
+- `CountedSearchAdapter`를 `services/` 로 이동 (orchestration 책임)
+- `dispatch_threshold_alert` 동작을 별도 포트(`AlertDispatcherPort`)로 추상화 후 infra/는 포트만 호출
+**흡수 조건**: 다음 MVP에서 카운터·알림 인프라 확장 시 또는 의존 그래프 정리 chore
+
+---
+
+## [DEBT-MVP15-07] 피드 응답 snippet에 invalid JSON escape sequence
+
+**발생**: 2026-05-02 MVP15 M2 step-8 라이브 자동화 검증 중 발견 (M2 envelope 변경 이전부터 존재하는 기존 부채)
+**상태**: 🟡 **OPEN** (중)
+**현상**: `GET /api/me/feed` 응답 raw JSON에 `\4`, `\_` 같은 invalid escape sequence 27건 출현(예: `"snippet":"k5:G DEJ=6lQ42C6E\4@=@..."`). `JSON.parse` / `serde_json::from_str` / `jq` 모두 파싱 실패(`Invalid \escape: line 1 column 9006`).
+**리스크**: M3에서 클라이언트(웹 `realClient.ts` / iOS `APIArticleAdapter.swift`)가 envelope 디시리얼라이저로 전환할 때 일부 응답이 디시리얼라이즈 실패 → 피드 화면 빈 결과 + 사용자 영향. 현재 관측 시점의 32 items 중 1건이 문제.
+**원인 후보**:
+- Tavily/Exa/Firecrawl 응답의 snippet이 raw HTML/특수 인코딩 포함 → `clean_snippet()` 파이프라인이 backslash escape 처리 누락
+- 또는 직렬화 시 `serde_json`의 `String` 타입에 비ASCII 제어문자가 들어가 있어 escape 처리 실패
+**개선 방향**:
+- `infra/exa.rs::clean_snippet` 같은 정제 함수에서 invalid backslash escape 제거 추가
+- 또는 직렬화 직전 `serde_json::to_string` 에서 escape 표준화
+- 단위 테스트: `\4`, `\_` 등 27가지 패턴 fixture로 클린업 검증
+**흡수 조건**: M3 클라이언트 envelope 전환 시 같이 처리 권장 (디시리얼라이즈 견고성 + 사용자 영향 최소화)

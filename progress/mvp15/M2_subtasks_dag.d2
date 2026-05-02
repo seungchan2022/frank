@@ -1,0 +1,71 @@
+# MVP15 M2 서브태스크 의존성 DAG
+# 렌더: d2 progress/mvp15/M2_subtasks_dag.d2 progress/mvp15/M2_subtasks_dag.svg
+
+direction: down
+
+S6: "S6\nFRANK_DEV_MOCK_SEARCH\n토글 + 시작 로그\n(자기 보호)" {
+  shape: rectangle
+  style.fill: "#fff3cd"
+}
+
+S1: "S1\nlimit 5→20 (Tavily)\n+ Exa max\n+ Firecrawl 5 유지" {
+  shape: rectangle
+  style.fill: "#d4edda"
+}
+
+S2: "S2\n카운터 인프라\n(migration + Port +\nUPSERT INC + lazy reset)" {
+  shape: rectangle
+  style.fill: "#d4edda"
+  style.bold: true
+}
+
+S3: "S3\n80% 도달 시\n캐시 TTL 5분→30분" {
+  shape: rectangle
+  style.fill: "#cce5ff"
+}
+
+S4: "S4\n100% 차단\n+ iMessage 알림\n(R3/R4 가드 + dedupe)" {
+  shape: rectangle
+  style.fill: "#cce5ff"
+}
+
+S5: "S5\n셋 다 한도 시\n빈 결과 + recovery_at min" {
+  shape: rectangle
+  style.fill: "#f8d7da"
+}
+
+S7: "S7\n통합 테스트\n(한도 시뮬레이션 e2e)" {
+  shape: rectangle
+  style.fill: "#e2e3e5"
+  style.bold: true
+}
+
+# 권장 시작 순서 (점선)
+S6 -> S1: "권장 1순위 후" {
+  style.stroke-dash: 3
+  style.stroke: "#999"
+}
+
+# 실제 의존성 (실선)
+S2 -> S3: "CounterPort 사용"
+S2 -> S4: "CounterPort + dedupe 컬럼"
+S4 -> S5: "차단 응답 형태 일치"
+
+# S7은 모든 서브태스크 후
+S1 -> S7
+S3 -> S7
+S5 -> S7
+S6 -> S7
+
+# 범례
+legend: "범례" {
+  shape: rectangle
+  near: bottom-right
+  grid-rows: 5
+
+  l1: "노랑 = 자기 보호 (먼저)" { style.fill: "#fff3cd" }
+  l2: "초록 = foundation" { style.fill: "#d4edda" }
+  l3: "파랑 = S2 의존 병렬" { style.fill: "#cce5ff" }
+  l4: "빨강 = 응답 통합" { style.fill: "#f8d7da" }
+  l5: "회색 = e2e 테스트" { style.fill: "#e2e3e5" }
+}
