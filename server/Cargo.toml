@@ -25,3 +25,9 @@ url_jail = "0.2"
 [dev-dependencies]
 axum-test = "20"
 wiremock = "0.6"
+tempfile = "3"
+
+# MVP15 M1: 검색엔진 진단 바이너리. 운영 서버와 분리 빌드.
+[[bin]]
+name = "diagnose_search"
+path = "src/bin/diagnose_search.rs"
