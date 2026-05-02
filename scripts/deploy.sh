@@ -479,6 +479,7 @@ usage() {
   --native              Docker 없이 네이티브 모드 강제 실행 (프롬프트 없음)
   --tunnel              Cloudflare Quick Tunnel 시작 (front 포함 시 유효)
   --simulator=<이름>    iOS 시뮬레이터 이름 (기본: $IOS_SIMULATOR_NAME)
+  --mock-search         MVP15 M2: FRANK_DEV_MOCK_SEARCH=1 설정 (외부 검색 API 호출 안 함)
   --help, -h            이 도움말 출력
 
 Docker 연결 실패 시:
@@ -505,6 +506,12 @@ main() {
             --simulator=*) IOS_SIMULATOR_NAME="${arg#--simulator=}" ;;
             --tunnel)    use_tunnel=true ;;
             --native)    USE_NATIVE=true ;;
+            --mock-search)
+                # MVP15 M2 S6: FakeSearchAdapter + InMemoryCounter 주입.
+                # 외부 API 호출 0회 + DB 미오염. 본인 워크플로우용.
+                export FRANK_DEV_MOCK_SEARCH=1
+                log_warn "⚠️  MOCK SEARCH MODE: FRANK_DEV_MOCK_SEARCH=1 설정 — 외부 검색 API 호출 안 함"
+                ;;
             --help|-h)   usage; exit 0 ;;
             *)
                 log_error "알 수 없는 옵션: $arg"
