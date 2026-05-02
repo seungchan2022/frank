@@ -11,6 +11,8 @@ pub struct FirecrawlAdapter {
     client: Client,
     api_key: String,
     base_url: String,
+    /// MVP15 M2 S1: limit 상한. 3순위 폴백이라 5 유지.
+    max_cap: usize,
 }
 
 #[derive(Debug, Deserialize)]
@@ -35,6 +37,9 @@ struct FirecrawlScrapeData {
     markdown: Option<String>,
 }
 
+/// Firecrawl 기본 max_cap. 3순위 폴백 — 5 유지.
+const DEFAULT_FIRECRAWL_MAX_CAP: usize = 5;
+
 impl FirecrawlAdapter {
     pub fn new(api_key: &str) -> Self {
         Self::with_base_url(api_key, "https://api.firecrawl.dev")
@@ -48,7 +53,14 @@ impl FirecrawlAdapter {
                 .expect("Failed to build HTTP client"),
             api_key: api_key.to_string(),
             base_url: base_url.to_string(),
+            max_cap: DEFAULT_FIRECRAWL_MAX_CAP,
         }
+    }
+
+    /// MVP15 M2 S1: limit 상한 cap 주입. 빌더 패턴.
+    pub fn with_max_cap(mut self, cap: usize) -> Self {
+        self.max_cap = cap.max(1);
+        self
     }
 }
 
@@ -61,10 +73,12 @@ impl SearchPort for FirecrawlAdapter {
         Box<dyn std::future::Future<Output = Result<Vec<SearchResult>, AppError>> + Send + '_>,
     > {
         let query = query.to_string();
+        // S1 clamp
+        let effective = max_results.min(self.max_cap);
         Box::pin(async move {
             let body = serde_json::json!({
                 "query": query,
-                "limit": max_results,
+                "limit": effective,
             });
 
             let config = RetryConfig::for_search();

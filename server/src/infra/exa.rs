@@ -16,6 +16,8 @@ pub struct ExaAdapter {
     crawl_client: Client,
     api_key: String,
     base_url: String,
+    /// MVP15 M2 S1: numResults 상한. 보통 무료 max 10 추정.
+    max_cap: usize,
 }
 
 #[derive(Debug, Deserialize)]
@@ -182,6 +184,9 @@ fn is_korean_comment_count(line: &str) -> bool {
     }
 }
 
+/// Exa 무료 numResults max 추정치. 실측 후 조정 가능.
+const DEFAULT_EXA_MAX_CAP: usize = 10;
+
 impl ExaAdapter {
     pub fn new(api_key: &str) -> Self {
         Self::with_base_url(api_key, "https://api.exa.ai")
@@ -200,7 +205,14 @@ impl ExaAdapter {
                 .expect("Failed to build crawl client"),
             api_key: api_key.to_string(),
             base_url: base_url.to_string(),
+            max_cap: DEFAULT_EXA_MAX_CAP,
         }
+    }
+
+    /// MVP15 M2 S1: numResults 상한 cap 주입. 빌더 패턴.
+    pub fn with_max_cap(mut self, cap: usize) -> Self {
+        self.max_cap = cap.max(1);
+        self
     }
 }
 
@@ -213,6 +225,8 @@ impl SearchPort for ExaAdapter {
         Box<dyn std::future::Future<Output = Result<Vec<SearchResult>, AppError>> + Send + '_>,
     > {
         let query = query.to_string();
+        // S1 clamp
+        let effective = max_results.min(self.max_cap);
         Box::pin(async move {
             // Tavily의 time_range:"week"와 의미적 쌍 — 두 어댑터 모두 최근 7일 뉴스만 반환
             const SEARCH_WINDOW_DAYS: i64 = 7;
@@ -220,7 +234,7 @@ impl SearchPort for ExaAdapter {
             let week_ago = now - chrono::Duration::days(SEARCH_WINDOW_DAYS);
             let body = serde_json::json!({
                 "query": query,
-                "numResults": max_results,
+                "numResults": effective,
                 // Exa API 파라미터명: category (Tavily는 topic) — 각 API 스펙 차이
                 "category": "news",
                 "startPublishedDate": week_ago.to_rfc3339_opts(chrono::SecondsFormat::Millis, true),

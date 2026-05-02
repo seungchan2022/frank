@@ -17,6 +17,10 @@ pub struct TavilyAdapter {
     crawl_client: Client,
     api_key: String,
     base_url: String,
+    /// MVP15 M2 S1: 어댑터별 max 결과 수 상한.
+    /// SearchPort::search 인자 `max_results`와 `min(requested, max_cap)`로 clamp.
+    /// 무료 한도/응답 품질 한계에 맞춰 관리자가 주입 (Tavily=20, Exa=10, Firecrawl=5 권장).
+    max_cap: usize,
 }
 
 #[derive(Debug, Deserialize)]
@@ -31,6 +35,9 @@ struct TavilyResult {
     content: Option<String>,
     published_date: Option<String>,
 }
+
+/// 기본 max_cap. `with_max_cap` 미호출 시 적용 (역호환).
+const DEFAULT_TAVILY_MAX_CAP: usize = 20;
 
 impl TavilyAdapter {
     pub fn new(api_key: &str) -> Self {
@@ -50,7 +57,15 @@ impl TavilyAdapter {
                 .expect("Failed to build crawl client"),
             api_key: api_key.to_string(),
             base_url: base_url.to_string(),
+            max_cap: DEFAULT_TAVILY_MAX_CAP,
         }
+    }
+
+    /// MVP15 M2 S1: 결과 상한 cap 주입. 빌더 패턴.
+    /// `search()` 호출 시 요청 max_results와 cap 중 작은 값으로 clamp.
+    pub fn with_max_cap(mut self, cap: usize) -> Self {
+        self.max_cap = cap.max(1); // 0 방어
+        self
     }
 }
 
@@ -63,10 +78,12 @@ impl SearchPort for TavilyAdapter {
         Box<dyn std::future::Future<Output = Result<Vec<SearchResult>, AppError>> + Send + '_>,
     > {
         let query = query.to_string();
+        // S1 clamp: 요청과 cap 중 작은 값. 무료 한도 보호.
+        let effective = max_results.min(self.max_cap);
         Box::pin(async move {
             let body = serde_json::json!({
                 "query": query,
-                "max_results": max_results,
+                "max_results": effective,
                 "search_depth": "advanced",
                 "include_answer": false,
                 "time_range": "week",

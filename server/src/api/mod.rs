@@ -12,7 +12,7 @@ pub mod tags;
 use std::sync::Arc;
 
 use crate::domain::ports::{
-    CrawlPort, DbPort, FavoritesPort, FeedCachePort, LlmPort, NotificationPort,
+    CounterPort, CrawlPort, DbPort, FavoritesPort, FeedCachePort, LlmPort, NotificationPort,
     QuizWrongAnswerPort, SearchChainPort,
 };
 
@@ -26,6 +26,10 @@ pub struct AppState<D: DbPort> {
     pub favorites: Arc<dyn FavoritesPort>,
     pub quiz_wrong_answers: Arc<dyn QuizWrongAnswerPort>,
     pub feed_cache: Arc<dyn FeedCachePort>,
+    /// MVP15 M2: 엔진별 월간 호출 카운터 (한도 보호 인프라).
+    /// 사용처: 80% 도달 시 캐시 TTL 강화 (S3), 셋 다 한도 시 회복 시각 안내 (S5).
+    /// 100% 차단 + 알림은 `CountedSearchAdapter`(데코레이터)에서 처리.
+    pub counter: Arc<dyn CounterPort>,
 }
 
 impl<D: DbPort + std::fmt::Debug> std::fmt::Debug for AppState<D> {
@@ -39,6 +43,7 @@ impl<D: DbPort + std::fmt::Debug> std::fmt::Debug for AppState<D> {
             .field("favorites", &"<dyn FavoritesPort>")
             .field("quiz_wrong_answers", &"<dyn QuizWrongAnswerPort>")
             .field("feed_cache", &"<dyn FeedCachePort>")
+            .field("counter", &"<dyn CounterPort>")
             .finish()
     }
 }
@@ -54,6 +59,7 @@ mod tests {
     use crate::infra::fake_quiz_wrong_answers::FakeQuizWrongAnswerAdapter;
     use crate::infra::fake_search::FakeSearchAdapter;
     use crate::infra::feed_cache::NoopFeedCache;
+    use crate::infra::in_memory_counter::InMemoryCounter;
     use crate::infra::search_chain::SearchFallbackChain;
 
     #[test]
@@ -73,6 +79,7 @@ mod tests {
             favorites: Arc::new(FakeFavoritesAdapter::new()),
             quiz_wrong_answers: Arc::new(FakeQuizWrongAnswerAdapter::new()),
             feed_cache: Arc::new(NoopFeedCache),
+            counter: Arc::new(InMemoryCounter::new()),
         };
 
         let debug_str = format!("{:?}", state);
@@ -82,5 +89,6 @@ mod tests {
         assert!(debug_str.contains("<dyn CrawlPort>"));
         assert!(debug_str.contains("<dyn NotificationPort>"));
         assert!(debug_str.contains("<dyn FeedCachePort>"));
+        assert!(debug_str.contains("<dyn CounterPort>"));
     }
 }

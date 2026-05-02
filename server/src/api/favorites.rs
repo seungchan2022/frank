@@ -134,6 +134,7 @@ mod tests {
             favorites: Arc::new(favorites),
             quiz_wrong_answers: Arc::new(FakeQuizWrongAnswerAdapter::new()),
             feed_cache: Arc::new(NoopFeedCache),
+            counter: Arc::new(crate::infra::in_memory_counter::InMemoryCounter::new()),
         };
 
         Router::new()

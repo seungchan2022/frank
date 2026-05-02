@@ -15,7 +15,7 @@ use tower_http::cors::CorsLayer;
 
 use api::AppState;
 use domain::ports::{
-    CrawlPort, DbPort, FavoritesPort, FeedCachePort, LlmPort, NotificationPort,
+    CounterPort, CrawlPort, DbPort, FavoritesPort, FeedCachePort, LlmPort, NotificationPort,
     QuizWrongAnswerPort, SearchChainPort,
 };
 use middleware::auth::SupabaseConfig;
@@ -60,6 +60,7 @@ pub fn create_router<D: DbPort + Clone + 'static>(
     favorites: Arc<dyn FavoritesPort>,
     quiz_wrong_answers: Arc<dyn QuizWrongAnswerPort>,
     feed_cache: Arc<dyn FeedCachePort>,
+    counter: Arc<dyn CounterPort>,
 ) -> Router {
     let state = AppState {
         db,
@@ -70,6 +71,7 @@ pub fn create_router<D: DbPort + Clone + 'static>(
         favorites,
         quiz_wrong_answers,
         feed_cache,
+        counter,
     };
 
     let auth_routes = Router::new()
@@ -141,6 +143,7 @@ mod tests {
     use crate::infra::fake_quiz_wrong_answers::FakeQuizWrongAnswerAdapter;
     use crate::infra::fake_search::FakeSearchAdapter;
     use crate::infra::feed_cache::NoopFeedCache;
+    use crate::infra::in_memory_counter::InMemoryCounter;
     use crate::infra::search_chain::SearchFallbackChain;
     use crate::middleware::auth::SupabaseConfig;
 
@@ -163,6 +166,7 @@ mod tests {
             Arc::new(FakeFavoritesAdapter::new()),
             Arc::new(FakeQuizWrongAnswerAdapter::new()),
             Arc::new(NoopFeedCache),
+            Arc::new(InMemoryCounter::new()),
         );
         TestServer::new(router)
     }

@@ -8,15 +8,25 @@ use uuid::Uuid;
 
 use crate::domain::error::AppError;
 use crate::domain::models::FeedItem;
-use crate::domain::ports::DbPort;
+use crate::domain::ports::{DbPort, MONTHLY_CALL_LIMIT};
 use crate::middleware::auth::AuthUser;
 
 use super::AppState;
 
 /// 피드 TTL: 완전 성공 5분
 const FEED_CACHE_TTL: Duration = Duration::from_secs(300);
-/// 피드 TTL: 부분 실패(일부 태그 검색 오류) 1분
+/// 피드 TTL: 부분 실패(일부 태그 검색 오류) 1분 (이 값이 항상 우선)
 const FEED_CACHE_TTL_PARTIAL: Duration = Duration::from_secs(60);
+/// MVP15 M2 S3: 80% 도달 시 TTL 30분 (캐시 강화로 추가 호출 억제)
+const FEED_CACHE_TTL_QUOTA_WARN: Duration = Duration::from_secs(1800);
+/// 사용률 80% 임계.
+const QUOTA_WARN_PCT: i32 = 80;
+/// 사용률 100% 임계 (안내 응답 트리거).
+const QUOTA_BLOCK_PCT: i32 = 100;
+// 분모(무료 한도)는 domain/ports.rs::MONTHLY_CALL_LIMIT SSOT 사용.
+/// MVP15 M2 S2 통합: 카운터 PK로 사용하는 엔진 식별자 목록.
+/// `FeedItem.source` 와 동일해야 한다 (advisor 지적: PK 일관성).
+const ENGINE_IDS: &[&str] = &["tavily", "exa", "firecrawl"];
 
 /// 캐시 키 생성: 특정 태그 → `"{user_id}:{tag_id}"`, 전체 피드 → `"{user_id}:{sorted_tag_ids}"`
 fn make_cache_key(user_id: Uuid, tag_ids: &[Uuid]) -> String {
@@ -93,18 +103,84 @@ impl From<FeedItem> for FeedItemResponse {
     }
 }
 
+/// MVP15 M2 S5: 셋 다 한도 시 사용자 안내 페이로드.
+/// `notice = None`이면 정상, `Some`이면 빈 결과 + 안내.
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+pub struct FeedNotice {
+    /// 한국어 안내 메시지
+    pub message: String,
+    /// 회복 시각 (가장 빠른 reset_at). NULL 엔진(Exa)은 제외하고 min.
+    /// 셋 다 NULL이면 None.
+    pub recovery_at: Option<DateTime<Utc>>,
+}
+
+/// MVP15 M2 S5: 항상-envelope 응답.
+/// `notice`는 평소 None, 한도 도달로 빈 결과일 때만 Some.
+/// (M3에서 클라이언트가 함께 전환)
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+pub struct FeedResponse {
+    pub items: Vec<FeedItemResponse>,
+    pub notice: Option<FeedNotice>,
+}
+
+/// 셋 다 한도 안내 메시지 빌드. 순수 함수.
+pub fn build_quota_notice_message() -> String {
+    "오늘은 모든 검색 엔진의 무료 한도가 소진되어 새 기사를 가져올 수 없습니다. 캐시된 기사만 보일 수 있습니다.".to_string()
+}
+
+/// 회복 시각 선택: NULL 엔진(Exa) 제외하고 가장 빠른 reset_at.
+/// 셋 다 NULL이면 None.
+/// 순수 함수 — 표 기반 테스트 용이.
+pub fn select_recovery_at(snapshots: &[(String, Option<DateTime<Utc>>)]) -> Option<DateTime<Utc>> {
+    snapshots.iter().filter_map(|(_, r)| *r).min()
+}
+
+/// 사용률 계산. (calls / MONTHLY_CALL_LIMIT) * 100.
+/// 100 초과는 100으로 clamp (UI 안정성).
+pub fn usage_pct(calls: i32) -> i32 {
+    let pct = ((calls as f64 / MONTHLY_CALL_LIMIT as f64) * 100.0).floor() as i32;
+    pct.clamp(0, 100)
+}
+
+/// MVP15 M2 S3: 캐시 TTL 결정 함수. 순수 함수 — 표 기반 테스트 용이.
+///
+/// 우선순위 (advisor 지적):
+/// 1. 부분 실패 → 1분 (불완전 결과 조기 만료, 항상 우선)
+/// 2. 사용률 ≥ 80% → 30분 (캐시 강화로 추가 호출 억제)
+/// 3. 그 외 → 5분 (기본)
+pub fn decide_cache_ttl(search_failed_count: usize, max_usage_pct: i32) -> Duration {
+    if search_failed_count > 0 {
+        return FEED_CACHE_TTL_PARTIAL;
+    }
+    if max_usage_pct >= QUOTA_WARN_PCT {
+        return FEED_CACHE_TTL_QUOTA_WARN;
+    }
+    FEED_CACHE_TTL
+}
+
+/// 모든 엔진 사용률이 100%인지 — 셋 다 차단 판정.
+pub fn all_engines_blocked(snapshots: &[(String, i32, Option<DateTime<Utc>>)]) -> bool {
+    !snapshots.is_empty()
+        && snapshots
+            .iter()
+            .all(|(_, calls, _)| usage_pct(*calls) >= QUOTA_BLOCK_PCT)
+}
+
 /// GET /me/feed
 /// 사용자 태그를 기반으로 검색 API를 직접 호출해 피드를 반환한다.
 /// DB에 저장하지 않음 — 캐시 HIT 시 즉시 반환, MISS 시 검색 API 호출.
 /// `Cache-Control: no-cache` 헤더 수신 시 캐시 우회 → 항상 검색 API 호출.
 /// 모든 태그 검색을 `futures::future::join_all`로 병렬 실행한다.
 /// `tag_id` 쿼리 파라미터가 있으면 해당 태그만 검색 (하위 호환).
+///
+/// MVP15 M2 S5: 응답은 항상 `FeedResponse` envelope.
+/// 평소 `notice = None`, 셋 다 한도 시 `notice = Some({ message, recovery_at })`.
 pub async fn get_feed<D: DbPort>(
     Extension(state): Extension<AppState<D>>,
     Extension(user): Extension<AuthUser>,
     Query(feed_query): Query<FeedQuery>,
     headers: HeaderMap,
-) -> Result<Json<Vec<FeedItemResponse>>, AppError> {
+) -> Result<Json<FeedResponse>, AppError> {
     // limit 상한 검증
     if feed_query.limit.is_some_and(|l| l > MAX_FEED_LIMIT) {
         return Err(AppError::BadRequest(format!(
@@ -115,7 +191,10 @@ pub async fn get_feed<D: DbPort>(
     let user_tags = state.db.get_user_tags(user.id).await?;
     if user_tags.is_empty() {
         // 태그 없으면 빈 피드 반환 (에러 아님)
-        return Ok(Json(vec![]));
+        return Ok(Json(FeedResponse {
+            items: vec![],
+            notice: None,
+        }));
     }
 
     let all_tags = state.db.list_tags().await?;
@@ -136,7 +215,10 @@ pub async fn get_feed<D: DbPort>(
 
     if filtered_tags.is_empty() {
         // 해당 tag_id가 사용자 구독 태그가 아니면 빈 결과 (403 아님)
-        return Ok(Json(vec![]));
+        return Ok(Json(FeedResponse {
+            items: vec![],
+            notice: None,
+        }));
     }
 
     // ── 피드 캐시 조회 ──────────────────────────────────────────────────────
@@ -148,9 +230,10 @@ pub async fn get_feed<D: DbPort>(
         if let Some(cached_items) = state.feed_cache.get(&cache_key) {
             tracing::info!(cache_key = %cache_key, "feed cache HIT — skipping search API");
             let paginated = apply_pagination(cached_items, feed_query.limit, feed_query.offset);
-            return Ok(Json(
-                paginated.into_iter().map(FeedItemResponse::from).collect(),
-            ));
+            return Ok(Json(FeedResponse {
+                items: paginated.into_iter().map(FeedItemResponse::from).collect(),
+                notice: None,
+            }));
         }
         tracing::info!(cache_key = %cache_key, "feed cache MISS — calling search API");
     } else {
@@ -208,12 +291,13 @@ pub async fn get_feed<D: DbPort>(
         tracing::info!(search_query = %q, "feed search query");
     }
 
-    // join_all로 모든 태그 검색을 동시에 실행
+    // MVP15 M2 S1: 5 → 20 (limit 확대). 실제 결과 수는 어댑터별 cap에 의해 제한됨.
+    // (Tavily=20, Exa=10, Firecrawl=5 — main.rs:build_search_sources)
     let chain = std::sync::Arc::clone(&state.search_chain);
     let futures = jobs.into_iter().map(|(tag_id, tag_name, search_query)| {
         let chain = std::sync::Arc::clone(&chain);
         async move {
-            let result = chain.search(&search_query, 5).await;
+            let result = chain.search(&search_query, 20).await;
             (tag_id, tag_name, result)
         }
     });
@@ -273,32 +357,66 @@ pub async fn get_feed<D: DbPort>(
     let mut seen_urls = std::collections::HashSet::new();
     items.retain(|item| seen_urls.insert(normalize_url(&item.url)));
 
+    // ── MVP15 M2 S3: 카운터 사용률에 따른 캐시 TTL 결정 ─────────────────────
+    // 우선순위 (advisor 지적):
+    //   1. 부분 실패 → 1분 (항상 우선)
+    //   2. 사용률 ≥ 80% → 30분 (캐시 강화로 추가 호출 억제)
+    //   3. 그 외 → 5분 (기본)
+    // S5 트리거: 셋 다 100% → notice 응답.
+    let mut engine_snapshots: Vec<(String, i32, Option<DateTime<Utc>>)> = vec![];
+    for engine in ENGINE_IDS {
+        let snap = state.counter.snapshot(engine).await.unwrap_or_else(|e| {
+            tracing::warn!(engine = %engine, error = %e, "counter snapshot 실패, 0으로 폴백");
+            crate::domain::ports::CounterSnapshot {
+                calls: 0,
+                reset_at: None,
+            }
+        });
+        engine_snapshots.push((engine.to_string(), snap.calls, snap.reset_at));
+    }
+    let max_usage = engine_snapshots
+        .iter()
+        .map(|(_, calls, _)| usage_pct(*calls))
+        .max()
+        .unwrap_or(0);
+
     // ── 피드 캐시 저장 ──────────────────────────────────────────────────────
     // no-cache 요청도 결과는 저장 (다음 일반 요청에서 HIT)
     // 완전 실패(items 빈 배열) → 저장 스킵
-    // 부분 실패(일부 태그 검색 오류) → 1분 단축 TTL (불완전 결과 조기 만료)
-    // 완전 성공 → 5분 TTL
     if !items.is_empty() {
-        let ttl = if search_failed_count > 0 {
-            FEED_CACHE_TTL_PARTIAL
-        } else {
-            FEED_CACHE_TTL
-        };
-        if search_failed_count > 0 {
-            tracing::info!(
-                failed_tags = search_failed_count,
-                ttl_secs = ttl.as_secs(),
-                "partial search failure — caching with short TTL"
-            );
-        }
+        let ttl = decide_cache_ttl(search_failed_count, max_usage);
+        tracing::info!(
+            failed_tags = search_failed_count,
+            max_usage_pct = max_usage,
+            ttl_secs = ttl.as_secs(),
+            "feed cache TTL decided"
+        );
         state.feed_cache.set(&cache_key, items.clone(), ttl);
     }
     // ────────────────────────────────────────────────────────────────────────
 
+    // S5: 셋 다 차단 + 결과 비어있음 → 안내 응답
+    if items.is_empty() && all_engines_blocked(&engine_snapshots) {
+        let recovery_at = select_recovery_at(
+            &engine_snapshots
+                .iter()
+                .map(|(e, _, r)| (e.clone(), *r))
+                .collect::<Vec<_>>(),
+        );
+        return Ok(Json(FeedResponse {
+            items: vec![],
+            notice: Some(FeedNotice {
+                message: build_quota_notice_message(),
+                recovery_at,
+            }),
+        }));
+    }
+
     let paginated = apply_pagination(items, feed_query.limit, feed_query.offset);
-    Ok(Json(
-        paginated.into_iter().map(FeedItemResponse::from).collect(),
-    ))
+    Ok(Json(FeedResponse {
+        items: paginated.into_iter().map(FeedItemResponse::from).collect(),
+        notice: None,
+    }))
 }
 
 /// URL을 정규화한다 — 중복 제거 키로 사용.
@@ -476,6 +594,7 @@ mod tests {
             favorites: Arc::new(FakeFavoritesAdapter::new()),
             quiz_wrong_answers: Arc::new(FakeQuizWrongAnswerAdapter::new()),
             feed_cache: Arc::new(NoopFeedCache),
+            counter: Arc::new(crate::infra::in_memory_counter::InMemoryCounter::new()),
         }
     }
 
@@ -495,6 +614,7 @@ mod tests {
             favorites: Arc::new(FakeFavoritesAdapter::new()),
             quiz_wrong_answers: Arc::new(FakeQuizWrongAnswerAdapter::new()),
             feed_cache: Arc::new(NoopFeedCache),
+            counter: Arc::new(crate::infra::in_memory_counter::InMemoryCounter::new()),
         }
     }
 
@@ -520,6 +640,7 @@ mod tests {
             favorites: Arc::new(FakeFavoritesAdapter::new()),
             quiz_wrong_answers: Arc::new(FakeQuizWrongAnswerAdapter::new()),
             feed_cache: Arc::clone(&cache) as Arc<dyn crate::domain::ports::FeedCachePort>,
+            counter: Arc::new(crate::infra::in_memory_counter::InMemoryCounter::new()),
         };
         (state, cache)
     }
@@ -544,6 +665,7 @@ mod tests {
             favorites: Arc::new(FakeFavoritesAdapter::new()),
             quiz_wrong_answers: Arc::new(FakeQuizWrongAnswerAdapter::new()),
             feed_cache: Arc::clone(&cache) as Arc<dyn crate::domain::ports::FeedCachePort>,
+            counter: Arc::new(crate::infra::in_memory_counter::InMemoryCounter::new()),
         };
         (state, cache)
     }
@@ -565,7 +687,7 @@ mod tests {
 
         let resp = server.get("/me/feed").await;
         resp.assert_status_ok();
-        let items: Vec<FeedItemResponse> = resp.json();
+        let items: Vec<FeedItemResponse> = resp.json::<FeedResponse>().items;
         assert!(items.is_empty());
     }
 
@@ -597,7 +719,7 @@ mod tests {
 
         let resp = server.get("/me/feed").await;
         resp.assert_status_ok();
-        let items: Vec<FeedItemResponse> = resp.json();
+        let items: Vec<FeedItemResponse> = resp.json::<FeedResponse>().items;
         assert_eq!(items.len(), 1);
         assert_eq!(items[0].title, "Test Article");
         assert_eq!(items[0].tag_id, Some(tag_id));
@@ -633,7 +755,7 @@ mod tests {
         let resp = server.get("/me/feed").await;
         resp.assert_status_ok();
         // 응답은 있지만 DB 저장 없음 — FeedItemResponse에 id 필드 없음
-        let items: Vec<FeedItemResponse> = resp.json();
+        let items: Vec<FeedItemResponse> = resp.json::<FeedResponse>().items;
         assert_eq!(items.len(), 1);
         let json = serde_json::to_value(&items[0]).unwrap();
         assert!(
@@ -674,7 +796,7 @@ mod tests {
 
         let resp = server.get("/me/feed").await;
         resp.assert_status_ok();
-        let items: Vec<FeedItemResponse> = resp.json();
+        let items: Vec<FeedItemResponse> = resp.json::<FeedResponse>().items;
         // 중복 제거 → 1개
         assert_eq!(items.len(), 1);
     }
@@ -716,7 +838,7 @@ mod tests {
 
         let resp = server.get("/me/feed").await;
         resp.assert_status_ok();
-        let items: Vec<FeedItemResponse> = resp.json();
+        let items: Vec<FeedItemResponse> = resp.json::<FeedResponse>().items;
         assert_eq!(items.len(), 1);
         assert!(items[0].url.contains("real-article"));
     }
@@ -750,13 +872,14 @@ mod tests {
             favorites: Arc::new(FakeFavoritesAdapter::new()),
             quiz_wrong_answers: Arc::new(FakeQuizWrongAnswerAdapter::new()),
             feed_cache: Arc::new(NoopFeedCache),
+            counter: Arc::new(crate::infra::in_memory_counter::InMemoryCounter::new()),
         };
         let app = make_app(state, user_id);
         let server = TestServer::new(app);
 
         let resp = server.get("/me/feed").await;
         resp.assert_status_ok();
-        let items: Vec<FeedItemResponse> = resp.json();
+        let items: Vec<FeedItemResponse> = resp.json::<FeedResponse>().items;
         assert!(items.is_empty());
     }
 
@@ -812,7 +935,7 @@ mod tests {
 
         let resp = server.get("/me/feed").await;
         resp.assert_status_ok();
-        let items: Vec<FeedItemResponse> = resp.json();
+        let items: Vec<FeedItemResponse> = resp.json::<FeedResponse>().items;
         assert_eq!(items.len(), 1);
         assert_eq!(
             items[0].title, "Cached Article",
@@ -852,14 +975,14 @@ mod tests {
         // 첫 요청 → MISS → 검색 API 호출
         let resp = server.get("/me/feed").await;
         resp.assert_status_ok();
-        let items: Vec<FeedItemResponse> = resp.json();
+        let items: Vec<FeedItemResponse> = resp.json::<FeedResponse>().items;
         assert_eq!(items.len(), 1);
         assert_eq!(items[0].title, "Fresh Article");
 
         // 두 번째 요청 → HIT → 캐시 데이터 반환 (검색 API 재호출 없음)
         let resp2 = server.get("/me/feed").await;
         resp2.assert_status_ok();
-        let items2: Vec<FeedItemResponse> = resp2.json();
+        let items2: Vec<FeedItemResponse> = resp2.json::<FeedResponse>().items;
         assert_eq!(items2.len(), 1, "캐시 MISS 후 저장 → 두 번째 요청은 HIT");
 
         // 캐시에 데이터가 저장됐는지 직접 확인
@@ -926,7 +1049,7 @@ mod tests {
             )
             .await;
         resp.assert_status_ok();
-        let items: Vec<FeedItemResponse> = resp.json();
+        let items: Vec<FeedItemResponse> = resp.json::<FeedResponse>().items;
         assert_eq!(items.len(), 1);
         assert_eq!(
             items[0].title, "Fresh Article",
@@ -1209,7 +1332,7 @@ mod tests {
             .add_query_params([("limit", "2"), ("offset", "0")])
             .await;
         resp.assert_status_ok();
-        let items: Vec<FeedItemResponse> = resp.json();
+        let items: Vec<FeedItemResponse> = resp.json::<FeedResponse>().items;
         assert_eq!(items.len(), 2, "limit=2 → 2개 반환");
 
         // limit=2, offset=2 → 2개 (3~4번째)
@@ -1218,7 +1341,7 @@ mod tests {
             .add_query_params([("limit", "2"), ("offset", "2")])
             .await;
         resp.assert_status_ok();
-        let items: Vec<FeedItemResponse> = resp.json();
+        let items: Vec<FeedItemResponse> = resp.json::<FeedResponse>().items;
         assert_eq!(items.len(), 2, "limit=2, offset=2 → 2개 반환");
 
         // limit=2, offset=4 → 1개 (마지막 1개)
@@ -1227,13 +1350,13 @@ mod tests {
             .add_query_params([("limit", "2"), ("offset", "4")])
             .await;
         resp.assert_status_ok();
-        let items: Vec<FeedItemResponse> = resp.json();
+        let items: Vec<FeedItemResponse> = resp.json::<FeedResponse>().items;
         assert_eq!(items.len(), 1, "limit=2, offset=4 → 1개 반환");
 
         // limit 없음 → 전체 5개
         let resp = server.get("/me/feed").await;
         resp.assert_status_ok();
-        let items: Vec<FeedItemResponse> = resp.json();
+        let items: Vec<FeedItemResponse> = resp.json::<FeedResponse>().items;
         assert_eq!(items.len(), 5, "limit 없음 → 전체 반환");
     }
 
@@ -1306,7 +1429,7 @@ mod tests {
 
         let resp = server.get("/me/feed").await;
         resp.assert_status_ok();
-        let items: Vec<FeedItemResponse> = resp.json();
+        let items: Vec<FeedItemResponse> = resp.json::<FeedResponse>().items;
         // 두 태그 결과가 모두 포함 (URL이 달라 dedupe 없음)
         assert_eq!(items.len(), 2, "두 태그의 결과가 모두 합산돼야 한다");
         let urls: Vec<&str> = items.iter().map(|i| i.url.as_str()).collect();
@@ -1363,7 +1486,7 @@ mod tests {
         // tag_id=tag_a.id 로 요청 → tag_a 결과만
         let resp = server.get(&format!("/me/feed?tag_id={}", tag_a.id)).await;
         resp.assert_status_ok();
-        let items: Vec<FeedItemResponse> = resp.json();
+        let items: Vec<FeedItemResponse> = resp.json::<FeedResponse>().items;
         assert_eq!(items.len(), 1, "tag_id 필터 시 해당 태그 결과만 반환");
         assert_eq!(items[0].url, "https://example.com/news/ai-only");
         assert_eq!(items[0].tag_id, Some(tag_a.id));
@@ -1418,7 +1541,7 @@ mod tests {
         // tag_id 없이 요청 → 전체 태그 결과
         let resp = server.get("/me/feed").await;
         resp.assert_status_ok();
-        let items: Vec<FeedItemResponse> = resp.json();
+        let items: Vec<FeedItemResponse> = resp.json::<FeedResponse>().items;
         assert_eq!(items.len(), 2, "tag_id 없으면 전체 태그 결과 합산");
     }
 
@@ -1447,7 +1570,7 @@ mod tests {
             .get(&format!("/me/feed?tag_id={random_tag_id}"))
             .await;
         resp.assert_status_ok();
-        let items: Vec<FeedItemResponse> = resp.json();
+        let items: Vec<FeedItemResponse> = resp.json::<FeedResponse>().items;
         assert!(items.is_empty(), "미구독 tag_id → 빈 결과");
     }
 
@@ -1496,7 +1619,7 @@ mod tests {
 
         let resp = server.get("/me/feed").await;
         resp.assert_status_ok();
-        let items: Vec<FeedItemResponse> = resp.json();
+        let items: Vec<FeedItemResponse> = resp.json::<FeedResponse>().items;
         assert_eq!(items.len(), 1, "listing URL은 피드에서 제거돼야 한다");
         assert!(items[0].url.contains("real-article"));
     }
@@ -1554,7 +1677,7 @@ mod tests {
 
         let resp = server.get("/me/feed").await;
         resp.assert_status_ok();
-        let items: Vec<FeedItemResponse> = resp.json();
+        let items: Vec<FeedItemResponse> = resp.json::<FeedResponse>().items;
         assert_eq!(
             items.len(),
             1,
@@ -1599,7 +1722,7 @@ mod tests {
 
         let resp = server.get("/me/feed").await;
         resp.assert_status_ok();
-        let items: Vec<FeedItemResponse> = resp.json();
+        let items: Vec<FeedItemResponse> = resp.json::<FeedResponse>().items;
         assert_eq!(
             items.len(),
             1,
@@ -1653,7 +1776,7 @@ mod tests {
 
         let resp = server.get(&format!("/me/feed?tag_id={}", tag_a.id)).await;
         resp.assert_status_ok();
-        let items: Vec<FeedItemResponse> = resp.json();
+        let items: Vec<FeedItemResponse> = resp.json::<FeedResponse>().items;
         assert_eq!(
             items.len(),
             1,
@@ -1753,7 +1876,7 @@ mod tests {
 
         let resp = server.get("/me/feed").await;
         resp.assert_status_ok();
-        let items: Vec<FeedItemResponse> = resp.json();
+        let items: Vec<FeedItemResponse> = resp.json::<FeedResponse>().items;
         assert_eq!(items.len(), 1, "부분 실패: 성공한 태그 결과만 반환");
 
         // 부분 실패 → 남은 TTL이 1분(60초) 이하
@@ -1795,7 +1918,7 @@ mod tests {
 
         let resp = server.get("/me/feed").await;
         resp.assert_status_ok();
-        let items: Vec<FeedItemResponse> = resp.json();
+        let items: Vec<FeedItemResponse> = resp.json::<FeedResponse>().items;
         assert!(items.is_empty(), "완전 실패 → 빈 결과");
 
         // 완전 실패 → 캐시에 저장 안 함
@@ -1844,9 +1967,274 @@ mod tests {
 
         let resp = server.get("/me/feed").await;
         resp.assert_status_ok();
-        let items: Vec<FeedItemResponse> = resp.json();
+        let items: Vec<FeedItemResponse> = resp.json::<FeedResponse>().items;
         // A 실패는 skip, B 성공 결과만
         assert_eq!(items.len(), 1, "실패한 태그는 skip, 성공한 태그 결과만");
         assert_eq!(items[0].url, "https://example.com/news/web-only");
+    }
+
+    // ── MVP15 M2 — S3/S5 + S7 통합 테스트 ──────────────────────────────────
+
+    #[test]
+    fn decide_cache_ttl_table() {
+        // S3: TTL 결정 우선순위 표 기반 검증
+        // 1) 부분 실패 → 1분 (항상 우선)
+        assert_eq!(
+            decide_cache_ttl(1, 0),
+            FEED_CACHE_TTL_PARTIAL,
+            "부분 실패 → 1분"
+        );
+        assert_eq!(
+            decide_cache_ttl(1, 95),
+            FEED_CACHE_TTL_PARTIAL,
+            "부분 실패는 사용률 95%여도 1분 우선"
+        );
+        // 2) 사용률 ≥ 80% → 30분
+        assert_eq!(decide_cache_ttl(0, 80), FEED_CACHE_TTL_QUOTA_WARN);
+        assert_eq!(decide_cache_ttl(0, 99), FEED_CACHE_TTL_QUOTA_WARN);
+        assert_eq!(decide_cache_ttl(0, 100), FEED_CACHE_TTL_QUOTA_WARN);
+        // 3) 그 외 → 5분
+        assert_eq!(decide_cache_ttl(0, 0), FEED_CACHE_TTL);
+        assert_eq!(decide_cache_ttl(0, 79), FEED_CACHE_TTL);
+    }
+
+    #[test]
+    fn usage_pct_table() {
+        assert_eq!(usage_pct(0), 0);
+        assert_eq!(usage_pct(500), 50);
+        assert_eq!(usage_pct(800), 80);
+        assert_eq!(usage_pct(999), 99);
+        assert_eq!(usage_pct(1000), 100);
+        // 100 초과 clamp
+        assert_eq!(usage_pct(2000), 100);
+    }
+
+    #[test]
+    fn select_recovery_at_skips_null_engines() {
+        let earliest = chrono::Utc::now() + chrono::Duration::days(3);
+        let later = chrono::Utc::now() + chrono::Duration::days(20);
+        let snaps = vec![
+            ("tavily".to_string(), Some(later)),
+            ("exa".to_string(), None),
+            ("firecrawl".to_string(), Some(earliest)),
+        ];
+        let r = select_recovery_at(&snaps);
+        assert_eq!(r, Some(earliest), "NULL 제외하고 가장 빠른 reset_at");
+    }
+
+    #[test]
+    fn select_recovery_at_all_null() {
+        let snaps = vec![("exa".to_string(), None)];
+        assert_eq!(select_recovery_at(&snaps), None);
+    }
+
+    #[test]
+    fn all_engines_blocked_table() {
+        // 셋 다 ≥1000 → blocked
+        let blocked = vec![
+            ("tavily".to_string(), 1000, None),
+            ("exa".to_string(), 1500, None),
+            ("firecrawl".to_string(), 1000, None),
+        ];
+        assert!(all_engines_blocked(&blocked));
+
+        // 하나라도 < 1000 → not blocked
+        let partial = vec![
+            ("tavily".to_string(), 1000, None),
+            ("exa".to_string(), 999, None),
+            ("firecrawl".to_string(), 1000, None),
+        ];
+        assert!(!all_engines_blocked(&partial));
+
+        // 빈 → not blocked
+        assert!(!all_engines_blocked(&[]));
+    }
+
+    /// S7 helper: seedable counter handle을 분리한 state 빌더.
+    fn make_test_state_with_seedable_counter(
+        db: FakeDbAdapter,
+        search_results: Vec<SearchResult>,
+    ) -> (
+        super::super::AppState<FakeDbAdapter>,
+        Arc<InMemoryFeedCache>,
+        Arc<crate::infra::in_memory_counter::InMemoryCounter>,
+    ) {
+        let chain = SearchFallbackChain::new(vec![Box::new(FakeSearchAdapter::new(
+            "test",
+            search_results,
+            false,
+        ))]);
+        let cache = Arc::new(InMemoryFeedCache::new(10));
+        let counter = Arc::new(crate::infra::in_memory_counter::InMemoryCounter::new());
+        let state = super::super::AppState {
+            db,
+            search_chain: Arc::new(chain) as Arc<dyn SearchChainPort>,
+            llm: Arc::new(FakeLlmAdapter::new()),
+            crawl: Arc::new(FakeCrawlAdapter::new()),
+            notifier: Arc::new(FakeNotificationAdapter::new()),
+            favorites: Arc::new(FakeFavoritesAdapter::new()),
+            quiz_wrong_answers: Arc::new(FakeQuizWrongAnswerAdapter::new()),
+            feed_cache: Arc::clone(&cache) as Arc<dyn crate::domain::ports::FeedCachePort>,
+            counter: Arc::clone(&counter) as Arc<dyn crate::domain::ports::CounterPort>,
+        };
+        (state, cache, counter)
+    }
+
+    /// S7: 통합 시나리오 (a) 800 시드 → 30분 TTL
+    #[tokio::test]
+    async fn s7_seeded_800_yields_30min_ttl() {
+        let db = FakeDbAdapter::new();
+        let user_id = Uuid::new_v4();
+        db.seed_profile(crate::domain::models::Profile {
+            id: user_id,
+            display_name: None,
+            onboarding_completed: true,
+        });
+        let tags = db.get_tags();
+        let tag_id = tags[0].id;
+        db.seed_user_tag(user_id, tag_id);
+
+        let (state, cache, counter) = make_test_state_with_seedable_counter(
+            db,
+            vec![SearchResult {
+                title: "ok".into(),
+                url: "https://example.com/news/x".into(),
+                snippet: None,
+                published_at: None,
+                image_url: None,
+            }],
+        );
+        // 카운터 800 시드 (tavily — 80% 도달)
+        counter.seed(
+            "tavily",
+            800,
+            Some(chrono::Utc::now() + chrono::Duration::days(7)),
+        );
+
+        let app = make_app(state, user_id);
+        let server = TestServer::new(app);
+
+        let resp = server.get("/me/feed").await;
+        resp.assert_status_ok();
+
+        let cache_key = format!("{}:{}", user_id, tag_id);
+        let ttl = cache.remaining_ttl(&cache_key).expect("캐시에 저장돼야 함");
+        // 80% 도달 → 30분 TTL (1800초). 살짝 작은 여유 허용.
+        assert!(
+            ttl >= Duration::from_secs(1700) && ttl <= Duration::from_secs(1800),
+            "30분 TTL 기대, 실제 {}초",
+            ttl.as_secs()
+        );
+    }
+
+    /// S7: (c) 셋 다 1000 시드 → notice + recovery_at min
+    #[tokio::test]
+    async fn s7_all_blocked_returns_notice_with_recovery_at() {
+        let db = FakeDbAdapter::new();
+        let user_id = Uuid::new_v4();
+        db.seed_profile(crate::domain::models::Profile {
+            id: user_id,
+            display_name: None,
+            onboarding_completed: true,
+        });
+        let tags = db.get_tags();
+        let tag_id = tags[0].id;
+        db.seed_user_tag(user_id, tag_id);
+
+        // 모든 엔진을 빈 결과로 — items 비어 있고 셋 다 1000 시드면 안내 트리거
+        let (state, _cache, counter) = make_test_state_with_seedable_counter(db, vec![]);
+
+        // 모든 엔진 1000 시드. recovery_at은 tavily가 가장 빠르도록.
+        let earliest = chrono::Utc::now() + chrono::Duration::days(3);
+        let later = chrono::Utc::now() + chrono::Duration::days(20);
+        counter.seed("tavily", 1000, Some(earliest));
+        counter.seed("exa", 1000, None); // NULL — 무시
+        counter.seed("firecrawl", 1000, Some(later));
+
+        let app = make_app(state, user_id);
+        let server = TestServer::new(app);
+
+        let resp = server.get("/me/feed").await;
+        resp.assert_status_ok();
+        let body: FeedResponse = resp.json();
+        assert!(body.items.is_empty(), "셋 다 차단 + 결과 없음 → 빈 items");
+        let notice = body.notice.expect("notice가 있어야 함");
+        assert!(notice.message.contains("무료 한도"));
+        // recovery_at = tavily의 earliest (NULL인 exa 제외)
+        assert_eq!(
+            notice.recovery_at.map(|t| t.timestamp()),
+            Some(earliest.timestamp()),
+            "recovery_at = NULL 제외하고 가장 빠른 reset_at"
+        );
+    }
+
+    /// S7: (b) CountedSearchAdapter wrap 시나리오 — 1000 시드 시 호출 자체 skip + INC 안 됨
+    #[tokio::test]
+    async fn s7_counted_decorator_skips_at_quota() {
+        use crate::domain::ports::{CounterPort, SearchPort};
+        use crate::infra::counted_search::CountedSearchAdapter;
+        let counter = Arc::new(crate::infra::in_memory_counter::InMemoryCounter::new());
+        counter.seed(
+            "tavily",
+            1000,
+            Some(chrono::Utc::now() + chrono::Duration::days(7)),
+        );
+        let inner = Box::new(FakeSearchAdapter::new(
+            "tavily",
+            vec![SearchResult {
+                title: "should not appear".into(),
+                url: "https://example.com/news/x".into(),
+                snippet: None,
+                published_at: None,
+                image_url: None,
+            }],
+            false,
+        ));
+        let notifier: Arc<dyn crate::domain::ports::NotificationPort> =
+            Arc::new(FakeNotificationAdapter::new());
+        let dec = CountedSearchAdapter::new(
+            inner,
+            Arc::clone(&counter) as Arc<dyn crate::domain::ports::CounterPort>,
+            notifier,
+        );
+        let out = dec.search("query", 20).await.unwrap();
+        assert!(out.is_empty(), "1000 시드 → 호출 skip → 빈 결과");
+        let snap = counter.snapshot("tavily").await.unwrap();
+        assert_eq!(snap.calls, 1000, "skip 시 INC 안 함 (재시작 후에도 보존)");
+    }
+
+    /// S7: source_name 위임 검증 — CountedSearchAdapter는 inner 그대로
+    #[tokio::test]
+    async fn s7_decorator_source_name_delegates() {
+        use crate::domain::ports::SearchPort;
+        use crate::infra::counted_search::CountedSearchAdapter;
+        let counter = Arc::new(crate::infra::in_memory_counter::InMemoryCounter::new());
+        let inner = Box::new(FakeSearchAdapter::new("tavily", vec![], false));
+        let notifier: Arc<dyn crate::domain::ports::NotificationPort> =
+            Arc::new(FakeNotificationAdapter::new());
+        let dec = CountedSearchAdapter::new(
+            inner,
+            counter as Arc<dyn crate::domain::ports::CounterPort>,
+            notifier,
+        );
+        // source_name == engine PK 일관성 (advisor 지적)
+        assert_eq!(dec.source_name(), "tavily");
+    }
+
+    /// S7: source_name == engine PK 일관성 (advisor 지적)
+    #[test]
+    fn s7_engine_ids_match_adapter_source_names() {
+        // ENGINE_IDS 와 실제 어댑터 source_name() 일치 검증
+        use crate::domain::ports::SearchPort;
+        let tavily = crate::infra::tavily::TavilyAdapter::new("k");
+        let exa = crate::infra::exa::ExaAdapter::new("k");
+        let firecrawl = crate::infra::firecrawl::FirecrawlAdapter::new("k");
+        assert_eq!(tavily.source_name(), "tavily");
+        assert_eq!(exa.source_name(), "exa");
+        assert_eq!(firecrawl.source_name(), "firecrawl");
+        // ENGINE_IDS와 일치
+        assert!(ENGINE_IDS.contains(&"tavily"));
+        assert!(ENGINE_IDS.contains(&"exa"));
+        assert!(ENGINE_IDS.contains(&"firecrawl"));
     }
 }

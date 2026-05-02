@@ -142,6 +142,65 @@ pub trait NotificationPort: Send + Sync {
     fn send(&self, message: &str) -> Result<(), AppError>;
 }
 
+/// MVP15 M2: 엔진 무료 한도 SSOT (월간 호출수).
+///
+/// Tavily 1000 / Exa 1000 / Firecrawl 500 모두 보호적 추정치로 단일 상수 사용.
+/// (운영 발견 2026-04-22: Tavily 432 한도 초과 → 1000 한도로 정렬)
+///
+/// CounterPort, CountedSearchAdapter, FeedResponse 등에서 모두 이 상수를 참조한다.
+/// 부채 정리(2026-05-02): 이전에는 counted_search.rs / notification_service.rs / feed.rs
+/// 3곳에 중복 선언되어 있었음.
+pub const MONTHLY_CALL_LIMIT: i32 = 1000;
+/// 80% 임계 (warn 알림 + 캐시 TTL 강화).
+pub const ALERT_THRESHOLD_WARN: i32 = 800;
+/// 100% 임계 (호출 skip + block 알림).
+pub const ALERT_THRESHOLD_BLOCK: i32 = MONTHLY_CALL_LIMIT;
+
+/// MVP15 M2: 엔진별 월간 호출 카운터 영속 저장 포트.
+///
+/// 설계:
+/// - `record_call(engine)`: lazy reset + INC를 단일 atomic SQL로 수행 (race-free).
+///   - reset_at < now()이면 calls=1, reset_at=다음 달 1일로 갱신
+///   - 그 외에는 calls += 1, reset_at 유지
+///   - 200 OK 호출에서만 호출 (실패한 호출은 카운트하지 않음)
+/// - `snapshot(engine)`: 현재 카운트와 reset_at을 조회 (없으면 0)
+/// - `try_record_alert(engine, threshold, period_start)`: dedupe atomic INSERT.
+///   동일 (engine, threshold, period_start)이 이미 있으면 false, 신규면 true.
+///
+/// `Option<DateTime<Utc>>`: 행이 아직 없는 상태(snapshot 시 None)와 명시적 NULL 정책을 표현.
+/// 현재 구현(Postgres / InMemory)은 첫 record_call 시 모든 엔진에 다음 달 1일 reset_at을 세팅한다.
+/// (Exa 크레딧형 NULL semantics는 보류 — DEBT-MVP15-04 참조)
+pub trait CounterPort: Send + Sync {
+    /// 카운터 INC + lazy reset. 새 카운트와 reset_at을 반환.
+    fn record_call<'a>(
+        &'a self,
+        engine: &'a str,
+    ) -> Pin<Box<dyn Future<Output = Result<CounterSnapshot, AppError>> + Send + 'a>>;
+
+    /// 현재 카운트/reset_at 조회 (행 부재 시 calls=0, reset_at=None).
+    fn snapshot<'a>(
+        &'a self,
+        engine: &'a str,
+    ) -> Pin<Box<dyn Future<Output = Result<CounterSnapshot, AppError>> + Send + 'a>>;
+
+    /// 알림 dedupe atomic INSERT. 신규(발송 필요)면 true, 이미 발송됨이면 false.
+    fn try_record_alert<'a>(
+        &'a self,
+        engine: &'a str,
+        threshold: i32,
+        period_start: chrono::DateTime<chrono::Utc>,
+    ) -> Pin<Box<dyn Future<Output = Result<bool, AppError>> + Send + 'a>>;
+}
+
+/// CounterPort의 조회/INC 결과.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct CounterSnapshot {
+    /// 이번 주기 누적 호출 횟수 (행 부재 시 0)
+    pub calls: i32,
+    /// 다음 리셋 시각. Exa 등 크레딧형 엔진은 None.
+    pub reset_at: Option<chrono::DateTime<chrono::Utc>>,
+}
+
 /// 즐겨찾기 포트 (M2: summary/insight 업데이트, M3: CRUD 확장)
 /// dyn compatible을 위해 boxed future 사용
 pub trait FavoritesPort: Send + Sync {

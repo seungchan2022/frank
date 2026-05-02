@@ -1,3 +1,4 @@
+pub mod counted_search;
 pub mod exa;
 pub mod fake_crawl;
 pub mod fake_db;
@@ -11,6 +12,8 @@ pub mod firecrawl;
 pub mod groq;
 pub mod http_utils;
 pub mod imessage;
+pub mod in_memory_counter;
+pub mod postgres_counters;
 pub mod postgres_db;
 pub mod postgres_favorites;
 pub mod postgres_quiz_wrong_answers;

@@ -198,6 +198,7 @@ mod tests {
             favorites: Arc::new(FakeFavoritesAdapter::new()),
             quiz_wrong_answers: Arc::new(qwa),
             feed_cache: Arc::new(NoopFeedCache),
+            counter: Arc::new(crate::infra::in_memory_counter::InMemoryCounter::new()),
         }
     }
 
