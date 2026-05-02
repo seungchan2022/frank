@@ -1743,7 +1743,7 @@ mod tests {
             }]),
         );
 
-        let mut sorted_ids = vec![tag_a.id.to_string(), tag_b.id.to_string()];
+        let mut sorted_ids = [tag_a.id.to_string(), tag_b.id.to_string()];
         sorted_ids.sort();
         let cache_key = format!("{}:{}", user_id, sorted_ids.join(","));
 
@@ -1758,7 +1758,10 @@ mod tests {
 
         // 부분 실패 → 남은 TTL이 1분(60초) 이하
         let remaining = cache.remaining_ttl(&cache_key);
-        assert!(remaining.is_some(), "부분 실패도 성공 결과 있으면 캐시에 저장되어야 함");
+        assert!(
+            remaining.is_some(),
+            "부분 실패도 성공 결과 있으면 캐시에 저장되어야 함"
+        );
         let secs = remaining.unwrap().as_secs();
         assert!(
             secs <= 60,
