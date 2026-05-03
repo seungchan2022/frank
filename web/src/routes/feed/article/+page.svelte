@@ -4,6 +4,7 @@
 	import { page } from '$app/state';
 	import { apiClient } from '$lib/api';
 	import { summaryCache } from '$lib/stores/summaryCache.svelte';
+	import { rewriteCache } from '$lib/stores/rewriteCache.svelte';
 	import { favoritesStore } from '$lib/stores/favoritesStore.svelte';
 	import { likedStore } from '$lib/stores/liked.svelte';
 	import { formatArticleDate } from '$lib/utils/article';
@@ -95,6 +96,14 @@
 		}
 	});
 
+	// 재작성 캐시 히트 시 자동 복원 (뒤로 가기 후 재진입 시)
+	$effect(() => {
+		const cached = rewriteCache.get(feedItem.url);
+		if (cached) {
+			rewritePhase = { tag: 'done', result: cached };
+		}
+	});
+
 	// 페이지 진입 시 즐겨찾기 로드 (이미 로드됐으면 no-op)
 	$effect(() => {
 		if (auth.isAuthenticated) {
@@ -166,7 +175,10 @@
 		rewritePhase = { tag: 'loading' };
 		try {
 			const result = await apiClient.rewrite(feedItem.url, feedItem.title);
+			rewriteCache.set(feedItem.url, result.rewrite);
 			rewritePhase = { tag: 'done', result: result.rewrite };
+			// 서버가 재작성 완료 시 favorites에 자동 저장하므로 동기화
+			await favoritesStore.refreshFavorites(auth.user?.id);
 		} catch (e) {
 			const message =
 				e instanceof Error ? e.message : '재작성을 불러오지 못했습니다. 다시 시도해주세요.';

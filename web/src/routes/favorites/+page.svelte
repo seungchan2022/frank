@@ -4,6 +4,7 @@
 	import { getAuth } from '$lib/stores/auth.svelte';
 	import { favoritesStore } from '$lib/stores/favoritesStore.svelte';
 	import { summaryCache } from '$lib/stores/summaryCache.svelte';
+	import { rewriteCache } from '$lib/stores/rewriteCache.svelte';
 	import { apiClient } from '$lib/api';
 	import Header from '$lib/components/Header.svelte';
 	import WrongAnswerCard from '$lib/components/WrongAnswerCard.svelte';
@@ -86,6 +87,10 @@
 		// 요약이 있으면 summaryCache에 미리 주입 → 디테일 페이지에서 즉시 표시
 		if (fav.summary && fav.insight) {
 			summaryCache.set(fav.url, { summary: fav.summary, insight: fav.insight });
+		}
+		// 재작성이 있으면 rewriteCache에 미리 주입 → 디테일 페이지에서 즉시 복원
+		if (fav.rewrite) {
+			rewriteCache.set(fav.url, fav.rewrite);
 		}
 		const params = new URLSearchParams({
 			url: fav.url,

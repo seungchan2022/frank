@@ -93,6 +93,14 @@ function isQuizCompleted(url: string): boolean {
 }
 
 /**
+ * MVP15 M3: 강제 새로고침 — loaded guard 우회, 재작성 완료 후 서버 자동 저장 동기화용.
+ */
+async function refreshFavorites(userId?: string): Promise<void> {
+	loaded = false;
+	await loadFavorites(userId);
+}
+
+/**
  * 상태 완전 초기화 (로그아웃 등 세션 전환 시).
  */
 function reset(): void {
@@ -122,6 +130,7 @@ export const favoritesStore = {
 	isLiked,
 	isQuizCompleted,
 	loadFavorites,
+	refreshFavorites,
 	addFavorite,
 	removeFavorite,
 	markQuizCompleted,
