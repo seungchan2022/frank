@@ -21,7 +21,14 @@ vi.mock('$lib/stores/auth.svelte', () => ({
 const mockSummarize = vi.fn<() => Promise<SummaryResult>>();
 vi.mock('$lib/api', () => ({
 	apiClient: {
-		summarize: (...args: unknown[]) => mockSummarize(...(args as []))
+		summarize: (...args: unknown[]) => mockSummarize(...(args as [])),
+		// MVP15 M3: occupation 미설정 프로필 반환 (재작성 버튼 숨김)
+		fetchProfile: vi.fn().mockResolvedValue({
+			id: 'test-id',
+			display_name: 'Test User',
+			onboarding_completed: true,
+			occupation: null
+		})
 	}
 }));
 
@@ -57,7 +64,8 @@ function makeProps(feedItem: FeedItem = sampleFeedItem) {
 beforeEach(() => {
 	vi.clearAllMocks();
 	mockCacheGet.mockReturnValue(undefined);
-	mockSummarize.mockResolvedValue({ summary: 'Mock 요약', insight: 'Mock 인사이트' });
+	// MVP15 M3: insight는 string | null
+	mockSummarize.mockResolvedValue({ summary: 'Mock 요약', insight: null });
 });
 
 afterEach(() => {
@@ -104,12 +112,14 @@ describe('feed/article/+page.svelte — MVP5 M2', () => {
 	// ── 캐시 히트 ─────────────────────────────────────────────────────────
 
 	it('캐시 히트: API 호출 없이 요약 결과 표시', async () => {
+		// MVP15 M3: insight는 occupation 설정 시에만 반환 (null이면 섹션 숨김)
 		mockCacheGet.mockReturnValue({ summary: '캐시된 요약', insight: '캐시된 인사이트' });
 
 		render(ArticlePage, makeProps());
 
 		await waitFor(() => {
 			expect(screen.getByText('캐시된 요약')).toBeTruthy();
+			// insight가 있으면 표시됨
 			expect(screen.getByText('캐시된 인사이트')).toBeTruthy();
 		});
 		expect(mockSummarize).not.toHaveBeenCalled();
@@ -128,7 +138,7 @@ describe('feed/article/+page.svelte — MVP5 M2', () => {
 
 		await waitFor(() => {
 			expect(screen.getByText('Mock 요약')).toBeTruthy();
-			expect(screen.getByText('Mock 인사이트')).toBeTruthy();
+			// MVP15 M3: occupation 미설정 시 insight null → 인사이트 섹션 숨김
 		});
 		expect(mockSummarize).toHaveBeenCalledTimes(1);
 	});
@@ -143,9 +153,10 @@ describe('feed/article/+page.svelte — MVP5 M2', () => {
 		fireEvent.click(screen.getByRole('button', { name: /요약하기/ }));
 
 		await waitFor(() => {
+			// MVP15 M3: insight는 null (occupation 미설정)
 			expect(mockCacheSet).toHaveBeenCalledWith(sampleFeedItem.url, {
 				summary: 'Mock 요약',
-				insight: 'Mock 인사이트'
+				insight: null
 			});
 		});
 	});
@@ -185,7 +196,7 @@ describe('feed/article/+page.svelte — MVP5 M2', () => {
 	it('실패 후 재시도 → 성공 시 결과 표시', async () => {
 		mockSummarize
 			.mockRejectedValueOnce(new Error('첫 번째 실패'))
-			.mockResolvedValueOnce({ summary: '재시도 요약', insight: '재시도 인사이트' });
+			.mockResolvedValueOnce({ summary: '재시도 요약', insight: null });
 
 		render(ArticlePage, makeProps());
 		await waitFor(() => {

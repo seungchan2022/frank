@@ -20,6 +20,7 @@
 	import type { QuizQuestion } from '$lib/types/quiz';
 	import type { WrongAnswer } from '$lib/types/quiz';
 	import type { ArticlePageState } from './+page';
+	import type { Profile } from '$lib/api/types';
 
 	const auth = getAuth();
 
@@ -38,6 +39,17 @@
 
 	let phase = $state<SummaryPhase>({ tag: 'idle' });
 	let favoriteLoading = $state(false);
+
+	// MVP15 M3: 재작성 상태
+	type RewritePhase =
+		| { tag: 'idle' }
+		| { tag: 'loading' }
+		| { tag: 'done'; result: string }
+		| { tag: 'failed'; message: string };
+
+	let rewritePhase = $state<RewritePhase>({ tag: 'idle' });
+	let rewriteLoadingText = $state('재작성 중…');
+	let userProfile = $state<Profile | null>(null);
 
 	// 퀴즈 상태
 	type QuizPhase = 'idle' | 'loading' | 'error';
@@ -105,6 +117,25 @@
 			'퀴즈 생성 중…'
 		)
 	);
+	$effect(() =>
+		makeLoadingTextEffect(
+			() => rewritePhase.tag === 'loading',
+			(v) => (rewriteLoadingText = v),
+			'재작성 중…'
+		)
+	);
+
+	// 프로필 로드 (occupation 여부 확인용)
+	$effect(() => {
+		if (auth.isAuthenticated) {
+			apiClient.fetchProfile().then((p) => {
+				userProfile = p;
+			}).catch(() => {
+				// 프로필 로드 실패 시 재작성 버튼 숨김 (occupation 미확인)
+				userProfile = null;
+			});
+		}
+	});
 
 	async function handleSummarize() {
 		// 중복 호출 방지
@@ -126,6 +157,20 @@
 			const message =
 				e instanceof Error ? e.message : '요약을 불러오지 못했습니다. 다시 시도해주세요.';
 			phase = { tag: 'failed', message };
+		}
+	}
+
+	async function handleRewrite() {
+		if (rewritePhase.tag === 'loading' || rewritePhase.tag === 'done') return;
+
+		rewritePhase = { tag: 'loading' };
+		try {
+			const result = await apiClient.rewrite(feedItem.url, feedItem.title);
+			rewritePhase = { tag: 'done', result: result.rewrite };
+		} catch (e) {
+			const message =
+				e instanceof Error ? e.message : '재작성을 불러오지 못했습니다. 다시 시도해주세요.';
+			rewritePhase = { tag: 'failed', message };
 		}
 	}
 
@@ -307,6 +352,51 @@
 				</div>
 			{/if}
 		</div>
+
+		<!-- MVP15 M3: 재작성 섹션 — occupation 설정 시에만 렌더링 -->
+		{#if userProfile?.occupation}
+		<div class="mt-6 rounded-lg border-2 border-teal-200 bg-teal-50/50 p-6">
+			<h2 class="mb-4 flex items-center gap-1.5 text-base font-semibold text-teal-700">
+				<span>✍️</span> {userProfile.occupation} 시각으로 재작성
+			</h2>
+
+			{#if rewritePhase.tag === 'idle'}
+				<button
+					onclick={handleRewrite}
+					class="w-full rounded-lg bg-teal-600 px-4 py-2 text-sm font-medium text-white hover:bg-teal-700 active:bg-teal-800"
+				>
+					✍️ 재작성하기
+				</button>
+			{:else if rewritePhase.tag === 'loading'}
+				<div class="flex items-center gap-3 py-4">
+					<div
+						class={[
+							'h-5 w-5 animate-spin rounded-full border-2 border-t-transparent',
+							rewriteLoadingText === '마무리 중…' ? 'border-orange-500' : 'border-teal-600'
+						].join(' ')}
+					></div>
+					<span class={[
+						'text-sm',
+						rewriteLoadingText === '마무리 중…' ? 'text-orange-500' : 'text-teal-600'
+					].join(' ')}>{rewriteLoadingText}</span>
+				</div>
+			{:else if rewritePhase.tag === 'done'}
+				<div>
+					<div class="prose prose-base max-w-none leading-relaxed text-gray-700 [&_p]:mb-4 [&_p:last-child]:mb-0">{@html renderMarkdown(rewritePhase.result)}</div>
+				</div>
+			{:else if rewritePhase.tag === 'failed'}
+				<div class="space-y-3">
+					<p class="text-sm text-red-600">{rewritePhase.message}</p>
+					<button
+						onclick={() => { rewritePhase = { tag: 'idle' }; handleRewrite(); }}
+						class="rounded-lg border border-orange-300 bg-orange-50 px-4 py-2 text-sm font-medium text-orange-700 hover:bg-orange-100"
+					>
+						↺ 다시 시도
+					</button>
+				</div>
+			{/if}
+		</div>
+		{/if}
 
 	</main>
 </div>
