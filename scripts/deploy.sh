@@ -347,7 +347,7 @@ run_api_native() {
     ALLOWED_ORIGINS="$(IFS=','; echo "${LOCAL_ORIGINS[*]}")"
     set +a
 
-    (cd "$PROJECT_ROOT/server" && cargo run) &
+    (cd "$PROJECT_ROOT/server" && cargo run --bin server) &
     log_info "API 서버 시작 대기 중 (최대 30초)..."
     local i
     for i in $(seq 1 30); do

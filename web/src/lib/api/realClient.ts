@@ -154,7 +154,8 @@ export const realApiClient: ApiClient = {
 		const extraHeaders: Record<string, string> = options?.noCache
 			? { 'Cache-Control': 'no-cache' }
 			: {};
-		return request<FeedItem[]>(`/api/me/feed${qs ? `?${qs}` : ''}`, { headers: extraHeaders });
+		const res = await request<{ items: FeedItem[]; notice: unknown }>(`/api/me/feed${qs ? `?${qs}` : ''}`, { headers: extraHeaders });
+		return res.items;
 	},
 
 	async fetchArticles(opts: FetchArticlesOptions = {}): Promise<Article[]> {

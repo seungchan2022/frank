@@ -213,7 +213,7 @@ describe('RealApiClient: feed (MVP5 M1)', () => {
 			}
 		];
 		(globalThis.fetch as unknown as ReturnType<typeof vi.fn>).mockResolvedValue(
-			jsonResponse(feedItems)
+			jsonResponse({ items: feedItems, notice: null })
 		);
 
 		const result = await realApiClient.fetchFeed();
@@ -225,7 +225,7 @@ describe('RealApiClient: feed (MVP5 M1)', () => {
 
 	it('fetchFeed — 태그 없으면 빈 배열 반환', async () => {
 		(globalThis.fetch as unknown as ReturnType<typeof vi.fn>).mockResolvedValue(
-			jsonResponse([])
+			jsonResponse({ items: [], notice: null })
 		);
 
 		const result = await realApiClient.fetchFeed();
