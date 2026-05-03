@@ -12,12 +12,34 @@ use crate::infra::http_utils::{RetryConfig, read_body_limited, send_with_retry};
 const GROQ_MODEL: &str = "llama-3.3-70b-versatile";
 const MAX_KEYWORD_LEN: usize = 100;
 
-const SYSTEM_PROMPT: &str = r#"You are a news analyst for a Korean-speaking audience. Given an article title and content, provide a JSON response with exactly three fields:
+/// MVP15 M3: 프롬프트 상수 분리.
+/// occupation 없는 기존 요약 (insight 없음)
+const SYSTEM_PROMPT_NO_OCCUPATION: &str = r#"You are a news analyst for a Korean-speaking audience. Given an article title and content, provide a JSON response with exactly two fields:
 1. "title_ko": 한국어로 번역한 기사 제목 (원문의 핵심을 살리되 한국 독자가 바로 이해할 수 있는 자연스러운 표현)
 2. "summary": 기사 핵심 내용을 한국어로 쉽게 풀어서 설명 (전문 용어는 괄호 안에 원문 병기, 3-5문장). Use limited Markdown in the string value: **bold** for key terms, *italic* for emphasis, - for bullet lists, blank lines between paragraphs.
-3. "insight": 이 기사가 왜 중요한지, 독자에게 어떤 의미인지 한국어로 분석 (2-3문장). Use limited Markdown in the string value: **bold** for key terms, *italic* for emphasis.
 
 Respond ONLY with valid JSON. Do NOT use Markdown outside of the string values (no code blocks, no headings, no tables)."#;
+
+/// occupation 있는 요약 (insight 포함)
+const SYSTEM_PROMPT_WITH_OCCUPATION: &str = r#"You are a news analyst for a Korean-speaking audience. Given an article title, content, and the reader's occupation, provide a JSON response with exactly three fields:
+1. "title_ko": 한국어로 번역한 기사 제목 (원문의 핵심을 살리되 한국 독자가 바로 이해할 수 있는 자연스러운 표현)
+2. "summary": 기사 핵심 내용을 한국어로 쉽게 풀어서 설명 (전문 용어는 괄호 안에 원문 병기, 3-5문장). Use limited Markdown in the string value: **bold** for key terms, *italic* for emphasis, - for bullet lists, blank lines between paragraphs.
+3. "insight": 독자의 직업 시각에서 이 기사가 왜 중요한지, 어떤 의미인지 한국어로 분석 (2-3문장). 반드시 독자의 직업을 고려한 관점으로 작성할 것. Use limited Markdown in the string value: **bold** for key terms, *italic* for emphasis.
+
+Respond ONLY with valid JSON. Do NOT use Markdown outside of the string values (no code blocks, no headings, no tables)."#;
+
+/// occupation 시각 재작성 프롬프트
+const SYSTEM_PROMPT_REWRITE: &str = r#"You are a technical writer for a Korean-speaking audience. Given an article title, content, and the reader's occupation, rewrite the article from the perspective of that occupation. The rewrite should:
+- Be in Korean
+- Be 3-5 paragraphs
+- Focus on aspects most relevant to the reader's occupation
+- Use plain text (no JSON, no Markdown headers, limited **bold** and *italic* for emphasis only)
+- Be direct and informative
+
+Output ONLY the rewritten article text. No JSON, no code blocks, no preamble."#;
+
+/// 기존 summarize 메서드와의 호환성을 위한 alias (occupation 없는 버전과 동일)
+const SYSTEM_PROMPT: &str = SYSTEM_PROMPT_NO_OCCUPATION;
 
 #[derive(Debug, Clone)]
 pub struct GroqAdapter {
@@ -241,12 +263,9 @@ impl LlmPort for GroqAdapter {
                 })?
                 .to_string();
 
-            let insight = parsed["insight"]
-                .as_str()
-                .ok_or_else(|| {
-                    AppError::Internal("LLM response missing 'insight' field".to_string())
-                })?
-                .to_string();
+            // 기존 summarize는 occupation 미사용 → insight 항상 None.
+            // occupation 기반 인사이트는 summarize_with_occupation으로 생성.
+            let insight = None;
 
             let model = resp_model.unwrap_or_else(|| self.model.clone());
 
@@ -359,6 +378,156 @@ impl LlmPort for GroqAdapter {
             })
         })
     }
+
+    fn summarize_with_occupation<'a>(
+        &'a self,
+        title: &'a str,
+        content: &'a str,
+        occupation: Option<&'a str>,
+    ) -> Pin<Box<dyn Future<Output = Result<LlmResponse, AppError>> + Send + 'a>> {
+        let title = title.to_string();
+        let content = content.to_string();
+        let occupation = occupation.map(|s| s.to_string());
+
+        Box::pin(async move {
+            let (system_prompt, user_message) = if let Some(ref occ) = occupation {
+                (
+                    SYSTEM_PROMPT_WITH_OCCUPATION,
+                    format!("Occupation: {occ}\nTitle: {title}\nContent: {content}"),
+                )
+            } else {
+                (
+                    SYSTEM_PROMPT_NO_OCCUPATION,
+                    format!("Title: {title}\nContent: {content}"),
+                )
+            };
+
+            let body = serde_json::json!({
+                "model": self.model,
+                "messages": [
+                    { "role": "system", "content": system_prompt },
+                    { "role": "user", "content": user_message },
+                ],
+                "temperature": 0.3,
+                "max_tokens": 1000,
+                "response_format": { "type": "json_object" },
+            });
+
+            let body_text = self
+                .call_chat_api(body, "summarize_with_occupation")
+                .await?;
+            let ChatResponse {
+                mut choices,
+                model: resp_model,
+                usage,
+            } = Self::parse_chat_response(&body_text, "summarize_with_occupation")?;
+            let content_str = choices
+                .drain(..)
+                .next()
+                .map(|c| c.message.content)
+                .ok_or_else(|| {
+                    AppError::Internal(
+                        "Groq summarize_with_occupation returned no choices".to_string(),
+                    )
+                })?;
+
+            let parsed: serde_json::Value = serde_json::from_str(&content_str).map_err(|e| {
+                AppError::Internal(format!(
+                    "LLM response is not valid JSON: {e}, content: {content_str}"
+                ))
+            })?;
+
+            let title_ko = parsed["title_ko"]
+                .as_str()
+                .ok_or_else(|| {
+                    AppError::Internal("LLM response missing 'title_ko' field".to_string())
+                })?
+                .to_string();
+
+            let summary_text = parsed["summary"]
+                .as_str()
+                .ok_or_else(|| {
+                    AppError::Internal("LLM response missing 'summary' field".to_string())
+                })?
+                .to_string();
+
+            // occupation 있으면 insight 파싱, 없으면 None
+            let insight = if occupation.is_some() {
+                Some(
+                    parsed["insight"]
+                        .as_str()
+                        .ok_or_else(|| {
+                            AppError::Internal(
+                                "LLM response missing 'insight' field (occupation provided)"
+                                    .to_string(),
+                            )
+                        })?
+                        .to_string(),
+                )
+            } else {
+                None
+            };
+
+            let model = resp_model.unwrap_or_else(|| self.model.clone());
+            let prompt_tokens = usage.as_ref().and_then(|u| u.prompt_tokens).unwrap_or(0);
+            let completion_tokens = usage
+                .as_ref()
+                .and_then(|u| u.completion_tokens)
+                .unwrap_or(0);
+
+            Ok(LlmResponse {
+                summary: LlmSummary {
+                    title_ko,
+                    summary: summary_text,
+                    insight,
+                },
+                model,
+                prompt_tokens,
+                completion_tokens,
+            })
+        })
+    }
+
+    fn rewrite_with_occupation<'a>(
+        &'a self,
+        title: &'a str,
+        content: &'a str,
+        occupation: &'a str,
+    ) -> Pin<Box<dyn Future<Output = Result<String, AppError>> + Send + 'a>> {
+        let title = title.to_string();
+        let content = content.to_string();
+        let occupation = occupation.to_string();
+
+        Box::pin(async move {
+            let user_message =
+                format!("Occupation: {occupation}\nTitle: {title}\nContent: {content}");
+
+            let body = serde_json::json!({
+                "model": self.model,
+                "messages": [
+                    { "role": "system", "content": SYSTEM_PROMPT_REWRITE },
+                    { "role": "user", "content": user_message },
+                ],
+                "temperature": 0.5,
+                "max_tokens": 1500,
+            });
+
+            let body_text = self.call_chat_api(body, "rewrite_with_occupation").await?;
+            let ChatResponse { mut choices, .. } =
+                Self::parse_chat_response(&body_text, "rewrite_with_occupation")?;
+            let rewrite = choices
+                .drain(..)
+                .next()
+                .map(|c| c.message.content)
+                .ok_or_else(|| {
+                    AppError::Internal(
+                        "Groq rewrite_with_occupation returned no choices".to_string(),
+                    )
+                })?;
+
+            Ok(rewrite)
+        })
+    }
 }
 
 #[cfg(test)]
@@ -422,7 +591,8 @@ mod tests {
         let resp = result.unwrap();
         assert_eq!(resp.summary.title_ko, "테스트 제목");
         assert_eq!(resp.summary.summary, "요약입니다.");
-        assert_eq!(resp.summary.insight, "인사이트입니다.");
+        // SYSTEM_PROMPT_NO_OCCUPATION 사용 → insight는 None (occupation 없는 기존 summarize)
+        assert_eq!(resp.summary.insight, None);
         assert_eq!(resp.model, "llama-3.3-70b-versatile");
         assert_eq!(resp.prompt_tokens, 100);
         assert_eq!(resp.completion_tokens, 50);

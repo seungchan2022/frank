@@ -45,7 +45,7 @@ impl LlmPort for FakeLlmAdapter {
                     summary: format!(
                         "**핵심**: {title}에 대한 테스트 요약입니다.\n- 첫 번째 항목\n- 두 번째 항목"
                     ),
-                    insight: format!("*중요*: {title}에 대한 **테스트 분석**입니다."),
+                    insight: Some(format!("*중요*: {title}에 대한 **테스트 분석**입니다.")),
                 },
                 model: "fake-model".to_string(),
                 prompt_tokens: 100,
@@ -99,6 +99,48 @@ impl LlmPort for FakeLlmAdapter {
             })
         })
     }
+
+    fn summarize_with_occupation<'a>(
+        &'a self,
+        title: &'a str,
+        content: &'a str,
+        occupation: Option<&'a str>,
+    ) -> Pin<Box<dyn Future<Output = Result<LlmResponse, AppError>> + Send + 'a>> {
+        Box::pin(async move {
+            if self.should_fail {
+                return Err(AppError::Internal("Fake LLM failure".to_string()));
+            }
+            let insight = occupation.map(|occ| {
+                format!("[{occ} 시각] *중요*: {title}에 대한 **직업 맞춤 인사이트**입니다.")
+            });
+            Ok(LlmResponse {
+                summary: LlmSummary {
+                    title_ko: format!("[한국어] {title}"),
+                    summary: content.to_string(),
+                    insight,
+                },
+                model: "fake-model".to_string(),
+                prompt_tokens: 100,
+                completion_tokens: 50,
+            })
+        })
+    }
+
+    fn rewrite_with_occupation<'a>(
+        &'a self,
+        title: &'a str,
+        _content: &'a str,
+        occupation: &'a str,
+    ) -> Pin<Box<dyn Future<Output = Result<String, AppError>> + Send + 'a>> {
+        Box::pin(async move {
+            if self.should_fail {
+                return Err(AppError::Internal("Fake LLM failure".to_string()));
+            }
+            Ok(format!(
+                "[{occupation} 시각으로 재작성] {title}: 직업 맞춤 관점에서 설명합니다."
+            ))
+        })
+    }
 }
 
 #[cfg(test)]
@@ -110,14 +152,26 @@ mod tests {
         let llm = FakeLlmAdapter::new();
         let result = llm.summarize("AI News", "Some content").await.unwrap();
         assert!(result.summary.summary.contains("AI News"));
-        assert!(result.summary.insight.contains("AI News"));
+        assert!(
+            result
+                .summary
+                .insight
+                .as_deref()
+                .unwrap_or("")
+                .contains("AI News")
+        );
         assert!(result.summary.title_ko.contains("AI News"));
         assert!(
             result.summary.summary.contains("**핵심**"),
             "summary should contain markdown bold"
         );
         assert!(
-            result.summary.insight.contains("*중요*"),
+            result
+                .summary
+                .insight
+                .as_deref()
+                .unwrap_or("")
+                .contains("*중요*"),
             "insight should contain markdown italic"
         );
         assert_eq!(result.model, "fake-model");
@@ -181,6 +235,51 @@ mod tests {
     async fn fake_llm_generate_quiz_failing_returns_error() {
         let llm = FakeLlmAdapter::failing();
         let result = llm.generate_quiz("title", "content").await;
+        assert!(result.is_err());
+    }
+
+    // MVP15 M3: summarize_with_occupation 테스트 (T-02)
+
+    #[tokio::test]
+    async fn summarize_with_occupation_some_returns_insight() {
+        let llm = FakeLlmAdapter::new();
+        let result = llm
+            .summarize_with_occupation("AI 기사", "내용입니다", Some("iOS 개발자"))
+            .await
+            .unwrap();
+        assert!(result.summary.insight.is_some());
+        let insight = result.summary.insight.unwrap();
+        assert!(insight.contains("iOS 개발자"));
+        assert!(insight.contains("AI 기사"));
+    }
+
+    #[tokio::test]
+    async fn summarize_with_occupation_none_returns_no_insight() {
+        let llm = FakeLlmAdapter::new();
+        let result = llm
+            .summarize_with_occupation("AI 기사", "내용입니다", None)
+            .await
+            .unwrap();
+        assert!(result.summary.insight.is_none());
+    }
+
+    #[tokio::test]
+    async fn rewrite_with_occupation_returns_string() {
+        let llm = FakeLlmAdapter::new();
+        let result = llm
+            .rewrite_with_occupation("AI 기사", "내용입니다", "iOS 개발자")
+            .await
+            .unwrap();
+        assert!(result.contains("iOS 개발자"));
+        assert!(result.contains("AI 기사"));
+    }
+
+    #[tokio::test]
+    async fn rewrite_with_occupation_failing_returns_error() {
+        let llm = FakeLlmAdapter::failing();
+        let result = llm
+            .rewrite_with_occupation("title", "content", "개발자")
+            .await;
         assert!(result.is_err());
     }
 }

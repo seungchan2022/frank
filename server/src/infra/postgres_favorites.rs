@@ -27,20 +27,49 @@ impl FavoritesPort for PostgresFavoritesAdapter {
         user_id: Uuid,
         url: &'a str,
         summary: &'a str,
-        insight: &'a str,
+        insight: Option<&'a str>,
     ) -> Pin<Box<dyn Future<Output = Result<(), AppError>> + Send + 'a>> {
         Box::pin(async move {
+            // C3: 비즐겨찾기 기사도 upsert로 row 자동 생성.
+            // insight가 None이면 COALESCE로 기존 값 유지 (occupation 미설정 시 덮어쓰기 방지).
             sqlx::query(
-                "UPDATE favorites SET summary = $1, insight = $2
-                 WHERE user_id = $3 AND url = $4",
+                "INSERT INTO favorites (user_id, url, title, source, summary, insight)
+                 VALUES ($1, $2, '', '', $3, $4)
+                 ON CONFLICT (user_id, url) DO UPDATE SET
+                   summary = EXCLUDED.summary,
+                   insight = COALESCE($4, favorites.insight)",
             )
-            .bind(summary)
-            .bind(insight)
             .bind(user_id)
             .bind(url)
+            .bind(summary)
+            .bind(insight)
             .execute(&self.pool)
             .await
-            .map_err(|e| AppError::Internal(format!("favorites update failed: {e}")))?;
+            .map_err(|e| AppError::Internal(format!("favorites upsert failed: {e}")))?;
+
+            Ok(())
+        })
+    }
+
+    fn update_favorite_rewrite<'a>(
+        &'a self,
+        user_id: Uuid,
+        url: &'a str,
+        rewrite: &'a str,
+    ) -> Pin<Box<dyn Future<Output = Result<(), AppError>> + Send + 'a>> {
+        Box::pin(async move {
+            // C3: 비즐겨찾기 기사도 row 자동 생성.
+            sqlx::query(
+                "INSERT INTO favorites (user_id, url, title, source, rewrite)
+                 VALUES ($1, $2, '', '', $3)
+                 ON CONFLICT (user_id, url) DO UPDATE SET rewrite = EXCLUDED.rewrite",
+            )
+            .bind(user_id)
+            .bind(url)
+            .bind(rewrite)
+            .execute(&self.pool)
+            .await
+            .map_err(|e| AppError::Internal(format!("favorites rewrite upsert failed: {e}")))?;
 
             Ok(())
         })

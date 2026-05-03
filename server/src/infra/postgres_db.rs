@@ -12,6 +12,8 @@ struct ProfileRow {
     id: Uuid,
     display_name: Option<String>,
     onboarding_completed: bool,
+    /// MVP15 M3: 직업 한 줄 (최대 50자). None = 미설정.
+    occupation: Option<String>,
 }
 
 impl From<ProfileRow> for Profile {
@@ -20,6 +22,7 @@ impl From<ProfileRow> for Profile {
             id: r.id,
             display_name: r.display_name,
             onboarding_completed: r.onboarding_completed,
+            occupation: r.occupation,
         }
     }
 }
@@ -74,7 +77,7 @@ impl PostgresDbAdapter {
 impl DbPort for PostgresDbAdapter {
     async fn get_profile(&self, user_id: Uuid) -> Result<Profile, AppError> {
         sqlx::query_as::<_, ProfileRow>(
-            "SELECT id, display_name, onboarding_completed FROM profiles WHERE id = $1",
+            "SELECT id, display_name, onboarding_completed, occupation FROM profiles WHERE id = $1",
         )
         .bind(user_id)
         .fetch_optional(&self.pool)
@@ -108,54 +111,34 @@ impl DbPort for PostgresDbAdapter {
         user_id: Uuid,
         onboarding_completed: Option<bool>,
         display_name: Option<String>,
+        occupation: Option<String>,
     ) -> Result<Profile, AppError> {
-        // 두 필드 모두 None이면 현재 프로필을 반환 (no-op)
-        if onboarding_completed.is_none() && display_name.is_none() {
+        // 세 필드 모두 None이면 현재 프로필을 반환 (no-op)
+        if onboarding_completed.is_none() && display_name.is_none() && occupation.is_none() {
             return self.get_profile(user_id).await;
         }
 
-        // 동적 SET 절 빌드
-        let row = match (onboarding_completed, display_name) {
-            (Some(oc), Some(dn)) => {
-                sqlx::query_as::<_, ProfileRow>(
-                    "UPDATE profiles SET onboarding_completed = $1, display_name = $2
-                 WHERE id = $3
-                 RETURNING id, display_name, onboarding_completed",
-                )
-                .bind(oc)
-                .bind(dn)
-                .bind(user_id)
-                .fetch_optional(&self.pool)
-                .await
-            }
-            (Some(oc), None) => {
-                sqlx::query_as::<_, ProfileRow>(
-                    "UPDATE profiles SET onboarding_completed = $1
-                 WHERE id = $2
-                 RETURNING id, display_name, onboarding_completed",
-                )
-                .bind(oc)
-                .bind(user_id)
-                .fetch_optional(&self.pool)
-                .await
-            }
-            (None, Some(dn)) => {
-                sqlx::query_as::<_, ProfileRow>(
-                    "UPDATE profiles SET display_name = $1
-                 WHERE id = $2
-                 RETURNING id, display_name, onboarding_completed",
-                )
-                .bind(dn)
-                .bind(user_id)
-                .fetch_optional(&self.pool)
-                .await
-            }
-            (None, None) => unreachable!(),
-        }
-        .map_err(|e| AppError::Internal(format!("DB update failed: {e}")))?;
+        // M2 수정: UPSERT 전환 — profiles row 없는 구버전 계정 404 방지.
+        // COALESCE로 전달된 값만 UPDATE, None은 기존 값 유지.
+        let row = sqlx::query_as::<_, ProfileRow>(
+            "INSERT INTO profiles (id, onboarding_completed, display_name, occupation)
+             VALUES ($1, COALESCE($2, false), $3, $4)
+             ON CONFLICT (id) DO UPDATE SET
+               onboarding_completed = COALESCE($2, profiles.onboarding_completed),
+               display_name         = COALESCE($3, profiles.display_name),
+               occupation           = COALESCE($4, profiles.occupation)
+             RETURNING id, display_name, onboarding_completed, occupation",
+        )
+        .bind(user_id)
+        .bind(onboarding_completed)
+        .bind(display_name)
+        .bind(occupation)
+        .fetch_optional(&self.pool)
+        .await
+        .map_err(|e| AppError::Internal(format!("DB upsert failed: {e}")))?;
 
         row.map(Profile::from)
-            .ok_or_else(|| AppError::NotFound("Profile not found".to_string()))
+            .ok_or_else(|| AppError::Internal("UPSERT returned no row".to_string()))
     }
 
     async fn list_tags(&self) -> Result<Vec<Tag>, AppError> {

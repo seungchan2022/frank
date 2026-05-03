@@ -104,16 +104,24 @@ impl DbPort for FakeDbAdapter {
         user_id: Uuid,
         onboarding_completed: Option<bool>,
         display_name: Option<String>,
+        occupation: Option<String>,
     ) -> Result<Profile, AppError> {
         let mut profiles = self.profiles.lock().unwrap();
-        let profile = profiles
-            .get_mut(&user_id)
-            .ok_or_else(|| AppError::NotFound("Profile not found".to_string()))?;
+        // M2 수정: UPSERT — row 없으면 생성
+        let profile = profiles.entry(user_id).or_insert_with(|| Profile {
+            id: user_id,
+            display_name: None,
+            onboarding_completed: false,
+            occupation: None,
+        });
         if let Some(oc) = onboarding_completed {
             profile.onboarding_completed = oc;
         }
         if let Some(dn) = display_name {
             profile.display_name = Some(dn);
+        }
+        if let Some(occ) = occupation {
+            profile.occupation = Some(occ);
         }
         Ok(profile.clone())
     }
@@ -220,6 +228,7 @@ mod tests {
             id: user_id,
             display_name: Some("Test User".to_string()),
             onboarding_completed: false,
+            occupation: None,
         });
 
         // get profile
@@ -288,10 +297,14 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn update_profile_not_found() {
+    async fn update_profile_upserts_when_not_found() {
+        // M2 수정: UPSERT 전환으로 row 없어도 에러 없음 (구버전 계정 404 방지)
         let db = FakeDbAdapter::new();
-        let result = db.update_profile(Uuid::new_v4(), Some(true), None).await;
-        assert!(result.is_err());
+        let user_id = Uuid::new_v4();
+        let result = db.update_profile(user_id, Some(true), None, None).await;
+        assert!(result.is_ok());
+        let profile = result.unwrap();
+        assert!(profile.onboarding_completed);
     }
 
     #[tokio::test]
@@ -302,10 +315,11 @@ mod tests {
             id: user_id,
             display_name: None,
             onboarding_completed: false,
+            occupation: None,
         });
 
         let updated = db
-            .update_profile(user_id, None, Some("Alice".to_string()))
+            .update_profile(user_id, None, Some("Alice".to_string()), None)
             .await
             .unwrap();
         assert_eq!(updated.display_name, Some("Alice".to_string()));
@@ -416,6 +430,7 @@ mod tests {
             id: user_id,
             display_name: None,
             onboarding_completed: false,
+            occupation: None,
         });
 
         let first = db.increment_like_count(user_id).await.unwrap();

@@ -61,11 +61,11 @@ impl FavoritesPort for FakeFavoritesAdapter {
         user_id: Uuid,
         url: &'a str,
         summary: &'a str,
-        insight: &'a str,
+        insight: Option<&'a str>,
     ) -> Pin<Box<dyn Future<Output = Result<(), AppError>> + Send + 'a>> {
         let url = url.to_string();
         let summary = summary.to_string();
-        let insight = insight.to_string();
+        let insight = insight.map(|s| s.to_string());
 
         Box::pin(async move {
             *self.call_count.lock().unwrap() += 1;
@@ -74,12 +74,86 @@ impl FavoritesPort for FakeFavoritesAdapter {
                 return Err(AppError::Internal(FAKE_FAIL_MSG.to_string()));
             }
 
-            // url이 favorites에 없으면 no-op (M2 의미 유지)
             let mut guard = self.store.lock().unwrap();
-            if let Some(fav) = guard.0.get_mut(&(user_id, url)) {
-                fav.summary = Some(summary);
-                fav.insight = Some(insight);
+            let key = (user_id, url.clone());
+            // C3: row 없으면 upsert로 자동 생성 — borrow 분리
+            if !guard.0.contains_key(&key) {
+                let now = Utc::now();
+                let new_fav = Favorite {
+                    id: Uuid::new_v4(),
+                    user_id,
+                    title: String::new(),
+                    url: url.clone(),
+                    snippet: None,
+                    source: String::new(),
+                    published_at: None,
+                    tag_id: None,
+                    summary: None,
+                    insight: None,
+                    liked_at: None,
+                    created_at: Some(now),
+                    image_url: None,
+                    concepts: None,
+                    quiz_completed: false,
+                    rewrite: None,
+                };
+                guard.0.insert(key.clone(), new_fav);
+                guard.1.push(key.clone());
             }
+            let fav = guard.0.get_mut(&key).expect("just inserted");
+            fav.summary = Some(summary);
+            // insight가 Some이면 업데이트, None이면 기존 값 유지
+            if let Some(ins) = insight {
+                fav.insight = Some(ins);
+            }
+
+            Ok(())
+        })
+    }
+
+    fn update_favorite_rewrite<'a>(
+        &'a self,
+        user_id: Uuid,
+        url: &'a str,
+        rewrite: &'a str,
+    ) -> Pin<Box<dyn Future<Output = Result<(), AppError>> + Send + 'a>> {
+        let url = url.to_string();
+        let rewrite = rewrite.to_string();
+
+        Box::pin(async move {
+            if self.should_fail {
+                return Err(AppError::Internal(FAKE_FAIL_MSG.to_string()));
+            }
+
+            let mut guard = self.store.lock().unwrap();
+            let key = (user_id, url.clone());
+            // C3: row 없으면 upsert로 자동 생성
+            // C3: row 없으면 upsert로 자동 생성 — borrow 분리
+            if !guard.0.contains_key(&key) {
+                let now = Utc::now();
+                let new_fav = Favorite {
+                    id: Uuid::new_v4(),
+                    user_id,
+                    title: String::new(),
+                    url: url.clone(),
+                    snippet: None,
+                    source: String::new(),
+                    published_at: None,
+                    tag_id: None,
+                    summary: None,
+                    insight: None,
+                    liked_at: None,
+                    created_at: Some(now),
+                    image_url: None,
+                    concepts: None,
+                    quiz_completed: false,
+                    rewrite: None,
+                };
+                guard.0.insert(key.clone(), new_fav);
+                guard.1.push(key.clone());
+            }
+            let fav = guard.0.get_mut(&key).expect("just inserted");
+            fav.rewrite = Some(rewrite);
 
             Ok(())
         })
@@ -122,6 +196,7 @@ impl FavoritesPort for FakeFavoritesAdapter {
                 image_url: item.image_url.clone(),
                 concepts: None,
                 quiz_completed: item.quiz_completed,
+                rewrite: None,
             };
 
             guard.1.push(key.clone());
@@ -254,6 +329,7 @@ mod tests {
             image_url: None,
             concepts: None,
             quiz_completed: false,
+            rewrite: None,
         }
     }
 
@@ -269,7 +345,7 @@ mod tests {
         adapter.add_favorite(user_id, &item).await.unwrap();
 
         let result = adapter
-            .update_favorite_summary(user_id, url, "요약", "인사이트")
+            .update_favorite_summary(user_id, url, "요약", Some("인사이트"))
             .await;
 
         assert!(result.is_ok());
@@ -282,7 +358,7 @@ mod tests {
         let user_id = Uuid::new_v4();
 
         let result = adapter
-            .update_favorite_summary(user_id, "https://example.com", "요약", "인사이트")
+            .update_favorite_summary(user_id, "https://example.com", "요약", Some("인사이트"))
             .await;
 
         assert!(result.is_err());
@@ -296,7 +372,12 @@ mod tests {
         let user_id = Uuid::new_v4();
 
         let result = adapter
-            .update_favorite_summary(user_id, "https://not-in-favorites.com", "요약", "인사이트")
+            .update_favorite_summary(
+                user_id,
+                "https://not-in-favorites.com",
+                "요약",
+                Some("인사이트"),
+            )
             .await;
 
         assert!(result.is_ok());

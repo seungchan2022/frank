@@ -10,11 +10,14 @@ use crate::middleware::auth::AuthUser;
 use super::AppState;
 
 const MAX_DISPLAY_NAME_LEN: usize = 50;
+const MAX_OCCUPATION_LEN: usize = 50;
 
 #[derive(Debug, Deserialize)]
 pub struct UpdateProfileRequest {
     pub onboarding_completed: Option<bool>,
     pub display_name: Option<String>,
+    /// MVP15 M3: 직업 한 줄 (최대 50자). 빈 문자열 → None으로 처리.
+    pub occupation: Option<String>,
 }
 
 pub async fn update_profile<D: DbPort>(
@@ -40,9 +43,27 @@ pub async fn update_profile<D: DbPort>(
         None => None,
     };
 
+    // MVP15 M3: occupation 검증 + trim. 빈 문자열은 None으로 처리 (E-02).
+    let occupation = match body.occupation {
+        Some(occ) => {
+            let trimmed = occ.trim().to_string();
+            if trimmed.is_empty() {
+                // 빈 값 입력 = 직업 삭제 의도 → None
+                None
+            } else if trimmed.chars().count() > MAX_OCCUPATION_LEN {
+                return Err(AppError::BadRequest(format!(
+                    "occupation exceeds {MAX_OCCUPATION_LEN} characters"
+                )));
+            } else {
+                Some(trimmed)
+            }
+        }
+        None => None,
+    };
+
     let profile = state
         .db
-        .update_profile(user.id, body.onboarding_completed, display_name)
+        .update_profile(user.id, body.onboarding_completed, display_name, occupation)
         .await?;
     Ok(Json(profile))
 }
@@ -96,6 +117,7 @@ mod tests {
             id: user_id,
             display_name: Some("Old".to_string()),
             onboarding_completed: false,
+            occupation: None,
         });
     }
 
@@ -182,6 +204,66 @@ mod tests {
         let resp = server
             .put("/me/profile")
             .json(&serde_json::json!({ "display_name": long }))
+            .await;
+        resp.assert_status_bad_request();
+    }
+
+    // MVP15 M3: occupation 테스트 (T-01)
+
+    #[tokio::test]
+    async fn set_occupation_saves_and_returns_profile() {
+        let db = FakeDbAdapter::new();
+        let user_id = Uuid::new_v4();
+        seed_user(&db, user_id);
+        let state = make_test_state(db);
+        let app = make_app(state, user_id);
+        let server = TestServer::new(app);
+
+        let resp = server
+            .put("/me/profile")
+            .json(&serde_json::json!({ "occupation": "iOS 개발자" }))
+            .await;
+        resp.assert_status_ok();
+        let profile: Profile = resp.json();
+        assert_eq!(profile.occupation.as_deref(), Some("iOS 개발자"));
+        // 기존 display_name 유지
+        assert_eq!(profile.display_name.as_deref(), Some("Old"));
+    }
+
+    #[tokio::test]
+    async fn occupation_blank_string_treated_as_none() {
+        // E-02: 공백 문자열 → None (trim 후 빈 문자열)
+        let db = FakeDbAdapter::new();
+        let user_id = Uuid::new_v4();
+        seed_user(&db, user_id);
+        let state = make_test_state(db);
+        let app = make_app(state, user_id);
+        let server = TestServer::new(app);
+
+        let resp = server
+            .put("/me/profile")
+            .json(&serde_json::json!({ "occupation": "   " }))
+            .await;
+        resp.assert_status_ok();
+        let profile: Profile = resp.json();
+        // 빈 문자열 → None 처리 → occupation 유지 (기존 None)
+        assert!(profile.occupation.is_none());
+    }
+
+    #[tokio::test]
+    async fn oversized_occupation_returns_400() {
+        // E-01: occupation 50자 초과 → 400
+        let db = FakeDbAdapter::new();
+        let user_id = Uuid::new_v4();
+        seed_user(&db, user_id);
+        let state = make_test_state(db);
+        let app = make_app(state, user_id);
+        let server = TestServer::new(app);
+
+        let long = "a".repeat(MAX_OCCUPATION_LEN + 1);
+        let resp = server
+            .put("/me/profile")
+            .json(&serde_json::json!({ "occupation": long }))
             .await;
         resp.assert_status_bad_request();
     }
