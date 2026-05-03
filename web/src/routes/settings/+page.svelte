@@ -17,10 +17,21 @@
 	let error = $state('');
 	let success = $state('');
 
+	// MVP15 M3: occupation 상태
+	let occupation = $state<string>('');
+	let savedOccupation = $state<string>('');
+	let savingOccupation = $state(false);
+	let occupationError = $state('');
+	let occupationSuccess = $state('');
+
+	const OCCUPATION_MAX = 50;
+
 	const hasChanges = $derived(
 		selectedIds.size !== savedIds.size ||
 			[...selectedIds].some((id) => !savedIds.has(id))
 	);
+
+	const hasOccupationChanges = $derived(occupation !== savedOccupation);
 
 	$effect(() => {
 		if (!auth.isAuthenticated) {
@@ -30,15 +41,19 @@
 
 	onMount(async () => {
 		try {
-			const [allTags, myTagIds] = await Promise.all([
+			const [allTags, myTagIds, profile] = await Promise.all([
 				apiClient.fetchTags(),
-				apiClient.fetchMyTagIds()
+				apiClient.fetchMyTagIds(),
+				apiClient.fetchProfile()
 			]);
 			tags = allTags;
 			selectedIds = new Set(myTagIds);
 			savedIds = new Set(myTagIds);
+			const occ = profile.occupation ?? '';
+			occupation = occ;
+			savedOccupation = occ;
 		} catch (err) {
-			error = err instanceof Error ? err.message : 'Failed to load tags';
+			error = err instanceof Error ? err.message : 'Failed to load settings';
 		} finally {
 			loading = false;
 		}
@@ -77,6 +92,29 @@
 		}
 	}
 
+	async function handleSaveOccupation() {
+		const trimmed = occupation.trim();
+		if (trimmed.length > OCCUPATION_MAX) {
+			occupationError = `직업은 최대 ${OCCUPATION_MAX}자까지 입력할 수 있습니다.`;
+			return;
+		}
+
+		savingOccupation = true;
+		occupationError = '';
+		occupationSuccess = '';
+
+		try {
+			await apiClient.updateProfile({ occupation: trimmed.length > 0 ? trimmed : null });
+			savedOccupation = trimmed;
+			occupation = trimmed;
+			occupationSuccess = '직업이 저장되었습니다.';
+		} catch (err) {
+			occupationError = err instanceof Error ? err.message : '저장에 실패했습니다.';
+		} finally {
+			savingOccupation = false;
+		}
+	}
+
 	const grouped = $derived(
 		tags.reduce<Record<string, Tag[]>>((acc, tag) => {
 			const cat = tag.category ?? 'Other';
@@ -91,6 +129,44 @@
 	<Header />
 
 	<main class="mx-auto max-w-2xl px-6 py-8">
+		<!-- MVP15 M3: 직업 입력 섹션 -->
+		<section class="mb-10">
+			<h2 class="mb-1 text-lg font-semibold text-gray-900">내 직업</h2>
+			<p class="mb-4 text-sm text-gray-500">
+				직업을 입력하면 기사 요약 시 직업 시각 인사이트를 받고, 재작성 기능을 이용할 수 있습니다.
+			</p>
+
+			{#if occupationError}
+				<div class="mb-3 rounded-lg bg-red-50 p-3 text-sm text-red-700">{occupationError}</div>
+			{/if}
+			{#if occupationSuccess}
+				<div class="mb-3 rounded-lg bg-green-50 p-3 text-sm text-green-700">{occupationSuccess}</div>
+			{/if}
+
+			<div class="flex items-center gap-3">
+				<div class="relative flex-1">
+					<input
+						type="text"
+						bind:value={occupation}
+						maxlength={OCCUPATION_MAX}
+						placeholder="예: iOS 개발자, 백엔드 엔지니어, 데이터 분석가"
+						class="w-full rounded-lg border border-gray-300 px-4 py-2.5 text-sm text-gray-900 placeholder-gray-400 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 focus:outline-none"
+						disabled={loading || savingOccupation}
+					/>
+					<span
+						class="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-gray-400"
+					>{occupation.length}/{OCCUPATION_MAX}</span>
+				</div>
+				<button
+					onclick={handleSaveOccupation}
+					disabled={savingOccupation || !hasOccupationChanges || loading}
+					class="rounded-lg bg-blue-600 px-5 py-2.5 text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-50"
+				>
+					{savingOccupation ? '저장 중...' : '저장'}
+				</button>
+			</div>
+		</section>
+
 		<h2 class="mb-2 text-lg font-semibold text-gray-900">Manage Keywords</h2>
 		<p class="mb-6 text-sm text-gray-500">
 			Select topics you want to follow. Changes will take effect on the next collection.

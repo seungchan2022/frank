@@ -1,5 +1,6 @@
 {
   "id": "00000000-0000-0000-0000-000000000001",
   "display_name": "Mock User",
-  "onboarding_completed": true
+  "onboarding_completed": true,
+  "occupation": null
 }

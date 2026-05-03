@@ -16,7 +16,7 @@ import type {
 	ProfilePatch,
 	Tag
 } from './types';
-import type { SummaryResult } from '$lib/types/summary';
+import type { SummaryResult, RewriteResult } from '$lib/types/summary';
 import type { Favorite } from '$lib/types/favorite';
 import type { WrongAnswer, SaveWrongAnswerBody } from '$lib/types/quiz';
 
@@ -203,6 +203,32 @@ export const realApiClient: ApiClient = {
 		}
 	},
 
+	async rewrite(url: string, title: string): Promise<RewriteResult> {
+		try {
+			return await request<RewriteResult>('/api/me/rewrite', {
+				method: 'POST',
+				body: JSON.stringify({ url, title })
+			});
+		} catch (e) {
+			if (e instanceof ApiError) {
+				if (e.status === 400) {
+					// occupation_required: 직업 미설정
+					throw new Error('직업을 먼저 설정해 주세요. 설정 페이지에서 직업을 입력하세요.');
+				}
+				if (e.status === 422) {
+					throw new Error('페이지 내용을 가져올 수 없습니다. URL을 확인해 주세요.');
+				}
+				if (e.status === 503) {
+					throw new Error('재작성 서비스를 일시적으로 사용할 수 없습니다. 잠시 후 다시 시도해 주세요.');
+				}
+				if (e.status === 504) {
+					throw new Error('요청 시간이 초과되었습니다. 잠시 후 다시 시도해 주세요.');
+				}
+			}
+			throw e;
+		}
+	},
+
 	async addFavorite(item: FeedItem, summary?: string, insight?: string): Promise<Favorite> {
 		const raw = await request<Record<string, unknown>>('/api/me/favorites', {
 			method: 'POST',
@@ -275,7 +301,8 @@ function snakeToCamelFavorite(raw: Record<string, unknown>): Favorite {
 		likedAt: (raw.liked_at as string | null) ?? null,
 		createdAt: raw.created_at as string,
 		imageUrl: (raw.image_url as string | null) ?? null,
-		quizCompleted: (raw.quiz_completed as boolean | null) ?? false
+		quizCompleted: (raw.quiz_completed as boolean | null) ?? false,
+		rewrite: (raw.rewrite as string | null) ?? null
 	};
 }
 

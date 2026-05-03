@@ -17,6 +17,8 @@ export interface Favorite {
 	imageUrl?: string | null;
 	/// MVP8 M3: 퀴즈 완료 여부 (한 번이라도 퀴즈를 풀었으면 true)
 	quizCompleted?: boolean;
+	/// MVP15 M3: LLM 재작성 결과. null = 미생성.
+	rewrite?: string | null;
 }
 
 /// POST /me/favorites 요청 바디.

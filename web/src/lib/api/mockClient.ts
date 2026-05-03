@@ -13,7 +13,7 @@ import type {
 	ProfilePatch,
 	Tag
 } from './types';
-import type { SummaryResult } from '$lib/types/summary';
+import type { SummaryResult, RewriteResult } from '$lib/types/summary';
 import type { Favorite } from '$lib/types/favorite';
 import type { WrongAnswer, SaveWrongAnswerBody } from '$lib/types/quiz';
 import articlesFixture from './__fixtures__/articles.json';
@@ -67,6 +67,15 @@ export const mockApiClient: ApiClient = {
 		}
 		if (patch.onboarding_completed !== undefined) {
 			profile = { ...profile, onboarding_completed: patch.onboarding_completed };
+		}
+		if (patch.occupation !== undefined) {
+			if (patch.occupation === null || patch.occupation.trim().length === 0) {
+				profile = { ...profile, occupation: null };
+			} else {
+				const trimmed = patch.occupation.trim();
+				if (trimmed.length > 50) throw new Error('occupation exceeds 50 characters');
+				profile = { ...profile, occupation: trimmed };
+			}
 		}
 		return delay({ ...profile });
 	},
@@ -132,9 +141,23 @@ export const mockApiClient: ApiClient = {
 		return delay(
 			{
 				summary: 'Mock 요약: 이 기사는 AI 기술의 최신 동향을 다루고 있습니다.',
-				insight: 'Mock 인사이트: AI 기술이 산업 전반에 미치는 영향이 커지고 있습니다.'
+				insight: profile.occupation
+					? `Mock 인사이트 (${profile.occupation} 시각): AI 기술이 산업 전반에 미치는 영향이 커지고 있습니다.`
+					: null
 			},
 			600
+		);
+	},
+
+	async rewrite(_url: string, title: string): Promise<RewriteResult> {
+		if (!profile.occupation) {
+			throw Object.assign(new Error('직업을 먼저 설정해 주세요.'), { status: 400 });
+		}
+		return delay(
+			{
+				rewrite: `Mock 재작성 (${profile.occupation} 시각): "${title}"을(를) ${profile.occupation} 관점에서 재해석한 내용입니다.`
+			},
+			800
 		);
 	},
 

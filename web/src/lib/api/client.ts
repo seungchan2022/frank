@@ -12,7 +12,7 @@ import type {
 	ProfilePatch,
 	Tag
 } from './types';
-import type { SummaryResult } from '$lib/types/summary';
+import type { SummaryResult, RewriteResult } from '$lib/types/summary';
 import type { Favorite } from '$lib/types/favorite';
 import type { WrongAnswer, SaveWrongAnswerBody } from '$lib/types/quiz';
 
@@ -35,6 +35,9 @@ export interface ApiClient {
 
 	// Summarize (MVP5 M2: 온디맨드 URL 크롤링 + LLM 요약)
 	summarize(url: string, title: string): Promise<SummaryResult>;
+
+	// Rewrite (MVP15 M3: 직업 시각 재작성 — occupation 미설정 시 400)
+	rewrite(url: string, title: string): Promise<RewriteResult>;
 
 	// Articles (즐겨찾기/상세용 — MVP5 M3에서 favorites로 전환 예정)
 	fetchArticles(opts?: FetchArticlesOptions): Promise<Article[]>;

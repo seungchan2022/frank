@@ -179,7 +179,8 @@
 				await favoritesStore.removeFavorite(feedItem.url);
 			} else {
 				const summary = phase.tag === 'done' ? phase.result.summary : undefined;
-				const insight = phase.tag === 'done' ? phase.result.insight : undefined;
+				// insight는 occupation 미설정 시 null — undefined로 변환 (addFavorite 시그니처 호환)
+				const insight = phase.tag === 'done' ? (phase.result.insight ?? undefined) : undefined;
 				await favoritesStore.addFavorite(feedItem, summary, insight);
 			}
 		} catch (e) {
@@ -287,10 +288,12 @@
 						<h3 class="mb-3 text-xs font-semibold tracking-widest text-indigo-600 uppercase">요약</h3>
 						<div class="prose prose-base max-w-none leading-relaxed text-gray-700 [&_p]:mb-4 [&_p:last-child]:mb-0">{@html renderMarkdown(phase.result.summary)}</div>
 					</div>
+					{#if phase.result.insight}
 					<div class="border-t border-indigo-100 pt-6">
 						<h3 class="mb-3 text-xs font-semibold tracking-widest text-indigo-600 uppercase">인사이트</h3>
 						<div class="prose prose-base max-w-none leading-relaxed text-gray-600 [&_p]:mb-4 [&_p:last-child]:mb-0">{@html renderMarkdown(phase.result.insight)}</div>
 					</div>
+					{/if}
 				</div>
 			{:else if phase.tag === 'failed'}
 				<div class="space-y-3">
