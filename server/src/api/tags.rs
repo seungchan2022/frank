@@ -137,6 +137,7 @@ mod tests {
             id: user_id,
             display_name: None,
             onboarding_completed: false,
+            occupation: None,
         });
 
         let state = make_test_state(db);
@@ -163,6 +164,7 @@ mod tests {
             id: user_id,
             display_name: Some("Test".to_string()),
             onboarding_completed: true,
+            occupation: None,
         });
 
         let state = make_test_state(db);
@@ -190,6 +192,7 @@ mod tests {
             id: user_id,
             display_name: None,
             onboarding_completed: false,
+            occupation: None,
         });
 
         let cache = Arc::new(crate::infra::feed_cache::InMemoryFeedCache::new(10));

@@ -77,6 +77,7 @@ mod tests {
             image_url: None,
             concepts: None,
             quiz_completed: false,
+            rewrite: None,
         }
     }
 

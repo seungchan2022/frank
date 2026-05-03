@@ -699,6 +699,7 @@ mod tests {
             id: user_id,
             display_name: Some("Tester".to_string()),
             onboarding_completed: true,
+            occupation: None,
         });
 
         let tags = db.get_tags();
@@ -734,6 +735,7 @@ mod tests {
             id: user_id,
             display_name: None,
             onboarding_completed: true,
+            occupation: None,
         });
 
         let tags = db.get_tags();
@@ -773,6 +775,7 @@ mod tests {
             id: user_id,
             display_name: None,
             onboarding_completed: true,
+            occupation: None,
         });
 
         let tags = db.get_tags();
@@ -809,6 +812,7 @@ mod tests {
             id: user_id,
             display_name: None,
             onboarding_completed: true,
+            occupation: None,
         });
 
         let tags = db.get_tags();
@@ -851,6 +855,7 @@ mod tests {
             id: user_id,
             display_name: None,
             onboarding_completed: true,
+            occupation: None,
         });
 
         let tags = db.get_tags();
@@ -894,6 +899,7 @@ mod tests {
             id: user_id,
             display_name: None,
             onboarding_completed: true,
+            occupation: None,
         });
 
         let tags = db.get_tags();
@@ -952,6 +958,7 @@ mod tests {
             id: user_id,
             display_name: None,
             onboarding_completed: true,
+            occupation: None,
         });
 
         let tags = db.get_tags();
@@ -1002,6 +1009,7 @@ mod tests {
             id: user_id,
             display_name: None,
             onboarding_completed: true,
+            occupation: None,
         });
 
         let tags = db.get_tags();
@@ -1306,6 +1314,7 @@ mod tests {
             id: user_id,
             display_name: None,
             onboarding_completed: true,
+            occupation: None,
         });
 
         let tags = db.get_tags();
@@ -1368,6 +1377,7 @@ mod tests {
             id: user_id,
             display_name: None,
             onboarding_completed: true,
+            occupation: None,
         });
 
         let state = make_test_state(db, vec![]);
@@ -1390,6 +1400,7 @@ mod tests {
             id: user_id,
             display_name: None,
             onboarding_completed: true,
+            occupation: None,
         });
 
         let tags = db.get_tags();
@@ -1446,6 +1457,7 @@ mod tests {
             id: user_id,
             display_name: None,
             onboarding_completed: true,
+            occupation: None,
         });
 
         let tags = db.get_tags();
@@ -1501,6 +1513,7 @@ mod tests {
             id: user_id,
             display_name: None,
             onboarding_completed: true,
+            occupation: None,
         });
 
         let tags = db.get_tags();
@@ -1554,6 +1567,7 @@ mod tests {
             id: user_id,
             display_name: None,
             onboarding_completed: true,
+            occupation: None,
         });
 
         let tags = db.get_tags();
@@ -1583,6 +1597,7 @@ mod tests {
             id: user_id,
             display_name: None,
             onboarding_completed: true,
+            occupation: None,
         });
 
         let tags = db.get_tags();
@@ -1633,6 +1648,7 @@ mod tests {
             id: user_id,
             display_name: None,
             onboarding_completed: true,
+            occupation: None,
         });
 
         let tags = db.get_tags();
@@ -1695,6 +1711,7 @@ mod tests {
             id: user_id,
             display_name: None,
             onboarding_completed: true,
+            occupation: None,
         });
 
         let tags = db.get_tags();
@@ -1740,6 +1757,7 @@ mod tests {
             id: user_id,
             display_name: None,
             onboarding_completed: true,
+            occupation: None,
         });
 
         let tags = db.get_tags();
@@ -1796,6 +1814,7 @@ mod tests {
             id: user_id,
             display_name: None,
             onboarding_completed: true,
+            occupation: None,
         });
 
         let tags = db.get_tags();
@@ -1842,6 +1861,7 @@ mod tests {
             id: user_id,
             display_name: None,
             onboarding_completed: true,
+            occupation: None,
         });
 
         let tags = db.get_tags();
@@ -1901,6 +1921,7 @@ mod tests {
             id: user_id,
             display_name: None,
             onboarding_completed: true,
+            occupation: None,
         });
 
         let tags = db.get_tags();
@@ -1937,6 +1958,7 @@ mod tests {
             id: user_id,
             display_name: None,
             onboarding_completed: true,
+            occupation: None,
         });
 
         let tags = db.get_tags();
@@ -2089,6 +2111,7 @@ mod tests {
             id: user_id,
             display_name: None,
             onboarding_completed: true,
+            occupation: None,
         });
         let tags = db.get_tags();
         let tag_id = tags[0].id;
@@ -2136,6 +2159,7 @@ mod tests {
             id: user_id,
             display_name: None,
             onboarding_completed: true,
+            occupation: None,
         });
         let tags = db.get_tags();
         let tag_id = tags[0].id;

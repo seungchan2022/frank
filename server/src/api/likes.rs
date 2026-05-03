@@ -103,6 +103,7 @@ mod tests {
             id: user_id,
             display_name: None,
             onboarding_completed: true,
+            occupation: None,
         });
     }
 

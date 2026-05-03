@@ -137,6 +137,7 @@ mod tests {
             image_url: None,
             concepts: None,
             quiz_completed: false,
+            rewrite: None,
         }
     }
 
@@ -203,6 +204,7 @@ mod tests {
             id: user_id,
             display_name: None,
             onboarding_completed: true,
+            occupation: None,
         });
 
         let favorites = FakeFavoritesAdapter::new();
@@ -232,6 +234,7 @@ mod tests {
             id: user_id,
             display_name: None,
             onboarding_completed: true,
+            occupation: None,
         });
 
         let favorites = FakeFavoritesAdapter::new();
@@ -254,6 +257,7 @@ mod tests {
             id: user_id,
             display_name: None,
             onboarding_completed: true,
+            occupation: None,
         });
 
         let favorites = FakeFavoritesAdapter::new();
@@ -277,6 +281,7 @@ mod tests {
             id: user_id,
             display_name: None,
             onboarding_completed: true,
+            occupation: None,
         });
 
         let favorites = FakeFavoritesAdapter::new();
@@ -303,6 +308,7 @@ mod tests {
             id: user_id,
             display_name: None,
             onboarding_completed: true,
+            occupation: None,
         });
 
         let favorites = FakeFavoritesAdapter::new();

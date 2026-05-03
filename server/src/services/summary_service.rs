@@ -56,7 +56,70 @@ where
             user_id,
             url,
             &result.summary.summary,
-            &result.summary.insight,
+            result.summary.insight.as_deref(),
+        )
+        .await
+    {
+        tracing::warn!(
+            user_id = %user_id,
+            url = %url,
+            error = %e,
+            "favorites summary update failed — returning result anyway"
+        );
+    }
+
+    Ok(result)
+}
+
+/// MVP15 M3: occupation 있으면 직업 시각 인사이트 포함 요약, 없으면 insight=None.
+///
+/// - occupation=None: 기존 `summarize`와 동일 동작 (insight null)
+/// - occupation=Some: summarize_with_occupation 호출 → insight 포함
+/// - M3 설계: DB 장애 시 occupation=None으로 degrade (핸들러 책임)
+pub async fn summarize_with_occupation<'a, C, L, F>(
+    url: &'a str,
+    title: &'a str,
+    user_id: Uuid,
+    occupation: Option<&'a str>,
+    crawl: &'a C,
+    llm: &'a L,
+    favorites: &'a F,
+) -> Result<LlmResponse, AppError>
+where
+    C: CrawlPort + ?Sized,
+    L: LlmPort + ?Sized,
+    F: FavoritesPort + ?Sized,
+{
+    // SSRF 방어
+    validate(url, Policy::PublicOnly)
+        .await
+        .map_err(|e| AppError::BadRequest(format!("URL not allowed: {e}")))?;
+
+    let occ_owned = occupation.map(|s| s.to_string());
+
+    let result = timeout(Duration::from_secs(SUMMARIZE_TIMEOUT_SECS), async {
+        let content = crawl.scrape(url).await.map_err(|e| {
+            AppError::UnprocessableEntity(format!("콘텐츠를 가져올 수 없습니다: {e}"))
+        })?;
+
+        let response = llm
+            .summarize_with_occupation(title, &content, occ_owned.as_deref())
+            .await
+            .map_err(|e| {
+                AppError::ServiceUnavailable(format!("요약 서비스를 사용할 수 없습니다: {e}"))
+            })?;
+
+        Ok::<LlmResponse, AppError>(response)
+    })
+    .await
+    .map_err(|_| AppError::Timeout("요약 요청이 시간을 초과했습니다 (60초)".to_string()))??;
+
+    if let Err(e) = favorites
+        .update_favorite_summary(
+            user_id,
+            url,
+            &result.summary.summary,
+            result.summary.insight.as_deref(),
         )
         .await
     {
