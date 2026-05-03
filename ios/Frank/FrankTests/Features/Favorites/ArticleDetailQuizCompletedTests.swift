@@ -25,7 +25,8 @@ struct ArticleDetailQuizCompletedTests {
             likedAt: nil,
             createdAt: nil,
             imageUrl: nil,
-            quizCompleted: quizCompleted
+            quizCompleted: quizCompleted,
+            rewrite: nil
         )
     }
 

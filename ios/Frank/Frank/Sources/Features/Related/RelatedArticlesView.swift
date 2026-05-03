@@ -9,6 +9,8 @@ import SwiftUI
 struct RelatedArticlesView: View {
     let feature: RelatedFeature
     let summarize: any SummarizePort
+    let rewrite: any RewritePort
+    let auth: any AuthPort
     let favoritesFeature: FavoritesFeature
     let likesFeature: LikesFeature
     let quiz: any QuizPort
@@ -75,6 +77,8 @@ struct RelatedArticlesView: View {
                     ArticleDetailView(
                         feedItem: item,
                         summarize: summarize,
+                        rewrite: rewrite,
+                        auth: auth,
                         favoritesFeature: favoritesFeature,
                         likesFeature: likesFeature,
                         quiz: quiz

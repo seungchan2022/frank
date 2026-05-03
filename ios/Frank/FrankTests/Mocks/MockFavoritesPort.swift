@@ -38,7 +38,8 @@ final class MockFavoritesPort: FavoritesPort, @unchecked Sendable {
             likedAt: now,
             createdAt: now,
             imageUrl: item.imageUrl?.absoluteString,
-            quizCompleted: false
+            quizCompleted: false,
+            rewrite: nil
         )
         store[fav.url] = fav
         insertOrder.append(fav.url)

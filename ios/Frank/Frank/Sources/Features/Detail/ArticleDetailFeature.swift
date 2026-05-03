@@ -19,8 +19,23 @@ enum DetailPhase: Equatable {
     }
 }
 
+/// MVP15 M3: 재작성 phase.
+enum RewritePhase: Equatable {
+    case idle
+    case loading
+    case done(RewriteResult)
+    case failed(String)
+
+    var rewriteResult: RewriteResult? {
+        guard case .done(let result) = self else { return nil }
+        return result
+    }
+}
+
 /// MVP5 M2: ArticleDetailFeature — FeedItem 보유 + 온디맨드 요약.
+/// MVP15 M3: 재작성(rewrite) 기능 추가.
 /// - `phase`: idle → loading → done | failed
+/// - `rewritePhase`: idle → loading → done | failed
 /// - `loadSummary()`: 캐시 히트 시 API 호출 없이 즉시 반환
 @Observable
 @MainActor
@@ -30,25 +45,45 @@ final class ArticleDetailFeature {
 
     let feedItem: FeedItem
     private(set) var phase: DetailPhase = .idle
+    /// MVP15 M3: 재작성 phase
+    private(set) var rewritePhase: RewritePhase = .idle
+    /// MVP15 M3: 현재 사용자 프로필 (occupation 여부 확인용)
+    private(set) var userProfile: Profile?
 
     // MARK: - Dependencies
 
     private let summarize: any SummarizePort
+    private let rewrite: any RewritePort
+    private let auth: any AuthPort
     private let cache: SummarySessionCache
+    private let rewriteCache: RewriteSessionCache
 
     // MARK: - Init
 
     init(
         feedItem: FeedItem,
         summarize: any SummarizePort,
-        cache: SummarySessionCache = .shared
+        rewrite: any RewritePort,
+        auth: any AuthPort,
+        cache: SummarySessionCache? = nil,
+        rewriteCache: RewriteSessionCache? = nil
     ) {
         self.feedItem = feedItem
         self.summarize = summarize
-        self.cache = cache
+        self.rewrite = rewrite
+        self.auth = auth
+        // nil이면 @MainActor 컨텍스트 안에서 .shared 해결 (Swift 6 default-param nonisolated 경고 방지)
+        let resolvedCache = cache ?? SummarySessionCache.shared
+        self.cache = resolvedCache
+        let resolvedRewriteCache = rewriteCache ?? RewriteSessionCache.shared
+        self.rewriteCache = resolvedRewriteCache
         // 캐시 히트 시 즉시 done 상태로 시작 — 즐겨찾기에서 진입 시 버튼 없이 요약 바로 표시
-        if let cached = cache.get(feedItem.url.absoluteString) {
+        if let cached = resolvedCache.get(feedItem.url.absoluteString) {
             self.phase = .done(cached)
+        }
+        // MVP15 M3: 재작성 캐시 히트 시 즉시 done 상태로 시작
+        if let cachedRewrite = resolvedRewriteCache.get(feedItem.url.absoluteString) {
+            self.rewritePhase = .done(cachedRewrite)
         }
     }
 
@@ -70,19 +105,52 @@ final class ArticleDetailFeature {
             cache.set(url, result)
             phase = .done(result)
         } catch {
-            phase = .failed(errorMessage(from: error))
+            phase = .failed(summarizeErrorMessage(from: error))
+        }
+    }
+
+    /// MVP15 M3: 사용자 프로필 로드 (occupation 여부 확인용).
+    func loadUserProfile() async {
+        userProfile = try? await auth.currentProfile()
+    }
+
+    /// MVP15 M3: 직업 시각으로 재작성 요청.
+    /// loading 중이면 중복 호출 무시.
+    func loadRewrite() async {
+        if case .loading = rewritePhase { return }
+
+        rewritePhase = .loading
+
+        do {
+            let result = try await rewrite.rewrite(url: feedItem.url.absoluteString, title: feedItem.title)
+            rewriteCache.set(feedItem.url.absoluteString, result)
+            rewritePhase = .done(result)
+        } catch {
+            rewritePhase = .failed(rewriteErrorMessage(from: error))
         }
     }
 
     // MARK: - Private
 
-    private func errorMessage(from error: Error) -> String {
-        let isTimeout =
-            (error as? APISummarizeError) == .timeout ||
-            (error as? URLError)?.code == .timedOut
-        if isTimeout {
+    private func summarizeErrorMessage(from error: Error) -> String {
+        if isTimeoutError(error, domainCase: (error as? APISummarizeError) == .timeout) {
             return "요약 요청이 시간을 초과했습니다. 다시 시도해주세요."
         }
         return "요약을 불러오지 못했습니다. 다시 시도해주세요."
+    }
+
+    private func rewriteErrorMessage(from error: Error) -> String {
+        if (error as? APIRewriteError) == .occupationRequired {
+            return "직업을 먼저 설정해 주세요."
+        }
+        if isTimeoutError(error, domainCase: (error as? APIRewriteError) == .timeout) {
+            return "재작성 요청이 시간을 초과했습니다. 다시 시도해주세요."
+        }
+        return "재작성에 실패했습니다. 다시 시도해주세요."
+    }
+
+    /// URLError.timedOut 또는 도메인별 타임아웃 케이스를 통합 감지한다.
+    private func isTimeoutError(_ error: Error, domainCase: Bool) -> Bool {
+        domainCase || (error as? URLError)?.code == .timedOut
     }
 }

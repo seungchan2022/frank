@@ -299,7 +299,8 @@ struct FavoritesFeatureTests {
                 id: UUID(), userId: UUID(), title: feedItem.title,
                 url: feedItem.url.absoluteString, snippet: nil, source: feedItem.source,
                 publishedAt: nil, tagId: tagId, summary: nil, insight: nil,
-                likedAt: nil, createdAt: nil, imageUrl: nil, quizCompleted: false
+                likedAt: nil, createdAt: nil, imageUrl: nil, quizCompleted: false,
+                rewrite: nil
             )
         }
         #expect(FavoritesFeature.shouldResetTagId(remaining: fakeItems, current: tagId) == false)
@@ -314,7 +315,8 @@ struct FavoritesFeatureTests {
                 id: UUID(), userId: UUID(), title: "Test",
                 url: "https://b.com", snippet: nil, source: "Test",
                 publishedAt: nil, tagId: otherTagId, summary: nil, insight: nil,
-                likedAt: nil, createdAt: nil, imageUrl: nil, quizCompleted: false
+                likedAt: nil, createdAt: nil, imageUrl: nil, quizCompleted: false,
+                rewrite: nil
             )
         ]
         #expect(FavoritesFeature.shouldResetTagId(remaining: fakeItems, current: tagId) == true)
@@ -339,7 +341,8 @@ struct FavoritesFeatureTests {
                 id: UUID(), userId: UUID(), title: "Test",
                 url: "https://c.com", snippet: nil, source: "Test",
                 publishedAt: nil, tagId: nil, summary: nil, insight: nil,
-                likedAt: nil, createdAt: nil, imageUrl: nil, quizCompleted: false
+                likedAt: nil, createdAt: nil, imageUrl: nil, quizCompleted: false,
+                rewrite: nil
             )
         ]
         #expect(FavoritesFeature.shouldResetTagId(remaining: fakeItems, current: tagId) == true)

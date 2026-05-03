@@ -151,7 +151,7 @@ struct OnboardingFeatureTests {
     func completeSuccess() async {
         let tagId = UUID()
         let tags = [Frank.Tag(id: tagId, name: "AI", category: "ai")]
-        let updatedProfile = Profile(id: UUID(), displayName: "test", onboardingCompleted: true)
+        let updatedProfile = Profile(id: UUID(), displayName: "test", onboardingCompleted: true, occupation: nil)
         let (sut, tagPort, authPort, tracker) = makeSUT(
             tags: tags,
             updateOnboardingResult: .success(updatedProfile)

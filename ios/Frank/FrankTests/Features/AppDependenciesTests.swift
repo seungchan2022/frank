@@ -15,7 +15,8 @@ struct AppDependenciesTests {
             likes: MockLikesPort(),
             related: MockRelatedPort(),
             quiz: MockQuizPort(),
-            wrongAnswer: MockWrongAnswerPort()
+            wrongAnswer: MockWrongAnswerPort(),
+            rewrite: MockRewritePort()
         )
 
         #expect(deps.auth is MockAuthPort)
@@ -27,6 +28,7 @@ struct AppDependenciesTests {
         #expect(deps.related is MockRelatedPort)
         #expect(deps.quiz is MockQuizPort)
         #expect(deps.wrongAnswer is MockWrongAnswerPort)
+        #expect(deps.rewrite is MockRewritePort)
     }
 
     // MARK: - Bootstrap
@@ -43,6 +45,7 @@ struct AppDependenciesTests {
         #expect(deps.related is MockRelatedAdapter)
         #expect(deps.quiz is MockQuizAdapter)
         #expect(deps.wrongAnswer is MockWrongAnswerAdapter)
+        #expect(deps.rewrite is MockRewriteAdapter)
     }
 
     @Test("시뮬레이터에서 bootstrap()은 .ready 반환 (ServerConfig.live() → localhost:8080)")

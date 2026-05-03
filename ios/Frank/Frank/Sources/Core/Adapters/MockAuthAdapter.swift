@@ -39,12 +39,30 @@ actor MockAuthAdapter: AuthPort {
         profile = Profile(
             id: profile.id,
             displayName: profile.displayName,
-            onboardingCompleted: true
+            onboardingCompleted: true,
+            occupation: profile.occupation
         )
         return profile
     }
 
     func getAccessToken() async throws -> String {
         mockToken
+    }
+
+    /// MVP15 M3: 직업 업데이트 — 내부 profile을 갱신하고 반환.
+    func updateOccupation(_ occupation: String?) async throws -> Profile {
+        profile = Profile(
+            id: profile.id,
+            displayName: profile.displayName,
+            onboardingCompleted: profile.onboardingCompleted,
+            occupation: occupation
+        )
+        return profile
+    }
+
+    /// MVP15 M3: 현재 프로필 조회.
+    func currentProfile() async throws -> Profile? {
+        if scenario == "logged_out" { return nil }
+        return profile
     }
 }

@@ -3,22 +3,27 @@ import Foundation
 
 final class MockAuthPort: AuthPort, @unchecked Sendable {
     var signInResult: Result<Profile, Error> = .success(
-        Profile(id: UUID(), displayName: "test", onboardingCompleted: false)
+        Profile(id: UUID(), displayName: "test", onboardingCompleted: false, occupation: nil)
     )
     var signUpResult: Result<Profile?, Error> = .success(
-        Profile(id: UUID(), displayName: "test", onboardingCompleted: false)
+        Profile(id: UUID(), displayName: "test", onboardingCompleted: false, occupation: nil)
     )
     var signInWithAppleResult: Result<Profile, Error> = .success(
-        Profile(id: UUID(), displayName: "apple", onboardingCompleted: false)
+        Profile(id: UUID(), displayName: "apple", onboardingCompleted: false, occupation: nil)
     )
     var signOutError: Error?
     var currentSessionResult: Profile?
     var updateOnboardingCompletedResult: Result<Profile, Error> = .success(
-        Profile(id: UUID(), displayName: "test", onboardingCompleted: true)
+        Profile(id: UUID(), displayName: "test", onboardingCompleted: true, occupation: nil)
     )
 
     var accessToken: String = "mock-token"
     var getAccessTokenError: Error?
+    var updateOccupationResult: Result<Profile, Error> = .success(
+        Profile(id: UUID(), displayName: "test", onboardingCompleted: true, occupation: nil)
+    )
+    var currentProfileResult: Profile? = Profile(id: UUID(), displayName: "test", onboardingCompleted: true, occupation: nil)
+    var updateOccupationError: Error?
 
     var signInCallCount = 0
     var signUpCallCount = 0
@@ -26,6 +31,9 @@ final class MockAuthPort: AuthPort, @unchecked Sendable {
     var signOutCallCount = 0
     var updateOnboardingCompletedCallCount = 0
     var getAccessTokenCallCount = 0
+    var updateOccupationCallCount = 0
+    var currentProfileCallCount = 0
+    var lastUpdatedOccupation: String?? = nil
 
     func signIn(email: String, password: String) async throws -> Profile {
         signInCallCount += 1
@@ -60,5 +68,16 @@ final class MockAuthPort: AuthPort, @unchecked Sendable {
         getAccessTokenCallCount += 1
         if let error = getAccessTokenError { throw error }
         return accessToken
+    }
+
+    func updateOccupation(_ occupation: String?) async throws -> Profile {
+        updateOccupationCallCount += 1
+        lastUpdatedOccupation = occupation
+        return try updateOccupationResult.get()
+    }
+
+    func currentProfile() async throws -> Profile? {
+        currentProfileCallCount += 1
+        return currentProfileResult
     }
 }

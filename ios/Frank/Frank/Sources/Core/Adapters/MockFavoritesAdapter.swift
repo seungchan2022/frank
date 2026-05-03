@@ -18,7 +18,8 @@ struct MockFavoritesAdapter: FavoritesPort {
             likedAt: now,
             createdAt: now,
             imageUrl: item.imageUrl?.absoluteString,
-            quizCompleted: false
+            quizCompleted: false,
+            rewrite: nil
         )
     }
 

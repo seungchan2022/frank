@@ -6,6 +6,10 @@ enum SettingsAction {
     case toggleTag(UUID)
     case saveTags
     case signOut
+    /// MVP15 M3: 직업 로드
+    case loadOccupation
+    /// MVP15 M3: 직업 저장. nil = 삭제, 빈 문자열도 nil 처리
+    case saveOccupation(String?)
 }
 
 @Observable
@@ -19,6 +23,16 @@ final class SettingsFeature: Identifiable {
     private(set) var isSaving = false
     private(set) var errorMessage: String?
     private(set) var tagsChanged = false
+
+    // MARK: - MVP15 M3: Occupation
+    /// 현재 서버에 저장된 직업 (로드 후 반영)
+    private(set) var occupation: String? = nil
+    /// 저장 중 플래그
+    private(set) var isSavingOccupation = false
+    /// 저장 성공 메시지
+    private(set) var occupationSuccess: String? = nil
+    /// 저장 오류 메시지
+    private(set) var occupationError: String? = nil
 
     var canSave: Bool {
         !selectedIds.isEmpty && selectedIds != originalIds && !isSaving
@@ -42,6 +56,10 @@ final class SettingsFeature: Identifiable {
             await saveTags()
         case .signOut:
             await signOut()
+        case .loadOccupation:
+            await loadOccupation()
+        case let .saveOccupation(value):
+            await saveOccupation(value)
         }
     }
 
@@ -92,6 +110,41 @@ final class SettingsFeature: Identifiable {
             try await auth.signOut()
         } catch {
             errorMessage = "로그아웃에 실패했습니다."
+        }
+    }
+
+    // MARK: - MVP15 M3: Occupation
+
+    private func loadOccupation() async {
+        do {
+            let profile = try await auth.currentProfile()
+            occupation = profile?.occupation
+        } catch {
+            // 로드 실패는 무시 — occupation nil로 유지
+        }
+    }
+
+    private func saveOccupation(_ raw: String?) async {
+        // 공백·개행 trim 후 빈 문자열은 nil 처리 (삭제 의미)
+        let trimmedStr = raw?.trimmingCharacters(in: .whitespacesAndNewlines)
+        let normalized: String? = trimmedStr.flatMap { $0.isEmpty ? nil : $0 }
+        // 메시지 상태 초기화 — 항상 early return 전에 처리
+        occupationError = nil
+        occupationSuccess = nil
+        // 클라이언트 50자 검증 — 서버 400을 기다리지 않고 즉시 피드백
+        if let value = normalized, value.count > 50 {
+            occupationError = "직업은 50자 이내로 입력해주세요."
+            return
+        }
+        isSavingOccupation = true
+        do {
+            let updated = try await auth.updateOccupation(normalized)
+            occupation = updated.occupation
+            occupationSuccess = "직업이 저장되었습니다."
+            isSavingOccupation = false
+        } catch {
+            isSavingOccupation = false
+            occupationError = "직업 저장에 실패했습니다."
         }
     }
 }

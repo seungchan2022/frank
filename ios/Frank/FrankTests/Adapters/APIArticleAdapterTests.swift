@@ -65,7 +65,7 @@ struct APIArticleAdapterTests {
         MockURLProtocol.resetHandler(forHost: Self.testHost)
         let (adapter, _) = try makeAdapter()
         let tagId = UUID()
-        let json = "[\(feedItemJSON(title: "Hello", tagId: tagId))]"
+        let json = "{\"items\":[\(feedItemJSON(title: "Hello", tagId: tagId))],\"notice\":null}"
         guard let data = json.data(using: .utf8) else {
             Issue.record("invalid json")
             return
@@ -103,7 +103,7 @@ struct APIArticleAdapterTests {
                 url: request.url ?? URL(fileURLWithPath: "/dev/null"),
                 statusCode: 200
             )
-            return (response, Data("[]".utf8))
+            return (response, Data(#"{"items":[],"notice":null}"#.utf8))
         }
 
         let items = try await adapter.fetchFeed(tagId: nil)
@@ -118,14 +118,14 @@ struct APIArticleAdapterTests {
         let (adapter, _) = try makeAdapter()
 
         let json = """
-        [{
+        {"items":[{
             "title": "Hello",
             "url": "ht!tp:// broken",
             "snippet": null,
             "source": "tavily",
             "published_at": null,
             "tag_id": null
-        }]
+        }],"notice":null}
         """
         guard let data = json.data(using: .utf8) else {
             Issue.record("invalid json fixture")
@@ -153,14 +153,14 @@ struct APIArticleAdapterTests {
         let (adapter, _) = try makeAdapter()
 
         let json = """
-        [{
+        {"items":[{
             "title": "Hello",
             "url": "https://example.com",
             "snippet": null,
             "source": "tavily",
             "published_at": "2026-04-07T07:32:37.350714Z",
             "tag_id": null
-        }]
+        }],"notice":null}
         """
         guard let data = json.data(using: .utf8) else {
             Issue.record("invalid json fixture")
@@ -242,7 +242,7 @@ struct APIArticleAdapterTests {
                 url: request.url ?? URL(fileURLWithPath: "/dev/null"),
                 statusCode: 200
             )
-            return (response, Data("[]".utf8))
+            return (response, Data(#"{"items":[],"notice":null}"#.utf8))
         }
 
         _ = try await adapter.fetchFeed(tagId: nil, noCache: true)
@@ -262,7 +262,7 @@ struct APIArticleAdapterTests {
                 url: request.url ?? URL(fileURLWithPath: "/dev/null"),
                 statusCode: 200
             )
-            return (response, Data("[]".utf8))
+            return (response, Data(#"{"items":[],"notice":null}"#.utf8))
         }
 
         _ = try await adapter.fetchFeed(tagId: nil)
@@ -284,7 +284,7 @@ struct APIArticleAdapterTests {
                 url: request.url ?? URL(fileURLWithPath: "/dev/null"),
                 statusCode: 200
             )
-            return (response, Data("[]".utf8))
+            return (response, Data(#"{"items":[],"notice":null}"#.utf8))
         }
 
         _ = try await adapter.fetchFeed(tagId: nil, limit: 20, offset: 40)
@@ -306,7 +306,7 @@ struct APIArticleAdapterTests {
                 url: request.url ?? URL(fileURLWithPath: "/dev/null"),
                 statusCode: 200
             )
-            return (response, Data("[]".utf8))
+            return (response, Data(#"{"items":[],"notice":null}"#.utf8))
         }
 
         _ = try await adapter.fetchFeed(tagId: nil)
@@ -329,7 +329,7 @@ struct APIArticleAdapterTests {
                 url: request.url ?? URL(fileURLWithPath: "/dev/null"),
                 statusCode: 200
             )
-            return (response, Data("[]".utf8))
+            return (response, Data(#"{"items":[],"notice":null}"#.utf8))
         }
 
         _ = try await adapter.fetchFeed(tagId: tagId, limit: 20, offset: 0)

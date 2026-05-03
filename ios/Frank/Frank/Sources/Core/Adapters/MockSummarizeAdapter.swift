@@ -6,9 +6,10 @@ struct MockSummarizeAdapter: SummarizePort {
     func summarize(url: String, title: String) async throws -> SummaryResult {
         // 600ms 지연으로 실제 API 호출을 시뮬레이션
         try await Task.sleep(for: .milliseconds(600))
+        // MVP15 M3: insight는 occupation 설정 시에만 반환. Mock에서는 nil 반환
         return SummaryResult(
             summary: "Mock 요약: \(title)에 대한 AI 요약문입니다.",
-            insight: "Mock 인사이트: 이 기사는 핵심 내용을 담고 있습니다."
+            insight: nil
         )
     }
 }

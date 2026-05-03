@@ -21,6 +21,8 @@ struct FavoriteItem: Codable, Identifiable, Equatable, Hashable, Sendable {
 
     /// MVP8 M3: 퀴즈 완료 여부 (한 번이라도 퀴즈를 풀었으면 true)
     let quizCompleted: Bool
+    /// MVP15 M3: 직업 시각으로 재작성된 텍스트 (없으면 nil)
+    let rewrite: String?
 
     enum CodingKeys: String, CodingKey {
         case id
@@ -37,5 +39,6 @@ struct FavoriteItem: Codable, Identifiable, Equatable, Hashable, Sendable {
         case createdAt = "created_at"
         case imageUrl = "image_url"
         case quizCompleted = "quiz_completed"
+        case rewrite
     }
 }

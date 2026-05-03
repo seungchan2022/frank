@@ -18,6 +18,12 @@ struct ArticleDetailView: View {
     @State private var feature: ArticleDetailFeature
     @State private var quizFeature: QuizFeature
     @State private var favoriteLoading: Bool = false
+    /// MVP15 M3: userProfile 로드 Task 참조 — .onAppear 중복 실행 방지
+    @State private var profileLoadTask: Task<Void, Never>?
+    /// MVP15 M3: rewrite 요청 Task 참조 — 화면 이탈 시 취소
+    @State private var rewriteTask: Task<Void, Never>?
+    /// 이슈 D/E: 이 화면의 즐겨찾기 에러만 표시 — 전역 favoritesFeature.operationError 사용 금지
+    @State private var localFavoriteError: String?
     @State private var showQuiz = false
     @State private var showSafari = false
     /// MVP9 M2: 오답 보기 시트 표시 여부
@@ -30,6 +36,8 @@ struct ArticleDetailView: View {
     init(
         feedItem: FeedItem,
         summarize: any SummarizePort,
+        rewrite: any RewritePort,
+        auth: any AuthPort,
         favoritesFeature: FavoritesFeature,
         likesFeature: LikesFeature,
         quiz: any QuizPort,
@@ -41,7 +49,12 @@ struct ArticleDetailView: View {
         self.likesFeature = likesFeature
         self.summarizePort = summarize
         self.wrongAnswerPort = wrongAnswer
-        self._feature = State(initialValue: ArticleDetailFeature(feedItem: feedItem, summarize: summarize))
+        self._feature = State(initialValue: ArticleDetailFeature(
+            feedItem: feedItem,
+            summarize: summarize,
+            rewrite: rewrite,
+            auth: auth
+        ))
         self._quizFeature = State(initialValue: QuizFeature(
             quiz: quiz,
             wrongAnswer: wrongAnswer,
@@ -55,12 +68,12 @@ struct ArticleDetailView: View {
                 headerSection
                 Divider()
                 snippetSection
-                if let errMsg = favoritesFeature.operationError {
+                if let errMsg = localFavoriteError {
                     Text(errMsg)
                         .font(.footnote)
                         .foregroundStyle(.red)
                         .padding(.horizontal, 4)
-                        .onTapGesture { favoritesFeature.clearOperationError() }
+                        .onTapGesture { localFavoriteError = nil }
                 }
                 summarySection
             }
@@ -76,6 +89,29 @@ struct ArticleDetailView: View {
                 .background(.regularMaterial)
         }
         .navigationBarTitleDisplayMode(.inline)
+        .onAppear {
+            // .task 대신 .onAppear 사용: 설정 화면에서 occupation 변경 후 돌아올 때 재로드 보장
+            // 이전 Task가 아직 실행 중이면 취소하고 새로 시작
+            profileLoadTask?.cancel()
+            profileLoadTask = Task { await feature.loadUserProfile() }
+            // 이슈 D/E: 다른 화면의 stale 에러가 이 화면에 표시되지 않도록 초기화
+            favoritesFeature.clearOperationError()
+            localFavoriteError = nil
+        }
+        .onDisappear {
+            profileLoadTask?.cancel()
+            profileLoadTask = nil
+            rewriteTask?.cancel()
+            rewriteTask = nil
+            // 이 화면을 떠날 때도 공유 에러 초기화 — FavoritesView에 누출 방지
+            favoritesFeature.clearOperationError()
+        }
+        .onChange(of: feature.rewritePhase) { _, newPhase in
+            // 이슈 B: 재작성 완료 시 서버가 favorites에 자동 저장 → 로컬 상태 동기화
+            if case .done = newPhase {
+                Task { await favoritesFeature.refreshFavorites() }
+            }
+        }
         .sheet(isPresented: $showSafari) {
             SafariView(url: feedItem.url)
         }
@@ -337,6 +373,9 @@ extension ArticleDetailView {
                         insight: insight
                     )
                 }
+                // 이슈 D/E: 공유 에러를 로컬로 옮기고 전역 상태 초기화
+                localFavoriteError = favoritesFeature.operationError
+                favoritesFeature.clearOperationError()
             }
         } label: {
             HStack {
@@ -424,18 +463,21 @@ extension ArticleDetailView {
                     paragraphView(result.summary)
                 }
 
-                Divider()
-                    .overlay(Color.indigo.opacity(0.2))
+                // MVP15 M3: insight는 occupation 설정 시에만 표시
+                if let insight = result.insight {
+                    Divider()
+                        .overlay(Color.indigo.opacity(0.2))
 
-                VStack(alignment: .leading, spacing: 10) {
-                    Text("인사이트")
-                        .font(.caption)
-                        .fontWeight(.semibold)
-                        .foregroundStyle(.indigo.opacity(0.7))
-                        .kerning(1.2)
-                        .textCase(.uppercase)
+                    VStack(alignment: .leading, spacing: 10) {
+                        Text("인사이트")
+                            .font(.caption)
+                            .fontWeight(.semibold)
+                            .foregroundStyle(.indigo.opacity(0.7))
+                            .kerning(1.2)
+                            .textCase(.uppercase)
 
-                    paragraphView(result.insight, secondary: true)
+                        paragraphView(insight, secondary: true)
+                    }
                 }
             }
             .padding(14)
@@ -453,6 +495,67 @@ extension ArticleDetailView {
         default:
             EmptyView()
         }
+
+        // MVP15 M3: 재작성 섹션 — occupation 설정 시에만 표시
+        if let occupation = feature.userProfile?.occupation {
+            rewriteSection(occupation: occupation)
+        }
+    }
+
+    @ViewBuilder
+    private func rewriteSection(occupation: String) -> some View {
+        VStack(alignment: .leading, spacing: 16) {
+            Label("\(occupation) 시각으로 재작성", systemImage: "pencil.and.sparkles")
+                .font(.headline)
+                .fontWeight(.semibold)
+                .foregroundStyle(.teal)
+
+            switch feature.rewritePhase {
+            case .idle:
+                Button {
+                    rewriteTask?.cancel()
+                    rewriteTask = Task { await feature.loadRewrite() }
+                } label: {
+                    HStack {
+                        Image(systemName: "pencil.and.sparkles")
+                        Text("재작성하기")
+                    }
+                    .frame(maxWidth: .infinity)
+                }
+                .buttonStyle(.borderedProminent)
+                .tint(.teal)
+
+            case .loading:
+                LoadingTextView(initial: "재작성 중…", after: "마무리 중…")
+
+            case .done(let result):
+                paragraphView(result.rewrite, secondary: false)
+
+            case .failed(let message):
+                VStack(spacing: 6) {
+                    Text(message)
+                        .font(.caption)
+                        .foregroundStyle(.red)
+                    Button {
+                        rewriteTask?.cancel()
+                        rewriteTask = Task { await feature.loadRewrite() }
+                    } label: {
+                        HStack {
+                            Image(systemName: "arrow.clockwise")
+                            Text("다시 시도")
+                        }
+                        .frame(maxWidth: .infinity)
+                    }
+                    .buttonStyle(.bordered)
+                    .tint(.orange)
+                }
+            }
+        }
+        .padding(14)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(Color.teal.opacity(0.06))
+        .clipShape(RoundedRectangle(cornerRadius: 10))
+        .overlay(RoundedRectangle(cornerRadius: 10).stroke(Color.teal.opacity(0.25), lineWidth: 1))
     }
 }
 

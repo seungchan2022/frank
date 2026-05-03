@@ -26,6 +26,8 @@ final class AppDependencies {
     let quiz: any QuizPort
     /// MVP8 M3: 오답 아카이빙 포트
     let wrongAnswer: any WrongAnswerPort
+    /// MVP15 M3: 재작성 포트
+    let rewrite: any RewritePort
 
     init(
         auth: any AuthPort,
@@ -36,7 +38,8 @@ final class AppDependencies {
         likes: any LikesPort,
         related: any RelatedPort,
         quiz: any QuizPort,
-        wrongAnswer: any WrongAnswerPort
+        wrongAnswer: any WrongAnswerPort,
+        rewrite: any RewritePort
     ) {
         self.auth = auth
         self.tag = tag
@@ -47,6 +50,7 @@ final class AppDependencies {
         self.related = related
         self.quiz = quiz
         self.wrongAnswer = wrongAnswer
+        self.rewrite = rewrite
     }
 
     /// 앱 시작 시 호출. 설정 오류 시 `.configError`를 반환한다.
@@ -101,7 +105,8 @@ final class AppDependencies {
             likes: APILikesAdapter(auth: authAdapter, serverConfig: serverConfig),
             related: APIRelatedAdapter(auth: authAdapter, serverConfig: serverConfig),
             quiz: APIQuizAdapter(auth: authAdapter, serverConfig: serverConfig),
-            wrongAnswer: APIWrongAnswerAdapter(auth: authAdapter, serverConfig: serverConfig)
+            wrongAnswer: APIWrongAnswerAdapter(auth: authAdapter, serverConfig: serverConfig),
+            rewrite: APIRewriteAdapter(auth: authAdapter, serverConfig: serverConfig)
         )
     }
 
@@ -129,8 +134,9 @@ final class AppDependencies {
             articleAdapter = MockArticleAdapter()
         }
 
+        let mockAuth = MockAuthAdapter(profile: profile, scenario: scenario)
         return AppDependencies(
-            auth: MockAuthAdapter(profile: profile, scenario: scenario),
+            auth: mockAuth,
             tag: MockTagAdapter(),
             article: articleAdapter,
             summarize: MockSummarizeAdapter(),
@@ -138,7 +144,8 @@ final class AppDependencies {
             likes: MockLikesAdapter(),
             related: MockRelatedAdapter(),
             quiz: MockQuizAdapter(),
-            wrongAnswer: MockWrongAnswerAdapter()
+            wrongAnswer: MockWrongAnswerAdapter(),
+            rewrite: MockRewriteAdapter(auth: mockAuth)
         )
     }
 }

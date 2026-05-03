@@ -80,8 +80,9 @@ struct APIArticleAdapter: ArticlePort {
         if noCache {
             request.setValue("no-cache", forHTTPHeaderField: "Cache-Control")
         }
-        let dtos: [FeedItemDTO] = try await decode(request: request)
-        return try dtos.map { try $0.toDomain() }
+        // MVP15 M2: 서버가 {items:[...], notice:...} envelope으로 반환
+        let envelope: FeedResponseDTO = try await decode(request: request)
+        return try envelope.items.map { try $0.toDomain() }
     }
 
     // MARK: - Private
@@ -118,6 +119,12 @@ struct APIArticleAdapter: ArticlePort {
 }
 
 // MARK: - DTO
+
+/// GET /me/feed 응답 envelope — MVP15 M2 서버 변경에 맞게 추가
+private struct FeedResponseDTO: Decodable {
+    let items: [FeedItemDTO]
+    // notice는 무시
+}
 
 /// GET /me/feed 응답 DTO — ephemeral, id 없음
 private struct FeedItemDTO: Decodable {

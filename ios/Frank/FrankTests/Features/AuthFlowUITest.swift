@@ -23,7 +23,7 @@ struct AuthFlowIntegrationTests {
         #expect(feature.state == .unauthenticated)
 
         // When: 이메일 로그인
-        let profile = Profile(id: UUID(), displayName: "test", onboardingCompleted: false)
+        let profile = Profile(id: UUID(), displayName: "test", onboardingCompleted: false, occupation: nil)
         mock.signInResult = .success(profile)
         await feature.send(.signInWithEmail(email: "test@frank.dev", password: "Test1234!"))
 
@@ -36,7 +36,7 @@ struct AuthFlowIntegrationTests {
     func sessionRestoredFlow() async {
         // Given: 기존 세션 있음
         let mock = MockAuthPort()
-        let profile = Profile(id: UUID(), displayName: "test", onboardingCompleted: true)
+        let profile = Profile(id: UUID(), displayName: "test", onboardingCompleted: true, occupation: nil)
         mock.currentSessionResult = profile
         let feature = AuthFeature(auth: mock)
 
@@ -51,7 +51,7 @@ struct AuthFlowIntegrationTests {
     func logoutFlow() async {
         // Given: 로그인된 상태
         let mock = MockAuthPort()
-        let profile = Profile(id: UUID(), displayName: "test", onboardingCompleted: true)
+        let profile = Profile(id: UUID(), displayName: "test", onboardingCompleted: true, occupation: nil)
         mock.currentSessionResult = profile
         let feature = AuthFeature(auth: mock)
         await feature.send(.checkSession)
@@ -78,7 +78,7 @@ struct AuthFlowIntegrationTests {
         #expect(feature.state == .unauthenticated)
 
         // 3. 로그인 후 → authenticated → ContentPlaceholderView 표시해야 함
-        let profile = Profile(id: UUID(), displayName: "test", onboardingCompleted: false)
+        let profile = Profile(id: UUID(), displayName: "test", onboardingCompleted: false, occupation: nil)
         mock.signInResult = .success(profile)
         await feature.send(.signInWithEmail(email: "test@frank.dev", password: "Test1234!"))
         #expect(feature.state == .authenticated(profile))
@@ -87,7 +87,7 @@ struct AuthFlowIntegrationTests {
         #expect(profile.onboardingCompleted == false)
 
         // 5. onboardingCompleted == true → ContentPlaceholderView 표시
-        let completedProfile = Profile(id: UUID(), displayName: "test", onboardingCompleted: true)
+        let completedProfile = Profile(id: UUID(), displayName: "test", onboardingCompleted: true, occupation: nil)
         mock.signInResult = .success(completedProfile)
         await feature.send(.signInWithEmail(email: "test@frank.dev", password: "Test1234!"))
         if case .authenticated(let p) = feature.state {

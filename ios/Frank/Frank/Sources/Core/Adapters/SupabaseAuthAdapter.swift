@@ -95,6 +95,33 @@ struct SupabaseAuthAdapter: AuthPort {
         return supabaseSession.accessToken
     }
 
+    /// MVP15 M3: 직업 업데이트.
+    func updateOccupation(_ occupation: String?) async throws -> Profile {
+        let token = try await getAccessToken()
+        return try await ProfileAPI.updateProfile(
+            token: token,
+            occupation: .some(occupation),
+            serverURL: serverURL,
+            session: session
+        )
+    }
+
+    /// MVP15 M3: 현재 프로필 조회 (occupation 포함).
+    func currentProfile() async throws -> Profile? {
+        guard let supabaseSession = try? await client.auth.session else {
+            return nil
+        }
+        do {
+            return try await ProfileAPI.fetchProfile(
+                token: supabaseSession.accessToken,
+                serverURL: serverURL,
+                session: session
+            )
+        } catch {
+            return nil
+        }
+    }
+
     // MARK: - Private
 
     /// 진실의 원천(server `profiles` 테이블)에서 profile fetch.
@@ -114,7 +141,8 @@ struct SupabaseAuthAdapter: AuthPort {
             return Profile(
                 id: fallbackUser.id,
                 displayName: nil,
-                onboardingCompleted: false
+                onboardingCompleted: false,
+                occupation: nil
             )
         } catch let urlError as URLError {
             // 서버 미실행(개발 환경) 또는 일시적 네트워크 오류 → fallback
@@ -122,7 +150,8 @@ struct SupabaseAuthAdapter: AuthPort {
             return Profile(
                 id: fallbackUser.id,
                 displayName: nil,
-                onboardingCompleted: false
+                onboardingCompleted: false,
+                occupation: nil
             )
         }
     }

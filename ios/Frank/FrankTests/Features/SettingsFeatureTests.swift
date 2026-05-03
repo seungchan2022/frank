@@ -209,4 +209,147 @@ struct SettingsFeatureTests {
         await sut.send(.loadTags)
         #expect(!sut.isLoading) // 완료 후 false
     }
+
+    // MARK: - MVP15 M3: Occupation
+
+    @Test("loadOccupation: 현재 프로필에서 occupation을 로드한다")
+    func loadOccupation_success() async {
+        let (sut, _, authPort) = makeSUT()
+        authPort.currentProfileResult = Profile(
+            id: UUID(),
+            displayName: "test",
+            onboardingCompleted: true,
+            occupation: "iOS 개발자"
+        )
+
+        await sut.send(.loadOccupation)
+
+        #expect(sut.occupation == "iOS 개발자")
+        #expect(authPort.currentProfileCallCount == 1)
+    }
+
+    @Test("loadOccupation: occupation 미설정 시 nil")
+    func loadOccupation_nil() async {
+        let (sut, _, authPort) = makeSUT()
+        authPort.currentProfileResult = Profile(
+            id: UUID(),
+            displayName: "test",
+            onboardingCompleted: true,
+            occupation: nil
+        )
+
+        await sut.send(.loadOccupation)
+
+        #expect(sut.occupation == nil)
+    }
+
+    @Test("saveOccupation: 직업을 저장하고 occupation을 갱신한다")
+    func saveOccupation_success() async {
+        let (sut, _, authPort) = makeSUT()
+        authPort.updateOccupationResult = .success(
+            Profile(id: UUID(), displayName: "test", onboardingCompleted: true, occupation: "프론트엔드 개발자")
+        )
+
+        await sut.send(.saveOccupation("프론트엔드 개발자"))
+
+        #expect(sut.occupation == "프론트엔드 개발자")
+        #expect(sut.occupationSuccess != nil)
+        #expect(sut.occupationError == nil)
+        #expect(authPort.updateOccupationCallCount == 1)
+        #expect(authPort.lastUpdatedOccupation!! == "프론트엔드 개발자")
+    }
+
+    @Test("saveOccupation: 빈 문자열은 nil로 처리된다")
+    func saveOccupation_emptyStringToNil() async {
+        let (sut, _, authPort) = makeSUT()
+        authPort.updateOccupationResult = .success(
+            Profile(id: UUID(), displayName: "test", onboardingCompleted: true, occupation: nil)
+        )
+
+        await sut.send(.saveOccupation(""))
+
+        #expect(sut.occupation == nil)
+        // 빈 문자열은 nil로 정규화되어야 함
+        #expect(authPort.lastUpdatedOccupation! == nil)
+    }
+
+    @Test("saveOccupation: nil 전달 시 직업 삭제")
+    func saveOccupation_delete() async {
+        let (sut, _, authPort) = makeSUT()
+        authPort.updateOccupationResult = .success(
+            Profile(id: UUID(), displayName: "test", onboardingCompleted: true, occupation: nil)
+        )
+
+        await sut.send(.saveOccupation(nil))
+
+        #expect(sut.occupation == nil)
+        #expect(authPort.lastUpdatedOccupation! == nil)
+    }
+
+    @Test("saveOccupation: 실패 시 에러 메시지를 표시한다")
+    func saveOccupation_failure() async {
+        let (sut, _, authPort) = makeSUT()
+        authPort.updateOccupationResult = .failure(URLError(.networkConnectionLost))
+
+        await sut.send(.saveOccupation("개발자"))
+
+        #expect(sut.occupationError != nil)
+        #expect(sut.occupationSuccess == nil)
+    }
+
+    @Test("saveOccupation: 50자 초과 시 에러 메시지를 표시하고 API를 호출하지 않는다")
+    func saveOccupation_tooLong() async {
+        let (sut, _, authPort) = makeSUT()
+        let tooLong = String(repeating: "가", count: 51)
+
+        await sut.send(.saveOccupation(tooLong))
+
+        #expect(sut.occupationError != nil)
+        #expect(sut.occupationSuccess == nil)
+        #expect(authPort.updateOccupationCallCount == 0)
+    }
+
+    @Test("saveOccupation: 50자 초과 시 이전 성공 메시지도 지워진다")
+    func saveOccupation_tooLong_clearsSuccessMessage() async {
+        let (sut, _, authPort) = makeSUT()
+        authPort.updateOccupationResult = .success(
+            Profile(id: UUID(), displayName: "test", onboardingCompleted: true, occupation: "개발자")
+        )
+        // 먼저 성공 저장
+        await sut.send(.saveOccupation("개발자"))
+        #expect(sut.occupationSuccess != nil)
+
+        // 이후 50자 초과 입력 — 성공 메시지도 지워져야 함
+        let tooLong = String(repeating: "가", count: 51)
+        await sut.send(.saveOccupation(tooLong))
+
+        #expect(sut.occupationError != nil)
+        #expect(sut.occupationSuccess == nil)
+    }
+
+    @Test("saveOccupation: 개행 포함 공백은 nil로 처리된다")
+    func saveOccupation_newlineOnlyIsNil() async {
+        let (sut, _, authPort) = makeSUT()
+        authPort.updateOccupationResult = .success(
+            Profile(id: UUID(), displayName: "test", onboardingCompleted: true, occupation: nil)
+        )
+
+        await sut.send(.saveOccupation("\n"))
+
+        // 개행만 있는 입력은 nil 처리 (삭제)
+        #expect(authPort.lastUpdatedOccupation! == nil)
+    }
+
+    @Test("saveOccupation: 공백 포함 유효 직업명은 trim 후 저장된다")
+    func saveOccupation_trimmedValue() async {
+        let (sut, _, authPort) = makeSUT()
+        authPort.updateOccupationResult = .success(
+            Profile(id: UUID(), displayName: "test", onboardingCompleted: true, occupation: "iOS 개발자")
+        )
+
+        await sut.send(.saveOccupation("  iOS 개발자  "))
+
+        // trim 후 "iOS 개발자"로 저장 (서버에도 trim된 값 전달)
+        #expect(authPort.lastUpdatedOccupation!! == "iOS 개발자")
+    }
 }

@@ -31,14 +31,24 @@ enum MockFixtures {
     static let profile = Profile(
         id: mockUserId,
         displayName: "Mock User",
-        onboardingCompleted: true
+        onboardingCompleted: true,
+        occupation: nil
+    )
+
+    /// 직업 설정된 사용자 fixture (MVP15 M3 재작성 기능 테스트용)
+    static let profileWithOccupation = Profile(
+        id: mockUserId,
+        displayName: "Mock User",
+        onboardingCompleted: true,
+        occupation: "iOS 개발자"
     )
 
     /// 온보딩 미완료 신규 사용자 fixture (TC-02)
     static let newUserProfile = Profile(
         id: mockUserId,
         displayName: "Mock User",
-        onboardingCompleted: false
+        onboardingCompleted: false,
+        occupation: nil
     )
 
     // MARK: - FeedItem fixtures (MVP5 M1: ephemeral, id 없음)

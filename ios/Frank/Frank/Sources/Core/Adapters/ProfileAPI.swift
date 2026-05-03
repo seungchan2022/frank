@@ -48,12 +48,14 @@ enum ProfileAPI {
     ///   - token: Supabase access token (Bearer)
     ///   - displayName: 갱신할 표시명. nil이면 변경 안 함
     ///   - onboardingCompleted: 갱신할 onboarding 플래그. nil이면 변경 안 함
+    ///   - occupation: 갱신할 직업. nil이면 변경 안 함, 빈 문자열이면 삭제(서버에서 trim 처리)
     ///   - serverURL: Rust API 서버 베이스 URL
     ///   - session: URLSession (테스트 시 URLProtocol mock 주입)
     static func updateProfile(
         token: String,
         displayName: String? = nil,
         onboardingCompleted: Bool? = nil,
+        occupation: String?? = nil,
         serverURL: URL,
         session: URLSession
     ) async throws -> Profile {
@@ -67,7 +69,8 @@ enum ProfileAPI {
 
         let body = ProfileUpdateRequest(
             displayName: displayName,
-            onboardingCompleted: onboardingCompleted
+            onboardingCompleted: onboardingCompleted,
+            occupation: occupation
         )
         request.httpBody = try JSONEncoder().encode(body)
 
@@ -99,18 +102,22 @@ struct ProfileDTO: Decodable {
     let id: UUID
     let displayName: String?
     let onboardingCompleted: Bool
+    /// MVP15 M3: 직업 한 줄. nil = 미설정.
+    let occupation: String?
 
     enum CodingKeys: String, CodingKey {
         case id
         case displayName = "display_name"
         case onboardingCompleted = "onboarding_completed"
+        case occupation
     }
 
     func toDomain() -> Profile {
         Profile(
             id: id,
             displayName: displayName,
-            onboardingCompleted: onboardingCompleted
+            onboardingCompleted: onboardingCompleted,
+            occupation: occupation
         )
     }
 }
@@ -118,10 +125,13 @@ struct ProfileDTO: Decodable {
 private struct ProfileUpdateRequest: Encodable {
     let displayName: String?
     let onboardingCompleted: Bool?
+    /// Double optional: nil = 키 생략(변경 안 함), .some(nil) = null 전송(삭제), .some("값") = 값 설정
+    let occupation: String??
 
     enum CodingKeys: String, CodingKey {
         case displayName = "display_name"
         case onboardingCompleted = "onboarding_completed"
+        case occupation
     }
 
     func encode(to encoder: Encoder) throws {
@@ -129,6 +139,10 @@ private struct ProfileUpdateRequest: Encodable {
         // 필드가 nil이면 키 자체를 생략 (server 빈 바디 = no-op 정책)
         try container.encodeIfPresent(displayName, forKey: .displayName)
         try container.encodeIfPresent(onboardingCompleted, forKey: .onboardingCompleted)
+        // occupation: double optional — outer nil이면 키 생략, .some(inner)이면 inner 전송
+        if let occupationValue = occupation {
+            try container.encode(occupationValue, forKey: .occupation)
+        }
     }
 }
 

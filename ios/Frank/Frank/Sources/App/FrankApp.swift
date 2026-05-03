@@ -153,6 +153,8 @@ struct MainTabView: View {
             FavoritesContainerView(
                 feature: favoritesFeature,
                 summarize: dependencies.summarize,
+                rewrite: dependencies.rewrite,
+                auth: dependencies.auth,
                 likesFeature: likesFeature,
                 quiz: dependencies.quiz,
                 wrongAnswer: dependencies.wrongAnswer,
@@ -195,6 +197,8 @@ struct FeedContainerView: View {
         FeedView(
             feature: feedFeature,
             summarize: dependencies.summarize,
+            rewrite: dependencies.rewrite,
+            auth: dependencies.auth,
             favoritesFeature: favoritesFeature,
             likesFeature: likesFeature,
             quiz: dependencies.quiz,
@@ -216,6 +220,8 @@ struct FeedContainerView: View {
 struct FavoritesContainerView: View {
     let feature: FavoritesFeature
     let summarize: any SummarizePort
+    let rewrite: any RewritePort
+    let auth: any AuthPort
     let likesFeature: LikesFeature
     let quiz: any QuizPort
     let wrongAnswer: any WrongAnswerPort
@@ -225,6 +231,8 @@ struct FavoritesContainerView: View {
         FavoritesView(
             feature: feature,
             summarize: summarize,
+            rewrite: rewrite,
+            auth: auth,
             likesFeature: likesFeature,
             quiz: quiz,
             wrongAnswer: wrongAnswer,

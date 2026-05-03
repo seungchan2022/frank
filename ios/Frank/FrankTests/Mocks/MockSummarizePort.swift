@@ -4,7 +4,7 @@ import Foundation
 final class MockSummarizePort: SummarizePort, @unchecked Sendable {
     var result: SummaryResult = SummaryResult(
         summary: "Mock summary text.",
-        insight: "Mock insight text."
+        insight: "Mock insight text."  // String? — non-nil for test convenience
     )
     var error: Error?
     var callCount = 0

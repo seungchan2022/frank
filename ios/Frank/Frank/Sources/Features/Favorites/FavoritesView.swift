@@ -10,6 +10,8 @@ import SwiftUI
 struct FavoritesView: View {
     let feature: FavoritesFeature
     let summarize: any SummarizePort
+    let rewrite: any RewritePort
+    let auth: any AuthPort
     let likesFeature: LikesFeature
     let quiz: any QuizPort
     let wrongAnswer: any WrongAnswerPort
@@ -26,6 +28,8 @@ struct FavoritesView: View {
     init(
         feature: FavoritesFeature,
         summarize: any SummarizePort,
+        rewrite: any RewritePort,
+        auth: any AuthPort,
         likesFeature: LikesFeature,
         quiz: any QuizPort,
         wrongAnswer: any WrongAnswerPort,
@@ -33,6 +37,8 @@ struct FavoritesView: View {
     ) {
         self.feature = feature
         self.summarize = summarize
+        self.rewrite = rewrite
+        self.auth = auth
         self.likesFeature = likesFeature
         self.quiz = quiz
         self.wrongAnswer = wrongAnswer
@@ -207,6 +213,8 @@ struct FavoritesView: View {
             ArticleDetailView(
                 feedItem: feedItem,
                 summarize: summarize,
+                rewrite: rewrite,
+                auth: auth,
                 favoritesFeature: feature,
                 likesFeature: likesFeature,
                 quiz: quiz,
@@ -373,11 +381,14 @@ struct FavoritesView: View {
 
     @discardableResult
     private func injectSummaryCache(item: FavoriteItem, url: String) -> Bool {
-        if let summary = item.summary, let insight = item.insight {
-            SummarySessionCache.shared.set(url, SummaryResult(summary: summary, insight: insight))
-            return true
+        if let summary = item.summary {
+            SummarySessionCache.shared.set(url, SummaryResult(summary: summary, insight: item.insight))
         }
-        return false
+        // MVP15 M3: 재작성 결과도 캐시에 주입 — 즐겨찾기에서 진입 시 재작성 버튼 없이 바로 표시
+        if let rewrite = item.rewrite {
+            RewriteSessionCache.shared.set(url, RewriteResult(rewrite: rewrite))
+        }
+        return item.summary != nil
     }
 }
 

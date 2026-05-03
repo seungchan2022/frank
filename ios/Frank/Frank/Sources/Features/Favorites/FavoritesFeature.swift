@@ -110,6 +110,12 @@ final class FavoritesFeature {
         likedUrls.contains(url)
     }
 
+    /// MVP15 M3: 강제 새로고침 — hasLoaded 우회, 재작성 완료 후 서버 자동 저장 동기화용.
+    func refreshFavorites() async {
+        hasLoaded = false
+        await loadFavorites()
+    }
+
     /// MVP9 M2: 해당 기사 URL의 퀴즈 완료 여부 확인.
     /// 즐겨찾기에 없는 기사는 false 반환.
     func isQuizCompleted(_ url: String) -> Bool {
@@ -157,7 +163,8 @@ final class FavoritesFeature {
                     likedAt: item.likedAt,
                     createdAt: item.createdAt,
                     imageUrl: item.imageUrl,
-                    quizCompleted: true
+                    quizCompleted: true,
+                    rewrite: item.rewrite
                 )
             }
         } catch {
