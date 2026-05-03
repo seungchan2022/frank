@@ -87,6 +87,8 @@ pub fn create_router<D: DbPort + Clone + 'static>(
         .route("/me/feed", get(api::feed::get_feed::<D>))
         // MVP5 M2: POST /me/summarize — URL 크롤링 + LLM 요약
         .route("/me/summarize", post(api::summarize::post_summarize::<D>))
+        // MVP15 M3: POST /me/rewrite — 직업 시각 재작성 (occupation 필수)
+        .route("/me/rewrite", post(api::rewrite::post_rewrite::<D>))
         // MVP5 M3: favorites CRUD
         .route("/me/favorites", post(api::favorites::add_favorite::<D>))
         .route(

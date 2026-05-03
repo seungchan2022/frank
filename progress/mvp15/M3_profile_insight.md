@@ -1,7 +1,7 @@
 # M3: 프로필 + 내 시각 인사이트
 
 > 프로젝트: Frank MVP15
-> 상태: 대기
+> 상태: in-progress
 > 예상 기간: 1주
 > 의존성: M2 (양 확대 완료)
 
@@ -9,13 +9,34 @@
 
 사용자 프로필(직업 한 줄)을 받아 LLM이 iOS 개발자 시각의 인사이트 단락을 생성하고, 웹·iOS 양쪽에서 설정·표시되도록 구현한다.
 
-## 배경 (Q1·Q2 결정)
+## 인터뷰 결정 사항 (2026-05-03)
 
-- **Q1**: 객관 요약 + 내 시각 단락 (같은 카드 안). 액션 곁들임은 MVP15 제외
-- **Q2**: 직업 한 줄만 (예: "iOS 개발자"). 설정 페이지에 항목 추가, 선택적 (강제 X)
+- **occupation 조회 방식**: 서버 세션 조회 — JWT → profiles 테이블. URL에 occupation 노출 없음
+- **캐시 전략**: 캐시 없음 — 버튼 트리거 + 클라이언트 `phase.done`으로 중복 호출 충분히 방지
+- **출력 언어**: 항상 한국어
+- **재작성 결과 저장**: favorites에 요약과 함께 저장
+- **occupation 미설정 시**: 재작성 버튼 숨김 (인사이트는 null 반환, 요약만 표시)
+
+## 기능 범위
+
+**"요약하기" 버튼** (기존 확장)
+- 기사 상세 화면에서 버튼 탭 시 호출
+- 서버가 JWT → profiles에서 occupation 조회 후 LLM 호출
+- 응답: `{ summary, insight }` — 한국어로
+- occupation 미설정 시 `insight: null`, 요약만 표시
+- 결과는 favorites에 저장
+
+**"재작성" 버튼** (신규)
+- occupation 설정 시에만 버튼 표시
+- 직업 시각으로 기사 재작성 — "iOS 개발자가 공감하고 이해하기 쉽게"
+- 스터디 아카이빙 목적
+- 응답: `{ rewrite }` — 한국어로
+- 결과는 favorites에 저장
+
+## 배경
+
+- **직업 한 줄만** (예: "iOS 개발자"). 설정 페이지에 항목 추가, 선택적 (강제 X)
 - **LLM 컨텍스트**: 직업 한 줄만. 피드 태그는 검색용으로만
-- **미설정 시**: 인사이트 단락 생략, 일반 요약만 표시
-- **백엔드**: 인사이트는 분리된 응답 필드 (UI 통합/분리 자유)
 
 ## 기존 인프라 (critical-review C1)
 
@@ -27,11 +48,16 @@
 
 → **M3 작업은 "새로 만들기" X. ALTER 1줄 + 핸들러 occupation 처리 추가 + Profile 모델 occupation 필드.**
 
-## LLM 호출 전략 (critical-review C3)
+## LLM 호출 전략
 
-피드 1회 새로고침 = 10태그 × 10기사 = 100기사. 인사이트를 prefetch하면 LLM 호출 200+ → Groq RPM 30 즉시 초과.
+버튼 트리거 방식 — 요약하기/재작성 버튼을 탭할 때만 호출. 자동 호출 없음.
+클라이언트 `phase.done` 상태로 중복 호출 방지 (semaphore/캐시 불필요).
+RPM 초과 위험 없음 — 의도적 액션 시에만 호출되므로.
 
-→ **인사이트는 카드 펼침 시 lazy load**. 동시 호출 제한(semaphore) + 결과 캐시(같은 기사 재호출 방지).
+**안전 장치 (필수)**
+- Groq 호출 timeout: 10s
+- 실패 시 1회 retry
+- occupation 입력 검증: 공백 제거 후 최대 50자, 에러 메시지에 내부 정보 노출 금지
 
 ## 응답 스키마 (critical-review M4)
 
@@ -40,33 +66,36 @@
 ## 성공 기준 (Definition of Done)
 
 - [ ] DB: 기존 profiles 테이블에 `occupation TEXT NULL` 단일 ALTER 마이그레이션
-- [ ] 서버: `UpdateProfileRequest`에 occupation 필드 추가, `update_profile` 핸들러에 처리 추가
+- [ ] 서버: `UpdateProfileRequest`에 occupation 추가, `update_profile` 핸들러 처리
 - [ ] 서버: `domain::models::Profile`에 occupation 필드 추가
-- [ ] 서버: 인사이트 LLM 호출 서비스 (`services/insight.rs` 권장) 구현 — **lazy load 전제**
-- [ ] 서버: 인사이트 호출에 동시 제한(semaphore) + 결과 메모리 캐시 적용 (Groq RPM 30 보호)
-- [ ] 서버: 피드 응답에 `insight` 필드 추가 (인사이트 호출은 별도 엔드포인트 또는 펼침 시 호출)
-- [ ] 서버: 인사이트 프롬프트 별도 파일/상수로 분리 (변경 비용 최소화)
-- [ ] 서버: 응답 스키마 예시 JSON을 PR 본문 또는 OpenAPI 스펙에 박제 (웹·iOS 동시 작업 보호)
-- [ ] 서버: occupation 입력 시 신분 단어("취준생", "학생" 등) 도움말 또는 필터 (선택)
+- [ ] 서버: 요약하기 엔드포인트 — JWT → occupation 조회 → LLM → `{ summary, insight }` 한국어 반환
+- [ ] 서버: 재작성 엔드포인트 — JWT → occupation 조회 → LLM → `{ rewrite }` 한국어 반환
+- [ ] 서버: 프롬프트 별도 상수/파일로 분리
+- [ ] 서버: 응답 스키마 예시 JSON 박제 (PR 본문 또는 `M3_response_schema.md`)
 - [ ] 웹: 설정 페이지에 직업 입력란 추가, PATCH 호출
-- [ ] 웹: 피드 카드 "펼침" 시 인사이트 lazy 호출 + 단락 표시
+- [ ] 웹: 요약하기 버튼 — `{ summary, insight }` 표시
+- [ ] 웹: 재작성 버튼 — occupation 설정 시에만 표시, `{ rewrite }` 표시
+- [ ] 웹: 두 결과 모두 favorites에 저장
 - [ ] iOS: 설정 화면에 직업 입력 필드 추가
-- [ ] iOS: 피드 카드 "펼침" 시 인사이트 lazy 호출 + 영역 표시
+- [ ] iOS: 요약하기 버튼 — `{ summary, insight }` 표시
+- [ ] iOS: 재작성 버튼 — occupation 설정 시에만 표시, `{ rewrite }` 표시
+- [ ] iOS: 두 결과 모두 favorites에 저장
 - [ ] 모든 플랫폼 테스트 통과 (서버 cargo test / 웹 vitest / iOS xcodebuild test)
-- [ ] 본인 직접 사용: 직업 설정 후 인사이트 1회 이상 표시 확인 (E2E 검증)
+- [ ] 본인 직접 사용: 직업 설정 → 요약하기 1회 이상 확인 (E2E)
+- [ ] 본인 직접 사용: 직업 설정 → 재작성 1회 이상 확인 (E2E)
 
 ## 아이템
 
-| # | 아이템 | 유형 | 실행 스킬 | 순서 | 상태 |
-|---|--------|------|----------|------|------|
-| 1 | DB 마이그레이션 (profiles에 occupation ALTER) | feature | /workflow | 1 | 대기 |
-| 2 | 서버 프로필 API에 occupation 추가 (Profile 모델 + UpdateProfileRequest) | feature | /workflow | 2 | 대기 |
-| 3 | 서버 인사이트 서비스 (LLM 호출 함수, lazy 전제) + 프롬프트 분리 + semaphore + 캐시 | feature | /workflow | 3 | 대기 |
-| 4 | 서버 인사이트 엔드포인트 또는 응답 필드 + 응답 스키마 예시 박제 + 통합 테스트 | feature | /workflow | 4 | 대기 |
-| 5 | 웹 설정 페이지 직업 입력 | feature | /workflow | 5 (병렬) | 대기 |
-| 6 | 웹 피드 카드 펼침 시 인사이트 lazy 호출 + 단락 표시 | feature | /workflow | 5 (병렬) | 대기 |
-| 7 | iOS 설정 화면 직업 입력 | feature | /workflow | 5 (병렬) | 대기 |
-| 8 | iOS 피드 카드 펼침 시 인사이트 lazy 호출 + 영역 표시 | feature | /workflow | 5 (병렬) | 대기 |
+| # | 아이템 | 유형 | 순서 | 상태 |
+|---|--------|------|------|------|
+| 1 | DB 마이그레이션 (profiles에 occupation ALTER) | feature | 1 | 대기 |
+| 2 | 서버 프로필 API에 occupation 추가 (Profile 모델 + UpdateProfileRequest) | feature | 2 | 대기 |
+| 3 | 서버 요약하기 엔드포인트 (occupation 세션 조회 + LLM → { summary, insight } 한국어) + 프롬프트 분리 | feature | 3 | 대기 |
+| 4 | 서버 재작성 엔드포인트 (occupation 세션 조회 + LLM → { rewrite } 한국어) + 응답 스키마 박제 + 통합 테스트 | feature | 4 | 대기 |
+| 5 | 웹 설정 페이지 직업 입력 | feature | 5 (병렬) | 대기 |
+| 6 | 웹 요약하기 + 재작성 버튼 (occupation 미설정 시 재작성 숨김) + favorites 저장 | feature | 5 (병렬) | 대기 |
+| 7 | iOS 설정 화면 직업 입력 | feature | 5 (병렬) | 대기 |
+| 8 | iOS 요약하기 + 재작성 버튼 (occupation 미설정 시 재작성 숨김) + favorites 저장 | feature | 5 (병렬) | 대기 |
 
 순서 1~4는 서버, 5~8은 클라이언트 4개 병렬 (메모리 `feedback_parallel_agents`).
 

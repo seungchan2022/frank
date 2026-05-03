@@ -6,6 +6,7 @@ pub mod profile;
 pub mod quiz;
 pub mod quiz_wrong_answers;
 pub mod related;
+pub mod rewrite;
 pub mod summarize;
 pub mod tags;
 
