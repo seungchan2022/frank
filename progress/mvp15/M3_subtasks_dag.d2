@@ -1,0 +1,41 @@
+direction: down
+
+ST1: "ST-1\nDB 마이그레이션\nprofiles.occupation ALTER" {
+  style.fill: "#e8f5e9"
+}
+
+ST2: "ST-2\n서버 Profile 모델 + DbPort\noccupation 필드 추가" {
+  style.fill: "#e3f2fd"
+}
+
+ST3: "ST-3\nLlmPort\nsummarize_with_occupation\n+ Groq 구현" {
+  style.fill: "#e3f2fd"
+}
+
+ST4: "ST-4\n요약하기 occupation 연동\n+ 재작성 엔드포인트\n+ 응답 스키마 박제" {
+  style.fill: "#e3f2fd"
+}
+
+ST5: "ST-5\n웹 설정 페이지\noccupation 입력란" {
+  style.fill: "#fff3e0"
+}
+
+ST6: "ST-6\n웹 요약하기 + 재작성 버튼\n(occupation 연동) + favorites" {
+  style.fill: "#fff3e0"
+}
+
+ST7: "ST-7\niOS 설정 화면\noccupation 입력 필드" {
+  style.fill: "#fce4ec"
+}
+
+ST8: "ST-8\niOS 요약하기 + 재작성 버튼\n(occupation 연동) + favorites" {
+  style.fill: "#fce4ec"
+}
+
+ST1 -> ST2
+ST2 -> ST3
+ST3 -> ST4
+ST4 -> ST5
+ST4 -> ST7
+ST5 -> ST6
+ST7 -> ST8

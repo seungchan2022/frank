@@ -24,12 +24,14 @@ pub trait DbPort: Send + Sync {
         completed: bool,
     ) -> impl std::future::Future<Output = Result<(), AppError>> + Send;
 
-    /// 프로필 부분 수정. 두 필드 모두 None이면 no-op으로 현재 프로필 반환.
+    /// 프로필 부분 수정. 세 필드 모두 None이면 no-op으로 현재 프로필 반환.
+    /// MVP15 M3: occupation 파라미터 추가 (최대 50자, 빈 문자열 = None 처리는 핸들러에서).
     fn update_profile(
         &self,
         user_id: Uuid,
         onboarding_completed: Option<bool>,
         display_name: Option<String>,
+        occupation: Option<String>,
     ) -> impl std::future::Future<Output = Result<Profile, AppError>> + Send;
 
     fn list_tags(&self) -> impl std::future::Future<Output = Result<Vec<Tag>, AppError>> + Send;
@@ -135,6 +137,22 @@ pub trait LlmPort: Send + Sync {
         title: &'a str,
         content: &'a str,
     ) -> Pin<Box<dyn Future<Output = Result<QuizResult, AppError>> + Send + 'a>>;
+
+    /// MVP15 M3: occupation이 있으면 직업 시각 인사이트 포함 요약, 없으면 insight=None.
+    fn summarize_with_occupation<'a>(
+        &'a self,
+        title: &'a str,
+        content: &'a str,
+        occupation: Option<&'a str>,
+    ) -> Pin<Box<dyn Future<Output = Result<LlmResponse, AppError>> + Send + 'a>>;
+
+    /// MVP15 M3: occupation 시각으로 기사를 재작성. occupation은 항상 Some 보장 (핸들러에서 검증).
+    fn rewrite_with_occupation<'a>(
+        &'a self,
+        title: &'a str,
+        content: &'a str,
+        occupation: &'a str,
+    ) -> Pin<Box<dyn Future<Output = Result<String, AppError>> + Send + 'a>>;
 }
 
 /// 알림 전송 포트 (iMessage 등)
@@ -205,13 +223,24 @@ pub struct CounterSnapshot {
 /// dyn compatible을 위해 boxed future 사용
 pub trait FavoritesPort: Send + Sync {
     /// favorites 테이블에서 해당 (user_id, url) 행의 summary/insight를 업데이트.
-    /// url이 favorites에 없으면 0행 업데이트 (에러 없음).
+    /// url이 favorites에 없으면 upsert로 row 자동 생성 (C3: 비즐겨찾기 기사 결과 유실 방지).
+    /// MVP15 M3: insight가 None이면 기존 insight 유지 (occupation 미설정 시 덮어쓰기 방지).
     fn update_favorite_summary<'a>(
         &'a self,
         user_id: Uuid,
         url: &'a str,
         summary: &'a str,
-        insight: &'a str,
+        insight: Option<&'a str>,
+    ) -> Pin<Box<dyn Future<Output = Result<(), AppError>> + Send + 'a>>;
+
+    /// MVP15 M3: favorites 테이블에서 해당 (user_id, url) 행의 rewrite를 저장.
+    /// url이 favorites에 없으면 upsert로 row 자동 생성 (비즐겨찾기 기사도 저장).
+    /// best-effort: 저장 실패해도 호출자가 200 반환 (E-04).
+    fn update_favorite_rewrite<'a>(
+        &'a self,
+        user_id: Uuid,
+        url: &'a str,
+        rewrite: &'a str,
     ) -> Pin<Box<dyn Future<Output = Result<(), AppError>> + Send + 'a>>;
 
     /// MVP5 M3: 즐겨찾기 추가.

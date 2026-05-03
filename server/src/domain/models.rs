@@ -7,6 +7,8 @@ pub struct Profile {
     pub id: Uuid,
     pub display_name: Option<String>,
     pub onboarding_completed: bool,
+    /// MVP15 M3: 직업 한 줄 (최대 50자). None = 미설정.
+    pub occupation: Option<String>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -60,6 +62,8 @@ pub struct Favorite {
     pub concepts: Option<serde_json::Value>,
     /// MVP8 M1: 퀴즈를 한 번이라도 완료하면 true
     pub quiz_completed: bool,
+    /// MVP15 M3: LLM 재작성 결과. None = 미생성.
+    pub rewrite: Option<String>,
 }
 
 /// MVP8 M1: quiz_wrong_answers 테이블 모델.
@@ -101,7 +105,8 @@ pub struct SaveWrongAnswerParams {
 pub struct LlmSummary {
     pub title_ko: String,
     pub summary: String,
-    pub insight: String,
+    /// MVP15 M3: occupation 있으면 "iOS 개발자 시각" 인사이트, 없으면 None.
+    pub insight: Option<String>,
 }
 
 /// LLM 응답 (요약 + 토큰 사용량)
