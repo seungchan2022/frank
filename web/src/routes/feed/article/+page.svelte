@@ -236,7 +236,8 @@
 				const summary = phase.tag === 'done' ? phase.result.summary : undefined;
 				// insight는 occupation 미설정 시 null — undefined로 변환 (addFavorite 시그니처 호환)
 				const insight = phase.tag === 'done' ? (phase.result.insight ?? undefined) : undefined;
-				await favoritesStore.addFavorite(feedItem, summary, insight);
+				const rewrite = rewritePhase.tag === 'done' ? rewritePhase.result : undefined;
+				await favoritesStore.addFavorite(feedItem, summary, insight, rewrite);
 			}
 		} catch (e) {
 			// 에러는 무시 (UI 일관성 유지)

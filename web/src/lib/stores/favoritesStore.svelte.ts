@@ -54,8 +54,8 @@ async function loadFavorites(userId?: string): Promise<void> {
  * 즐겨찾기 추가.
  * Svelte 5 반응성 규칙: 새 배열 할당.
  */
-async function addFavorite(item: FeedItem, summary?: string, insight?: string): Promise<void> {
-	const added = await apiClient.addFavorite(item, summary, insight);
+async function addFavorite(item: FeedItem, summary?: string, insight?: string, rewrite?: string): Promise<void> {
+	const added = await apiClient.addFavorite(item, summary, insight, rewrite);
 	// prepend — DESC 순서 유지
 	favorites = [added, ...favorites];
 }

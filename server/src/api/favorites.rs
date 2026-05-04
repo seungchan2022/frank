@@ -25,6 +25,8 @@ pub struct AddFavoriteRequest {
     pub insight: Option<String>,
     /// MVP6 M1: 썸네일 이미지 URL (없으면 null)
     pub image_url: Option<String>,
+    /// MVP15 M3: 직업 시각 재작성 결과 (없으면 null)
+    pub rewrite: Option<String>,
 }
 
 /// DELETE /me/favorites?url=... 쿼리 파라미터.
@@ -62,7 +64,7 @@ pub async fn add_favorite<D: DbPort>(
         image_url: body.image_url,
         concepts: None,
         quiz_completed: false,
-        rewrite: None,
+        rewrite: body.rewrite,
     };
 
     let favorite = state.favorites.add_favorite(user.id, &item).await?;

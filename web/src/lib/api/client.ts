@@ -47,7 +47,7 @@ export interface ApiClient {
 	collectArticles(): Promise<number>;
 
 	// Favorites (MVP5 M3)
-	addFavorite(item: FeedItem, summary?: string, insight?: string): Promise<Favorite>;
+	addFavorite(item: FeedItem, summary?: string, insight?: string, rewrite?: string): Promise<Favorite>;
 	deleteFavorite(url: string): Promise<void>;
 	listFavorites(): Promise<Favorite[]>;
 

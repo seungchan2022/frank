@@ -161,7 +161,7 @@ export const mockApiClient: ApiClient = {
 		);
 	},
 
-	async addFavorite(item: FeedItem, summary?: string, insight?: string): Promise<Favorite> {
+	async addFavorite(item: FeedItem, summary?: string, insight?: string, rewrite?: string): Promise<Favorite> {
 		const existing = mockFavorites.find((f) => f.url === item.url);
 		if (existing) throw Object.assign(new Error('이미 즐겨찾기에 추가된 기사입니다.'), { status: 409 });
 		const now = new Date().toISOString();
@@ -176,6 +176,7 @@ export const mockApiClient: ApiClient = {
 			tagId: item.tag_id ?? null,
 			summary: summary ?? null,
 			insight: insight ?? null,
+			rewrite: rewrite ?? null,
 			likedAt: now,
 			createdAt: now
 		};

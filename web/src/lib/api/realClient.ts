@@ -230,7 +230,7 @@ export const realApiClient: ApiClient = {
 		}
 	},
 
-	async addFavorite(item: FeedItem, summary?: string, insight?: string): Promise<Favorite> {
+	async addFavorite(item: FeedItem, summary?: string, insight?: string, rewrite?: string): Promise<Favorite> {
 		const raw = await request<Record<string, unknown>>('/api/me/favorites', {
 			method: 'POST',
 			body: JSON.stringify({
@@ -242,7 +242,8 @@ export const realApiClient: ApiClient = {
 				tag_id: item.tag_id ?? null,
 				summary: summary ?? null,
 				insight: insight ?? null,
-				image_url: item.image_url ?? null
+				image_url: item.image_url ?? null,
+				rewrite: rewrite ?? null
 			})
 		});
 		return snakeToCamelFavorite(raw);
