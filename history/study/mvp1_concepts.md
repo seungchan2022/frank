@@ -39,19 +39,39 @@
 - iOS: 서버 레이어 없음. SDK가 토큰 저장·갱신·헤더 첨부 자동 처리
 - iOS Apple: iOS 시스템(Face ID 팝업)이 직접 인증 처리 → SDK가 idToken을 Supabase JWT로 교환
 
-### 자가 확인 기록
+### 자가 확인 기록 (2차, 7문제)
 
-Q1. 웹 이메일 로그인에서 signInWithPassword()를 실행하는 주체는?
-사용자 답: A (SvelteKit 웹)
+Q1. hooks.server.ts와 +page.server.ts의 역할 차이는?
+사용자 답: B ✅
+정답: B
+포인트: hooks는 모든 요청 문지기, +page.server.ts는 특정 페이지 폼 제출 담당
+
+Q2. signInWithPassword()를 실행하는 주체는?
+사용자 답: C ✅
 정답: C (+page.server.ts)
-포인트: 브라우저 JS는 httpOnly 쿠키를 설정할 수 없어서 인증 처리를 서버에서 해야 함
+포인트: 브라우저 JS는 httpOnly 쿠키 설정 불가 → 반드시 서버에서 처리
 
-Q2. 로그인 후 JWT가 httpOnly 쿠키에 저장되는 이유는?
-사용자 답: B
-정답: B ✅
-포인트: httpOnly로 JS 접근 차단 → XSS 방어. localStorage 대비 핵심 보안 이점
+Q3. safeGetSession()이 하는 일은?
+사용자 답: B ✅
+정답: B
+포인트: getSession(JWT 추출) + getUser(Supabase 재검증) 두 단계를 묶은 커스텀 헬퍼
 
-Q3. Rust API 호출 시 인증 정보를 전달하는 방식은?
-사용자 답: B
-정답: B ✅
-포인트: 쿠키는 브라우저-웹서버 간에만 자동 전송. 외부 Rust API엔 Bearer 헤더로 명시적 전달 필요
+Q4. 이메일 로그인과 Apple OAuth의 핵심 차이는?
+사용자 답: C ✅
+정답: C
+포인트: Apple OAuth는 브라우저가 Apple 서버로 직접 이동하는 과정이 중간에 끼어 있음
+
+Q5. Rust API 호출 시 인증 정보 전달 방식은?
+사용자 답: C ✅
+정답: C (Bearer 헤더)
+포인트: 쿠키는 브라우저-웹서버 간에만 전송. 외부 Rust API엔 Bearer 헤더로 명시적 전달
+
+Q6. iOS Keychain과 웹 httpOnly 쿠키의 공통점은?
+사용자 답: B ✅
+정답: B
+포인트: 둘 다 앱/브라우저 코드가 직접 접근할 수 없는 보안 저장소
+
+Q7. locals.supabase가 JWT를 httpOnly 쿠키에 저장할 수 있는 이유는?
+사용자 답: 모름
+정답: B
+포인트: hooks.server.ts에서 createServerClient()로 SSR 클라이언트 생성 시 쿠키 읽기/쓰기 핸들러를 설정함. 인증 함수 호출 시 이 핸들러가 자동으로 쿠키에 저장
