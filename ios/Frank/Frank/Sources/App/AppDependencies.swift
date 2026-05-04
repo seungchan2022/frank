@@ -118,7 +118,14 @@ final class AppDependencies {
     static func mock() -> AppDependencies {
         let scenario = ProcessInfo.processInfo.environment["FRANK_UI_SCENARIO"]
 
-        let profile = scenario == "new_user" ? MockFixtures.newUserProfile : MockFixtures.profile
+        let profile: Profile
+        if scenario == "new_user" {
+            profile = MockFixtures.newUserProfile
+        } else if scenario == "rewrite_flow" {
+            profile = MockFixtures.profileWithOccupation
+        } else {
+            profile = MockFixtures.profile
+        }
 
         // I-04: feed_refresh_2step 시나리오 — pull-to-refresh 시 다른 fixture 반환
         // E-03: empty_feed 시나리오 — 빈 피드에서 swipeDown 크래시 없음 검증

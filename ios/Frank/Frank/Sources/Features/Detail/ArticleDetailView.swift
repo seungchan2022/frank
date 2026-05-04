@@ -404,6 +404,7 @@ extension ArticleDetailView {
                 .frame(maxWidth: .infinity)
             }
             .buttonStyle(.borderedProminent)
+            .accessibilityIdentifier("summarizeButton")
 
         case .loading:
             LoadingTextView(initial: "요약 중…", after: "마무리 중…")
@@ -524,12 +525,14 @@ extension ArticleDetailView {
                 }
                 .buttonStyle(.borderedProminent)
                 .tint(.teal)
+                .accessibilityIdentifier("rewriteButton")
 
             case .loading:
                 LoadingTextView(initial: "재작성 중…", after: "마무리 중…")
 
             case .done(let result):
                 paragraphView(result.rewrite, secondary: false)
+                    .accessibilityIdentifier("rewriteResultText")
 
             case .failed(let message):
                 VStack(spacing: 6) {

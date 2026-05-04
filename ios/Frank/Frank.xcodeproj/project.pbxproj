@@ -30,6 +30,7 @@
 		219DBF917ADE0F2360F837C2 /* TuistBundle+Frank.swift in Sources */ = {isa = PBXBuildFile; fileRef = 310E064F8C1CBC4263855ED6 /* TuistBundle+Frank.swift */; };
 		25DB794FC66C379A2B3D44F0 /* LikesPort.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0BF09471B52675119013B536 /* LikesPort.swift */; };
 		27B2B6733D486AB94E6BB711 /* TagChipView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 765FF6131C6AD6128B0DA0B4 /* TagChipView.swift */; };
+		29411082F831751BB9B0BF92 /* RewriteFlowUITest.swift in Sources */ = {isa = PBXBuildFile; fileRef = 89ED8466399620B1E527ECCD /* RewriteFlowUITest.swift */; };
 		315FB330839E449D23A45881 /* Logger.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0949836956EA8C7AB729B454 /* Logger.swift */; };
 		320D44072834AB052F5FA0C2 /* swift-crypto_Crypto.bundle in Dependencies */ = {isa = PBXBuildFile; fileRef = 37670072226AC2A91EA7B29D /* swift-crypto_Crypto.bundle */; };
 		339605217259315081033B88 /* UITestHelpers.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3659014FBB2DEC5D55148331 /* UITestHelpers.swift */; };
@@ -147,10 +148,10 @@
 		F0793185012593295E59B9E8 /* MockFavoritesPort.swift in Sources */ = {isa = PBXBuildFile; fileRef = 97D2F20BEC9CED65537E2308 /* MockFavoritesPort.swift */; };
 		F088E21BE93A38D804A03254 /* APILikesAdapter.swift in Sources */ = {isa = PBXBuildFile; fileRef = 06BD04D7B055B322E3865BEC /* APILikesAdapter.swift */; };
 		F177587426E214F0D1BBD747 /* AuthFeatureTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = AD78FFC05481C8B83E3B3F71 /* AuthFeatureTests.swift */; };
+		F37EBEC5A2900F6883A83EC3 /* RewriteSessionCache.swift in Sources */ = {isa = PBXBuildFile; fileRef = 894CD74BDE0F3EB093C717DE /* RewriteSessionCache.swift */; };
 		F492CB4F904D0DFEA288DCA5 /* PostgREST.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = B43318CD695224310C36B89D /* PostgREST.framework */; };
 		F4D869C143D4AAAAB0CC015B /* APIArticleAdapter.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2E263E898F6D5800C26DF0E6 /* APIArticleAdapter.swift */; };
 		F61A117B318AEC21D2D35E01 /* SummarySessionCache.swift in Sources */ = {isa = PBXBuildFile; fileRef = 327690E060C64CDC0FDBEE98 /* SummarySessionCache.swift */; };
-		A9C1E3F2B84D7E120F5A3C91 /* RewriteSessionCache.swift in Sources */ = {isa = PBXBuildFile; fileRef = B2D7F4A1C93E8610D4F25B77 /* RewriteSessionCache.swift */; };
 		F61B3F00F42CE2041EECD0C9 /* Helpers.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 453555520004369FD2FDEC52 /* Helpers.framework */; };
 		F724BF40845F1A838045141A /* ServerConfigTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = EA1DD160599BFA14FFD87433 /* ServerConfigTests.swift */; };
 		FA252DF1A88D2EF89496B8D7 /* FeedRefreshUITest.swift in Sources */ = {isa = PBXBuildFile; fileRef = ECE74562081E9CBD9AF0E8E1 /* FeedRefreshUITest.swift */; };
@@ -242,7 +243,6 @@
 		2E263E898F6D5800C26DF0E6 /* APIArticleAdapter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = APIArticleAdapter.swift; sourceTree = "<group>"; };
 		310E064F8C1CBC4263855ED6 /* TuistBundle+Frank.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "TuistBundle+Frank.swift"; sourceTree = "<group>"; };
 		327690E060C64CDC0FDBEE98 /* SummarySessionCache.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SummarySessionCache.swift; sourceTree = "<group>"; };
-		B2D7F4A1C93E8610D4F25B77 /* RewriteSessionCache.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RewriteSessionCache.swift; sourceTree = "<group>"; };
 		327DA28A100F924D9A073E1F /* FrankUITests-Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = "FrankUITests-Info.plist"; sourceTree = "<group>"; };
 		332C224CF63649B0D27CEE68 /* LikesFeature.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LikesFeature.swift; sourceTree = "<group>"; };
 		3659014FBB2DEC5D55148331 /* UITestHelpers.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UITestHelpers.swift; sourceTree = "<group>"; };
@@ -296,7 +296,9 @@
 		84371F086178028D7CF4FAF2 /* WrongAnswerRow.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WrongAnswerRow.swift; sourceTree = "<group>"; };
 		86ED8EFAB1047C9CE142ED89 /* ArticleDetailQuizCompletedTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ArticleDetailQuizCompletedTests.swift; sourceTree = "<group>"; };
 		8834E578EA47B50ECB90514E /* Secrets.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Secrets.plist; sourceTree = "<group>"; };
+		894CD74BDE0F3EB093C717DE /* RewriteSessionCache.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RewriteSessionCache.swift; sourceTree = "<group>"; };
 		895AFF2CCC471F69D5864640 /* WrongAnswerPort.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WrongAnswerPort.swift; sourceTree = "<group>"; };
+		89ED8466399620B1E527ECCD /* RewriteFlowUITest.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RewriteFlowUITest.swift; sourceTree = "<group>"; };
 		8B8C9188EF336D34BB89EE36 /* SupabaseArticleAdapter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SupabaseArticleAdapter.swift; sourceTree = "<group>"; };
 		8C3815B1863F12226990863E /* FrankTests-Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = "FrankTests-Info.plist"; sourceTree = "<group>"; };
 		90DA53CBC6C4EFBAA745F69F /* SafariView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SafariView.swift; sourceTree = "<group>"; };
@@ -475,6 +477,7 @@
 				EB8DDF05C2814294A438BC72 /* LoginFlowUITest.swift */,
 				F814F1DF6BE3BC706A2FC458 /* M3UXImprovementsUITest.swift */,
 				9573D714FA626A46DDE59685 /* OnboardingFlowUITest.swift */,
+				89ED8466399620B1E527ECCD /* RewriteFlowUITest.swift */,
 				3659014FBB2DEC5D55148331 /* UITestHelpers.swift */,
 			);
 			path = FrankUITests;
@@ -796,9 +799,9 @@
 				3846B5C60271FB0BAEBE36E9 /* FavoriteItem.swift */,
 				E3F4D1213640C861090521BE /* Profile.swift */,
 				A16D2197431E0F72829B2111 /* RewriteResult.swift */,
+				894CD74BDE0F3EB093C717DE /* RewriteSessionCache.swift */,
 				4CD69062BF78A6FC3A318ED0 /* SummaryResult.swift */,
 				327690E060C64CDC0FDBEE98 /* SummarySessionCache.swift */,
-				B2D7F4A1C93E8610D4F25B77 /* RewriteSessionCache.swift */,
 				6B1C4F1BD1C7B5D286598FBE /* Tag.swift */,
 				DE0BD4085B831742F9C75D40 /* WrongAnswer.swift */,
 			);
@@ -1036,6 +1039,7 @@
 				3CD2EB50E5DEBCDD5A233A05 /* LoginFlowUITest.swift in Sources */,
 				8F79EC0908671BD2C56E1C15 /* M3UXImprovementsUITest.swift in Sources */,
 				B7BDA6546104C807CF303301 /* OnboardingFlowUITest.swift in Sources */,
+				29411082F831751BB9B0BF92 /* RewriteFlowUITest.swift in Sources */,
 				339605217259315081033B88 /* UITestHelpers.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -1137,9 +1141,9 @@
 				381D9CF9DC50EFA6F80F5A09 /* FavoriteItem.swift in Sources */,
 				5099A6DD7E98503573859EA1 /* Profile.swift in Sources */,
 				E941A8C17B520F6467A72984 /* RewriteResult.swift in Sources */,
+				F37EBEC5A2900F6883A83EC3 /* RewriteSessionCache.swift in Sources */,
 				AA77F209B1012A5DEF6EF605 /* SummaryResult.swift in Sources */,
 				F61A117B318AEC21D2D35E01 /* SummarySessionCache.swift in Sources */,
-				A9C1E3F2B84D7E120F5A3C91 /* RewriteSessionCache.swift in Sources */,
 				CDA10EF1285D69763859FC3F /* Tag.swift in Sources */,
 				7D5FAAECB2ACB02299D957B6 /* WrongAnswer.swift in Sources */,
 				91A1BB91D96FD7BED4BAFF17 /* ArticlePort.swift in Sources */,
