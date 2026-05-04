@@ -123,14 +123,14 @@
 **상태**: ✅ **RESOLVED** (260504 코드 탐색 확인)
 **수정 내용**: `.claude/skills/e2e/SKILL.md` 존재 확인. `web/e2e/` 4개 파일(feed-like, feed-summary, tag-navigation, smoke), `ios/FrankUITests/` 5개 UITest 파일(LoginFlow, FeedRefresh, CrossFeatureFlow, M3UXImprovements, UITestHelpers) 모두 구현 완료.
 
-**잔여 작업**: occupation → insight → rewrite → scrap 플로우 등 MVP15 신규 기능 시나리오 미작성 → `progress/tasks/260504_debt_feedquality.md` C-1, C-2로 이관
+**잔여 작업**: occupation → insight → rewrite → scrap 플로우 등 MVP15 신규 기능 시나리오 미작성 → `progress/tasks/260504_debt_feedquality.md` C-1, C-2로 이관. 해당 시나리오는 ST-8(웹 E2E), ST-9(iOS UITest)에서 추가 예정
 
 ---
 
 ## [DEBT-MVP15-01] 진단 retry_classifier 에러 카테고리 분류 — 4xx 세분화 부족
 
 **발생**: 2026-05-02 MVP15 M1 진단 실행 결과
-**상태**: 🟡 **OPEN** (중)
+**상태**: ✅ **RESOLVED** (260504 `quota_exhausted` 카테고리 신설, `retry_classifier.rs` 수정)
 **현상**: Exa 무료 한도 소진 시 HTTP 402 Payment Required 반환되는데, `retry_classifier`가 이를 `network` 카테고리로 오분류. 운영상 결제 만료/한도 소진은 별도 카테고리로 식별돼야 운영 알람과 진단 보고서 정확.
 **근본 원인**: `retry_classifier::categorize()`가 4xx 그룹 내에서 401/403만 `auth`로 분기하고 402/429 외 나머지는 일괄 처리. 402 Payment Required는 전용 카테고리 없어 fallback인 `network`로 잡힘.
 **개선 방향**:
@@ -144,7 +144,7 @@
 ## [DEBT-MVP15-02] 진단 바이너리 실행 환경 가정 강함
 
 **발생**: 2026-05-02 MVP15 M1 진단 실행 시 cwd/`.env` 경로 문제
-**상태**: 🟡 **OPEN** (낮)
+**상태**: ✅ **RESOLVED** (260504 `scripts/run-diagnose.sh` 추가, env 자동 소싱)
 **현상**: `cargo run --bin diagnose_search`를 자연스럽게 실행하면 두 가지 에러 발생:
 - `server/`에서 실행 → 출력 경로 `progress/mvp15/` 없음 (cwd가 server 기준)
 - repo 루트에서 실행 → `DATABASE_URL` 미발견 (`.env`가 `server/.env`인데 dotenvy는 cwd 기준)
@@ -169,7 +169,7 @@
 ## [DEBT-MVP15-04] Exa `reset_at` NULL semantics 미구현
 
 **발생**: 2026-05-02 MVP15 M2 step-7 코드 리뷰 (Codex P2 지적)
-**상태**: 🟡 **OPEN** (낮)
+**상태**: ✅ **RESOLVED** (260504 Exa `record_call` reset_at=NULL 적용, migration SQL 추가)
 **현상**: `CounterPort` 설계 의도는 "Exa 등 크레딧형 엔진은 `reset_at = NULL`로 자동 리셋 없음"이나, 현재 Postgres/InMemory 구현 모두 첫 `record_call`에서 모든 엔진에 `date_trunc('month', now()) + 1 month`로 reset_at을 세팅. 알림 메시지 "수동 (크레딧 갱신)" 분기는 사실상 실행 경로 없음.
 **리스크**: Exa 크레딧이 매월 자동 갱신되지 않는데도 카운터는 매월 0으로 reset됨 → 한도 보호 누락 가능성. 다만 현재 운영에서 Tavily 1순위·Exa 2순위로 호출 빈도 낮아 실제 위험 낮음.
 **개선 방향 (택1)**:
@@ -194,7 +194,7 @@
 ## [DEBT-MVP15-06] `infra → services` 역방향 레이어 의존 위반
 
 **발생**: 2026-05-02 MVP15 M2 step-7 코드 리뷰 (advisor + Codex P6 지적)
-**상태**: 🟡 **OPEN** (낮)
+**상태**: ✅ **RESOLVED** (260504 `AlertDispatcherPort` trait 신설, infra→services 의존 제거)
 **현상**: `infra/counted_search.rs`(데코레이터)가 `services::notification_service::dispatch_threshold_alert`를 직접 import. CLAUDE.md 명시 의존 방향 `api → services → domain ← infra` 위반. infra 데코레이터가 service orchestration까지 짊어진 구조.
 **리스크**: 런타임 버그는 아님. 의존 그래프 정리 시 순환 가능성 + 신규 개발자 혼란.
 **개선 방향 (택1)**:
@@ -207,7 +207,7 @@
 ## [DEBT-MVP15-07] 피드 응답 snippet에 invalid JSON escape sequence
 
 **발생**: 2026-05-02 MVP15 M2 step-8 라이브 자동화 검증 중 발견 (M2 envelope 변경 이전부터 존재하는 기존 부채)
-**상태**: 🟡 **OPEN** (중)
+**상태**: ✅ **RESOLVED** (260504 `clean_snippet()` nul 바이트·제어문자 제거, 단위 테스트 추가)
 **현상**: `GET /api/me/feed` 응답 raw JSON에 `\4`, `\_` 같은 invalid escape sequence 27건 출현(예: `"snippet":"k5:G DEJ=6lQ42C6E\4@=@..."`). `JSON.parse` / `serde_json::from_str` / `jq` 모두 파싱 실패(`Invalid \escape: line 1 column 9006`).
 **리스크**: M3에서 클라이언트(웹 `realClient.ts` / iOS `APIArticleAdapter.swift`)가 envelope 디시리얼라이저로 전환할 때 일부 응답이 디시리얼라이즈 실패 → 피드 화면 빈 결과 + 사용자 영향. 현재 관측 시점의 32 items 중 1건이 문제.
 **원인 후보**:
