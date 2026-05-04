@@ -30,14 +30,13 @@ impl FavoritesPort for PostgresFavoritesAdapter {
         insight: Option<&'a str>,
     ) -> Pin<Box<dyn Future<Output = Result<(), AppError>> + Send + 'a>> {
         Box::pin(async move {
-            // C3: 비즐겨찾기 기사도 upsert로 row 자동 생성.
+            // 이미 스크랩된 기사만 업데이트. 미스크랩 기사는 빈 row 생성 안 함.
             // insight가 None이면 COALESCE로 기존 값 유지 (occupation 미설정 시 덮어쓰기 방지).
             sqlx::query(
-                "INSERT INTO favorites (user_id, url, title, source, summary, insight)
-                 VALUES ($1, $2, '', '', $3, $4)
-                 ON CONFLICT (user_id, url) DO UPDATE SET
-                   summary = EXCLUDED.summary,
-                   insight = COALESCE($4, favorites.insight)",
+                "UPDATE favorites SET
+                   summary = $3,
+                   insight = COALESCE($4, insight)
+                 WHERE user_id = $1 AND url = $2",
             )
             .bind(user_id)
             .bind(url)
@@ -45,7 +44,7 @@ impl FavoritesPort for PostgresFavoritesAdapter {
             .bind(insight)
             .execute(&self.pool)
             .await
-            .map_err(|e| AppError::Internal(format!("favorites upsert failed: {e}")))?;
+            .map_err(|e| AppError::Internal(format!("favorites summary update failed: {e}")))?;
 
             Ok(())
         })
@@ -58,18 +57,16 @@ impl FavoritesPort for PostgresFavoritesAdapter {
         rewrite: &'a str,
     ) -> Pin<Box<dyn Future<Output = Result<(), AppError>> + Send + 'a>> {
         Box::pin(async move {
-            // C3: 비즐겨찾기 기사도 row 자동 생성.
+            // 이미 스크랩된 기사만 업데이트. 미스크랩 기사는 빈 row 생성 안 함.
             sqlx::query(
-                "INSERT INTO favorites (user_id, url, title, source, rewrite)
-                 VALUES ($1, $2, '', '', $3)
-                 ON CONFLICT (user_id, url) DO UPDATE SET rewrite = EXCLUDED.rewrite",
+                "UPDATE favorites SET rewrite = $3 WHERE user_id = $1 AND url = $2",
             )
             .bind(user_id)
             .bind(url)
             .bind(rewrite)
             .execute(&self.pool)
             .await
-            .map_err(|e| AppError::Internal(format!("favorites rewrite upsert failed: {e}")))?;
+            .map_err(|e| AppError::Internal(format!("favorites rewrite update failed: {e}")))?;
 
             Ok(())
         })

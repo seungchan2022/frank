@@ -76,35 +76,12 @@ impl FavoritesPort for FakeFavoritesAdapter {
 
             let mut guard = self.store.lock().unwrap();
             let key = (user_id, url.clone());
-            // C3: row 없으면 upsert로 자동 생성 — borrow 분리
-            if !guard.0.contains_key(&key) {
-                let now = Utc::now();
-                let new_fav = Favorite {
-                    id: Uuid::new_v4(),
-                    user_id,
-                    title: String::new(),
-                    url: url.clone(),
-                    snippet: None,
-                    source: String::new(),
-                    published_at: None,
-                    tag_id: None,
-                    summary: None,
-                    insight: None,
-                    liked_at: None,
-                    created_at: Some(now),
-                    image_url: None,
-                    concepts: None,
-                    quiz_completed: false,
-                    rewrite: None,
-                };
-                guard.0.insert(key.clone(), new_fav);
-                guard.1.push(key.clone());
-            }
-            let fav = guard.0.get_mut(&key).expect("just inserted");
-            fav.summary = Some(summary);
-            // insight가 Some이면 업데이트, None이면 기존 값 유지
-            if let Some(ins) = insight {
-                fav.insight = Some(ins);
+            // UPDATE-only: 이미 스크랩된 기사만 업데이트. 없으면 no-op.
+            if let Some(fav) = guard.0.get_mut(&key) {
+                fav.summary = Some(summary);
+                if let Some(ins) = insight {
+                    fav.insight = Some(ins);
+                }
             }
 
             Ok(())
@@ -127,33 +104,10 @@ impl FavoritesPort for FakeFavoritesAdapter {
 
             let mut guard = self.store.lock().unwrap();
             let key = (user_id, url.clone());
-            // C3: row 없으면 upsert로 자동 생성
-            // C3: row 없으면 upsert로 자동 생성 — borrow 분리
-            if !guard.0.contains_key(&key) {
-                let now = Utc::now();
-                let new_fav = Favorite {
-                    id: Uuid::new_v4(),
-                    user_id,
-                    title: String::new(),
-                    url: url.clone(),
-                    snippet: None,
-                    source: String::new(),
-                    published_at: None,
-                    tag_id: None,
-                    summary: None,
-                    insight: None,
-                    liked_at: None,
-                    created_at: Some(now),
-                    image_url: None,
-                    concepts: None,
-                    quiz_completed: false,
-                    rewrite: None,
-                };
-                guard.0.insert(key.clone(), new_fav);
-                guard.1.push(key.clone());
+            // UPDATE-only: 이미 스크랩된 기사만 업데이트. 없으면 no-op.
+            if let Some(fav) = guard.0.get_mut(&key) {
+                fav.rewrite = Some(rewrite);
             }
-            let fav = guard.0.get_mut(&key).expect("just inserted");
-            fav.rewrite = Some(rewrite);
 
             Ok(())
         })

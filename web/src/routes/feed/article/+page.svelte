@@ -177,8 +177,6 @@
 			const result = await apiClient.rewrite(feedItem.url, feedItem.title, feedItem.snippet ?? undefined);
 			rewriteCache.set(feedItem.url, result.rewrite);
 			rewritePhase = { tag: 'done', result: result.rewrite };
-			// 서버가 재작성 완료 시 favorites에 자동 저장하므로 동기화
-			await favoritesStore.refreshFavorites(auth.user?.id);
 		} catch (e) {
 			const message =
 				e instanceof Error ? e.message : '재작성을 불러오지 못했습니다. 다시 시도해주세요.';
