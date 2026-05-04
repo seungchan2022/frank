@@ -28,6 +28,26 @@ const QUOTA_BLOCK_PCT: i32 = 100;
 /// `FeedItem.source` 와 동일해야 한다 (advisor 지적: PK 일관성).
 const ENGINE_IDS: &[&str] = &["tavily", "exa", "firecrawl"];
 
+/// 태그 표시명(한국어) → 영어 검색 키워드 매핑.
+/// Tavily는 영어 쿼리에 최적화되어 있어 한/영 혼합 쿼리는 관련성이 낮아진다.
+pub(super) fn tag_search_keyword(tag_name: &str) -> &str {
+    match tag_name {
+        "모바일 개발" => "mobile development iOS Android Swift Kotlin",
+        "웹 개발" => "web development frontend backend JavaScript TypeScript",
+        "AI/ML" => "artificial intelligence machine learning LLM",
+        "클라우드/인프라" => "cloud infrastructure DevOps Kubernetes",
+        "보안" => "cybersecurity vulnerability security breach",
+        "데이터 사이언스" => "data science analytics big data",
+        "블록체인" => "blockchain crypto Web3 DeFi",
+        "스타트업" => "startup tech entrepreneurship product launch",
+        "투자/VC" => "venture capital startup funding investment",
+        "프로덕트" => "product management roadmap strategy",
+        "UX/디자인" => "UX design UI user experience",
+        "오픈소스" => "open source software developer tools",
+        other => other,
+    }
+}
+
 /// 캐시 키 생성: 특정 태그 → `"{user_id}:{tag_id}"`, 전체 피드 → `"{user_id}:{sorted_tag_ids}"`
 fn make_cache_key(user_id: Uuid, tag_ids: &[Uuid]) -> String {
     if tag_ids.is_empty() {
@@ -281,7 +301,8 @@ pub async fn get_feed<D: DbPort>(
                 .get(&user_tag.tag_id)
                 .cloned()
                 .unwrap_or_default();
-            let search_query = format!("{tag_name} latest news{suffix}");
+            let search_keyword = tag_search_keyword(&tag_name);
+            let search_query = format!("{search_keyword} latest news{suffix}");
             (user_tag.tag_id, tag_name, search_query)
         })
         .collect();
@@ -336,6 +357,14 @@ pub async fn get_feed<D: DbPort>(
             }
             if is_homepage_url(&sr.url) {
                 tracing::debug!(url = %sr.url, "skipping homepage URL");
+                continue;
+            }
+            // snippet이 Some이지만 30자 미만이면 랜딩페이지·제품 소개 페이지일 가능성이 높음.
+            // None(검색 엔진이 미추출)은 통과 — 유효한 기사일 수 있음.
+            if let Some(ref s) = sr.snippet
+                && s.trim().len() < 30
+            {
+                tracing::debug!(url = %sr.url, snippet_len = s.trim().len(), "skipping low-content URL");
                 continue;
             }
             items.push(FeedItem {
@@ -709,7 +738,7 @@ mod tests {
         let results = vec![SearchResult {
             title: "Test Article".to_string(),
             url: "https://example.com/news/test-article".to_string(),
-            snippet: Some("test snippet".to_string()),
+            snippet: Some("This is a test article snippet with sufficient length.".to_string()),
             published_at: None,
             image_url: None,
         }];
@@ -1409,8 +1438,8 @@ mod tests {
         db.seed_user_tag(user_id, tag_a.id);
         db.seed_user_tag(user_id, tag_b.id);
 
-        let query_a = format!("{} latest news", tag_a.name);
-        let query_b = format!("{} latest news", tag_b.name);
+        let query_a = format!("{} latest news", tag_search_keyword(&tag_a.name));
+        let query_b = format!("{} latest news", tag_search_keyword(&tag_b.name));
 
         let mut query_map: HashMap<String, Result<Vec<SearchResult>, String>> = HashMap::new();
         query_map.insert(
@@ -1466,8 +1495,8 @@ mod tests {
         db.seed_user_tag(user_id, tag_a.id);
         db.seed_user_tag(user_id, tag_b.id);
 
-        let query_a = format!("{} latest news", tag_a.name);
-        let query_b = format!("{} latest news", tag_b.name);
+        let query_a = format!("{} latest news", tag_search_keyword(&tag_a.name));
+        let query_b = format!("{} latest news", tag_search_keyword(&tag_b.name));
 
         let mut query_map: HashMap<String, Result<Vec<SearchResult>, String>> = HashMap::new();
         query_map.insert(
@@ -1522,8 +1551,8 @@ mod tests {
         db.seed_user_tag(user_id, tag_a.id);
         db.seed_user_tag(user_id, tag_b.id);
 
-        let query_a = format!("{} latest news", tag_a.name);
-        let query_b = format!("{} latest news", tag_b.name);
+        let query_a = format!("{} latest news", tag_search_keyword(&tag_a.name));
+        let query_b = format!("{} latest news", tag_search_keyword(&tag_b.name));
 
         let mut query_map: HashMap<String, Result<Vec<SearchResult>, String>> = HashMap::new();
         query_map.insert(
@@ -1673,7 +1702,10 @@ mod tests {
             .unwrap();
 
         // top 3 keywords: GPT(2), transformer(1) → suffix = " GPT transformer"
-        let personalized_query = format!("{} latest news GPT transformer", tag_a.name);
+        let personalized_query = format!(
+            "{} latest news GPT transformer",
+            tag_search_keyword(&tag_a.name)
+        );
 
         let mut query_map: HashMap<String, Result<Vec<SearchResult>, String>> = HashMap::new();
         query_map.insert(
@@ -1719,7 +1751,7 @@ mod tests {
         db.seed_user_tag(user_id, tag_a.id);
 
         // keyword 없음 → 기존 쿼리 유지
-        let default_query = format!("{} latest news", tag_a.name);
+        let default_query = format!("{} latest news", tag_search_keyword(&tag_a.name));
 
         let mut query_map: HashMap<String, Result<Vec<SearchResult>, String>> = HashMap::new();
         query_map.insert(
@@ -1774,7 +1806,7 @@ mod tests {
             .unwrap();
 
         // tag_id 지정 시 keyword_suffix 없는 기본 쿼리로 검색돼야 한다
-        let default_query = format!("{} latest news", tag_a.name);
+        let default_query = format!("{} latest news", tag_search_keyword(&tag_a.name));
 
         let mut query_map: HashMap<String, Result<Vec<SearchResult>, String>> = HashMap::new();
         query_map.insert(
@@ -1821,7 +1853,7 @@ mod tests {
         let tag_a = &tags[0];
         db.seed_user_tag(user_id, tag_a.id);
 
-        let query_a = format!("{} latest news", tag_a.name);
+        let query_a = format!("{} latest news", tag_search_keyword(&tag_a.name));
         let mut query_map: HashMap<String, Result<Vec<SearchResult>, String>> = HashMap::new();
         query_map.insert(
             query_a.clone(),
@@ -1870,8 +1902,8 @@ mod tests {
         db.seed_user_tag(user_id, tag_a.id);
         db.seed_user_tag(user_id, tag_b.id);
 
-        let query_a = format!("{} latest news", tag_a.name);
-        let query_b = format!("{} latest news", tag_b.name);
+        let query_a = format!("{} latest news", tag_search_keyword(&tag_a.name));
+        let query_b = format!("{} latest news", tag_search_keyword(&tag_b.name));
 
         let mut query_map: HashMap<String, Result<Vec<SearchResult>, String>> = HashMap::new();
         query_map.insert(query_a, Err("search engine error".to_string()));
@@ -1967,8 +1999,8 @@ mod tests {
         db.seed_user_tag(user_id, tag_a.id);
         db.seed_user_tag(user_id, tag_b.id);
 
-        let query_a = format!("{} latest news", tag_a.name);
-        let query_b = format!("{} latest news", tag_b.name);
+        let query_a = format!("{} latest news", tag_search_keyword(&tag_a.name));
+        let query_b = format!("{} latest news", tag_search_keyword(&tag_b.name));
 
         let mut query_map: HashMap<String, Result<Vec<SearchResult>, String>> = HashMap::new();
         query_map.insert(query_a, Err("search failed".to_string()));

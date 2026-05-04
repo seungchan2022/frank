@@ -104,7 +104,8 @@ where
             Ok(c) => c,
             Err(e) => {
                 tracing::warn!(url = %url, error = %e, "Firecrawl 실패 — snippet/title 폴백");
-                snippet.filter(|s| !s.trim().is_empty())
+                snippet
+                    .filter(|s| !s.trim().is_empty())
                     .unwrap_or(title)
                     .to_string()
             }
