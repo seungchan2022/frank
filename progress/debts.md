@@ -2,7 +2,7 @@
 
 의도적으로 보류한 설계·구현 결정. 다음 MVP 기획 시 흡수 여부 판단.
 
-> 최종 갱신: 2026-04-29
+> 최종 갱신: 2026-05-04
 
 ---
 
@@ -63,11 +63,9 @@
 ## [DEBT-03] iOS 유닛 테스트 커버리지 수치 측정 자동화
 
 **발생**: MVP12 종료 시점
-**상태**: 🟡 **DEFERRED** (실질적 영향 낮음)
+**상태**: ✅ **RESOLVED** (260504 코드 탐색 확인) — `scripts/coverage.sh` 구축 완료
 
-**실제 현황** (260428 코드 탐색 확인): iOS 테스트 파일 17개 확인됨. Adapter 4개, Feature 8개, Component 3개, 순수함수 2개. 커버리지 수치 자동 측정 스크립트 미구성.
-
-**흡수 조건**: 커버리지 수치가 KPI 게이트로 필요해지는 시점에 `xccov` 연동
+**실제 현황**: iOS 테스트 파일 28개. `scripts/coverage.sh`가 `xcodebuild test -enableCodeCoverage YES` + `xcrun xccov`로 Frank 타겟 `lineCoverage` 집계, 90% 미달 시 `exit 1` 처리됨.
 
 ---
 
@@ -122,13 +120,10 @@
 ## [DEBT-08] E2E 시나리오 테스트 자동화 기반 미구축
 
 **발생**: 2026-04-29 실사용 테스트 필요성 인식
-**상태**: 🟡 **OPEN** (새 스킬 구축 필요)
-**현상**: 현재 기능 검증은 수동 테스트에 의존. Claude가 시나리오를 작성하고 직접 실행하며 결과를 체크하는 자동화 흐름이 없음.
-**개선 방향**:
-- 웹: Playwright MCP로 시나리오 직접 실행 + 스크린샷 검증
-- iOS: XCUITest 시나리오 파일 자동 생성 → `xcodebuild test`로 실행
-- `/e2e` 스킬: 마일스톤 기능 목록 → 시나리오 생성 → 실행 → 리포트 (누적 시 리그레션 베이스)
-**흡수 조건**: MVP14 M3
+**상태**: ✅ **RESOLVED** (260504 코드 탐색 확인)
+**수정 내용**: `.claude/skills/e2e/SKILL.md` 존재 확인. `web/e2e/` 4개 파일(feed-like, feed-summary, tag-navigation, smoke), `ios/FrankUITests/` 5개 UITest 파일(LoginFlow, FeedRefresh, CrossFeatureFlow, M3UXImprovements, UITestHelpers) 모두 구현 완료.
+
+**잔여 작업**: occupation → insight → rewrite → scrap 플로우 등 MVP15 신규 기능 시나리오 미작성 → `progress/tasks/260504_debt_feedquality.md` C-1, C-2로 이관
 
 ---
 
