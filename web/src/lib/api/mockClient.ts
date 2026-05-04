@@ -137,7 +137,7 @@ export const mockApiClient: ApiClient = {
 		return delay(1, 200);
 	},
 
-	async summarize(_url: string, _title: string): Promise<SummaryResult> {
+	async summarize(_url: string, _title: string, _snippet?: string): Promise<SummaryResult> {
 		return delay(
 			{
 				summary: 'Mock 요약: 이 기사는 AI 기술의 최신 동향을 다루고 있습니다.',
@@ -149,7 +149,7 @@ export const mockApiClient: ApiClient = {
 		);
 	},
 
-	async rewrite(_url: string, title: string): Promise<RewriteResult> {
+	async rewrite(_url: string, title: string, _snippet?: string): Promise<RewriteResult> {
 		if (!profile.occupation) {
 			throw Object.assign(new Error('직업을 먼저 설정해 주세요.'), { status: 400 });
 		}

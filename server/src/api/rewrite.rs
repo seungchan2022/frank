@@ -13,6 +13,7 @@ use super::AppState;
 pub struct RewriteRequest {
     pub url: String,
     pub title: String,
+    pub snippet: Option<String>,
 }
 
 #[derive(Debug, Serialize)]
@@ -57,6 +58,7 @@ pub async fn post_rewrite<D: DbPort>(
     let rewrite = rewrite_service::rewrite_with_occupation(
         &body.url,
         &body.title,
+        body.snippet.as_deref(),
         user.id,
         &occupation,
         state.crawl.as_ref(),

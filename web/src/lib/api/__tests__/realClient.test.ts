@@ -287,7 +287,8 @@ describe('RealApiClient: summarize (MVP5 M2)', () => {
 		expect(init.method).toBe('POST');
 		expect(JSON.parse(init.body as string)).toEqual({
 			url: 'https://example.com/article',
-			title: 'Test Article'
+			title: 'Test Article',
+			snippet: null
 		});
 	});
 

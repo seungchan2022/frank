@@ -13,6 +13,7 @@ use super::AppState;
 pub struct SummarizeRequest {
     pub url: String,
     pub title: String,
+    pub snippet: Option<String>,
 }
 
 #[derive(Debug, Serialize)]
@@ -55,6 +56,7 @@ pub async fn post_summarize<D: DbPort>(
     let result = summary_service::summarize_with_occupation(
         &body.url,
         &body.title,
+        body.snippet.as_deref(),
         user.id,
         occupation.as_deref(),
         state.crawl.as_ref(),
@@ -248,7 +250,8 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn post_summarize_crawl_failure_returns_422() {
+    async fn post_summarize_crawl_failure_falls_back_and_returns_200() {
+        // MVP15 M3 폴백: crawl 실패 시 title 폴백으로 200 반환 (422 → 200 변경)
         let state = make_test_state(true, false);
         let user_id = Uuid::new_v4();
         let app = make_app(state, user_id);
@@ -262,6 +265,6 @@ mod tests {
             }))
             .await;
 
-        resp.assert_status(axum::http::StatusCode::UNPROCESSABLE_ENTITY);
+        resp.assert_status_ok();
     }
 }

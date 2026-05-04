@@ -76,9 +76,11 @@ where
 /// - occupation=None: 기존 `summarize`와 동일 동작 (insight null)
 /// - occupation=Some: summarize_with_occupation 호출 → insight 포함
 /// - M3 설계: DB 장애 시 occupation=None으로 degrade (핸들러 책임)
+#[allow(clippy::too_many_arguments)]
 pub async fn summarize_with_occupation<'a, C, L, F>(
     url: &'a str,
     title: &'a str,
+    snippet: Option<&'a str>,
     user_id: Uuid,
     occupation: Option<&'a str>,
     crawl: &'a C,
@@ -98,9 +100,15 @@ where
     let occ_owned = occupation.map(|s| s.to_string());
 
     let result = timeout(Duration::from_secs(SUMMARIZE_TIMEOUT_SECS), async {
-        let content = crawl.scrape(url).await.map_err(|e| {
-            AppError::UnprocessableEntity(format!("콘텐츠를 가져올 수 없습니다: {e}"))
-        })?;
+        let content = match crawl.scrape(url).await {
+            Ok(c) => c,
+            Err(e) => {
+                tracing::warn!(url = %url, error = %e, "Firecrawl 실패 — snippet/title 폴백");
+                snippet.filter(|s| !s.trim().is_empty())
+                    .unwrap_or(title)
+                    .to_string()
+            }
+        };
 
         let response = llm
             .summarize_with_occupation(title, &content, occ_owned.as_deref())
@@ -160,6 +168,50 @@ mod tests {
 
         assert!(result.is_ok());
         assert_eq!(favorites.update_call_count(), 1);
+    }
+
+    #[tokio::test]
+    async fn crawl_failure_with_snippet_falls_back_and_succeeds() {
+        let crawl = FakeCrawlAdapter::failing();
+        let llm = FakeLlmAdapter::new();
+        let favorites = FakeFavoritesAdapter::new();
+        let user_id = Uuid::new_v4();
+
+        let result = summarize_with_occupation(
+            "https://example.com/article",
+            "Test Article",
+            Some("snippet content"),
+            user_id,
+            None,
+            &crawl,
+            &llm,
+            &favorites,
+        )
+        .await;
+
+        assert!(result.is_ok(), "snippet 폴백 시 성공: {result:?}");
+    }
+
+    #[tokio::test]
+    async fn crawl_failure_without_snippet_falls_back_to_title() {
+        let crawl = FakeCrawlAdapter::failing();
+        let llm = FakeLlmAdapter::new();
+        let favorites = FakeFavoritesAdapter::new();
+        let user_id = Uuid::new_v4();
+
+        let result = summarize_with_occupation(
+            "https://example.com/article",
+            "Test Article",
+            None,
+            user_id,
+            None,
+            &crawl,
+            &llm,
+            &favorites,
+        )
+        .await;
+
+        assert!(result.is_ok(), "title 폴백 시 성공: {result:?}");
     }
 
     #[tokio::test]
@@ -223,7 +275,7 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn crawl_failure_returns_unprocessable_entity() {
+    async fn legacy_summarize_crawl_failure_returns_unprocessable_entity() {
         let crawl = FakeCrawlAdapter::failing();
         let llm = FakeLlmAdapter::new();
         let favorites = FakeFavoritesAdapter::new();

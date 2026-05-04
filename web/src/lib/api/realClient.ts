@@ -182,11 +182,11 @@ export const realApiClient: ApiClient = {
 		return data.collected;
 	},
 
-	async summarize(url: string, title: string): Promise<SummaryResult> {
+	async summarize(url: string, title: string, snippet?: string): Promise<SummaryResult> {
 		try {
 			return await request<SummaryResult>('/api/me/summarize', {
 				method: 'POST',
-				body: JSON.stringify({ url, title })
+				body: JSON.stringify({ url, title, snippet: snippet ?? null })
 			});
 		} catch (e) {
 			if (e instanceof ApiError) {
@@ -204,11 +204,11 @@ export const realApiClient: ApiClient = {
 		}
 	},
 
-	async rewrite(url: string, title: string): Promise<RewriteResult> {
+	async rewrite(url: string, title: string, snippet?: string): Promise<RewriteResult> {
 		try {
 			return await request<RewriteResult>('/api/me/rewrite', {
 				method: 'POST',
-				body: JSON.stringify({ url, title })
+				body: JSON.stringify({ url, title, snippet: snippet ?? null })
 			});
 		} catch (e) {
 			if (e instanceof ApiError) {
