@@ -67,6 +67,17 @@ impl CounterPort for InMemoryCounter {
                 .lock()
                 .map_err(|e| AppError::Internal(format!("counter lock poisoned: {e}")))?;
             let now = Utc::now();
+
+            // ST-4: Exa는 크레딧 선불형 — reset_at=NULL, 카운트만 증가. E-01 소문자 정규화.
+            if engine.to_lowercase() == "exa" {
+                let entry = store.entry(engine.to_string()).or_insert((0, None)); // 신규: reset_at=NULL
+                entry.0 += 1;
+                return Ok(CounterSnapshot {
+                    calls: entry.0,
+                    reset_at: None, // R-01: NULL reset_at → None 반환
+                });
+            }
+
             let next_reset = Self::next_month_reset(now);
 
             let entry = store
@@ -201,5 +212,48 @@ mod tests {
         let second = c.try_record_alert("tavily", 80, later).await.unwrap();
         assert!(first);
         assert!(second, "다음 주기에는 재발송 가능");
+    }
+
+    // ── ST-4: Exa reset_at NULL semantics ────────────────────────────────────
+
+    /// T-01: Exa engine 첫 INSERT → reset_at=NULL snapshot 반환
+    #[tokio::test]
+    async fn exa_first_call_returns_null_reset_at() {
+        let c = InMemoryCounter::new();
+        let snap = c.record_call("exa").await.unwrap();
+        assert_eq!(snap.calls, 1);
+        assert_eq!(snap.reset_at, None, "Exa reset_at은 NULL이어야 함");
+    }
+
+    /// T-02: Exa engine 재호출 → reset_at 여전히 NULL
+    #[tokio::test]
+    async fn exa_repeated_calls_keep_null_reset_at() {
+        let c = InMemoryCounter::new();
+        c.record_call("exa").await.unwrap();
+        c.record_call("exa").await.unwrap();
+        let snap = c.record_call("exa").await.unwrap();
+        assert_eq!(snap.calls, 3);
+        assert_eq!(snap.reset_at, None, "Exa 재호출 후에도 reset_at은 NULL");
+    }
+
+    /// T-03: Tavily engine → reset_at 기존 월간 동작 회귀 방지
+    #[tokio::test]
+    async fn tavily_still_gets_monthly_reset_at() {
+        let c = InMemoryCounter::new();
+        let snap = c.record_call("tavily").await.unwrap();
+        assert_eq!(snap.calls, 1);
+        assert!(snap.reset_at.is_some(), "Tavily reset_at은 Some이어야 함");
+        assert!(
+            snap.reset_at.unwrap() > Utc::now(),
+            "Tavily reset_at은 미래여야 함"
+        );
+    }
+
+    /// E-01: 대소문자 정규화 — "EXA" / "Exa"도 NULL 처리
+    #[tokio::test]
+    async fn exa_engine_name_case_insensitive() {
+        let c = InMemoryCounter::new();
+        let snap = c.record_call("EXA").await.unwrap();
+        assert_eq!(snap.reset_at, None, "대문자 EXA도 reset_at=NULL");
     }
 }

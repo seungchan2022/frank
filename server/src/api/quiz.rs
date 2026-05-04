@@ -106,6 +106,9 @@ mod tests {
             quiz_wrong_answers: Arc::new(FakeQuizWrongAnswerAdapter::new()),
             feed_cache: Arc::new(NoopFeedCache),
             counter: Arc::new(crate::infra::in_memory_counter::InMemoryCounter::new()),
+            alert_dispatcher: Arc::new(
+                crate::infra::fake_alert_dispatcher::FakeAlertDispatcher::new(),
+            ),
         }
     }
 

@@ -161,6 +161,22 @@ pub struct SearchResult {
     pub image_url: Option<String>,
 }
 
+/// ST-6 AlertDispatcherPort: 임계 교차 알림 페이로드.
+///
+/// R3 가드: 엔진명·임계치·회복일만 포함. user_id/쿼리/태그명 노출 금지.
+/// domain/models.rs에 배치: AlertDispatcherPort(ports.rs)가 이 타입을 참조하므로
+/// services 레이어 참조를 방지하기 위해 domain 레이어에 위치.
+#[derive(Debug, Clone)]
+pub struct AlertDispatch {
+    pub engine: String,
+    /// 80 또는 100
+    pub threshold_pct: i32,
+    /// 회복 시각. Exa(크레딧형)는 None.
+    pub reset_at: Option<DateTime<Utc>>,
+    /// dedupe 키. `date_trunc('month', now())`.
+    pub period_start: DateTime<Utc>,
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

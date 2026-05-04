@@ -28,7 +28,31 @@ impl CounterPort for PostgresCounterAdapter {
         engine: &'a str,
     ) -> Pin<Box<dyn Future<Output = Result<CounterSnapshot, AppError>> + Send + 'a>> {
         Box::pin(async move {
-            // 단일 CASE statement: race-free lazy reset + INC.
+            // Exa는 크레딧 선불형 — 월간 자동 reset 없음. reset_at=NULL 유지.
+            // E-01: engine 비교는 소문자 정규화.
+            if engine.to_lowercase() == "exa" {
+                // Exa 전용: INSERT 시 reset_at=NULL, ON CONFLICT 시 카운트만 증가 (reset_at 변경 없음).
+                let row: (i32, Option<DateTime<Utc>>) = sqlx::query_as(
+                    r#"
+                    INSERT INTO api_call_counters (engine, calls_this_month, reset_at)
+                    VALUES ($1, 1, NULL)
+                    ON CONFLICT (engine) DO UPDATE SET
+                        calls_this_month = api_call_counters.calls_this_month + 1
+                    RETURNING calls_this_month, reset_at
+                    "#,
+                )
+                .bind(engine)
+                .fetch_one(&self.pool)
+                .await
+                .map_err(|e| AppError::Internal(format!("counter INC 실패: {e}")))?;
+
+                return Ok(CounterSnapshot {
+                    calls: row.0,
+                    reset_at: row.1,
+                });
+            }
+
+            // Tavily / Firecrawl 등: 단일 CASE statement race-free lazy reset + INC.
             // INSERT가 신규 행이면 calls=1, reset_at=다음달 1일 00:00 UTC.
             // ON CONFLICT 시 reset_at 경과면 calls=1+reset_at 갱신, 아니면 INC만.
             let row: (i32, Option<DateTime<Utc>>) = sqlx::query_as(

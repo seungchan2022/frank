@@ -386,6 +386,12 @@ pub async fn get_feed<D: DbPort>(
     let mut seen_urls = std::collections::HashSet::new();
     items.retain(|item| seen_urls.insert(normalize_url(&item.url)));
 
+    // ── A-1: 7일 이상 된 기사 필터링 (feed_cache.set 직전 — HIT/MISS 양쪽 커버) ─
+    // published_at=None 기사는 날짜 알 수 없으므로 통과.
+    // 정확히 7일 경과(포함) → 제외. 6일 23시간 59분 → 통과.
+    items.retain(|item| is_within_7_days(item.published_at));
+    // ────────────────────────────────────────────────────────────────────────
+
     // ── MVP15 M2 S3: 카운터 사용률에 따른 캐시 TTL 결정 ─────────────────────
     // 우선순위 (advisor 지적):
     //   1. 부분 실패 → 1분 (항상 우선)
@@ -582,6 +588,21 @@ pub(super) fn is_homepage_url(url: &str) -> bool {
     url_path_segments(url).len() <= 1
 }
 
+/// A-1: 기사가 7일 이내에 발행되었으면 true 반환.
+///
+/// - `published_at=None`: 날짜 알 수 없음 → 통과 (true)
+/// - 정확히 7일 경과(포함) → 제외 (false)
+/// - 6일 23시간 59분 → 통과 (true)
+pub(super) fn is_within_7_days(published_at: Option<DateTime<Utc>>) -> bool {
+    match published_at {
+        None => true, // F-02: None은 통과
+        Some(published) => {
+            let cutoff = Utc::now() - chrono::Duration::days(7);
+            published > cutoff
+        }
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -624,6 +645,9 @@ mod tests {
             quiz_wrong_answers: Arc::new(FakeQuizWrongAnswerAdapter::new()),
             feed_cache: Arc::new(NoopFeedCache),
             counter: Arc::new(crate::infra::in_memory_counter::InMemoryCounter::new()),
+            alert_dispatcher: Arc::new(
+                crate::infra::fake_alert_dispatcher::FakeAlertDispatcher::new(),
+            ),
         }
     }
 
@@ -644,6 +668,9 @@ mod tests {
             quiz_wrong_answers: Arc::new(FakeQuizWrongAnswerAdapter::new()),
             feed_cache: Arc::new(NoopFeedCache),
             counter: Arc::new(crate::infra::in_memory_counter::InMemoryCounter::new()),
+            alert_dispatcher: Arc::new(
+                crate::infra::fake_alert_dispatcher::FakeAlertDispatcher::new(),
+            ),
         }
     }
 
@@ -670,6 +697,9 @@ mod tests {
             quiz_wrong_answers: Arc::new(FakeQuizWrongAnswerAdapter::new()),
             feed_cache: Arc::clone(&cache) as Arc<dyn crate::domain::ports::FeedCachePort>,
             counter: Arc::new(crate::infra::in_memory_counter::InMemoryCounter::new()),
+            alert_dispatcher: Arc::new(
+                crate::infra::fake_alert_dispatcher::FakeAlertDispatcher::new(),
+            ),
         };
         (state, cache)
     }
@@ -695,6 +725,9 @@ mod tests {
             quiz_wrong_answers: Arc::new(FakeQuizWrongAnswerAdapter::new()),
             feed_cache: Arc::clone(&cache) as Arc<dyn crate::domain::ports::FeedCachePort>,
             counter: Arc::new(crate::infra::in_memory_counter::InMemoryCounter::new()),
+            alert_dispatcher: Arc::new(
+                crate::infra::fake_alert_dispatcher::FakeAlertDispatcher::new(),
+            ),
         };
         (state, cache)
     }
@@ -907,6 +940,9 @@ mod tests {
             quiz_wrong_answers: Arc::new(FakeQuizWrongAnswerAdapter::new()),
             feed_cache: Arc::new(NoopFeedCache),
             counter: Arc::new(crate::infra::in_memory_counter::InMemoryCounter::new()),
+            alert_dispatcher: Arc::new(
+                crate::infra::fake_alert_dispatcher::FakeAlertDispatcher::new(),
+            ),
         };
         let app = make_app(state, user_id);
         let server = TestServer::new(app);
@@ -2130,6 +2166,9 @@ mod tests {
             quiz_wrong_answers: Arc::new(FakeQuizWrongAnswerAdapter::new()),
             feed_cache: Arc::clone(&cache) as Arc<dyn crate::domain::ports::FeedCachePort>,
             counter: Arc::clone(&counter) as Arc<dyn crate::domain::ports::CounterPort>,
+            alert_dispatcher: Arc::new(
+                crate::infra::fake_alert_dispatcher::FakeAlertDispatcher::new(),
+            ),
         };
         (state, cache, counter)
     }
@@ -2246,12 +2285,12 @@ mod tests {
             }],
             false,
         ));
-        let notifier: Arc<dyn crate::domain::ports::NotificationPort> =
-            Arc::new(FakeNotificationAdapter::new());
+        let dispatcher: Arc<dyn crate::domain::ports::AlertDispatcherPort> =
+            Arc::new(crate::infra::fake_alert_dispatcher::FakeAlertDispatcher::new());
         let dec = CountedSearchAdapter::new(
             inner,
             Arc::clone(&counter) as Arc<dyn crate::domain::ports::CounterPort>,
-            notifier,
+            dispatcher,
         );
         let out = dec.search("query", 20).await.unwrap();
         assert!(out.is_empty(), "1000 시드 → 호출 skip → 빈 결과");
@@ -2266,12 +2305,12 @@ mod tests {
         use crate::infra::counted_search::CountedSearchAdapter;
         let counter = Arc::new(crate::infra::in_memory_counter::InMemoryCounter::new());
         let inner = Box::new(FakeSearchAdapter::new("tavily", vec![], false));
-        let notifier: Arc<dyn crate::domain::ports::NotificationPort> =
-            Arc::new(FakeNotificationAdapter::new());
+        let dispatcher: Arc<dyn crate::domain::ports::AlertDispatcherPort> =
+            Arc::new(crate::infra::fake_alert_dispatcher::FakeAlertDispatcher::new());
         let dec = CountedSearchAdapter::new(
             inner,
             counter as Arc<dyn crate::domain::ports::CounterPort>,
-            notifier,
+            dispatcher,
         );
         // source_name == engine PK 일관성 (advisor 지적)
         assert_eq!(dec.source_name(), "tavily");
@@ -2292,5 +2331,36 @@ mod tests {
         assert!(ENGINE_IDS.contains(&"tavily"));
         assert!(ENGINE_IDS.contains(&"exa"));
         assert!(ENGINE_IDS.contains(&"firecrawl"));
+    }
+
+    // ── ST-1: A-1 날짜 필터 단위 테스트 ─────────────────────────────────────
+
+    /// T-01: 8일 전 기사 제외
+    #[test]
+    fn date_filter_rejects_8_days_old() {
+        let eight_days_ago = Utc::now() - chrono::Duration::days(8);
+        assert!(!is_within_7_days(Some(eight_days_ago)));
+    }
+
+    /// T-01: 6일 전 기사 통과
+    #[test]
+    fn date_filter_passes_6_days_old() {
+        let six_days_ago = Utc::now() - chrono::Duration::days(6);
+        assert!(is_within_7_days(Some(six_days_ago)));
+    }
+
+    /// T-01: None(발행일 없음) 통과
+    #[test]
+    fn date_filter_passes_none_published_at() {
+        assert!(is_within_7_days(None));
+    }
+
+    /// T-02: 정확히 7일 경과 → 제외 (E-01 경계값)
+    #[test]
+    fn date_filter_rejects_exactly_7_days() {
+        // chrono::Duration::days(7)는 정수 초 단위, 실행 시간 오차 보정을 위해 1초 추가
+        let exactly_7_days_ago =
+            Utc::now() - chrono::Duration::days(7) - chrono::Duration::seconds(1);
+        assert!(!is_within_7_days(Some(exactly_7_days_ago)));
     }
 }

@@ -11,12 +11,13 @@ use std::fmt;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum ErrorCategory {
-    RateLimit, // 429
-    Auth,      // 401 / 403
-    ServerErr, // 5xx
-    Timeout,   // 요청 타임아웃
-    Network,   // 연결/DNS/소켓
-    JsonParse, // 응답 파싱 실패
+    RateLimit,      // 429
+    Auth,           // 401 / 403
+    QuotaExhausted, // 402 — 크레딧 소진 (Exa 등 선불형 엔진)
+    ServerErr,      // 5xx
+    Timeout,        // 요청 타임아웃
+    Network,        // 연결/DNS/소켓
+    JsonParse,      // 응답 파싱 실패
     /// partial 파일 쓰기 실패 등 — runner에서 직접 분류·기록 시 사용 예정.
     #[allow(dead_code)]
     FileIo,
@@ -30,6 +31,7 @@ impl ErrorCategory {
         match self {
             ErrorCategory::RateLimit => "rate_limit",
             ErrorCategory::Auth => "auth",
+            ErrorCategory::QuotaExhausted => "quota_exhausted",
             ErrorCategory::ServerErr => "5xx",
             ErrorCategory::Timeout => "timeout",
             ErrorCategory::Network => "network",
@@ -53,6 +55,9 @@ pub fn classify(message: &str) -> ErrorCategory {
     let lower = message.to_lowercase();
     if lower.contains("429") || lower.contains("rate limit") {
         ErrorCategory::RateLimit
+    } else if lower.contains("402") || lower.contains("payment required") {
+        // 크레딧 선불형 엔진(Exa 등) 쿼터 소진 — 401 분기 흡수 방지를 위해 앞에 삽입
+        ErrorCategory::QuotaExhausted
     } else if lower.contains("401")
         || lower.contains("403")
         || lower.contains("unauthor")
@@ -88,6 +93,7 @@ pub fn is_retryable(cat: ErrorCategory) -> bool {
         cat,
         ErrorCategory::ServerErr | ErrorCategory::Timeout | ErrorCategory::Network
     )
+    // QuotaExhausted는 재시도 불가 — 크레딧 소진은 재시도해도 무의미
 }
 
 /// 영구/간헐 판정. 재시도 1회 후 1차/2차 카테고리 비교.
@@ -156,6 +162,38 @@ mod tests {
         assert!(!is_retryable(ErrorCategory::JsonParse));
         assert!(!is_retryable(ErrorCategory::FileIo));
         assert!(!is_retryable(ErrorCategory::Db));
+        // T-02: QuotaExhausted는 재시도 불가
+        assert!(!is_retryable(ErrorCategory::QuotaExhausted));
+    }
+
+    // ST-2 T-01: 402 / "payment required" → QuotaExhausted
+    #[test]
+    fn classify_402_payment_required() {
+        assert_eq!(
+            classify("Exa returned 402 Payment Required"),
+            ErrorCategory::QuotaExhausted
+        );
+        assert_eq!(
+            classify("402 payment required"),
+            ErrorCategory::QuotaExhausted
+        );
+        // 대소문자 무관 (E-01)
+        assert_eq!(classify("PAYMENT REQUIRED"), ErrorCategory::QuotaExhausted);
+    }
+
+    // ST-2 T-03: as_label 검증
+    #[test]
+    fn quota_exhausted_label() {
+        assert_eq!(ErrorCategory::QuotaExhausted.as_label(), "quota_exhausted");
+        // Display는 as_label을 위임하므로 동일
+        assert_eq!(ErrorCategory::QuotaExhausted.to_string(), "quota_exhausted");
+    }
+
+    // ST-2 R-01: 기존 Auth 분류 회귀 없음 (402가 401을 흡수하지 않음)
+    #[test]
+    fn auth_still_classified_correctly() {
+        assert_eq!(classify("401 unauthorized"), ErrorCategory::Auth);
+        assert_eq!(classify("403 Forbidden"), ErrorCategory::Auth);
     }
 
     // T-03: 영구/간헐 판정

@@ -8,9 +8,8 @@
 use std::sync::Arc;
 use std::time::Duration;
 
-use chrono::{DateTime, Utc};
-
-use crate::domain::ports::{CounterPort, NotificationPort};
+use crate::domain::models::AlertDispatch;
+use crate::domain::ports::{AlertDispatcherPort, CounterPort, NotificationPort};
 
 // MVP5 M1: 배치 요약 후 알림 전송 기능은 summary_service와 함께 비활성화.
 // M2 온디맨드 요약 구현 시 필요하면 재활용한다.
@@ -36,20 +35,6 @@ const MAX_MESSAGE_BYTES: usize = 200;
 
 /// 알림 send 타임아웃 (R4): osascript이 stuck되면 5초 후 포기.
 const ALERT_SEND_TIMEOUT: Duration = Duration::from_secs(5);
-
-/// 임계 교차 알림 페이로드.
-///
-/// R3 가드: 엔진명·임계치·회복일만 포함. user_id/쿼리/태그명 노출 금지.
-#[derive(Debug, Clone)]
-pub struct AlertDispatch {
-    pub engine: String,
-    /// 80 또는 100
-    pub threshold_pct: i32,
-    /// 회복 시각. Exa(크레딧형)는 None.
-    pub reset_at: Option<DateTime<Utc>>,
-    /// dedupe 키. `date_trunc('month', now())`.
-    pub period_start: DateTime<Utc>,
-}
 
 /// 알림 메시지 빌드 (R3: 엔진명·임계치·회복일만, R4: ≤200자).
 /// 순수 함수 — 테스트 가능.
@@ -146,12 +131,38 @@ async fn send_with_timeout_retry(
     Err("알림 send 2회 모두 실패".to_string())
 }
 
+// ─── ST-6 AlertDispatcherPort impl ───────────────────────────────────────────
+
+/// `AlertDispatcherPort` 프로덕션 구현체.
+///
+/// `CounterPort`(dedupe)와 `NotificationPort`(iMessage 전송)를 조합하여
+/// `AlertDispatcherPort::dispatch` 단일 메서드로 노출한다.
+///
+/// 내부 흐름은 `dispatch_threshold_alert` 자유함수와 동일 — Arc clone 없이
+/// 구조체 필드를 직접 사용.
+pub struct NotificationAlertDispatcher {
+    counter: Arc<dyn CounterPort>,
+    notifier: Arc<dyn NotificationPort>,
+}
+
+impl NotificationAlertDispatcher {
+    pub fn new(counter: Arc<dyn CounterPort>, notifier: Arc<dyn NotificationPort>) -> Self {
+        Self { counter, notifier }
+    }
+}
+
+impl AlertDispatcherPort for NotificationAlertDispatcher {
+    fn dispatch(&self, alert: AlertDispatch) {
+        dispatch_threshold_alert(Arc::clone(&self.counter), Arc::clone(&self.notifier), alert);
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
     use crate::infra::fake_notification::FakeNotificationAdapter;
     use crate::infra::in_memory_counter::InMemoryCounter;
-    use chrono::TimeZone;
+    use chrono::{TimeZone, Utc};
 
     #[test]
     fn notify_collected_sends_when_count_positive() {

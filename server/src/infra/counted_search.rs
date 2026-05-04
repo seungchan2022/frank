@@ -24,11 +24,10 @@ use std::pin::Pin;
 use std::sync::Arc;
 
 use crate::domain::error::AppError;
-use crate::domain::models::SearchResult;
+use crate::domain::models::{AlertDispatch, SearchResult};
 use crate::domain::ports::{
-    ALERT_THRESHOLD_BLOCK, ALERT_THRESHOLD_WARN, CounterPort, NotificationPort, SearchPort,
+    ALERT_THRESHOLD_BLOCK, ALERT_THRESHOLD_WARN, AlertDispatcherPort, CounterPort, SearchPort,
 };
-use crate::services::notification_service::{AlertDispatch, dispatch_threshold_alert};
 
 // 무료 한도 상수는 domain/ports.rs로 통합 (MONTHLY_CALL_LIMIT / ALERT_THRESHOLD_WARN / ALERT_THRESHOLD_BLOCK).
 // 본 파일은 ALERT_THRESHOLD_WARN(800) / ALERT_THRESHOLD_BLOCK(1000)만 use하여 사용.
@@ -36,19 +35,19 @@ use crate::services::notification_service::{AlertDispatch, dispatch_threshold_al
 pub struct CountedSearchAdapter {
     inner: Box<dyn SearchPort>,
     counter: Arc<dyn CounterPort>,
-    notifier: Arc<dyn NotificationPort>,
+    alert_dispatcher: Arc<dyn AlertDispatcherPort>,
 }
 
 impl CountedSearchAdapter {
     pub fn new(
         inner: Box<dyn SearchPort>,
         counter: Arc<dyn CounterPort>,
-        notifier: Arc<dyn NotificationPort>,
+        alert_dispatcher: Arc<dyn AlertDispatcherPort>,
     ) -> Self {
         Self {
             inner,
             counter,
-            notifier,
+            alert_dispatcher,
         }
     }
 }
@@ -104,19 +103,15 @@ impl SearchPort for CountedSearchAdapter {
 
                     // 4) 임계 교차 검사: 80%·100%
                     if let Some(crossed) = threshold_crossed(prev_calls, new_snap.calls) {
-                        let dispatch = AlertDispatch {
+                        let alert = AlertDispatch {
                             engine: engine.clone(),
                             threshold_pct: crossed,
                             reset_at: new_snap.reset_at,
                             period_start: current_period_start(chrono::Utc::now()),
                         };
                         // 비동기 dispatch (R4: spawn_blocking + tokio::timeout 5s, retry 1회)
-                        // dedupe + send + timeout는 notification_service에서 처리
-                        dispatch_threshold_alert(
-                            Arc::clone(&self.counter),
-                            Arc::clone(&self.notifier),
-                            dispatch,
-                        );
+                        // dedupe + send + timeout는 AlertDispatcherPort 구현체에서 처리
+                        self.alert_dispatcher.dispatch(alert);
                     }
                     Ok(items)
                 }
@@ -167,7 +162,7 @@ pub fn current_period_start(now: chrono::DateTime<chrono::Utc>) -> chrono::DateT
 mod tests {
     use super::*;
     use crate::domain::models::SearchResult;
-    use crate::infra::fake_notification::FakeNotificationAdapter;
+    use crate::infra::fake_alert_dispatcher::FakeAlertDispatcher;
     use crate::infra::fake_search::FakeSearchAdapter;
     use crate::infra::in_memory_counter::InMemoryCounter;
 
@@ -192,8 +187,8 @@ mod tests {
         counter: Arc<dyn CounterPort>,
     ) -> CountedSearchAdapter {
         let inner = Box::new(FakeSearchAdapter::new("tavily", inner_results, false));
-        let notifier: Arc<dyn NotificationPort> = Arc::new(FakeNotificationAdapter::new());
-        CountedSearchAdapter::new(inner, counter, notifier)
+        let dispatcher: Arc<dyn AlertDispatcherPort> = Arc::new(FakeAlertDispatcher::new());
+        CountedSearchAdapter::new(inner, counter, dispatcher)
     }
 
     #[tokio::test]
@@ -252,11 +247,11 @@ mod tests {
     async fn does_not_increment_on_failure() {
         let counter = Arc::new(InMemoryCounter::new());
         let inner = Box::new(FakeSearchAdapter::new("tavily", vec![], true));
-        let notifier: Arc<dyn NotificationPort> = Arc::new(FakeNotificationAdapter::new());
+        let dispatcher: Arc<dyn AlertDispatcherPort> = Arc::new(FakeAlertDispatcher::new());
         let dec = CountedSearchAdapter::new(
             inner,
             Arc::clone(&counter) as Arc<dyn CounterPort>,
-            notifier,
+            dispatcher,
         );
         let _ = dec.search("q", 5).await;
         let snap = counter.snapshot("tavily").await.unwrap();
@@ -273,24 +268,9 @@ mod tests {
         assert_eq!(snap.calls, 1, "200 OK + 빈 결과도 INC");
     }
 
-    /// 비동기 spawn으로 dispatch된 알림이 도착할 때까지 대기 (최대 1초).
-    /// 한도 KPI 검증용 헬퍼.
-    async fn wait_for_messages(
-        notifier: &FakeNotificationAdapter,
-        min_count: usize,
-    ) -> Vec<String> {
-        for _ in 0..50 {
-            tokio::time::sleep(std::time::Duration::from_millis(20)).await;
-            let msgs = notifier.sent_messages();
-            if msgs.len() >= min_count {
-                return msgs;
-            }
-        }
-        notifier.sent_messages()
-    }
-
-    /// KPI: "iMessage 알림 트리거 80%" 80% 임계 진입 시 1회 발송 (R3 페이로드 검증).
-    /// 799 → INC → 800 (≥ ALERT_THRESHOLD_WARN) → 80% 알림 발송.
+    /// KPI: "alert dispatch 80%" 80% 임계 진입 시 AlertDispatch 1회 적재.
+    /// 799 → INC → 800 (≥ ALERT_THRESHOLD_WARN) → dispatch 호출.
+    /// FakeAlertDispatcher는 동기 적재이므로 search() 반환 후 즉시 검사 가능.
     #[tokio::test]
     async fn fires_alert_at_80_percent_crossing() {
         let counter = Arc::new(InMemoryCounter::new());
@@ -299,7 +279,7 @@ mod tests {
             799,
             Some(chrono::Utc::now() + chrono::Duration::days(7)),
         );
-        let notifier = Arc::new(FakeNotificationAdapter::new());
+        let dispatcher = Arc::new(FakeAlertDispatcher::new());
         let inner = Box::new(FakeSearchAdapter::new(
             "tavily",
             vec![SearchResult {
@@ -314,22 +294,19 @@ mod tests {
         let dec = CountedSearchAdapter::new(
             inner,
             Arc::clone(&counter) as Arc<dyn CounterPort>,
-            Arc::clone(&notifier) as Arc<dyn NotificationPort>,
+            Arc::clone(&dispatcher) as Arc<dyn AlertDispatcherPort>,
         );
         let _ = dec.search("q", 5).await.unwrap();
 
-        let msgs = wait_for_messages(&notifier, 1).await;
-        assert_eq!(msgs.len(), 1, "80% 도달 → 1회 알림 발송: {msgs:?}");
-        let m = &msgs[0];
-        assert!(m.contains("tavily"), "엔진명 포함");
-        assert!(m.contains("80%"), "임계치 포함");
-        // R3: 민감정보 미포함 (방어적 검증)
-        assert!(!m.contains("query"), "query 미포함");
-        assert!(!m.contains("user"), "user 미포함");
+        let alerts = dispatcher.dispatched_alerts();
+        assert_eq!(alerts.len(), 1, "80% 도달 → 1회 dispatch: {alerts:?}");
+        let a = &alerts[0];
+        assert_eq!(a.engine, "tavily", "엔진명 일치");
+        assert_eq!(a.threshold_pct, 80, "임계치 80");
     }
 
-    /// KPI: "iMessage 알림 트리거 100%" 100% 임계 진입 시 1회 발송.
-    /// 999 → INC → 1000 (≥ ALERT_THRESHOLD_BLOCK) → 100% 알림 발송.
+    /// KPI: "alert dispatch 100%" 100% 임계 진입 시 AlertDispatch 1회 적재.
+    /// 999 → INC → 1000 (≥ ALERT_THRESHOLD_BLOCK) → dispatch 호출.
     #[tokio::test]
     async fn fires_alert_at_100_percent_crossing() {
         let counter = Arc::new(InMemoryCounter::new());
@@ -338,7 +315,7 @@ mod tests {
             999,
             Some(chrono::Utc::now() + chrono::Duration::days(7)),
         );
-        let notifier = Arc::new(FakeNotificationAdapter::new());
+        let dispatcher = Arc::new(FakeAlertDispatcher::new());
         let inner = Box::new(FakeSearchAdapter::new(
             "exa",
             vec![SearchResult {
@@ -353,17 +330,18 @@ mod tests {
         let dec = CountedSearchAdapter::new(
             inner,
             Arc::clone(&counter) as Arc<dyn CounterPort>,
-            Arc::clone(&notifier) as Arc<dyn NotificationPort>,
+            Arc::clone(&dispatcher) as Arc<dyn AlertDispatcherPort>,
         );
         let _ = dec.search("q", 5).await.unwrap();
 
-        let msgs = wait_for_messages(&notifier, 1).await;
-        assert_eq!(msgs.len(), 1, "100% 도달 → 1회 알림 발송: {msgs:?}");
-        assert!(msgs[0].contains("exa"));
-        assert!(msgs[0].contains("100%"));
+        let alerts = dispatcher.dispatched_alerts();
+        assert_eq!(alerts.len(), 1, "100% 도달 → 1회 dispatch: {alerts:?}");
+        assert_eq!(alerts[0].engine, "exa");
+        assert_eq!(alerts[0].threshold_pct, 100);
     }
 
-    /// 같은 임계 재진입 시 dedupe — 800에서 또 INC 해도 알림 추가 안 됨.
+    /// 같은 임계 재진입 시 dispatch 추가 없음 — threshold_crossed가 None 반환.
+    /// (dedupe 자체는 AlertDispatcherPort 구현체 책임, 여기선 dispatch 호출 횟수만 검증)
     #[tokio::test]
     async fn no_duplicate_alert_within_same_period() {
         let counter = Arc::new(InMemoryCounter::new());
@@ -372,7 +350,7 @@ mod tests {
             799,
             Some(chrono::Utc::now() + chrono::Duration::days(7)),
         );
-        let notifier = Arc::new(FakeNotificationAdapter::new());
+        let dispatcher = Arc::new(FakeAlertDispatcher::new());
         let inner = Box::new(FakeSearchAdapter::new(
             "tavily",
             vec![SearchResult {
@@ -387,19 +365,17 @@ mod tests {
         let dec = CountedSearchAdapter::new(
             inner,
             Arc::clone(&counter) as Arc<dyn CounterPort>,
-            Arc::clone(&notifier) as Arc<dyn NotificationPort>,
+            Arc::clone(&dispatcher) as Arc<dyn AlertDispatcherPort>,
         );
-        // 첫 호출: 799 → 800 (80% 알림 발송)
+        // 첫 호출: 799 → 800 (80% dispatch)
         let _ = dec.search("q", 5).await.unwrap();
-        let _ = wait_for_messages(&notifier, 1).await;
         // 두 번째 호출: 800 → 801 (재트리거 없음 — threshold_crossed가 None 반환)
         let _ = dec.search("q", 5).await.unwrap();
-        tokio::time::sleep(std::time::Duration::from_millis(100)).await;
-        let final_msgs = notifier.sent_messages();
+        let final_alerts = dispatcher.dispatched_alerts();
         assert_eq!(
-            final_msgs.len(),
+            final_alerts.len(),
             1,
-            "동일 주기 같은 임계 → 1회만 발송: {final_msgs:?}"
+            "동일 주기 같은 임계 → dispatch 1회만: {final_alerts:?}"
         );
     }
 }

@@ -41,6 +41,23 @@ struct ExaResult {
 /// 4. 줄바꿈·연속 공백 정리
 /// 5. 300자 문장 경계 절단 (마침표/느낌표/물음표 기준, 초과 시 단어 경계로 폴백)
 pub fn clean_snippet(s: &str) -> String {
+    // 0. nul 바이트(\0) 및 제어 문자(U+0001–U+001F) 제거.
+    //    \t(U+0009), \n(U+000A), \r(U+000D)은 합법적 공백이므로 보존.
+    //    PostgreSQL TEXT 컬럼은 nul 및 일부 제어 문자를 거부한다.
+    let s: std::borrow::Cow<str> = if s
+        .chars()
+        .any(|c| c == '\0' || (c.is_control() && !matches!(c, '\t' | '\n' | '\r')))
+    {
+        std::borrow::Cow::Owned(
+            s.chars()
+                .filter(|&c| c != '\0' && (!c.is_control() || matches!(c, '\t' | '\n' | '\r')))
+                .collect(),
+        )
+    } else {
+        std::borrow::Cow::Borrowed(s)
+    };
+    let s = s.as_ref();
+
     // 1. HTML 태그 제거 (문자 단위 파싱)
     let mut no_html = String::with_capacity(s.len());
     let mut in_tag = false;
@@ -662,6 +679,53 @@ mod tests {
         let results = adapter.search("test", 5).await.unwrap();
 
         assert_eq!(results[0].image_url, None);
+    }
+
+    // MARK: - ST-5: nul/제어문자 제거 테스트
+
+    /// T-01: nul 포함 → nul 제거
+    #[test]
+    fn clean_snippet_removes_nul_bytes() {
+        let input = "기사\0본문입니다.";
+        let result = clean_snippet(input);
+        assert!(!result.contains('\0'), "nul 바이트가 제거되어야 함");
+        assert!(result.contains("기사"), "정상 텍스트 보존");
+        assert!(result.contains("본문입니다."), "정상 텍스트 보존");
+    }
+
+    /// T-01: 제어문자(U+0001~U+001F, \t\n\r 제외) 제거
+    #[test]
+    fn clean_snippet_removes_control_chars_except_whitespace() {
+        let input = "기사\x01\x02본문\x1f입니다.";
+        let result = clean_snippet(input);
+        assert!(!result.contains('\x01'), "SOH 제거");
+        assert!(!result.contains('\x02'), "STX 제거");
+        assert!(!result.contains('\x1f'), "US 제거");
+        assert!(result.contains("기사"), "정상 텍스트 보존");
+    }
+
+    /// E-01: \t, \n, \r은 제거하지 않음 (합법적 공백)
+    #[test]
+    fn clean_snippet_preserves_tab_newline_cr() {
+        let input = "줄1\n줄2\t탭\r복귀";
+        let result = clean_snippet(input);
+        // \t, \n, \r은 보존되거나 이후 단계에서 whitespace 정규화됨
+        // 최소: 원본이 panic 없이 처리됨
+        assert!(!result.is_empty());
+    }
+
+    /// T-02: 정상 UTF-8 텍스트는 변형 없음 (E-02)
+    #[test]
+    fn clean_snippet_preserves_normal_utf8() {
+        let input = "Apple announced new AI features for iOS 18.";
+        let result = clean_snippet(input);
+        assert_eq!(result, input);
+    }
+
+    /// R-01: 빈 문자열 입력 → 빈 문자열 반환 (panic 없음)
+    #[test]
+    fn clean_snippet_empty_input_returns_empty() {
+        assert_eq!(clean_snippet(""), "");
     }
 
     // MARK: - ST-1: category:"news" + startPublishedDate 파라미터 검증

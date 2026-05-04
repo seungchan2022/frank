@@ -6,8 +6,8 @@ use uuid::Uuid;
 
 use super::error::AppError;
 use super::models::{
-    Favorite, FeedItem, LlmResponse, Profile, QuizConcept, QuizResult, QuizWrongAnswer,
-    SaveWrongAnswerParams, SearchResult, Tag, UserTag,
+    AlertDispatch, Favorite, FeedItem, LlmResponse, Profile, QuizConcept, QuizResult,
+    QuizWrongAnswer, SaveWrongAnswerParams, SearchResult, Tag, UserTag,
 };
 
 /// DB 접근 포트 (Supabase REST API 또는 sqlx)
@@ -158,6 +158,20 @@ pub trait LlmPort: Send + Sync {
 /// 알림 전송 포트 (iMessage 등)
 pub trait NotificationPort: Send + Sync {
     fn send(&self, message: &str) -> Result<(), AppError>;
+}
+
+/// ST-6 AlertDispatcherPort: 임계 교차 알림 비동기 dispatch 포트.
+///
+/// fire-and-forget 시그니처: 호출자(`CountedSearchAdapter`)는 결과를 기다리지 않으므로
+/// dispatch 실패가 검색 결과에 영향을 주지 않음.
+///
+/// 구현체(`NotificationAlertDispatcher`)는 dedupe + spawn_blocking + timeout 처리.
+pub trait AlertDispatcherPort: Send + Sync {
+    /// 임계 교차 알림을 비동기로 dispatch한다.
+    ///
+    /// - dedupe: 동일 (engine, threshold, period_start)이면 중복 발송 안 함.
+    /// - 실패해도 패닉하지 않음 — warn 로그만 남김.
+    fn dispatch(&self, alert: AlertDispatch);
 }
 
 /// MVP15 M2: 엔진 무료 한도 SSOT (월간 호출수).

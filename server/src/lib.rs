@@ -15,8 +15,8 @@ use tower_http::cors::CorsLayer;
 
 use api::AppState;
 use domain::ports::{
-    CounterPort, CrawlPort, DbPort, FavoritesPort, FeedCachePort, LlmPort, NotificationPort,
-    QuizWrongAnswerPort, SearchChainPort,
+    AlertDispatcherPort, CounterPort, CrawlPort, DbPort, FavoritesPort, FeedCachePort, LlmPort,
+    NotificationPort, QuizWrongAnswerPort, SearchChainPort,
 };
 use middleware::auth::SupabaseConfig;
 
@@ -61,6 +61,7 @@ pub fn create_router<D: DbPort + Clone + 'static>(
     quiz_wrong_answers: Arc<dyn QuizWrongAnswerPort>,
     feed_cache: Arc<dyn FeedCachePort>,
     counter: Arc<dyn CounterPort>,
+    alert_dispatcher: Arc<dyn AlertDispatcherPort>,
 ) -> Router {
     let state = AppState {
         db,
@@ -72,6 +73,7 @@ pub fn create_router<D: DbPort + Clone + 'static>(
         quiz_wrong_answers,
         feed_cache,
         counter,
+        alert_dispatcher,
     };
 
     let auth_routes = Router::new()
@@ -137,6 +139,7 @@ mod tests {
     use axum_test::TestServer;
 
     use crate::create_router;
+    use crate::infra::fake_alert_dispatcher::FakeAlertDispatcher;
     use crate::infra::fake_crawl::FakeCrawlAdapter;
     use crate::infra::fake_db::FakeDbAdapter;
     use crate::infra::fake_favorites::FakeFavoritesAdapter;
@@ -169,6 +172,7 @@ mod tests {
             Arc::new(FakeQuizWrongAnswerAdapter::new()),
             Arc::new(NoopFeedCache),
             Arc::new(InMemoryCounter::new()),
+            Arc::new(FakeAlertDispatcher::new()),
         );
         TestServer::new(router)
     }

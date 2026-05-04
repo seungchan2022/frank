@@ -2,7 +2,7 @@ use std::sync::Arc;
 
 use server::config::AppConfig;
 use server::domain::models::SearchResult;
-use server::domain::ports::{CounterPort, NotificationPort, SearchChainPort, SearchPort};
+use server::domain::ports::{AlertDispatcherPort, CounterPort, SearchChainPort, SearchPort};
 use server::infra::counted_search::CountedSearchAdapter;
 use server::infra::exa::ExaAdapter;
 use server::infra::fake_search::FakeSearchAdapter;
@@ -18,6 +18,7 @@ use server::infra::postgres_quiz_wrong_answers::PostgresQuizWrongAnswerAdapter;
 use server::infra::search_chain::SearchFallbackChain;
 use server::infra::tavily::TavilyAdapter;
 use server::middleware::auth::SupabaseConfig;
+use server::services::notification_service::NotificationAlertDispatcher;
 use sqlx::postgres::PgPoolOptions;
 use tokio::net::TcpListener;
 use tracing_subscriber::EnvFilter;
@@ -72,12 +73,17 @@ async fn main() {
         Arc::new(PostgresCounterAdapter::new(pool.clone()))
     };
 
+    // ST-6: AlertDispatcherPort 구성 — NotificationAlertDispatcher가 counter + notifier를 내부 보유
+    let alert_dispatcher: Arc<dyn AlertDispatcherPort> = Arc::new(
+        NotificationAlertDispatcher::new(Arc::clone(&counter), Arc::clone(&notifier)),
+    );
+
     let search_chain: Arc<dyn SearchChainPort> =
         Arc::new(SearchFallbackChain::new(build_search_sources(
             &config,
             mock_search,
             Arc::clone(&counter),
-            Arc::clone(&notifier),
+            Arc::clone(&alert_dispatcher),
         )));
 
     if mock_search {
@@ -117,6 +123,7 @@ async fn main() {
         quiz_wrong_answers,
         feed_cache,
         counter,
+        alert_dispatcher,
     );
 
     let addr = format!("0.0.0.0:{}", config.port);
@@ -135,11 +142,12 @@ async fn main() {
 /// - real 모드: Tavily + Exa + Firecrawl 순서 폴백
 ///
 /// 두 경로 모두 CountedSearchAdapter로 wrap → 데코레이터 path 검증 일관성 (#5).
+/// ST-6: notifier 대신 alert_dispatcher(AlertDispatcherPort) 주입.
 fn build_search_sources(
     config: &AppConfig,
     mock: bool,
     counter: Arc<dyn CounterPort>,
-    notifier: Arc<dyn NotificationPort>,
+    alert_dispatcher: Arc<dyn AlertDispatcherPort>,
 ) -> Vec<Box<dyn SearchPort>> {
     if mock {
         // mock 모드: 단일 FakeSearchAdapter (1건 결과)
@@ -157,7 +165,7 @@ fn build_search_sources(
         vec![Box::new(CountedSearchAdapter::new(
             Box::new(fake),
             Arc::clone(&counter),
-            Arc::clone(&notifier),
+            Arc::clone(&alert_dispatcher),
         ))]
     } else {
         // S1: 어댑터별 max_cap 주입. limit 5→20 (Tavily), 5→10 (Exa 추정), 5 유지 (Firecrawl)
@@ -168,17 +176,17 @@ fn build_search_sources(
             Box::new(CountedSearchAdapter::new(
                 Box::new(tavily),
                 Arc::clone(&counter),
-                Arc::clone(&notifier),
+                Arc::clone(&alert_dispatcher),
             )),
             Box::new(CountedSearchAdapter::new(
                 Box::new(exa),
                 Arc::clone(&counter),
-                Arc::clone(&notifier),
+                Arc::clone(&alert_dispatcher),
             )),
             Box::new(CountedSearchAdapter::new(
                 Box::new(firecrawl),
                 Arc::clone(&counter),
-                Arc::clone(&notifier),
+                Arc::clone(&alert_dispatcher),
             )),
         ]
     }

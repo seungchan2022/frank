@@ -1,5 +1,6 @@
 pub mod counted_search;
 pub mod exa;
+pub mod fake_alert_dispatcher;
 pub mod fake_crawl;
 pub mod fake_db;
 pub mod fake_favorites;

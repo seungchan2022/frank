@@ -58,15 +58,13 @@ impl FavoritesPort for PostgresFavoritesAdapter {
     ) -> Pin<Box<dyn Future<Output = Result<(), AppError>> + Send + 'a>> {
         Box::pin(async move {
             // 이미 스크랩된 기사만 업데이트. 미스크랩 기사는 빈 row 생성 안 함.
-            sqlx::query(
-                "UPDATE favorites SET rewrite = $3 WHERE user_id = $1 AND url = $2",
-            )
-            .bind(user_id)
-            .bind(url)
-            .bind(rewrite)
-            .execute(&self.pool)
-            .await
-            .map_err(|e| AppError::Internal(format!("favorites rewrite update failed: {e}")))?;
+            sqlx::query("UPDATE favorites SET rewrite = $3 WHERE user_id = $1 AND url = $2")
+                .bind(user_id)
+                .bind(url)
+                .bind(rewrite)
+                .execute(&self.pool)
+                .await
+                .map_err(|e| AppError::Internal(format!("favorites rewrite update failed: {e}")))?;
 
             Ok(())
         })
