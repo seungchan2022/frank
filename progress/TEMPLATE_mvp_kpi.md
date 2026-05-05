@@ -55,11 +55,13 @@ progress/active_milestone.txt    — 예: M2:in-progress
 | M{X} DoD 테스트 통과 | cargo test + vitest + xcodebuild test | 전체 통과 | Hard | — |
 | 신규 엔드포인트 응답 | manual 또는 curl | ≤500ms | Soft | — |
 | 관련 버그 0건 | 수동 QA | 0건 | Hard | — |
+| 본인 직접 사용 E2E | 핵심 시나리오 본인 통과 (manual KPI 기록) | 1건 이상 통과 | Hard | — |
 ```
 
 - 마일스톤마다 **DoD에 직결되는 지표 2~5개**만 선언
 - 범위가 좁아야 completing 전이 시 빠르게 통과 가능
 - 해당 마일스톤과 무관한 지표(전 플랫폼 통합 커버리지 등)는 **MVP 최종 KPI**로 옮김
+- **본인 직접 사용 E2E는 사용자 표시 면(UI/응답 형태)이 변하는 마일스톤에 의무**. 순수 인프라·리팩토링 마일스톤은 생략 가능 (생략 시 사유를 마일스톤 문서에 명시)
 
 ---
 
@@ -74,6 +76,7 @@ progress/active_milestone.txt    — 예: M2:in-progress
 | 웹 테스트 커버리지 | vitest --coverage | ≥90% | Hard | MVP{N-1} 99% |
 | iOS 테스트 커버리지 | xcodebuild + xccov | ≥85% | Soft | MVP{N-1} 82% |
 | E2E 수집 성공률 | 실검증 로그 | ≥85% | Hard | MVP{N-1} 83% |
+| 본인 직접 사용 E2E 누적 | 마일스톤별 본인 통과 항목 합산 (manual KPI) | ≥3건 통과 | Hard | — |
 | MVP 회고 작성 | history/mvp{N}/retro.md 존재 | exists | Hard | — |
 | 기술부채 증감 | progress/debt.md 카운트 | net 감소 | Soft | MVP{N-1} N건 |
 ```
@@ -81,6 +84,7 @@ progress/active_milestone.txt    — 예: M2:in-progress
 - **MVP 전체 통합 품질** 지표만 모음
 - 마지막 마일스톤이 done이 된 후 `/milestone-review`가 MVP:completing 전이 제안
 - 이 시점에 이 표가 엄격 검증됨
+- **본인 직접 사용 E2E 누적은 모든 MVP에 의무** — 단위/통합 테스트 통과만으로 닫지 말 것. 인터뷰·구현으로 닫힌 줄 알았던 기능이 실사용에서 안 닫혀 있던 사례가 MVP15 종료 시 13건 발견(`progress/mvp16/_review_notes.md`)
 
 ---
 
