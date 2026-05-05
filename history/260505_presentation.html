@@ -1,0 +1,714 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Frank — AI와 함께 앱 만들기</title>
+
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/reveal.js@5.1.0/dist/reset.css" />
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/reveal.js@5.1.0/dist/reveal.css" />
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;700;900&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet" />
+
+  <style>
+    :root {
+      --bg:       #0c0c0e;
+      --bg2:      #141417;
+      --bg3:      #1c1c21;
+      --line:     rgba(255,255,255,0.08);
+      --muted:    rgba(255,255,255,0.4);
+      --faint:    rgba(255,255,255,0.12);
+      --cyan:     #22d3ee;
+      --lime:     #a3e635;
+      --orange:   #fb923c;
+      --violet:   #a78bfa;
+      --white:    #f4f4f5;
+    }
+
+    html, body { background: var(--bg); }
+
+    .reveal {
+      font-family: 'Noto Sans KR', sans-serif;
+      font-size: 17px;
+      color: var(--white);
+    }
+
+    .reveal h1, .reveal h2, .reveal h3 {
+      font-family: 'Noto Sans KR', sans-serif;
+      text-transform: none;
+      letter-spacing: -0.03em;
+      color: var(--white);
+    }
+
+    .reveal .slides section {
+      text-align: left;
+      box-sizing: border-box;
+    }
+
+    /* ── 공통 컴포넌트 ── */
+    .mono { font-family: 'JetBrains Mono', monospace; }
+
+    .chip {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      padding: 4px 12px;
+      border-radius: 99px;
+      font-size: 0.7em;
+      font-weight: 600;
+      letter-spacing: 0.04em;
+    }
+    .chip-cyan   { background: rgba(34,211,238,0.15); color: var(--cyan);   border: 1px solid rgba(34,211,238,0.3); }
+    .chip-lime   { background: rgba(163,230,53,0.15);  color: var(--lime);   border: 1px solid rgba(163,230,53,0.3); }
+    .chip-orange { background: rgba(251,146,60,0.15);  color: var(--orange); border: 1px solid rgba(251,146,60,0.3); }
+    .chip-violet { background: rgba(167,139,250,0.15); color: var(--violet); border: 1px solid rgba(167,139,250,0.3); }
+    .chip-white  { background: rgba(255,255,255,0.08); color: var(--white);  border: 1px solid rgba(255,255,255,0.2); }
+
+    .box {
+      background: var(--bg3);
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      padding: 18px 22px;
+    }
+    .box-l { border-left: 3px solid; }
+    .box-l.cyan   { border-left-color: var(--cyan); }
+    .box-l.lime   { border-left-color: var(--lime); }
+    .box-l.orange { border-left-color: var(--orange); }
+    .box-l.violet { border-left-color: var(--violet); }
+
+    .label {
+      font-size: 0.68em;
+      font-weight: 700;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      color: var(--muted);
+      margin-bottom: 18px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    .label::after {
+      content: '';
+      flex: 1;
+      height: 1px;
+      background: var(--line);
+    }
+
+    .g2 { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+    .g3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 14px; }
+
+    /* 콘텐츠 슬라이드 세로 중앙 정렬 */
+    .slide-inner {
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      height: 100%;
+    }
+
+    /* ── 1: 타이틀 ── */
+    .slide-title {
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: flex-start;
+      height: 100%;
+      padding: 0 10px;
+    }
+    .title-eyebrow {
+      font-size: 0.72em;
+      color: var(--muted);
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      margin-bottom: 20px;
+    }
+    .title-h1 {
+      font-size: 2.8em;
+      font-weight: 900;
+      line-height: 1.1;
+      margin-bottom: 16px;
+    }
+    .title-h1 span { color: var(--cyan); }
+    .title-sub {
+      font-size: 0.9em;
+      color: var(--muted);
+      line-height: 1.8;
+      margin-bottom: 32px;
+    }
+    .platform-row {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+
+    /* ── 2: 목차 ── */
+    .toc-row {
+      display: flex;
+      align-items: center;
+      gap: 20px;
+      padding: 18px 24px;
+      background: var(--bg3);
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      margin-bottom: 12px;
+    }
+    .toc-num {
+      font-size: 1.6em;
+      font-weight: 900;
+      line-height: 1;
+      min-width: 40px;
+    }
+    .toc-title { font-size: 1em; font-weight: 700; margin-bottom: 3px; }
+    .toc-desc  { font-size: 0.76em; color: var(--muted); }
+
+    /* ── 섹션 디바이더 ── */
+    .divider-wrap {
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: flex-start;
+      height: 100%;
+      padding: 0 10px;
+      border-left: 4px solid;
+      padding-left: 32px;
+    }
+    .divider-wrap.cyan   { border-left-color: var(--cyan); }
+    .divider-wrap.lime   { border-left-color: var(--lime); }
+    .divider-wrap.orange { border-left-color: var(--orange); }
+
+    .divider-n   { font-size: 0.72em; color: var(--muted); letter-spacing: 0.1em; margin-bottom: 12px; }
+    .divider-h   { font-size: 2.4em; font-weight: 900; line-height: 1.2; margin-bottom: 12px; }
+    .divider-sub { font-size: 0.88em; color: var(--muted); line-height: 1.8; }
+
+    /* ── hook 행 ── */
+    .hook-item {
+      display: grid;
+      grid-template-columns: 180px 1fr;
+      gap: 0;
+      border-radius: 8px;
+      overflow: hidden;
+      margin-bottom: 8px;
+    }
+    .hook-key {
+      background: rgba(34,211,238,0.12);
+      color: var(--cyan);
+      font-size: 0.72em;
+      font-weight: 700;
+      padding: 12px 16px;
+      display: flex;
+      align-items: center;
+    }
+    .hook-val {
+      background: var(--bg3);
+      border: 1px solid var(--line);
+      border-left: none;
+      padding: 12px 16px;
+      font-size: 0.82em;
+      color: rgba(255,255,255,0.8);
+      display: flex;
+      align-items: center;
+    }
+
+    /* ── 흐름 박스 ── */
+    .flow {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      flex-wrap: nowrap;
+    }
+    .flow-node {
+      padding: 10px 14px;
+      border-radius: 8px;
+      font-size: 0.76em;
+      font-weight: 600;
+      text-align: center;
+      line-height: 1.4;
+      white-space: nowrap;
+    }
+    .flow-arr { color: var(--muted); font-size: 1.1em; flex-shrink: 0; }
+
+    .fn-cyan   { background: rgba(34,211,238,0.12); border: 1px solid rgba(34,211,238,0.3); color: var(--cyan); }
+    .fn-violet { background: rgba(167,139,250,0.12); border: 1px solid rgba(167,139,250,0.3); color: var(--violet); }
+    .fn-lime   { background: rgba(163,230,53,0.12);  border: 1px solid rgba(163,230,53,0.3);  color: var(--lime); }
+    .fn-orange { background: rgba(251,146,60,0.12);  border: 1px solid rgba(251,146,60,0.3);  color: var(--orange); }
+    .fn-white  { background: var(--faint); border: 1px solid rgba(255,255,255,0.15); color: var(--white); }
+
+    /* ── 스텝 ── */
+    .step-row {
+      display: flex;
+      align-items: flex-start;
+      gap: 14px;
+      margin-bottom: 12px;
+    }
+    .step-num {
+      width: 26px;
+      height: 26px;
+      border-radius: 50%;
+      background: var(--faint);
+      border: 1px solid rgba(255,255,255,0.2);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 0.72em;
+      font-weight: 700;
+      flex-shrink: 0;
+      margin-top: 2px;
+    }
+    .step-text { font-size: 0.84em; line-height: 1.65; color: rgba(255,255,255,0.85); }
+    .step-text strong { color: var(--white); }
+
+    /* ── 엔딩 ── */
+    .stat-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 16px;
+      margin-top: 32px;
+    }
+    .stat-box {
+      background: var(--bg3);
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      padding: 24px 20px;
+      text-align: center;
+    }
+    .stat-n    { font-size: 2.4em; font-weight: 900; line-height: 1; }
+    .stat-desc { font-size: 0.7em; color: var(--muted); margin-top: 6px; }
+
+    /* ── Reveal 오버라이드 ── */
+    .reveal .progress { color: var(--cyan); height: 2px; }
+    .reveal .controls { color: var(--muted); }
+    .reveal li { font-size: 0.84em; line-height: 1.7; margin-bottom: 4px; }
+    .reveal ul { margin-left: 0; padding-left: 1.2em; }
+    .reveal blockquote {
+      background: var(--bg3);
+      border-left: 3px solid var(--cyan);
+      padding: 14px 18px;
+      font-style: normal;
+      font-size: 0.84em;
+      border-radius: 0 8px 8px 0;
+      color: rgba(255,255,255,0.85);
+    }
+  </style>
+</head>
+<body>
+<div class="reveal">
+<div class="slides">
+
+<!-- ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+     01 타이틀
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ -->
+<section data-background-color="#0c0c0e">
+  <div class="slide-title">
+    <p class="title-eyebrow">2026 · Personal Project</p>
+    <h1 class="title-h1"><span>AI</span>와 함께<br>앱을 만들고 있습니다</h1>
+    <p class="title-sub">
+      취준생이 Claude Code로 혼자<br>
+      풀스택 앱을 만들어가는 이야기
+    </p>
+    <div class="platform-row">
+      <span class="chip chip-white">🦀 Rust · 서버</span>
+      <span class="chip chip-white">🌐 Svelte · 웹</span>
+      <span class="chip chip-white">📱 SwiftUI · iOS</span>
+    </div>
+    <p style="font-size:0.68em; color:rgba(255,255,255,0.2); margin-top:36px; letter-spacing:0.05em;">
+      Frank — AI 기반 개인화 뉴스 스크랩 스터디앱
+    </p>
+  </div>
+</section>
+
+<!-- ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+     02 목차
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ -->
+<section data-background-color="#0c0c0e">
+  <div class="label">오늘 이야기</div>
+  <h2 style="font-size: 2.2em; font-weight: 900; margin-bottom: 32px; margin-top: 8px;">목차</h2>
+
+  <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 32px; margin-top: 0;">
+
+    <!-- 섹션 01 -->
+    <div style="border-left: 3px solid var(--cyan); padding-left: 24px;">
+      <div style="font-size: 0.72em; color: var(--cyan); letter-spacing: 0.1em; font-weight: 700; margin-bottom: 10px;">01</div>
+      <div style="font-size: 1.05em; font-weight: 700; margin-bottom: 16px; line-height: 1.4;">필요한 스킬을 직접 만들고 다듬었다</div>
+      <ul style="list-style: none; padding: 0; margin: 0; display: flex; flex-direction: column; gap: 10px;">
+        <li style="font-size: 0.82em; color: rgba(255,255,255,0.75); display: flex; align-items: flex-start; gap: 8px;">
+          <span style="color: var(--cyan); flex-shrink: 0;">·</span>
+          Hook 시스템 — AI가 규칙을 지키지 않았다
+        </li>
+        <li style="font-size: 0.82em; color: rgba(255,255,255,0.75); display: flex; align-items: flex-start; gap: 8px;">
+          <span style="color: var(--cyan); flex-shrink: 0;">·</span>
+          /study 스킬 — 내 프로젝트인데 설명을 못했다
+        </li>
+      </ul>
+    </div>
+
+    <!-- 섹션 02 -->
+    <div style="border-left: 3px solid var(--lime); padding-left: 24px;">
+      <div style="font-size: 0.72em; color: var(--lime); letter-spacing: 0.1em; font-weight: 700; margin-bottom: 10px;">02</div>
+      <div style="font-size: 1.05em; font-weight: 700; margin-bottom: 16px; line-height: 1.4;">앱에 어떤 기능들이 있는가</div>
+      <ul style="list-style: none; padding: 0; margin: 0; display: flex; flex-direction: column; gap: 10px;">
+        <li style="font-size: 0.82em; color: rgba(255,255,255,0.75); display: flex; align-items: flex-start; gap: 8px;">
+          <span style="color: var(--lime); flex-shrink: 0;">·</span>
+          퀴즈 풀기 — 스크랩 기사로 퀴즈를 만들어준다
+        </li>
+        <li style="font-size: 0.82em; color: rgba(255,255,255,0.75); display: flex; align-items: flex-start; gap: 8px;">
+          <span style="color: var(--lime); flex-shrink: 0;">·</span>
+          오답노트 — 틀린 것만 자동으로 모아준다
+        </li>
+        <li style="font-size: 0.82em; color: rgba(255,255,255,0.75); display: flex; align-items: flex-start; gap: 8px;">
+          <span style="color: var(--lime); flex-shrink: 0;">·</span>
+          직업별 재작성 — "내 직업 관점"으로 기사를 다시 써준다
+        </li>
+      </ul>
+    </div>
+
+  </div>
+</section>
+
+<!-- ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+     03 섹션 디바이더 — 01
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ -->
+<section data-background-color="#0c0c0e">
+  <div class="divider-wrap cyan">
+    <div class="divider-n">SECTION 01</div>
+    <h2 class="divider-h">필요한 스킬을<br>직접 만들고 다듬었다</h2>
+    <p class="divider-sub">
+      부족한 부분을 직접 채우며 만들어온 도구들
+    </p>
+
+    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-top: 36px; width: 100%;">
+      <div style="border: 1px solid rgba(34,211,238,0.2); border-radius: 10px; padding: 16px 20px; background: rgba(34,211,238,0.04);">
+        <div style="font-size: 0.68em; color: var(--cyan); letter-spacing: 0.08em; font-weight: 700; margin-bottom: 8px;">HOOK 시스템</div>
+        <div style="font-size: 0.86em; color: rgba(255,255,255,0.85); line-height: 1.5;">AI가 규칙을 지키지 않았다</div>
+      </div>
+      <div style="border: 1px solid rgba(34,211,238,0.2); border-radius: 10px; padding: 16px 20px; background: rgba(34,211,238,0.04);">
+        <div style="font-size: 0.68em; color: var(--cyan); letter-spacing: 0.08em; font-weight: 700; margin-bottom: 8px;">/STUDY 스킬</div>
+        <div style="font-size: 0.86em; color: rgba(255,255,255,0.85); line-height: 1.5;">내 프로젝트인데 설명을 못했다</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+     04 Hook 시스템
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ -->
+<section data-background-color="#0c0c0e">
+  <div class="slide-inner">
+  <div class="label">01 · Hook 시스템</div>
+
+  <div class="g2" style="align-items: center; gap: 40px;">
+
+    <!-- 왼쪽: 상황 서사 -->
+    <div style="display: flex; flex-direction: column; gap: 22px;">
+      <h3 style="font-size: 1.5em; margin: 0 0 4px;">AI가 규칙을 지키지 않았다</h3>
+
+      <div style="border-left: 2px solid var(--faint); padding-left: 18px;">
+        <div style="font-size: 0.68em; font-weight: 700; letter-spacing: 0.08em; color: var(--muted); margin-bottom: 6px;">SITUATION</div>
+        <div style="font-size: 0.9em; line-height: 1.7; color: var(--white);">AI가 인터뷰 질문을 다 하지 않고 갑자기 구현으로 직진하는 일이 반복됐다. 규칙 파일에 적어둬도 대화가 길어지면 그냥 잊어버렸다</div>
+      </div>
+
+      <div style="border-left: 2px solid var(--cyan); padding-left: 18px;">
+        <div style="font-size: 0.68em; font-weight: 700; letter-spacing: 0.08em; color: var(--cyan); margin-bottom: 6px;">SOLUTION</div>
+        <div style="font-size: 0.9em; line-height: 1.7; color: var(--white);">인터뷰가 끝나지 않으면 <strong style="color: var(--cyan)">코드 파일 수정 자체를 훅으로 차단</strong>했다. 매 메시지마다 남은 질문도 자동으로 주입해 잊지 못하게 했다</div>
+      </div>
+
+      <div style="border-left: 2px solid var(--lime); padding-left: 18px;">
+        <div style="font-size: 0.68em; font-weight: 700; letter-spacing: 0.08em; color: var(--lime); margin-bottom: 6px;">RESULT</div>
+        <div style="font-size: 0.9em; line-height: 1.7; color: var(--white);">인터뷰 질문이 남아있으면 코드를 작성할 수 없다. AI는 차단 메시지를 읽고 스스로 인터뷰로 돌아온다</div>
+      </div>
+    </div>
+
+    <!-- 오른쪽: 장치 카드 -->
+    <div style="display: flex; flex-direction: column; gap: 12px;">
+      <div style="font-size: 0.68em; font-weight: 700; letter-spacing: 0.08em; color: var(--muted); margin-bottom: 2px;">HOW IT WORKS</div>
+
+      <!-- 장치 1 -->
+      <div style="display: grid; grid-template-columns: 160px 1fr; gap: 0; border: 1px solid rgba(34,211,238,0.3); border-radius: 10px; overflow: hidden;">
+        <div style="background: rgba(34,211,238,0.1); padding: 12px 16px; display: flex; flex-direction: column; justify-content: center;">
+          <div style="font-size: 0.62em; color: var(--cyan); font-weight: 700; letter-spacing: 0.06em; margin-bottom: 4px;">장치 1</div>
+          <div style="font-size: 0.85em; font-weight: 700; color: var(--cyan);">상태 파일</div>
+          <div style="font-size: 0.68em; color: var(--muted); margin-top: 3px; font-family: 'JetBrains Mono', monospace;">active_step.txt</div>
+        </div>
+        <div style="padding: 12px 16px; display: flex; flex-direction: column; justify-content: center; gap: 4px;">
+          <div style="font-size: 0.82em; color: var(--white);">현재 몇 단계인지, 인터뷰가 몇 번째인지를 파일로 저장</div>
+          <div style="font-size: 0.74em; color: var(--muted);">대화가 바뀌어도 단계 정보 유지</div>
+        </div>
+      </div>
+
+      <!-- 장치 2 -->
+      <div style="display: grid; grid-template-columns: 160px 1fr; gap: 0; border: 1px solid rgba(167,139,250,0.3); border-radius: 10px; overflow: hidden;">
+        <div style="background: rgba(167,139,250,0.1); padding: 12px 16px; display: flex; flex-direction: column; justify-content: center;">
+          <div style="font-size: 0.62em; color: var(--violet); font-weight: 700; letter-spacing: 0.06em; margin-bottom: 4px;">장치 2</div>
+          <div style="font-size: 0.85em; font-weight: 700; color: var(--violet);">자동 주입</div>
+          <div style="font-size: 0.68em; color: var(--muted); margin-top: 3px; font-family: 'JetBrains Mono', monospace;">UserPromptSubmit</div>
+        </div>
+        <div style="padding: 12px 16px; display: flex; flex-direction: column; justify-content: center; gap: 4px;">
+          <div style="font-size: 0.82em; color: var(--white);">메시지를 보낼 때마다 현재 단계를 AI 컨텍스트 맨 앞에 자동으로 붙임</div>
+          <div style="font-size: 0.74em; color: var(--muted);">잊으려 해도 매번 다시 인식</div>
+        </div>
+      </div>
+
+      <!-- 장치 3 -->
+      <div style="display: grid; grid-template-columns: 160px 1fr; gap: 0; border: 1px solid rgba(251,146,60,0.3); border-radius: 10px; overflow: hidden;">
+        <div style="background: rgba(251,146,60,0.1); padding: 12px 16px; display: flex; flex-direction: column; justify-content: center;">
+          <div style="font-size: 0.62em; color: var(--orange); font-weight: 700; letter-spacing: 0.06em; margin-bottom: 4px;">장치 3</div>
+          <div style="font-size: 0.85em; font-weight: 700; color: var(--orange);">물리적 차단</div>
+          <div style="font-size: 0.68em; color: var(--muted); margin-top: 3px; font-family: 'JetBrains Mono', monospace;">PreToolUse hook</div>
+        </div>
+        <div style="padding: 12px 16px; display: flex; flex-direction: column; justify-content: center; gap: 4px;">
+          <div style="font-size: 0.82em; color: var(--white);">인터뷰가 끝나지 않으면 코드 파일 열기 자체를 막음</div>
+          <div style="font-size: 0.74em; color: var(--muted);">차단 메시지에 "남은 질문: ..." → AI가 읽고 스스로 인터뷰로 복귀</div>
+        </div>
+      </div>
+
+    </div>
+
+  </div>
+  </div>
+</section>
+
+<!-- ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+     06 /study 스킬
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ -->
+<section data-background-color="#0c0c0e">
+  <div class="slide-inner">
+  <div class="label">01 · /study 스킬</div>
+
+  <div class="g2" style="align-items: center; gap: 40px;">
+
+    <!-- 왼쪽: 상황 서사 -->
+    <div style="display: flex; flex-direction: column; gap: 22px;">
+      <h3 style="font-size: 1.5em; margin: 0 0 4px;">내 프로젝트인데 설명을 못했다</h3>
+
+      <div style="border-left: 2px solid var(--faint); padding-left: 18px;">
+        <div style="font-size: 0.68em; font-weight: 700; letter-spacing: 0.08em; color: var(--muted); margin-bottom: 6px;">SITUATION</div>
+        <div style="font-size: 0.9em; line-height: 1.7; color: var(--white);">MVP를 계속 만들다 보니, 내가 만든 것인데도 흐름과 개념을 자연스럽게 설명하지 못했다</div>
+      </div>
+
+      <div style="border-left: 2px solid var(--cyan); padding-left: 18px;">
+        <div style="font-size: 0.68em; font-weight: 700; letter-spacing: 0.08em; color: var(--cyan); margin-bottom: 6px;">SOLUTION</div>
+        <div style="font-size: 0.9em; line-height: 1.7; color: var(--white);">아카이빙된 MVP 문서 기반으로, 개념을 무작정 외우는 대신 <strong style="color: var(--cyan)">흐름 안에서 구간별로</strong> 익히는 스킬을 직접 만들었다</div>
+      </div>
+
+      <div style="border-left: 2px solid var(--lime); padding-left: 18px;">
+        <div style="font-size: 0.68em; font-weight: 700; letter-spacing: 0.08em; color: var(--lime); margin-bottom: 6px;">RESULT</div>
+        <div style="font-size: 0.9em; line-height: 1.7; color: var(--white);">로그인 흐름을 첫 대상으로 직접 써보며 보완했고, MVP 단위로 사이클을 반복할 수 있는 구조가 됐다</div>
+      </div>
+    </div>
+
+    <!-- 오른쪽: 스킬 동작 -->
+    <div style="display: flex; flex-direction: column; gap: 10px;">
+      <div style="font-size: 0.68em; font-weight: 700; letter-spacing: 0.08em; color: var(--muted); margin-bottom: 4px;">HOW IT WORKS</div>
+
+      <div style="display: flex; align-items: center; gap: 12px; background: rgba(167,139,250,0.08); border: 1px solid rgba(167,139,250,0.3); border-radius: 10px; padding: 11px 16px;">
+        <div class="step-num" style="background: var(--violet); color: #000; flex-shrink: 0;">1</div>
+        <div style="font-size: 0.9em;"><strong style="color: var(--violet);">흐름도 생성</strong> — Mermaid로 기능 전체 흐름을 먼저 시각화</div>
+      </div>
+      <div style="display: flex; align-items: center; gap: 12px; background: rgba(34,211,238,0.08); border: 1px solid rgba(34,211,238,0.3); border-radius: 10px; padding: 11px 16px;">
+        <div class="step-num" style="background: var(--cyan); color: #000; flex-shrink: 0;">2</div>
+        <div style="font-size: 0.9em;"><strong style="color: var(--cyan);">구간별 개념 설명</strong> — 흐름을 3~5개 구간으로 묶어 순서대로 설명</div>
+      </div>
+      <div style="display: flex; align-items: center; gap: 12px; background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.15); border-radius: 10px; padding: 11px 16px;">
+        <div class="step-num" style="background: #fff; color: #000; flex-shrink: 0;">3</div>
+        <div style="font-size: 0.9em;"><strong>어드바이저 팩트체크</strong> — 잘못된 개념이 섞이지 않도록 검증</div>
+      </div>
+      <div style="display: flex; align-items: center; gap: 12px; background: rgba(163,230,53,0.08); border: 1px solid rgba(163,230,53,0.3); border-radius: 10px; padding: 11px 16px;">
+        <div class="step-num" style="background: var(--lime); color: #000; flex-shrink: 0;">4</div>
+        <div style="font-size: 0.9em;"><strong style="color: var(--lime);">퀴즈</strong> — 한 문제씩 4지선다로 개념 확인</div>
+      </div>
+      <div style="display: flex; align-items: center; gap: 12px; background: rgba(251,146,60,0.08); border: 1px solid rgba(251,146,60,0.3); border-radius: 10px; padding: 11px 16px;">
+        <div class="step-num" style="background: var(--orange); color: #000; flex-shrink: 0;">5</div>
+        <div style="font-size: 0.9em;"><strong style="color: var(--orange);">저장</strong> — 흐름도 SVG + 학습 노트 MD로 아카이빙</div>
+      </div>
+    </div>
+
+  </div>
+  </div>
+</section>
+
+<!-- ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+     07 섹션 디바이더 — 02
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ -->
+<section data-background-color="#0c0c0e">
+  <div class="divider-wrap lime">
+    <div class="divider-n">SECTION 02</div>
+    <h2 class="divider-h">앱에 어떤<br>기능들이 있는가</h2>
+    <p class="divider-sub">
+      뉴스를 읽고, 퀴즈를 풀고,<br>
+      내 시각으로 다시 읽는다
+    </p>
+
+    <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 16px; margin-top: 36px; width: 100%;">
+      <div style="border: 1px solid rgba(163,230,53,0.2); border-radius: 10px; padding: 16px 20px; background: rgba(163,230,53,0.04);">
+        <div style="font-size: 0.68em; color: var(--lime); letter-spacing: 0.08em; font-weight: 700; margin-bottom: 8px;">① 퀴즈 풀기</div>
+        <div style="font-size: 0.86em; color: rgba(255,255,255,0.85); line-height: 1.5;">스크랩 기사로 퀴즈를 만들어준다</div>
+      </div>
+      <div style="border: 1px solid rgba(163,230,53,0.2); border-radius: 10px; padding: 16px 20px; background: rgba(163,230,53,0.04);">
+        <div style="font-size: 0.68em; color: var(--lime); letter-spacing: 0.08em; font-weight: 700; margin-bottom: 8px;">② 오답노트</div>
+        <div style="font-size: 0.86em; color: rgba(255,255,255,0.85); line-height: 1.5;">틀린 것만 자동으로 모아준다</div>
+      </div>
+      <div style="border: 1px solid rgba(163,230,53,0.2); border-radius: 10px; padding: 16px 20px; background: rgba(163,230,53,0.04);">
+        <div style="font-size: 0.68em; color: var(--lime); letter-spacing: 0.08em; font-weight: 700; margin-bottom: 8px;">③ 직업별 재작성</div>
+        <div style="font-size: 0.86em; color: rgba(255,255,255,0.85); line-height: 1.5;">"내 직업 관점"으로 기사를 다시 써준다</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+     08 기능 — 퀴즈
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ -->
+<section data-background-color="#0c0c0e">
+  <div class="slide-inner">
+  <div class="label">02 · 기능 <span style="color: var(--lime)">① 퀴즈 풀기</span></div>
+
+  <div class="g2" style="align-items: center; gap: 40px;">
+    <div>
+      <h3 style="font-size: 1.5em; margin-bottom: 14px;">스크랩 기사로 퀴즈를 만들어준다</h3>
+      <p style="font-size: 0.84em; color: var(--muted); line-height: 1.8; margin-bottom: 24px;">기사를 저장하는 것에서 멈추지 않고, 실제로 이해했는지 확인하는 루프를 만든다</p>
+      <div class="box box-l lime">
+        <div style="font-size: 0.78em; line-height: 1.8; color: rgba(255,255,255,0.8);">
+          스크랩 → AI 퀴즈 생성 → 풀기 → 결과 저장
+        </div>
+      </div>
+    </div>
+
+    <div style="display: flex; flex-direction: column; gap: 10px;">
+      <div class="step-row">
+        <div class="step-num" style="background: rgba(163,230,53,0.12); border-color: rgba(163,230,53,0.3); color: var(--lime);">1</div>
+        <div class="step-text">관심 있는 기사를 <strong>즐겨찾기</strong>로 저장</div>
+      </div>
+      <div class="step-row">
+        <div class="step-num" style="background: rgba(163,230,53,0.12); border-color: rgba(163,230,53,0.3); color: var(--lime);">2</div>
+        <div class="step-text">AI가 기사 핵심 내용 기반으로 <strong>퀴즈 자동 생성</strong></div>
+      </div>
+      <div class="step-row">
+        <div class="step-num" style="background: rgba(163,230,53,0.12); border-color: rgba(163,230,53,0.3); color: var(--lime);">3</div>
+        <div class="step-text">퀴즈를 풀며 <strong>이해도 확인</strong></div>
+      </div>
+      <div class="step-row">
+        <div class="step-num" style="background: rgba(163,230,53,0.12); border-color: rgba(163,230,53,0.3); color: var(--lime);">4</div>
+        <div class="step-text">틀린 문제는 <strong>오답노트에 자동 저장</strong></div>
+      </div>
+    </div>
+  </div>
+  </div>
+</section>
+
+<!-- ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+     09 기능 — 오답노트
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ -->
+<section data-background-color="#0c0c0e">
+  <div class="slide-inner">
+  <div class="label">02 · 기능 <span style="color: var(--orange)">② 오답노트 아카이빙</span></div>
+
+  <div class="g2" style="align-items: center; gap: 40px;">
+    <div>
+      <h3 style="font-size: 1.5em; margin-bottom: 14px;">틀린 것만 자동으로 모아준다</h3>
+      <p style="font-size: 0.84em; color: var(--muted); line-height: 1.8; margin-bottom: 24px;">틀린 문제만 따로 저장해 "내가 모르는 것" 리스트가 자동으로 쌓인다</p>
+    </div>
+
+    <div style="display: flex; flex-direction: column; gap: 12px;">
+      <div class="box">
+        <div style="font-size: 0.68em; color: var(--muted); margin-bottom: 8px; letter-spacing: 0.05em; text-transform: uppercase; font-weight: 700;">오답노트에 저장되는 것</div>
+        <ul>
+          <li>틀린 문제 원문</li>
+          <li>정답과 내 답</li>
+        </ul>
+      </div>
+      <div class="box" style="background: rgba(251,146,60,0.06); border-color: rgba(251,146,60,0.2);">
+        <div style="font-size: 0.68em; color: var(--orange); font-weight: 700; margin-bottom: 6px;">설계 의도</div>
+        <div style="font-size: 0.82em; color: rgba(255,255,255,0.8); line-height: 1.7;">
+          한 번 스크랩 → 퀴즈 → 반복 복습으로 이어지는 학습 루프
+        </div>
+      </div>
+    </div>
+  </div>
+  </div>
+</section>
+
+<!-- ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+     10 기능 — 직업별 재작성
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ -->
+<section data-background-color="#0c0c0e">
+  <div class="slide-inner">
+  <div class="label">02 · 기능 <span style="color: var(--cyan)">③ 직업별 재작성</span></div>
+
+  <div class="g2" style="align-items: center; gap: 40px;">
+    <div>
+      <h3 style="font-size: 1.5em; margin-bottom: 14px;">"내 직업 관점"으로 기사를 다시 써준다</h3>
+      <p style="font-size: 0.84em; color: var(--muted); line-height: 1.8; margin-bottom: 24px;">AI 요약이 아닌, 내 역할에서 바라본 해석이다</p>
+      <blockquote style="border-left-color: var(--cyan);">
+        "AI 챗봇의 부상" 기사를 &nbsp;<strong>iOS 개발자 관점</strong>으로 재작성 → "내 앱에서 AI를 어떻게 쓸 수 있을까"
+      </blockquote>
+    </div>
+
+    <div style="display: flex; flex-direction: column; gap: 10px;">
+      <div class="step-row">
+        <div class="step-num" style="background: rgba(34,211,238,0.12); border-color: rgba(34,211,238,0.3); color: var(--cyan);">1</div>
+        <div class="step-text"><strong>직업 설정</strong> — iOS 개발자 / 마케터 / 디자이너 등</div>
+      </div>
+      <div class="step-row">
+        <div class="step-num" style="background: rgba(34,211,238,0.12); border-color: rgba(34,211,238,0.3); color: var(--cyan);">2</div>
+        <div class="step-text">스크랩된 기사 중 <strong>원하는 기사 선택</strong></div>
+      </div>
+      <div class="step-row">
+        <div class="step-num" style="background: rgba(34,211,238,0.12); border-color: rgba(34,211,238,0.3); color: var(--cyan);">3</div>
+        <div class="step-text">AI가 직업 관점으로 <strong>재해석해서 출력</strong></div>
+      </div>
+      <div class="box" style="margin-top: 6px; background: rgba(34,211,238,0.06); border-color: rgba(34,211,238,0.2);">
+        <div style="font-size: 0.8em; color: rgba(255,255,255,0.75); line-height: 1.7;">
+          단순 AI 요약이 아닌<br>
+          <strong style="color: var(--white);">"나의 시각"이 반영된 콘텐츠</strong>
+        </div>
+      </div>
+    </div>
+  </div>
+  </div>
+</section>
+
+<!-- ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+     11 마무리
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ -->
+<section data-background-color="#0c0c0e">
+  <div class="slide-title">
+    <span class="chip chip-cyan" style="margin-bottom: 24px;">계속 만드는 중</span>
+    <h2 style="font-size: 2.2em; font-weight: 900; line-height: 1.2; margin-bottom: 14px;">
+      AI와 함께 일하는 방식을<br>찾아가고 있습니다
+    </h2>
+    <p style="font-size: 0.86em; color: var(--muted); line-height: 1.9;">
+      완성된 앱을 보여드리는 자리가 아니라<br>
+      만들어가는 과정을 공유하는 자리였습니다
+    </p>
+
+    <p style="font-size: 0.62em; color: rgba(255,255,255,0.18); margin-top: 28px; letter-spacing: 0.06em;">
+      Frank · 2026 · seungchan2022
+    </p>
+  </div>
+</section>
+
+</div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/reveal.js@5.1.0/dist/reveal.js"></script>
+<script>
+  Reveal.initialize({
+    hash: true,
+    controls: true,
+    progress: true,
+    slideNumber: 'c/t',
+    transition: 'fade',
+    transitionSpeed: 'fast',
+    backgroundTransition: 'none',
+    center: true,
+    width: 1100,
+    height: 650,
+    margin: 0.08,
+  });
+
+  Reveal.on('ready', () => {
+    const h = Reveal.getComputedSlideSize().height;
+    document.querySelectorAll('.slide-inner').forEach(el => {
+      el.style.minHeight = h + 'px';
+    });
+  });
+</script>
+</body>
+</html>

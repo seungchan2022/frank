@@ -2,7 +2,7 @@
 
 의도적으로 보류한 설계·구현 결정. 다음 MVP 기획 시 흡수 여부 판단.
 
-> 최종 갱신: 2026-05-04 (DEBT-MVP16-01 추가)
+> 최종 갱신: 2026-05-05 (DEBT-MVP16-02, DEBT-MVP16-03, DEBT-HOOK-01 추가)
 
 ---
 
@@ -248,3 +248,85 @@
 - 또는 직렬화 직전 `serde_json::to_string` 에서 escape 표준화
 - 단위 테스트: `\4`, `\_` 등 27가지 패턴 fixture로 클린업 검증
 **흡수 조건**: M3 클라이언트 envelope 전환 시 같이 처리 권장 (디시리얼라이즈 견고성 + 사용자 영향 최소화)
+
+---
+
+## [DEBT-MVP16-02] occupation 삭제 불가 버그
+
+**발생**: 2026-05-05 내부 동작 분석 중 발견
+**상태**: 🔴 **OPEN**
+
+**현상**: 직업(occupation)을 한번 설정하면 다른 값으로 변경은 가능하나, 아예 삭제(공백으로 비우기)가 불가능하다. 저장 버튼을 눌러도 기존 직업이 그대로 유지된다.
+
+**원인 — 3단계 연쇄**:
+
+1. **클라이언트(웹/iOS)**: 삭제 의도 시 `"occupation": null` 또는 `""` 전송 (올바름)
+2. **서버 `api/profile.rs`**: `UpdateProfileRequest.occupation` 타입이 `Option<String>` → JSON `null`(삭제 의도)과 "필드 없음"(변경 안 함)이 모두 `None`으로 붕괴되어 구별 불가
+3. **DB `infra/postgres_db.rs`**: `occupation.is_none()` → 조기 반환 또는 `COALESCE($4, profiles.occupation)` SQL로 기존 값 유지 → **실제 NULL 저장 안 됨**
+
+**관련 파일**:
+- `server/src/api/profile.rs` — `UpdateProfileRequest.occupation: Option<String>` (문제 지점)
+- `server/src/infra/postgres_db.rs` — `COALESCE($4, profiles.occupation)` SQL (문제 지점)
+- `server/src/domain/ports.rs` — `update_profile` 시그니처
+
+**개선 방향**:
+- `occupation` 타입을 `Option<Option<String>>`으로 변경 (`#[serde(default)]` 사용)
+  - outer `None` = 필드 미제공 (변경 없음)
+  - `Some(None)` = 명시적 null (삭제)
+  - `Some(Some(v))` = 값 설정
+- DB SQL: `CASE WHEN $5 THEN $4 ELSE profiles.occupation END` 패턴으로 교체 (`$5` = occupation 제공 여부 bool)
+- `fake_db.rs` mock 및 테스트도 동일하게 수정
+- 테스트 추가: `"occupation": null` → 삭제 확인
+
+**흡수 조건**: MVP16 마일스톤 또는 occupation 관련 기능 작업 시
+
+---
+
+## [DEBT-MVP16-03] occupation 없을 때 insight 미노출 버그
+
+**발생**: 2026-05-05 내부 동작 분석 중 발견
+**상태**: 🔴 **OPEN**
+
+**현상**: 직업(occupation)을 설정하지 않은 사용자는 요약하기 기능에서 인사이트(insight)가 전혀 표시되지 않는다.
+
+**원래 의도 vs 현재 구현**:
+- **MVP9 이전 원래 구현** (`SYSTEM_PROMPT`): occupation 무관하게 `summary` + `insight` 항상 생성. insight = "이 기사가 왜 중요한지, 독자에게 어떤 의미인지 분석"
+- **MVP15 M3 변경 후 (`bb8f517`)**: occupation 유무로 분기
+  - occupation 없음 → `SYSTEM_PROMPT_NO_OCCUPATION` → summary만, insight = `None`
+  - occupation 있음 → `SYSTEM_PROMPT_WITH_OCCUPATION` → summary + 직업 맞춤 insight
+
+**MVP15 시드 원래 의도**: "내 커스텀 인사이트 = 프로필 기반 맞춤 시각으로 기존 요약/인사이트를 고도화"
+→ 즉 기존 범용 insight를 직업 맞춤으로 **업그레이드**하는 게 의도였으나, 구현 시 occupation 없으면 insight 자체가 사라지는 방식으로 구현됨
+
+**관련 파일**:
+- `server/src/infra/groq.rs` — `SYSTEM_PROMPT_NO_OCCUPATION` (insight 필드 없음), `SYSTEM_PROMPT_WITH_OCCUPATION` (직업 맞춤 insight)
+- `server/src/api/summarize.rs` — `SummarizeResponse.insight: Option<String>`
+
+**개선 방향**:
+- occupation 없을 때도 범용 insight 표시 (MVP9 시대 프롬프트 복원)
+- occupation 있을 때 → 직업 맞춤 insight로 업그레이드
+- 즉: 항상 insight 생성, occupation 유무가 insight의 **시각**만 결정
+
+**흡수 조건**: MVP16 마일스톤 또는 요약 기능 개선 작업 시
+
+---
+
+## [DEBT-HOOK-01] step-2,3,5,6,7,8 active_step.txt 미갱신
+
+**발생**: 2026-05-05 훅 시스템 분석 중 발견
+**상태**: 🔴 **OPEN**
+
+**현상**: workflow/SKILL.md에 "각 step SKILL이 진입 시 자기 step으로 갱신할 책임"이라고 명시돼 있으나, step-1/step-4/step-9만 `active_step.txt`를 실제로 갱신함. step-2, 3, 5, 6, 7, 8은 구현 누락.
+
+**영향**:
+- 장치3(차단 훅)은 step 이름을 보지 않으므로 기능적 문제 없음
+- 장치2(주입 훅)가 step-3에서도 "📝 활성 step: step-1"처럼 부정확한 값을 주입할 수 있음
+- Claude는 SKILL 룰과 대화 컨텍스트로 현재 단계를 인식하므로 실제 오작동은 없었음
+
+**수정 방법**: 각 SKILL.md 진입부에 한 줄 추가
+```bash
+echo "step-N" > progress/active_step.txt
+```
+대상: step-2, step-3, step-5, step-6, step-7, step-8
+
+**흡수 조건**: 훅 시스템 보완 작업 시 또는 다음 워크플로우 킥오프 전
