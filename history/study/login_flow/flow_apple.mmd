@@ -1,0 +1,29 @@
+sequenceDiagram
+    participant User as User
+    participant Web as SvelteKit(웹)
+    participant Page as +page.server.ts
+    participant Apple as Apple OAuth
+    participant Auth as Supabase Auth
+    participant CB as /auth/callback
+    participant Hooks as hooks.server.ts
+
+    note over User,CB: ①~⑩ 로그인하고 홈으로 이동
+    User->>Web: ① Apple로 로그인 클릭
+    Web->>Page: form POST (use:enhance)
+    Page->>Auth: ② signInWithOAuth({provider:'apple'})
+    Auth-->>Page: Apple 로그인 URL 반환
+    Page-->>User: ③ Apple 서버로 redirect(302)
+    User->>Apple: ④ Apple 계정으로 인증 완료
+    Apple-->>User: ⑤ /auth/callback?code=... 로 redirect
+    User->>CB: ⑥ code 전달
+    CB->>Auth: ⑦ exchangeCodeForSession(code)
+    Auth-->>CB: ⑧ JWT(access_token) 반환
+    note over CB: ⑨ httpOnly 쿠키에 JWT 저장\n(locals.supabase SSR 자동처리)
+    CB-->>User: ⑩ 홈으로 redirect(303, '/')
+
+    note over User,Hooks: ⑪~⑮ 페이지 요청마다
+    User->>Web: ⑪ 페이지 요청 (쿠키 자동 첨부)
+    Web->>Hooks: ⑫ safeGetSession() 호출
+    Hooks->>Auth: ⑬ getUser() — 서버에서 토큰 재검증
+    Auth-->>Hooks: ⑭ 유효한 user 반환
+    note over Hooks: ⑮ session + user → event.locals 저장

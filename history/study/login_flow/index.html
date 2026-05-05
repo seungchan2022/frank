@@ -40,6 +40,55 @@
   <h1>1단계: 로그인 전체 흐름</h1>
   <p class="subtitle">웹(이메일) · 웹(Apple OAuth) · iOS(이메일) · iOS(Apple) · 4자 비교</p>
 
+  <!-- 기초 개념 — 흐름도 읽기 전에 먼저 -->
+  <div style="background: white; border: 1px solid #E5D5C5; border-radius: 12px; padding: 24px; margin-bottom: 24px;">
+    <p style="font-size:16px; font-weight:bold; color:#92400E; margin:0 0 6px;">기초 개념 — 이 앱의 서버 구조 (흐름도 읽기 전에 먼저)</p>
+    <p style="font-size:13px; color:#666; line-height:1.7; margin:0 0 16px;">흐름도에 <code>+page.server.ts</code>, <code>hooks.server.ts</code> 같은 이름이 나오는데, "서버는 Rust 아니야?" 라는 의문이 드는 게 당연해. 흐름도 보기 전에 이것부터 정리해두면 훨씬 읽기 쉬워.</p>
+
+    <p class="section-title" style="margin-top:0;">이 앱의 요청 흐름 — 한 줄 구조</p>
+    <pre style="background:#FFF7ED; border-radius:6px; padding:14px 16px; font-size:12px; line-height:1.8; overflow-x:auto;">웹:  브라우저 → SvelteKit 서버(5173) → Rust API(8080) → PostgreSQL
+iOS:           iOS 앱               → Rust API(8080) → PostgreSQL</pre>
+    <p style="font-size:13px; color:#444; line-height:1.7; margin:10px 0 14px;">브라우저는 Rust API 주소(8080)를 직접 몰라도 돼. SvelteKit이 중간에서 대신 Rust API에 다녀오고 결과만 화면에 그려줘. iOS는 SvelteKit 없이 Rust API에 직접 붙어.</p>
+
+    <div class="note note-yellow" style="margin-bottom:14px;">
+      💡 <strong>CRUD(데이터 읽기·쓰기)도 이 구조야.</strong><br>
+      피드 조회, 스크랩 저장 같은 데이터 작업도 전부 <code>브라우저 → SvelteKit → Rust API → DB</code> 경로로 처리해.<br>
+      SvelteKit이 직접 DB 처리를 하는 게 아니라 <strong>중간 다리</strong> 역할이고, 실제 로직은 Rust API에 있어.
+    </div>
+
+    <p class="section-title">SvelteKit 내부는 두 부분으로 나뉜다</p>
+    <pre style="background:#FFF7ED; border-radius:6px; padding:14px 16px; font-size:12px; line-height:1.8; overflow-x:auto;">SvelteKit
+├── +page.svelte       → 브라우저에서 실행 (화면 그리기, UI 이벤트 처리)
+├── +page.server.ts    → Node.js 서버에서 실행 (폼 제출 처리 — 서버 액션)
+├── +layout.server.ts  → 서버에서 실행 (앱 전체 공통 인증 가드)
+└── hooks.server.ts    → 서버에서 실행 (모든 요청을 가로채는 미들웨어)</pre>
+    <div class="note note-yellow" style="margin-top:10px; margin-bottom:14px;">
+      💡 <strong>화면 코드 vs 서버 코드</strong><br>
+      <code>+page.svelte</code>는 브라우저에서 실행되는 UI 코드야. 화면에 뭘 보여줄지 담당해.<br>
+      <code>+page.server.ts</code>는 서버에서 실행되는 코드야. 로그인 버튼처럼 <code>&lt;form method="POST"&gt;</code>를 제출하면 그 요청을 받아서 처리해. 이걸 <strong>서버 액션</strong>이라고 불러.<br><br>
+      SwiftUI가 화면을 그리고 ViewModel이 API를 호출하는 것처럼, SvelteKit도 화면 담당과 처리 담당이 나뉘어 있어. 차이는 처리 담당이 <strong>서버(Node.js)에서</strong> 실행된다는 점이야.<br><br>
+      단, 모든 버튼이 서버를 거치는 건 아니야:<br>
+      <code>form method="POST"</code> 버튼 → 서버 액션 실행 O<br>
+      일반 onclick 버튼 (UI 토글, 탭 전환 등) → 브라우저 JS만 실행, 서버 X
+    </div>
+
+    <p class="section-title">왜 로그인 처리를 서버에서 해야 해?</p>
+    <p style="font-size:13px; color:#444; line-height:1.7; margin:0 0 10px;">로그인하면 Supabase가 토큰(JWT)을 줘. 웹에서는 이걸 <strong>httpOnly 쿠키</strong>에 저장해야 안전한데, httpOnly 쿠키는 브라우저 JS에서 저장이 불가능하고 <strong>서버만 저장할 수 있어.</strong> 그래서 SvelteKit 서버가 담당하는 거야. iOS는 Keychain에 저장하면 앱이 직접 접근하니까 서버가 필요 없어.</p>
+
+    <p class="section-title">한눈에 비교</p>
+    <table class="compare-table">
+      <thead>
+        <tr><th>구분</th><th>SvelteKit 서버 (5173)</th><th>Rust API (8080)</th></tr>
+      </thead>
+      <tbody>
+        <tr><td>주 역할</td><td>인증 처리, 쿠키 관리, 화면 서빙</td><td>데이터 처리 (피드, 태그, 스크랩)</td></tr>
+        <tr><td>누가 써?</td><td>웹 브라우저만</td><td>웹(SvelteKit) + iOS 앱 둘 다</td></tr>
+        <tr><td>DB 직접?</td><td>아니요 (Supabase Auth SDK만)</td><td>예 (PostgreSQL 직접)</td></tr>
+        <tr><td>토큰 처리</td><td>httpOnly 쿠키 읽기/쓰기</td><td>Bearer 토큰 검증</td></tr>
+      </tbody>
+    </table>
+  </div>
+
   <div class="tab-bar">
     <div class="tab active" onclick="show('email')">① 웹 이메일</div>
     <div class="tab"        onclick="show('apple')">② 웹 Apple OAuth</div>
@@ -56,18 +105,20 @@
 
       <p class="section-title">등장인물</p>
       <table class="compare-table">
-        <thead><tr><th>이름</th><th>역할</th></tr></thead>
+        <thead><tr><th>이름</th><th>역할</th><th>어디서 실행?</th></tr></thead>
         <tbody>
-          <tr><td><strong>User</strong></td><td>사용자가 보는 브라우저 창</td></tr>
-          <tr><td><strong>SvelteKit(웹)</strong></td><td>브라우저에서 실행되는 JS 코드. 화면을 그리고 버튼 클릭 같은 이벤트를 처리함</td></tr>
-          <tr><td><strong>+page.server.ts</strong></td><td>서버에서 실행되는 SvelteKit 서버 액션. 폼 제출을 받아서 <code>signInWithPassword()</code> 같은 Supabase SDK 함수를 실행함</td></tr>
-          <tr><td><strong>hooks.server.ts</strong></td><td>서버에서 실행되는 SvelteKit 코드. 모든 페이지 요청을 가로채는 문지기. 쿠키 관리, 인증 처리 담당</td></tr>
-          <tr><td><strong>Supabase Auth</strong></td><td>로그인 검증 전담 서버. 비밀번호 확인, JWT 발급을 맡음</td></tr>
-          <tr><td><strong>Rust API(Axum)</strong></td><td>뉴스 가져오기, 프로필 저장 같은 실제 기능이 있는 서버</td></tr>
+          <tr><td><strong>User</strong></td><td>사람 + 브라우저 창 자체. 버튼을 누르는 주체</td><td>—</td></tr>
+          <tr><td><strong>SvelteKit(웹)</strong></td><td>브라우저에서 실행되는 JS 코드. 화면을 그리고 User의 클릭 같은 이벤트를 감지함</td><td>브라우저</td></tr>
+          <tr><td><strong>+page.server.ts</strong></td><td>form POST를 받아서 처리하는 서버 액션. <code>signInWithPassword()</code>를 실행함</td><td>Node.js 서버</td></tr>
+          <tr><td><strong>hooks.server.ts</strong></td><td>모든 요청을 가로채는 미들웨어(문지기). 쿠키에서 JWT를 꺼내 검증하고 유저 정보를 event.locals에 넣어둠</td><td>Node.js 서버</td></tr>
+          <tr><td><strong>Supabase Auth</strong></td><td>비밀번호 확인, JWT 발급 전담 서버</td><td>외부 서버</td></tr>
+          <tr><td><strong>Rust API(Axum)</strong></td><td>피드, 스크랩 같은 실제 데이터 처리 서버</td><td>외부 서버</td></tr>
         </tbody>
       </table>
       <div class="note note-yellow" style="margin-top:10px">
-        💡 SvelteKit은 화면(웹)과 서버(+page.server.ts, hooks.server.ts) 두 부분으로 나뉘어 있어서 흐름도에서 따로 표현된 것. User는 내가 보는 브라우저 화면 자체를 가리키고, SvelteKit(웹)은 그 화면을 구성하는 JS 코드다. +page.server.ts는 폼 제출을 처리하는 서버 액션, hooks.server.ts는 모든 요청을 통과시키는 문지기야.
+        💡 <strong>User와 SvelteKit(웹)이 헷갈리면?</strong><br>
+        User = 버튼을 누르는 사람(+브라우저 창). SvelteKit(웹) = 그 클릭을 감지하는 JS 코드.<br>
+        흐름도에서 <code>User → SvelteKit(웹)</code>은 "사람이 버튼을 눌렀고, JS가 그 이벤트를 받았다"는 뜻이야.
       </div>
 
       <p class="section-title" style="margin-top:24px">① ~ ⑤ 로그인하고 홈으로 이동하기까지</p>
@@ -84,22 +135,22 @@
         <li>
           <strong>JWT(access_token) 반환</strong> — Supabase Auth가 이메일과 비밀번호를 확인하면 JWT를 만들어서 반환한다.
           <div class="note note-yellow" style="margin-top:6px; margin-bottom:6px;">
-            💡 <strong>JWT란?</strong> 신분증 같은 것. 안에 <code>user_id=abc123, 1시간 뒤 만료</code> 같은 정보가 들어있어. <strong>암호화가 아니라 서명</strong>된 것이라 누구나 디코딩해서 읽을 수 있지만, Supabase가 서명해서 위변조를 막는 구조야. 그래서 JWT에 비밀번호 같은 민감한 정보는 안 담아. <strong>Access Token</strong>은 JWT의 다른 이름으로 "접근 허가증"이라는 뜻이야.
+            💡 <strong>JWT = 출입증</strong><br>
+            "로그인 확인됐어. 이 출입증으로 앱을 자유롭게 돌아다녀"라고 주는 거야. 출입증 안에는 <code>나는 누구(user_id)</code>, <code>언제까지 유효(만료 시각, 보통 1시간)</code>, <code>발급처(Supabase 서명)</code>가 적혀 있어.<br><br>
+            <strong>한 번 받으면</strong> 그 기간 동안 매 페이지를 이동할 때마다 다시 비밀번호를 입력할 필요 없이 출입증(쿠키)만 자동으로 제시하면 돼.<br><br>
+            <strong>암호화가 아니라 서명이라는 게 뭐야?</strong> 디코딩하면 안에 내용이 그대로 보여. 하지만 Supabase가 서명해뒀기 때문에 내용을 바꾸면 서명이 맞지 않아서 위조가 바로 걸려. 그래서 비밀번호 같은 민감한 정보는 안 담아.
           </div>
         </li>
         <li>
-          <strong>httpOnly 쿠키에 JWT 저장</strong> — <code>+page.server.ts</code>에서 <code>locals.supabase</code>(hooks.server.ts에서 쿠키 처리가 설정된 Supabase SSR 클라이언트)가 JWT를 httpOnly 쿠키에 자동으로 저장한다. 이후 브라우저는 모든 요청에 이 쿠키를 자동으로 첨부한다.
+          <strong>httpOnly 쿠키에 JWT 저장</strong> — <code>locals.supabase</code>가 JWT를 httpOnly 쿠키에 자동으로 저장한다. 이후 브라우저는 모든 요청에 이 쿠키를 자동으로 첨부한다.
           <div class="note note-yellow" style="margin-top:6px; margin-bottom:4px;">
-            💡 <strong>쿠키란?</strong> 브라우저가 기억해두는 메모지. 웹사이트가 "이 사람 로그인 됐어"를 기억하려면 어딘가에 저장해야 하는데 그게 쿠키야. 브라우저가 서버에 요청할 때 자동으로 붙여서 보내줘서 매번 다시 로그인 안 해도 되는 것이다.
+            💡 <strong>locals.supabase가 뭐야?</strong><br>
+            일반 Supabase 클라이언트와 다른, 쿠키를 자동으로 읽고 쓸 수 있는 <strong>SSR 전용 클라이언트</strong>야.<br>
+            <code>hooks.server.ts</code>가 앱 시작 시 이 클라이언트를 만들어서 <code>event.locals.supabase</code>에 넣어두면, <code>+page.server.ts</code>에서 꺼내 쓸 수 있어.<br>
+            이 클라이언트로 <code>signInWithPassword()</code>를 호출하면 JWT를 받는 것과 동시에 httpOnly 쿠키 저장까지 자동으로 처리해줘. 개발자가 직접 쿠키 저장 코드를 안 짜도 되는 거야.
           </div>
           <div class="note note-yellow" style="margin-bottom:4px;">
-            💡 <strong>httpOnly 쿠키란?</strong> 일반 쿠키에 특수 규칙이 붙은 것. JS(자바스크립트)가 아예 읽을 수 없도록 브라우저가 차단해둔 쿠키야. <code>document.cookie</code>로 읽으려 해도 보이지 않아. 이름에 HTTP가 붙은 이유는, HTTP 통신(브라우저 ↔ 서버)에서만 사용되고 JS에서는 접근할 수 없다는 뜻이야.
-          </div>
-          <div class="note note-yellow" style="margin-bottom:4px;">
-            💡 <strong>localStorage란?</strong> 브라우저 안에 있는 메모장. JS가 자유롭게 읽고 쓸 수 있어서 편리하지만, 해커가 JS를 심어놓으면(XSS) 여기 있는 토큰을 그대로 훔쳐갈 수 있어.
-          </div>
-          <div class="note note-yellow" style="margin-bottom:4px;">
-            💡 <strong>XSS란?</strong> Cross-Site Scripting의 줄임말. 해커가 댓글 같은 입력창에 <code>&lt;script&gt;토큰 훔치는 코드&lt;/script&gt;</code>를 심어두면, 다른 사람이 그 페이지를 열었을 때 악성 코드가 실행되면서 localStorage의 토큰이 해커한테 전송되는 공격이야. httpOnly 쿠키는 JS가 접근 자체를 못 하니까 XSS가 성공해도 토큰을 훔칠 수 없어.
+            💡 <strong>httpOnly 쿠키란?</strong> 브라우저가 서버에 요청할 때 자동으로 붙여주는 저장소인데, <strong>JS에서 아예 읽을 수 없도록</strong> 막혀 있는 쿠키야. 토큰을 localStorage에 넣으면 JS로 훔칠 수 있는 반면(XSS 공격), httpOnly 쿠키에 넣으면 JS 접근 자체가 차단돼서 안전해.
           </div>
         </li>
         <li><strong>redirect(303, '/')</strong> — JWT 저장이 끝나면 <code>+page.server.ts</code>가 <code>redirect(303, '/')</code>를 반환하고, 브라우저가 홈 페이지로 자동 이동한다.</li>
@@ -109,20 +160,24 @@
       <ol start="6" style="line-height:2.4; font-size:14px; padding-left:20px;">
         <li><strong>페이지 요청</strong> — User가 페이지를 열 때마다 브라우저는 ④에서 저장해둔 httpOnly 쿠키를 자동으로 붙여서 보낸다. User가 따로 뭔가 하는 게 아니라 브라우저가 알아서 첨부하는 것이다.</li>
         <li>
-          <strong><code>safeGetSession()</code> 호출</strong> — 모든 요청은 무조건 hooks.server.ts를 거치는데, 여기서 <code>safeGetSession()</code>으로 쿠키 속 JWT를 꺼낸다.<br>
-          <code>safeGetSession()</code>은 <code>hooks.server.ts</code>에 직접 정의해서 쓰는 커스텀 헬퍼다. Supabase 공식 SSR 가이드가 권장하는 패턴인데, 내부에서 SDK의 <code>getSession()</code>(쿠키에서 JWT 꺼내기) + <code>getUser()</code>(Supabase에 재검증) 두 개를 묶어서 한 번에 처리하도록 만든 함수야.
+          <strong><code>safeGetSession()</code> — <code>getSession()</code>으로 JWT 꺼냄</strong> — 모든 요청은 무조건 <code>hooks.server.ts</code>를 거치는데, 여기서 <code>safeGetSession()</code>을 호출해 쿠키에서 JWT를 꺼낸다. 로컬에서만 읽는 거라 아직 유효한지 모르는 상태야.
         </li>
         <li>
-          <strong><code>getUser()</code> — 서버에서 토큰 재검증</strong> — 꺼낸 JWT를 Supabase Auth에 보내서 "이 토큰 아직 유효해?" 직접 확인한다.
+          <strong><code>getUser()</code>로 Supabase에 토큰 유효성 재확인</strong> — ⑦에서 꺼낸 JWT를 Supabase Auth에 보내서 "아직 유효해?"라고 실제로 확인한다. 흐름도에서 ⑦⑧이 화살표 두 개로 나뉜 건 이 두 단계가 <code>safeGetSession()</code> 함수 안에서 순서대로 실행되기 때문이야 — 따로 진행되는 게 아니라 한 함수 안에서 연속으로 실행되는 거야.
           <div class="note note-yellow" style="margin-top:6px; margin-bottom:6px;">
-            💡 <strong>왜 매 요청마다 확인해?</strong> hooks.server.ts가 모든 요청을 무조건 거치는 문지기이기 때문에, 지나가는 길목에서 자동으로 체크하는 구조다. JWT는 보통 1시간 뒤 만료되는데, 만료된 경우 자동으로 로그인 페이지로 튕겨낸다.
+            💡 <strong>왜 getSession()만으로 끝내지 않아?</strong><br>
+            <code>getSession()</code>만 쓰면 만료된 토큰도 "있다"고 통과시킬 수 있어서 위험해. <code>getUser()</code>까지 해야 Supabase가 직접 확인해주니까 안전해. JWT는 보통 1시간 뒤 만료돼. 만료된 경우 로그인 페이지로 자동으로 튕겨내.
           </div>
         </li>
-        <li><strong>유효한 user 반환</strong> — Supabase Auth가 토큰을 확인하고 "유효해"라고 응답하면, 해당 유저 정보(user_id, 이메일 등)를 hooks.server.ts로 돌려준다.</li>
+        <li><strong>유효한 user 반환</strong> — Supabase Auth가 "유효해"라고 응답하면 해당 유저 정보(user_id, 이메일 등)를 <code>hooks.server.ts</code>로 돌려준다.</li>
         <li>
-          <strong>session + user → event.locals 저장</strong> — hooks.server.ts가 받은 유저 정보를 <code>event.locals</code>에 저장한다.
+          <strong>session + user → event.locals 저장</strong> — <code>hooks.server.ts</code>가 검증한 유저 정보를 <code>event.locals</code>에 저장한다.
           <div class="note note-yellow" style="margin-top:6px; margin-bottom:6px;">
-            💡 <strong>event.locals란?</strong> 한 번의 요청 안에서 데이터를 공유하는 임시 공간이야. hooks.server.ts가 유저 정보를 여기다 넣어두면, 같은 요청을 처리하는 다른 서버 코드들이 꺼내서 쓸 수 있어. 요청이 끝나면 사라지는 임시 메모장이라고 생각하면 돼.
+            💡 <strong>event.locals란?</strong><br>
+            한 번의 요청을 처리하는 동안에만 살아있는 임시 공유 공간이야. 요청이 끝나면 사라져.<br><br>
+            <strong>왜 여기 저장해?</strong> 피드 페이지를 열었다고 하면, 그 요청을 처리하면서 여러 서버 코드가 순서대로 실행돼:<br>
+            <code>hooks.server.ts</code> → <code>+layout.server.ts</code> → <code>+page.server.ts</code><br><br>
+            <code>hooks.server.ts</code>에서 Supabase에 JWT 검증을 한 번 해서 유저 정보를 <code>event.locals.user</code>에 넣어두면, 뒤에 실행되는 <code>+layout.server.ts</code>나 <code>+page.server.ts</code>에서 그냥 <code>event.locals.user</code>를 꺼내 쓰면 돼. 같은 요청에서 Supabase에 여러 번 검증하러 갈 필요가 없어.
           </div>
         </li>
         <li>
@@ -131,11 +186,18 @@
             💡 <strong>Bearer 토큰이란?</strong> HTTP 요청 헤더에 토큰을 붙여서 보내는 방식이야. <code>Authorization: Bearer &lt;JWT&gt;</code> 형태로 보내는데, "이 토큰을 가진 사람한테 접근을 허용해줘"라는 뜻이야. Bearer는 "소지자"라는 뜻.
           </div>
         </li>
-        <li><strong>/auth/v1/user 검증 → ⑬ 유효 확인</strong> — Rust API의 <code>require_auth()</code> 미들웨어가 받은 Bearer 토큰을 Supabase Auth에 보내서 검증한다.
+        <li><strong>Rust API <code>require_auth()</code> — Bearer 토큰 검증</strong> — Rust API의 <code>require_auth()</code> 미들웨어가 받은 Bearer 토큰을 Supabase Auth에 보내서 검증한다.
+          <div class="note note-yellow" style="margin-top:6px; margin-bottom:6px;">
+            💡 <strong>미들웨어(middleware)란?</strong><br>
+            요청이 실제 처리 코드에 도달하기 전에 <strong>무조건 거쳐야 하는 관문</strong>이야.<br>
+            <code>require_auth()</code>는 Rust API의 모든 인증 필요 엔드포인트 앞에 붙어 있어서, 요청이 들어오면 자동으로 "Bearer 토큰 있어? 유효해?" 를 먼저 확인해. 통과하면 실제 로직 실행, 실패하면 401 에러 반환.<br><br>
+            이 앱에서 미들웨어는 두 군데야:<br>
+            · SvelteKit의 <code>hooks.server.ts</code> — 웹 요청마다 쿠키에서 JWT 검증<br>
+            · Rust API의 <code>require_auth()</code> — API 요청마다 Bearer 토큰 검증
+          </div>
           <div class="note note-blue" style="margin-top:6px; margin-bottom:6px;">
-            💡 <strong>로그인은 Supabase가 하는데, Rust API가 또 검증하는 이유가 뭐야?</strong><br>
-            Supabase = 여권 발급소(신원 확인 후 JWT 발급), Rust API = 공항 입국심사(JWT 유효 여부만 확인).<br>
-            누군가 SvelteKit을 거치지 않고 Rust API로 직접 요청을 보낼 수도 있기 때문에, Rust API는 무조건 스스로 Supabase에 확인해. JWT를 만든 곳이 Supabase니까 유효한지 확인하는 것도 Supabase한테 직접 물어보는 게 가장 확실하다.
+            💡 <strong>Supabase가 이미 로그인시켰는데, Rust API가 또 검증하는 이유?</strong><br>
+            누군가 SvelteKit을 건너뛰고 Rust API에 직접 요청을 보낼 수도 있어. Rust API가 스스로 확인하지 않으면 미로그인 사용자가 데이터를 가져갈 수 있어. 그래서 Rust API는 무조건 자기가 Supabase에 확인해.
           </div>
         </li>
         <li><strong>데이터 반환</strong> — 검증이 통과되면 Rust API가 요청한 데이터(뉴스, 프로필 등)를 SvelteKit 서버로 반환하고, SvelteKit이 화면을 그려서 User에게 보여준다.</li>
@@ -171,79 +233,86 @@
     <div class="legend">
       <h2>흐름 해설</h2>
 
-      <p class="section-title">등장인물 (이메일 + 추가)</p>
+      <p class="section-title">사용자 눈에 보이는 흐름 — 주소창 기준</p>
+      <pre style="background:#F0FDF4; border-radius:8px; padding:16px; font-size:12px; line-height:2; overflow-x:auto;">[1] yourapp.com/login            ← "Apple로 계속하기" 버튼이 있는 로그인 화면
+      ↓ 버튼 클릭
+[2] appleid.apple.com/...        ← 브라우저가 Apple 서버로 통째로 이동
+      ↓ Face ID / Apple ID 인증
+[3] yourapp.com/auth/callback?code=...  ← 인증 직후 로딩 중에 순간 거쳐가는 경로
+      ↓ code → JWT 교환 처리 (사용자 눈엔 안 보임)
+[4] yourapp.com/                 ← 홈 화면 도착</pre>
+      <div class="note note-yellow" style="margin-top:6px; margin-bottom:16px;">
+        💡 <strong>/auth/callback은 로그인 화면이 아니야.</strong><br>
+        <code>/login</code>은 버튼이 있는 화면이고, <code>/auth/callback</code>은 버튼도 없는 <strong>처리 전용 경로</strong>야. Apple 인증 후 브라우저가 잠깐 거쳤다가 바로 홈으로 튀어가서 화면이 보일 틈이 없어. 인증하고 나서 로딩되는 그 순간에 <code>/auth/callback</code>을 스치고 홈으로 넘어가는 거야.<br><br>
+        <code>/auth/callback</code>은 우리가 만든 SvelteKit 라우트(우리 앱 서버의 한 경로)야 — Supabase도 Apple도 아니야.
+      </div>
+
+      <p class="section-title">등장인물 (이메일과 다른 것만 표시)</p>
       <table class="compare-table">
-        <thead><tr><th>이름</th><th>역할</th></tr></thead>
+        <thead><tr><th>이름</th><th>역할</th><th>어디서 실행?</th></tr></thead>
         <tbody>
-          <tr><td><strong>User</strong></td><td>사용자가 보는 브라우저 창</td></tr>
-          <tr><td><strong>SvelteKit(웹)</strong></td><td>브라우저에서 실행되는 JS 코드. 화면을 그리고 버튼 클릭 이벤트를 처리함</td></tr>
-          <tr><td><strong>+page.server.ts</strong></td><td>서버에서 실행되는 SvelteKit 서버 액션. 폼 제출을 받아서 <code>signInWithOAuth()</code> 같은 Supabase SDK 함수를 실행함</td></tr>
-          <tr><td><strong>hooks.server.ts</strong></td><td>서버에서 실행되는 SvelteKit 코드. 모든 페이지 요청을 가로채는 문지기. 쿠키 관리, 인증 처리 담당</td></tr>
-          <tr><td><strong>Apple OAuth</strong></td><td>Apple의 로그인 인증 서버. 사용자가 Apple 계정으로 본인임을 인증해줌</td></tr>
-          <tr><td><strong>Supabase Auth</strong></td><td>로그인 검증 전담 서버. Apple로부터 받은 code를 JWT로 교환해줌</td></tr>
-          <tr><td><strong>/auth/callback</strong></td><td>우리 앱 안에 있는 SvelteKit 서버 경로. Apple 인증 후 브라우저가 돌아오는 도착지</td></tr>
-          <tr><td><strong>Rust API(Axum)</strong></td><td>뉴스 가져오기, 프로필 저장 같은 실제 기능이 있는 서버</td></tr>
+          <tr><td><strong>User</strong></td><td>버튼을 누르는 사람 + 브라우저 창</td><td>—</td></tr>
+          <tr><td><strong>SvelteKit(웹)</strong></td><td>화면을 그리고 클릭 이벤트를 감지하는 JS 코드</td><td>브라우저</td></tr>
+          <tr><td><strong>+page.server.ts</strong></td><td>form POST를 받아서 <code>signInWithOAuth()</code>를 실행하는 서버 액션</td><td>Node.js 서버</td></tr>
+          <tr><td><strong>hooks.server.ts</strong></td><td>모든 요청을 가로채는 미들웨어. 쿠키에서 JWT 검증 + event.locals에 저장</td><td>Node.js 서버</td></tr>
+          <tr><td><strong>Apple OAuth</strong> ★이메일에 없음</td><td>Apple의 인증 서버. 사용자가 Apple 계정으로 본인임을 확인해줌</td><td>외부 서버</td></tr>
+          <tr><td><strong>/auth/callback</strong> ★이메일에 없음</td><td>우리 앱의 처리 전용 SvelteKit 경로. 사용자가 보는 화면이 아니라 code→JWT 교환 후 홈으로 redirect하는 역할</td><td>Node.js 서버</td></tr>
+          <tr><td><strong>Supabase Auth</strong></td><td>Apple로부터 받은 code를 검증하고 JWT를 발급해줌</td><td>외부 서버</td></tr>
+          <tr><td><strong>Rust API(Axum)</strong></td><td>실제 데이터 처리 서버 (이메일과 동일)</td><td>외부 서버</td></tr>
         </tbody>
       </table>
       <div class="note note-yellow" style="margin-top:10px">
-        💡 <strong>OAuth란?</strong> 비밀번호를 우리 앱에 직접 안 주고, 제3자(여기선 Apple)가 대신 신원을 보증해주는 방식이야. Apple이 비밀번호 관리를 통째로 담당하고, 우리 앱은 Apple로부터 "이 사람 맞아" 확인서만 받는 거야.
+        💡 <strong>OAuth란?</strong> 비밀번호를 우리 앱에 직접 안 주고, 제3자(여기선 Apple)가 대신 신원을 보증해주는 방식이야. Apple이 비밀번호를 통째로 관리하고, 우리 앱은 Apple로부터 "이 사람 맞아" 확인서만 받아.<br><br>
+        <strong>이메일 흐름과의 핵심 차이:</strong> 이메일은 서버가 Supabase에 직접 비밀번호를 확인했는데, Apple OAuth는 중간에 브라우저가 Apple 서버에 갔다가 code를 받아 돌아오는 단계가 끼어 있어.
       </div>
 
       <p class="section-title" style="margin-top:24px">① ~ ⑩ 로그인하고 홈으로 이동하기까지</p>
       <ol style="line-height:2.4; font-size:14px; padding-left:20px;">
         <li>
-          <strong>Apple로 계속하기 클릭 → form POST 요청</strong> — User가 버튼을 누르면 <code>&lt;form method="POST"&gt;</code>가 <code>+page.server.ts</code>의 <code>appleOAuth</code> 서버 액션으로 POST 요청을 보낸다.
+          <strong>Apple로 계속하기 클릭 → form POST 요청</strong> — User가 버튼을 누르면 <code>&lt;form method="POST" action="?/appleOAuth"&gt;</code>가 <code>+page.server.ts</code>의 서버 액션으로 POST 요청을 보낸다. 이메일과 구조는 같지만, 이메일은 입력값(이메일+비번)을 담아서 보내고 Apple은 입력값 없이 "Apple 로그인 해줘"라는 신호만 보내는 차이야.
+        </li>
+        <li>
+          <strong>서버 액션 → <code>signInWithOAuth()</code> 호출 → Apple URL 받아서 돌아옴</strong> — 서버 액션이 Supabase에 <code>signInWithOAuth()</code>를 호출하면 Supabase가 Apple 로그인 페이지 URL을 <strong>+page.server.ts로 돌려준다</strong>. 이 URL에는 앱 식별 정보와 인증 후 돌아올 주소(<code>/auth/callback</code>)가 담겨 있어.
           <div class="note note-yellow" style="margin-top:6px; margin-bottom:6px;">
-            💡 <strong>form POST란?</strong> HTML에서 데이터를 서버로 보내는 가장 기본적인 방법이야. JS 없이도 브라우저가 알아서 서버에 POST 요청을 보내줘.<br><br>
-            <code>&lt;form method="POST" action="?/appleOAuth"&gt;</code><br>
-            &nbsp;&nbsp;<code>&lt;button type="submit"&gt;Apple로 계속하기&lt;/button&gt;</code><br>
-            <code>&lt;/form&gt;</code><br><br>
-            • <code>method="POST"</code> — 서버로 데이터를 보내는 방식. GET은 URL에 데이터가 노출되고, POST는 본문에 담아서 보내.<br>
-            • <code>action="?/appleOAuth"</code> — 어떤 서버 액션을 실행할지 지정.<br><br>
-            이메일 로그인도 같은 구조야. 이메일은 form에 입력값(이메일, 비밀번호)이 담겨서 전송되고, Apple은 입력값 없이 "Apple 로그인 해줘"라는 신호만 보내는 차이야.
+            💡 <strong>② → ③ 연결이 헷갈리면?</strong><br>
+            ②에서 화살표가 Supabase로 갔으니 ③이 Supabase에서 시작해야 할 것 같지만, ②는 <strong>왕복</strong>이야.<br>
+            <code>+page.server.ts</code> → Supabase: "Apple URL 만들어줘"<br>
+            <code>+page.server.ts</code> ← Supabase: Apple URL 반환 (돌아옴)<br>
+            그래서 ③은 Apple URL을 들고 <code>+page.server.ts</code>가 브라우저에게 "여기로 가"라고 하는 거야. ③의 시작이 <code>+page.server.ts</code>인 게 맞아.
           </div>
         </li>
         <li>
-          <strong>서버 액션 진입 → <code>signInWithOAuth()</code> 호출 → Apple URL 반환</strong> — <code>+page.server.ts</code>의 <code>appleOAuth</code> 서버 액션이 실행된다. <code>supabase.auth.signInWithOAuth({ provider: 'apple' })</code>를 호출하면 Supabase가 Apple 로그인 페이지 URL을 <code>data.url</code>로 반환한다. 이 URL에는 앱 식별 정보와 인증 후 돌아올 주소(<code>/auth/callback</code>)가 담겨 있다.
-          <div class="note note-yellow" style="margin-top:6px; margin-bottom:6px;">
-            💡 <code>signInWithOAuth()</code>는 서버에서 실행된다. 이메일 흐름의 <code>signInWithPassword()</code>가 서버에서 실행됐던 것과 같은 구조야. 브라우저(클라이언트 JS)가 직접 Supabase를 부르는 게 아니야.
-          </div>
+          <strong>서버가 Apple URL로 redirect(302) → 브라우저가 Apple 서버로 이동</strong> — 서버가 브라우저에게 "Apple로 갔다 와"라고 위임한다. 브라우저가 Apple 로그인 페이지로 통째로 이동하는 게 <strong>이메일 흐름과의 핵심 차이</strong>야. 이메일은 서버가 Supabase에 직접 요청해서 끝났지만, Apple은 브라우저가 외부 서버에 갔다 돌아오는 단계가 있어.
         </li>
+        <li><strong>User가 Apple에서 인증 완료</strong> — Apple 로그인 화면에서 Face ID나 Apple ID로 인증을 마치면, Apple이 "이 사람 맞아"라고 확인해준다.</li>
         <li>
-          <strong>서버가 Apple URL로 redirect(302)</strong> — 서버가 <code>data.url</code>을 받아서 브라우저에 <code>redirect(302, data.url)</code> 응답을 보낸다. 브라우저가 이 응답을 받아서 Apple 로그인 페이지로 통째로 이동한다.
-          <div class="note note-blue" style="margin-top:6px; margin-bottom:6px;">
-            💡 이메일과의 핵심 차이가 여기야. 이메일은 서버가 Supabase에 직접 요청을 보내고 끝났는데, Apple은 서버가 브라우저에게 "Apple로 갔다 와"라고 위임해. 브라우저가 Apple 서버로 직접 이동하는 과정이 중간에 끼어 있어.<br><br>
-            이메일 흐름에서는 <code>+page.server.ts → Supabase</code> 순서였는데, Apple OAuth는 중간에 <code>/auth/callback</code>이 끼어서 순서가 달라 보이는 게 그 이유야. 두 흐름 모두 <strong>JWT가 도착하면 <code>locals.supabase</code>(SSR 클라이언트)가 쿠키에 저장하는 역할</strong>은 똑같아 — 이메일에서는 <code>+page.server.ts</code>에서, Apple OAuth에서는 <code>/auth/callback</code>에서 일어나는 거지.
-          </div>
-        </li>
-        <li><strong>User가 Apple에서 인증 완료</strong> — User가 Apple 로그인 화면에서 Face ID나 Apple ID/비밀번호로 인증을 마치면, Apple이 "이 사람 맞아"라고 확인해준다.</li>
-        <li>
-          <strong>Apple → <code>/auth/callback?code=...</code> 로 redirect</strong> — Apple이 인증을 마치고 브라우저를 우리 앱의 <code>/auth/callback</code> 주소로 다시 보내준다. URL 뒤에 <code>?code=...</code> 형태로 <strong>authorization code</strong>가 붙어온다.
+          <strong>Apple → <code>/auth/callback?code=...</code> 로 redirect</strong> — Apple이 인증을 마치고 브라우저를 우리 앱의 <code>/auth/callback</code>으로 돌려보낸다. URL에 <strong>authorization code</strong>가 붙어온다. 이 시점이 사용자 입장에서 "인증하고 나서 로딩 중"인 구간이야 — 주소창이 <code>/auth/callback?code=...</code>으로 순간 바뀌고 처리가 끝나면 홈으로 넘어가.
           <div class="note note-yellow" style="margin-top:6px; margin-bottom:6px;">
-            💡 <strong>authorization code란?</strong> Apple이 "인증은 됐어, 대신 이 코드로 토큰을 받아가"라고 주는 일회용 교환권이야. 토큰 자체를 URL에 직접 넣으면 주소창에 노출되니까, 코드만 먼저 주고 나중에 서버끼리 교환하는 방식을 써.
+            💡 <strong>왜 토큰 대신 code를 주는 거야?</strong> 토큰을 URL에 직접 넣으면 주소창에 그대로 노출돼. 그래서 Apple은 일회용 교환권(code)만 먼저 주고, 서버끼리 조용히 code ↔ 토큰 교환을 하는 방식을 써.
           </div>
         </li>
-        <li><strong><code>/auth/callback</code> 서버가 URL에서 code 꺼냄</strong> — 브라우저가 <code>/auth/callback</code>에 도착하면 SvelteKit 서버가 <code>url.searchParams.get('code')</code>로 code를 꺼낸다.</li>
-        <li><strong><code>exchangeCodeForSession(code)</code> 호출</strong> — Supabase SDK의 <code>exchangeCodeForSession()</code>을 호출한다. Supabase가 이 code를 Apple 서버에 보내서 "이 code 진짜야? 그러면 토큰 줘"라고 교환한다.</li>
-        <li><strong>JWT(access_token) 반환</strong> — Supabase가 Apple에서 검증을 마치고 JWT를 만들어서 돌려준다. 여기서부터는 이메일 로그인이랑 똑같다.</li>
-        <li><strong>httpOnly 쿠키에 JWT 저장</strong> — <code>/auth/callback</code>에서 <code>locals.supabase</code>(SSR 클라이언트)가 JWT를 httpOnly 쿠키에 자동으로 저장한다.</li>
-        <li><strong>홈으로 redirect(303, '/')</strong> — 쿠키 저장이 끝나면 홈으로 보내준다.</li>
+        <li><strong><code>/auth/callback</code> 서버가 URL에서 code 꺼냄</strong> — 브라우저가 <code>/auth/callback</code>에 도착하면 SvelteKit 서버가 URL에서 code를 꺼낸다.</li>
+        <li><strong><code>exchangeCodeForSession(code)</code> 호출</strong> — Supabase SDK가 이 code를 Apple에 보내서 "이 code 진짜야? 그러면 토큰 줘"라고 교환한다.</li>
+        <li><strong>JWT 반환 → httpOnly 쿠키 저장</strong> — Supabase가 JWT를 만들어서 돌려주면, <code>/auth/callback</code>에서 <code>locals.supabase</code>(SSR 클라이언트)가 httpOnly 쿠키에 자동 저장한다. 이메일 흐름 ③④와 같은 방식이야.</li>
+        <li><strong>홈으로 redirect(303, '/')</strong> — 쿠키 저장이 끝나면 홈으로 이동.</li>
       </ol>
 
       <p class="section-title">⑪ ~ ⑮ 로그인 이후 매 요청마다</p>
       <p style="font-size:14px; line-height:1.8;">이메일 흐름 ⑥~⑭와 완전히 동일하다. <code>safeGetSession()</code> → <code>getUser()</code> → <code>event.locals</code> 저장 순서로 동작하며, Rust API 호출도 Bearer 토큰을 붙여서 요청하고 <code>require_auth()</code>가 Supabase에 검증한다.</p>
 
       <p class="section-title">전체 흐름 한눈에 보기</p>
-      <pre style="background:#FFF7ED; border-radius:8px; padding:16px; font-size:12px; line-height:1.8; overflow-x:auto;">① 클릭 → form POST 요청 → +page.server.ts 서버 액션 진입
-② 서버에서 signInWithOAuth() → Supabase로부터 Apple URL 받음
-③ 서버가 redirect(302, Apple URL) → 브라우저가 Apple 서버로 이동  ← 이메일과의 핵심 차이
+      <pre style="background:#FFF7ED; border-radius:8px; padding:16px; font-size:12px; line-height:1.8; overflow-x:auto;">① 클릭 → form POST → +page.server.ts 서버 액션 진입
+② +page.server.ts → Supabase: "Apple URL 만들어줘"
+   Supabase → +page.server.ts: Apple URL 반환 (왕복)
+③ +page.server.ts → redirect(302, Apple URL) → 브라우저가 Apple 서버로 이동  ← 이메일과의 핵심 차이
 ④ User가 Apple에서 인증 (Face ID / Apple ID)
-⑤ Apple → /auth/callback?code=... 으로 redirect
+⑤ Apple → 브라우저를 yourapp.com/auth/callback?code=... 으로 redirect
+   (인증 직후 로딩 구간 — 주소창에 /auth/callback이 순간 보임)
 ⑥ /auth/callback 서버가 URL에서 code 꺼냄
 ⑦ exchangeCodeForSession(code) → Supabase가 Apple에 코드 교환
-⑧ JWT 반환
-⑨ httpOnly 쿠키 저장
-⑩ 홈으로 redirect
+⑧ Supabase → JWT 반환
+⑨ /auth/callback → httpOnly 쿠키에 JWT 저장
+⑩ /auth/callback → redirect(303, '/') → 홈 도착
 
 -- 이후 페이지 요청마다 자동 실행 (이메일과 동일) --
 
@@ -257,6 +326,28 @@
 
   <!-- ③ iOS 이메일 -->
   <div id="panel-ios-email" class="panel">
+
+    <!-- iOS 흐름 읽기 전에 -->
+    <div style="background:#FFF7ED; border:1px solid #E5D5C5; border-radius:10px; padding:20px 22px; margin-bottom:20px;">
+      <p style="font-size:15px; font-weight:bold; color:#92400E; margin:0 0 10px;">iOS 흐름 읽기 전에 — 웹이랑 뭐가 다른가</p>
+      <p style="font-size:13px; color:#444; line-height:1.8; margin:0 0 12px;">웹은 SvelteKit 안에서 역할이 두 개로 나뉘어 있어.</p>
+      <pre style="background:white; border-radius:6px; padding:12px 14px; font-size:12px; line-height:1.9; margin:0 0 12px; overflow-x:auto;">SvelteKit 안
+├── +page.svelte      → 화면 그리기 (브라우저에서 실행)
+└── +page.server.ts   → 처리 담당 (서버에서 실행 — 인증, Supabase 호출 등)
+   hooks.server.ts   → 처리 담당 (모든 요청을 가로채는 미들웨어)</pre>
+      <p style="font-size:13px; color:#444; line-height:1.8; margin:0 0 12px;">iOS도 같은 구분이 존재해. 다만 "처리 담당"이 서버가 아니라 앱 안의 구현체야.</p>
+      <pre style="background:white; border-radius:6px; padding:12px 14px; font-size:12px; line-height:1.9; margin:0 0 14px; overflow-x:auto;">iOS 앱 안
+├── SwiftUI               → 화면 그리기  (↔ +page.svelte)
+└── SupabaseAuthAdapter   → 처리 담당    (↔ +page.server.ts 역할)</pre>
+      <div class="note note-yellow" style="margin:0 0 12px;">
+        💡 <strong>같은 역할, 다른 위치</strong><br>
+        웹의 <code>+page.server.ts</code>는 <strong>SvelteKit 서버(Node.js)</strong>에서 실행돼 — 브라우저와 물리적으로 분리된 서버 프로세스야.<br>
+        iOS의 <code>SupabaseAuthAdapter</code>는 <strong>앱 안(클라이언트)</strong>에서 실행돼 — 별도 서버 없이 앱 자체가 Supabase SDK를 직접 호출해.<br><br>
+        그래서 iOS는 SvelteKit이 아예 없는 거야. 웹에서 서버가 하던 "인증 처리" 역할을 앱 내부 구현체가 직접 담당하는 구조야.
+      </div>
+      <p style="font-size:13px; color:#444; line-height:1.8; margin:0;"><code>hooks.server.ts</code> 역할(모든 요청 가로채기)은 iOS에서 <strong>Rust API의 <code>require_auth()</code> 미들웨어</strong>가 대신해. 앱이 API를 호출할 때마다 Rust 서버가 토큰을 검증하는 방식이야.</p>
+    </div>
+
     <img src="flow_ios_email.svg" alt="iOS 이메일 로그인 흐름">
     <div class="legend">
       <h2>흐름 해설</h2>
@@ -334,9 +425,25 @@
       </div>
       <ol start="6" style="line-height:2.4; font-size:14px; padding-left:20px;">
         <li>
-          <strong>GET /api/me/profile (Bearer 토큰 첨부)</strong> — ⑤에서 SDK는 Keychain에 JWT를 먼저 저장하고, 완료되면 <code>supabaseSession(accessToken 포함)</code>을 Adapter 코드로 반환한다. Adapter는 SDK가 돌려준 <code>supabaseSession.accessToken</code>을 꺼내서 Rust API의 <code>/api/me/profile</code>에 요청을 보낸다. Keychain에서 다시 꺼내는 게 아니야.
-          <pre style="background:#1e1e1e;color:#d4d4d4;padding:10px;border-radius:6px;font-size:12px;margin:8px 0;">let supabaseSession = try await client.auth.signIn(...)   // ③④⑤ 여기서 다 처리
-fetchServerProfile(token: supabaseSession.accessToken, ...)  // ⑥ 반환값에서 바로 꺼냄</pre>
+          <strong>GET /api/me/profile (Bearer 토큰 첨부)</strong> — ⑤에서 SDK는 Keychain에 JWT를 먼저 저장하고, 완료되면 <code>Session</code> 객체를 Adapter 코드로 반환한다. Adapter는 SDK가 돌려준 <code>session.accessToken</code>을 꺼내서 Rust API의 <code>/api/me/profile</code>에 요청을 보낸다. Keychain에서 다시 꺼내는 게 아니야.
+          <div class="note note-yellow" style="margin:8px 0 4px;">
+            💡 <strong><code>Session</code>은 Supabase Swift SDK가 정의한 타입이야</strong><br>
+            <pre style="background:#1e1e1e;color:#d4d4d4;padding:10px;border-radius:6px;font-size:12px;margin:8px 0;">// Supabase Swift SDK 내부에 정의된 타입
+struct Session {
+    let accessToken: String   // JWT
+    let refreshToken: String
+    let user: User
+    // ...
+}</pre>
+            <code>client.auth.signIn()</code> 호출 하나로 SDK가 두 가지를 동시에 해:<br>
+            1. Keychain에 JWT 자동 저장 (내부 처리 — 앱 재시작 후에도 로그인 유지용)<br>
+            2. <code>Session</code> 객체를 우리 코드로 반환<br><br>
+            우리는 반환된 <code>session.accessToken</code>을 바로 꺼내 쓰는 거고, Keychain을 다시 열어서 꺼내는 게 아니야.
+          </div>
+          <pre style="background:#1e1e1e;color:#d4d4d4;padding:10px;border-radius:6px;font-size:12px;margin:8px 0;">let session = try await client.auth.signIn(...)   // ③④⑤ 여기서 다 처리
+//  ↑ SDK가 반환한 Session 타입 (Keychain 저장도 SDK가 내부에서 알아서 함)
+
+fetchServerProfile(token: session.accessToken, ...)  // ⑥ 반환값에서 바로 꺼냄</pre>
           <p style="font-size:13px;margin:4px 0 8px;">이때 <code>ProfileAPI.fetchProfile</code>이 <code>URLRequest</code>에 직접 헤더를 설정해서 보내:</p>
           <pre style="background:#1e1e1e;color:#d4d4d4;padding:10px;border-radius:6px;font-size:12px;margin:4px 0 8px;">request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")</pre>
           <p style="font-size:13px;margin:4px 0 8px;"><strong>SDK가 자동으로 해주는 게 아니야.</strong> Supabase SDK는 자기 Auth 엔드포인트(③④에서 쓴 <code>client.auth.signIn</code> 같은 것들)에만 자동으로 토큰을 붙여줘. Rust API 호출은 우리 코드(<code>ProfileAPI</code>)가 수동으로 헤더를 설정하는 거야.</p>
@@ -435,15 +542,18 @@ fetchServerProfile(token: supabaseSession.accessToken, ...)  // ⑥ 반환값에
           <div class="note note-yellow" style="margin-top:6px; margin-bottom:6px;">
             💡 <strong>idToken과 rawNonce가 각각 뭐야?</strong><br>
             · <code>idToken</code> — Apple이 "이 사람 맞아"라고 서명해서 만든 JWT. 안에 <code>user_id</code>, 이메일, 그리고 ②에서 보낸 nonce 해시값이 들어있어.<br>
-            · <code>rawNonce</code> — Apple이 만든 게 아니야. ①에서 우리 앱(Frank)이 직접 만든 랜덤 값이야. iOS 콜백(<code>ASAuthorizationAppleIDCredential</code>)에는 rawNonce 필드가 없어. 앱이 <code>currentNonce</code>에 따로 저장해뒀다가 콜백 받은 후에 꺼내 쓰는 거야.
+            · <code>rawNonce</code> — Apple이 만든 게 아니야. ①에서 우리 앱(Frank)이 직접 만든 랜덤 값이야. Apple 콜백으로 idToken은 돌아오지만 rawNonce는 안 돌아와 — 앱이 <code>currentNonce</code>에 따로 보관해뒀다가 콜백 받은 후에 꺼내 쓰는 거야.
           </div>
           <div class="note note-blue" style="margin-bottom:6px;">
-            💡 <strong>nonce 흐름 정리</strong><br>
-            1. Frank 앱이 rawNonce 생성 → <code>currentNonce</code>에 보관<br>
-            2. <code>SHA256(rawNonce)</code> 해시값만 Apple에 보냄 — 원본은 안 보내<br>
-            3. Apple이 idToken 안에 그 해시값을 박아서 서명해줌<br>
-            4. ⑤에서 iOS 콜백으로 idToken만 돌아옴 → 앱이 <code>currentNonce</code>에서 rawNonce를 꺼냄<br>
-            5. ⑦에서 Supabase에 idToken + rawNonce 전달 → Supabase가 "idToken 안의 해시값 == SHA256(rawNonce) 맞아?" 검증
+            💡 <strong>nonce — 왜 필요해?</strong><br>
+            Apple 로그인 후 돌아오는 idToken을 중간에 누가 가로채서 그대로 Supabase에 보내면 — Supabase는 "진짜 Apple이 발급한 토큰이네, 통과"해버려. nonce는 "이 토큰은 지금 이 요청을 위해 딱 한 번만 유효해"를 증명하는 장치야.<br><br>
+            <strong>nonce 흐름 정리</strong><br>
+            1. Frank 앱이 rawNonce 생성 → <code>currentNonce</code>에 보관, 아무데도 안 보냄<br>
+            2. <code>SHA256(rawNonce)</code> 해시값만 Apple에 전송 — 원본은 끝까지 앱 안에만 있어<br>
+            3. Apple이 idToken 발급 시 받은 해시값을 내부에 박아서 자기 서명 봉인 — <code>{ nonce: "a3f9c2...", user: "..." }</code><br>
+            4. ⑤에서 iOS 콜백으로 idToken만 돌아옴 → 앱이 <code>currentNonce</code>에서 rawNonce 원본을 꺼냄<br>
+            5. ⑦에서 Supabase에 idToken + rawNonce 둘 다 전달 → Supabase가 직접 <code>SHA256(rawNonce)</code> 계산해서 idToken 안의 해시값과 비교 → 일치하면 통과<br><br>
+            중간에 idToken을 누가 가로채도 rawNonce 원본을 모르면 Supabase 검증을 통과할 수 없어.
           </div>
         </li>
       </ol>

@@ -1,0 +1,20 @@
+sequenceDiagram
+    actor User as User
+    participant App as Frank 앱 (SwiftUI)
+    participant Adapter as SupabaseAuthAdapter
+    participant Auth as Supabase Auth
+    participant Keychain as iOS Keychain
+    participant API as Rust API (Axum)
+
+    User->>App: ① 이메일+비밀번호 입력 후 로그인 탭
+    App->>Adapter: ② signIn(email:, password:) 호출
+    Adapter->>Auth: ③ 이메일+비밀번호로 인증 요청
+    Auth-->>Adapter: ④ JWT(access_token) 반환
+    Adapter->>Keychain: ⑤ 토큰 자동 저장 (SDK 내부 처리)
+    note over Keychain: 웹 httpOnly 쿠키와 같은 역할<br/>다른 앱 접근 차단, OS 암호화 보호
+    Adapter->>API: ⑥ GET /api/me/profile (Bearer 토큰 첨부)
+    API->>Auth: ⑦ 토큰 유효성 검증
+    Auth-->>API: ⑧ 유효 확인
+    API-->>Adapter: ⑨ Profile 반환
+    Adapter-->>App: ⑩ .authenticated(profile) 상태 전환
+    App-->>User: ⑪ 홈 화면으로 이동
