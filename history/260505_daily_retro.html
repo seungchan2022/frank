@@ -1,0 +1,358 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>일일 회고 — 2026-05-05</title>
+  <style>
+    :root {
+      --bg: #FDF6F0;
+      --text: #2D2926;
+      --accent: #D97706;
+      --accent-light: #FEF3C7;
+      --heading: #92400E;
+      --border: #E5D5C5;
+      --code-bg: #FFF7ED;
+      --card-bg: #FFFFFF;
+      --muted: #8B7B6B;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    html { -webkit-text-size-adjust: 100%; }
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Pretendard', system-ui, sans-serif;
+      font-size: 15px;
+      line-height: 1.75;
+      padding: 32px 20px 64px;
+      word-break: keep-all;
+    }
+    .container { max-width: 480px; margin: 0 auto; }
+
+    .header {
+      margin-bottom: 32px;
+      padding-bottom: 20px;
+      border-bottom: 2px solid var(--border);
+    }
+    .header-meta {
+      font-size: 11px;
+      color: var(--muted);
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      margin-bottom: 8px;
+    }
+    .header h1 {
+      font-size: 22px;
+      font-weight: 700;
+      color: var(--heading);
+      margin-bottom: 8px;
+      letter-spacing: -0.01em;
+    }
+    .header-sub {
+      font-size: 13px;
+      color: var(--muted);
+      line-height: 1.6;
+    }
+
+    h2 {
+      font-size: 17px;
+      font-weight: 700;
+      color: var(--heading);
+      margin: 36px 0 14px;
+      padding-bottom: 6px;
+      border-bottom: 1px solid var(--border);
+      letter-spacing: -0.01em;
+    }
+    h3 {
+      font-size: 15px;
+      font-weight: 700;
+      color: var(--heading);
+      margin: 24px 0 10px;
+    }
+    p {
+      margin: 10px 0;
+      color: var(--text);
+    }
+    p + p { margin-top: 14px; }
+    strong { color: var(--heading); font-weight: 700; }
+    em { color: var(--accent); font-style: normal; font-weight: 600; }
+
+    ul, ol {
+      margin: 10px 0 14px 18px;
+      padding-left: 8px;
+    }
+    li {
+      margin-bottom: 6px;
+      line-height: 1.7;
+    }
+    li::marker { color: var(--accent); }
+
+    code {
+      background: var(--code-bg);
+      border: 1px solid var(--border);
+      padding: 1px 6px;
+      border-radius: 4px;
+      font-size: 12.5px;
+      font-family: 'SF Mono', 'Menlo', monospace;
+      color: var(--heading);
+    }
+
+    blockquote {
+      background: var(--accent-light);
+      border-left: 3px solid var(--accent);
+      padding: 12px 16px;
+      margin: 16px 0;
+      border-radius: 0 8px 8px 0;
+      color: var(--heading);
+      font-size: 14px;
+    }
+    blockquote p { margin: 0; }
+
+    .card {
+      background: var(--card-bg);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 16px 18px;
+      margin: 18px 0;
+      box-shadow: 0 1px 2px rgba(146, 64, 14, 0.04);
+    }
+    .card h3 { margin-top: 0; }
+
+    .decision-meta {
+      font-size: 13px;
+      margin: 8px 0;
+    }
+    .decision-meta b {
+      display: inline-block;
+      min-width: 56px;
+      color: var(--accent);
+      font-weight: 700;
+    }
+
+    .mermaid {
+      background: var(--card-bg);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 16px 8px;
+      margin: 20px 0;
+      text-align: center;
+      overflow-x: auto;
+    }
+
+    .insight-card {
+      background: var(--accent-light);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 14px 16px;
+      margin: 12px 0;
+    }
+    .insight-card .label {
+      font-size: 11px;
+      color: var(--accent);
+      font-weight: 700;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      margin-bottom: 4px;
+    }
+    .insight-card p { margin: 4px 0 0; font-size: 14px; }
+
+    .footer {
+      margin-top: 48px;
+      padding-top: 20px;
+      border-top: 1px solid var(--border);
+      font-size: 12px;
+      color: var(--muted);
+      text-align: center;
+    }
+
+    .pill {
+      display: inline-block;
+      background: var(--accent);
+      color: #fff;
+      font-size: 11px;
+      font-weight: 700;
+      padding: 2px 8px;
+      border-radius: 10px;
+      letter-spacing: 0.04em;
+      margin-right: 4px;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+
+    <header class="header">
+      <div class="header-meta">DAILY RETRO</div>
+      <h1>🗓️ 2026-05-05 개발 회고</h1>
+      <div class="header-sub">
+        MVP16 기획 사이클 + MVP1 스터디 보강의 날.<br/>
+        “한 번 정리하면 끝난다”는 가정이 학습·도구 이해·구현 모든 영역에서 깨진 날이기도 하다.
+      </div>
+    </header>
+
+    <h2>오늘 뭘 했나</h2>
+    <p>크게 세 갈래로 흘러갔다.</p>
+
+    <p><strong>오전~오후 중반 — MVP1 로그인 스터디 보강.</strong> 어제 정리해둔 Apple/iOS 이메일 로그인 흐름을 오늘 처음부터 다시 따라가 봤다. 그런데 어제 “이해했다”고 적어둔 흐름이 오늘 다시 따라가니 곳곳에서 막혔다. 한 단계씩 짚어가다 보니 “맞긴 맞는데 다시 보면 헷갈리는” 부분이 여러 군데 — 특히 nonce가 어디서 생성되어 어디로 흘러가는지, Keychain이 실제로 무엇을 저장하는지, Session 타입이 SDK·서버·Keychain 사이에서 어떻게 변형되는지가 흐릿했다. 결국 흐름도와 노트를 거의 처음부터 다시 정리했다(<code>login_flow/</code>, <code>mvp1_stage1_notes.md</code>). 핵심은 특정 키워드 보강이 아니라, <em>어제 정리해둔 전체 흐름을 다시 따라가니 안 잡히는 부분이 있어 흐름 자체를 다시 정리했다</em>는 점.</p>
+
+    <p><strong>오후 후반 — PPT 작성하면서 훅 시스템 흐름 처음 파악.</strong> <code>260505_presentation.html</code>을 만드느라 훅 관련 파일들을 들여다봤는데, 그동안 “추가만” 해온 훅 3~4개가 실제 워크플로우에서 어떤 순서로 어떻게 호출되는지를 처음으로 그려봤다. 장치1/2/3 구조가 비로소 머리에 들어왔다 — 여전히 내부 동작 디테일까지 다 안 건 아니지만, “어떻게 흘러가는지”는 처음으로 윤곽이 잡혔다. “필요해서 추가했다”로 끝낸 도구가 사실 흐름조차 모른 채 쓰이고 있었다는 자각. 이 과정의 부산물로 step-2/3/5/6/7/8가 <code>active_step.txt</code>를 갱신 안 하고 있다는 사실(DEBT-HOOK-01)도 발견 — 기능 영향 없는 부채라 등록만 해두었다.</p>
+
+    <p><strong>저녁 — MVP16 마일스톤 기획 사이클.</strong> 오늘의 본 작업. <code>_seed</code> → 실사용 피드백 13개 → <code>_review_notes</code> 정형화 → 마일스톤 5개 → 4개 재배치 → <code>_roadmap.md</code> + <code>M1~M4</code> 정형화 → critical-review 정정 → 상태 파일 <code>MVP16:in-progress / M1:planning</code>으로 전이. 이 사이클이 가능했던 건 “기능 추가 아이디어가 없으니 일단 직접 써보자”에서 시작했기 때문.</p>
+
+    <p>마지막으로 MVP1 온보딩 스터디(stage 2)도 시작해뒀다 — <code>flow_onboarding.svg</code> + <code>mvp1_stage2_notes.md</code>.</p>
+
+    <h2>핵심 의사결정과 그 이유</h2>
+
+    <div class="card">
+      <h3><span class="pill">결정 1</span>MVP16 정체성을 “실사용 피드백 사이클”로 확정</h3>
+      <div class="decision-meta"><b>상황</b>새 기능 아이디어가 떠오르지 않아, 일단 웹·시뮬레이터·앱을 모두 돌려봤다.</div>
+      <div class="decision-meta"><b>선택지</b>(a) 새 기능 짜내기 / (b) 발견 항목으로 사이클 / (c) 절충</div>
+      <div class="decision-meta"><b>결정</b>(b). 새 기능은 다음 MVP 후보로 분리, 이번은 “오류·회귀 수정 사이클”로 정체성 박제.</div>
+      <div class="decision-meta"><b>왜</b>인터뷰·구현으로 닫힌 줄 알았던 항목이 실제로는 안 닫혀 있었다. 13건 발견. 이대로 새 기능을 또 얹는 건 흙바닥에 벽돌 더 쌓는 일.</div>
+      <div class="insight-card">
+        <div class="label">INSIGHT</div>
+        <p>“기능을 추가하는 것보다 내가 만든 것이 내 생각과 맞는지 확인하는 게 더 중요한 시점이 있다.”</p>
+      </div>
+    </div>
+
+    <div class="card">
+      <h3><span class="pill">결정 2</span>step-1·step-4 인터뷰 두 번의 이유 정형화</h3>
+      <div class="decision-meta"><b>상황</b>두 단계가 어떻게 다른지 모호했다.</div>
+      <div class="decision-meta"><b>결정</b>step-1은 “메인태스크 범위 확정”, step-4는 “서브태스크 디테일 확정”으로 역할 박제.</div>
+      <div class="decision-meta"><b>왜</b>한쪽으로 통합하면 다른 쪽 결정이 추측·생략된다. 결정 단위가 다른 두 층은 분리해야 한다.</div>
+      <div class="insight-card">
+        <div class="label">INSIGHT</div>
+        <p>비슷해 보이는 단계도 “결정 단위”가 다르면 분리해야 한다. 인터뷰 두 번은 비효율이 아니라 의도된 안전장치.</p>
+      </div>
+    </div>
+
+    <div class="card">
+      <h3><span class="pill">결정 3</span>MVP1 로그인 흐름을 다시 따라가며 노트 재정리</h3>
+      <div class="decision-meta"><b>상황</b>어제 정리한 흐름을 오늘 처음부터 다시 따라가니 곳곳에서 막혔다. 특정 키워드가 아니라 <em>흐름 자체가 다시 보면 안 잡히는</em> 형태. nonce·Keychain·Session 같은 부분이 특히 흐릿했지만, 더 큰 문제는 “어제 적은 흐름을 오늘 다시 따라갈 수가 없다”는 사실 자체였다.</div>
+      <div class="decision-meta"><b>결정</b>어제 노트를 base로 두되, 흐름을 처음부터 다시 따라가며 막힌 곳을 고치고 보강. 폐기·방치 모두 거부.</div>
+      <div class="decision-meta"><b>왜</b>어제와 오늘의 이해 차이 자체가 정보였다. 폐기하면 그 차이를 못 본다. 그대로 두는 건 가장 위험.</div>
+      <div class="insight-card">
+        <div class="label">INSIGHT</div>
+        <p><strong>정리는 학습의 시작이지 끝이 아니다.</strong> 한 번 정리해서 끝났다고 느끼는 순간이 가장 위험. 다시 따라가 보면 흐릿한 부분이 드러나고, 그 차이를 마주할 때 비로소 한 단계 깊어진다.</p>
+      </div>
+    </div>
+
+    <h2>기획/설계 과정 — MVP16이 닫히기까지</h2>
+
+    <pre class="mermaid">
+flowchart TB
+  A[새 기능 아이디어 부재] --> B[일단 직접 사용]
+  B --> C[웹·시뮬레이터·앱 모두 실행]
+  C --> D[실사용 피드백 13건]
+  D --> E[_review_notes 정형화]
+  E --> F[마일스톤 5개 초안]
+  F --> G[critical-review<br/>사실 오류 정정]
+  G --> H[마일스톤 4개 재배치<br/>M5 제거]
+  H --> I[_roadmap.md + M1~M4]
+  I --> J[상태 전이<br/>MVP16:in-progress / M1:planning]
+    </pre>
+
+    <p>이 흐름에서 가장 인상 깊은 분기 둘.</p>
+    <ul>
+      <li><strong>A → C</strong> — “기능이 안 떠오른다”가 막다른 길이 아니라 “직접 써보자”로 이어진 분기. 여기서 억지로 새 기능을 짜냈다면 MVP16 정체성이 어정쩡해졌을 것.</li>
+      <li><strong>F → G</strong> — critical-review가 사실 오류를 잡아낸 분기. D2를 M3 → M4로 이동, C2-bug를 favorites 데이터 모델 변경으로 정확화, occupation 의미 매트릭스 박제. step-1에서 발견했다면 더 늦었을 것.</li>
+    </ul>
+
+    <h2>인사이트 &amp; 피드백</h2>
+    <p>오늘 가장 무겁게 와닿은 셋이 모두 같은 패턴을 공유한다는 것을 깨달았다.</p>
+
+    <div class="insight-card">
+      <div class="label">학습</div>
+      <p>어제 정리한 로그인 흐름을 오늘 처음부터 다시 따라가니 여러 군데서 막혔다. 한 번 적은 글이 다시 읽힐 때 그대로 읽히지 않는다는 자각. 다시 따라가 보지 않으면 어디가 흐릿한지조차 알 수 없다.</p>
+    </div>
+    <div class="insight-card">
+      <div class="label">도구 이해</div>
+      <p>훅을 그동안 “필요해서 추가했다”로 끝냈다. PPT 준비하느라 훅 3~4개 파일을 들여다보면서 비로소 워크플로우에서 어떤 순서로 어떻게 호출되는지를 처음으로 그렸다. 사용은 했지만 흐름조차 모르고 있었다는 자각. 내부 동작은 여전히 모른다.</p>
+    </div>
+    <div class="insight-card">
+      <div class="label">구현</div>
+      <p>인터뷰·테스트 통과로 닫힌 게 실사용에서는 안 닫혀 있었다. 단위 테스트는 “의도대로 동작하는가”는 검증해도 “의도가 실제 사용 맥락과 맞는가”는 검증하지 못한다.</p>
+    </div>
+
+    <p>이 셋의 공통 패턴은 <em>“한 번에 끝났다고 생각하는 것이 함정”</em>이다. 학습이든 도구든 구현이든 첫 사이클은 출발점에 가깝고, 재방문·재검증이 진짜 작업이다.</p>
+
+    <pre class="mermaid">
+flowchart LR
+  L1["정리 = 이해 완료"] --> M["재방문·재검증을<br/>프로세스에 박기"]
+  L2["추가 = 도구 이해 완료"] --> M
+  L3["구현+테스트 = 기능 완료"] --> M
+  M --> N1["학습: 노트 다시 펼치기"]
+  M --> N2["도구: 흐름→내부 단계 의식"]
+  M --> N3["구현: 본인 직접 사용 E2E"]
+    </pre>
+
+    <p>실용 액션으로는 이 깨달음이 두 곳에 박혔다.</p>
+    <ul>
+      <li>MVP16 KPI의 “본인 직접 사용 E2E” 3건 (M1)</li>
+      <li>MVP16 정체성 자체가 “실사용 검증 사이클”</li>
+    </ul>
+    <p>다음 MVP 사이클에서도 이 항목이 자연스럽게 들어가게 만드는 게 다음 과제. 이번에 운 좋게 박힌 게 아니라, 구조적으로 항상 박히게.</p>
+
+    <h2>배운 것</h2>
+    <ul>
+      <li><strong>나의 사고 패턴 자각</strong>: “한 번 정리하면 끝났다”는 가정이 학습·도구·구현 세 영역에 동일하게 작동했다. 따로 보지 않고 같은 패턴으로 묶는 것이 회고의 가치였다.</li>
+      <li><strong>워크플로우 단계의 결정 단위</strong>: step-1과 step-4가 둘 다 인터뷰인 이유는 결정 단위가 다르기 때문.</li>
+      <li><strong>critical-review의 자리</strong>: 마일스톤 정의 후, 워크플로우 진입 전에 한 번 거치면 step-1 발견 비용을 크게 줄인다. 오늘 D2·C2-bug·occupation 정정이 이 위치에서 잡혔다.</li>
+      <li><strong>DEBT-HOOK-01</strong>: step-2/3/5/6/7/8가 <code>active_step.txt</code>를 갱신 안 하고 있다. <code>/init</code> 컨텍스트 복원 정확도가 떨어진다.</li>
+    </ul>
+
+    <h2>느낀 점</h2>
+    <p>기능을 추가하지 않는 MVP를 만든다는 게 처음엔 어색했다. “MVP인데 새 기능 없이 닫아도 되나?”라는 의심. 그런데 직접 써보고 13건이 줄줄이 나오는 걸 보니, 이번 사이클은 오히려 가장 “필요했던” MVP라는 확신이 들었다.</p>
+    <p>어제 정리한 로그인 흐름을 오늘 처음부터 다시 따라가 봤는데, 어제 “이해했다”고 적어둔 흐름이 오늘은 곳곳에서 막혔다. 부끄럽기보다는 신기했다 — 정리는 한 번이면 충분하다는 가정이 이렇게까지 틀릴 수 있구나.</p>
+    <p>PPT를 만들면서 훅 3~4개 파일의 흐름을 처음으로 그려본 것도 같은 결의 경험. 그동안 “필요해서 추가했다”로 끝낸 도구가 이렇게나 많구나, 흐름조차 모르고 쓰고 있었구나. 이걸 자각한 건 부담이 아니라 안도감에 가까웠다.</p>
+    <p>MVP가 늘어날수록 이전 MVP에 대한 이해도 같이 깊어져야 한다는 생각이 점점 커진다. 새로 만드는 속도와 기존을 다시 보는 속도가 너무 벌어지면, 어느 순간 내가 만든 것이 내가 모르는 것이 된다.</p>
+
+    <h2>내일 할 일</h2>
+    <div class="card">
+      <h3><span class="pill">A</span>MVP16 M1 워크플로우 진입 (메인)</h3>
+      <ul>
+        <li><code>/workflow "M1-search-tag-alignment"</code> 호출</li>
+        <li>step-1 미결정 2건 매듭짓기
+          <ul>
+            <li>A3 운영 정의: (i) 같은 검색 = 같은 결과 vs (ii) N태그 carry (모델 변경 동반)</li>
+            <li>A3 매칭 전략 진단: 통합 캐시 vs 사후 분류 (step-6에서)</li>
+          </ul>
+        </li>
+        <li>6개 아이템 분해(step-3) → step-4 인터뷰 → step-6 구현 → step-8 E2E</li>
+      </ul>
+    </div>
+    <div class="card">
+      <h3><span class="pill">B</span>MVP1 온보딩 스터디 마무리 (병행)</h3>
+      <ul>
+        <li>오늘 시작한 <code>flow_onboarding.svg</code> + <code>mvp1_stage2_notes.md</code> 정리</li>
+        <li>“한 번 정리는 출발점” 교훈을 의식하면서 어제 노트와 모순되는 부분 재검증까지 포함</li>
+      </ul>
+    </div>
+
+    <blockquote>
+      <p>MVP가 늘어날수록 이전 MVP 이해를 따라가야 한다는 자각을 행동으로 — A로 새 사이클을 시작하면서, B로 기존 이해를 깊이는 패턴을 같은 날에 같이 돌려보는 것이 내일의 실험.</p>
+    </blockquote>
+
+    <div class="footer">— 회고 작성: 2026-05-05 —</div>
+  </div>
+
+  <script type="module">
+    import mermaid from 'https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.esm.min.mjs';
+    mermaid.initialize({
+      startOnLoad: true,
+      theme: 'base',
+      themeVariables: {
+        primaryColor: '#FEF3C7',
+        primaryTextColor: '#92400E',
+        primaryBorderColor: '#D97706',
+        lineColor: '#92400E',
+        secondaryColor: '#FFF7ED',
+        tertiaryColor: '#FDF6F0',
+        background: '#FFFFFF',
+        fontFamily: '-apple-system, BlinkMacSystemFont, system-ui, sans-serif'
+      },
+      flowchart: { htmlLabels: true, curve: 'basis' }
+    });
+  </script>
+</body>
+</html>
