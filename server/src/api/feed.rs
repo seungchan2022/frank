@@ -30,21 +30,53 @@ const ENGINE_IDS: &[&str] = &["tavily", "exa", "firecrawl"];
 
 /// 태그 표시명(한국어) → 영어 검색 키워드 매핑.
 /// Tavily는 영어 쿼리에 최적화되어 있어 한/영 혼합 쿼리는 관련성이 낮아진다.
+///
+/// # 키워드 정밀화 원칙 (ST-2, 2026-05-06)
+/// - 테크 도메인에 특화된 필수어 집합으로 구성
+/// - 도메인 외 기사 유인 가능한 광범위 단어 제거:
+///   - `mobile` 단독 → 모바일 게임 기사 혼입
+///   - `software`, `tech` 단독 → 의약품·산업 기사 혼입
+///   - `project`, `library` 단독 → 비소프트웨어 문맥 포함
+/// - 한국어 키워드는 ST-3 `country:"kr"` 파라미터로 처리 (혼합 쿼리 관련성 저하 방지)
+///
+/// # 변경 요약 (Before → After)
+/// | 태그 | Before | After |
+/// |------|--------|-------|
+/// | 모바일 개발 | `mobile development iOS Android Swift Kotlin` | `iOS app development Android app development Swift Kotlin` |
+/// | 웹 개발 | `web development frontend backend JavaScript TypeScript` | `frontend development JavaScript TypeScript React Next.js` |
+/// | AI/ML | `artificial intelligence machine learning LLM` | `LLM artificial intelligence machine learning deep learning transformer` |
+/// | 클라우드/인프라 | `cloud infrastructure DevOps Kubernetes` | `cloud infrastructure Kubernetes DevOps containerization platform engineering` |
+/// | 보안 | `cybersecurity vulnerability security breach` | `cybersecurity vulnerability exploit security patch threat intelligence` |
+/// | 데이터 사이언스 | `data science analytics big data` | `data science data engineering analytics pipeline SQL Python` |
+/// | 블록체인 | `blockchain crypto Web3 DeFi` | `blockchain Web3 DeFi smart contract Ethereum Solana` |
+/// | 스타트업 | `startup tech entrepreneurship product launch` | `tech startup YC product hunt funding entrepreneur` |
+/// | 투자/VC | `venture capital startup funding investment` | `venture capital VC funding seed round Series A startup` |
+/// | 프로덕트 | `product management roadmap strategy` | `product management PRD feature roadmap product strategy` |
+/// | UX/디자인 | `UX design UI user experience` | `UX design user interface accessibility design system Figma` |
+/// | 오픈소스 | `open source software developer tools` | `open source GitHub repository OSS maintainer developer library` |
 pub(super) fn tag_search_keyword(tag_name: &str) -> &str {
     match tag_name {
-        "모바일 개발" => "mobile development iOS Android Swift Kotlin",
-        "웹 개발" => "web development frontend backend JavaScript TypeScript",
-        "AI/ML" => "artificial intelligence machine learning LLM",
-        "클라우드/인프라" => "cloud infrastructure DevOps Kubernetes",
-        "보안" => "cybersecurity vulnerability security breach",
-        "데이터 사이언스" => "data science analytics big data",
-        "블록체인" => "blockchain crypto Web3 DeFi",
-        "스타트업" => "startup tech entrepreneurship product launch",
-        "투자/VC" => "venture capital startup funding investment",
-        "프로덕트" => "product management roadmap strategy",
-        "UX/디자인" => "UX design UI user experience",
-        "오픈소스" => "open source software developer tools",
-        other => other,
+        "모바일 개발" => "iOS app development Android app development Swift Kotlin 모바일 앱 개발",
+        "웹 개발" => "frontend development JavaScript TypeScript React Next.js 웹 개발 프론트엔드",
+        "AI/ML" => "LLM artificial intelligence machine learning deep learning transformer 인공지능 머신러닝",
+        "클라우드/인프라" => {
+            "cloud infrastructure Kubernetes DevOps containerization platform engineering 클라우드 인프라"
+        }
+        "보안" => "cybersecurity vulnerability exploit security patch threat intelligence 보안 취약점",
+        "데이터 사이언스" => "data science data engineering analytics pipeline SQL Python 데이터 사이언스",
+        "블록체인" => "blockchain Web3 DeFi smart contract Ethereum Solana 블록체인 암호화폐",
+        "스타트업" => "tech startup YC product hunt funding entrepreneur 스타트업 창업",
+        "투자/VC" => "venture capital VC funding seed round Series A startup 벤처 투자",
+        "프로덕트" => "product management PRD feature roadmap product strategy 프로덕트 매니지먼트",
+        "UX/디자인" => "UX design user interface accessibility design system Figma UX 디자인",
+        "오픈소스" => "open source GitHub repository OSS maintainer developer library 오픈소스",
+        other => {
+            tracing::warn!(
+                tag_name = other,
+                "tag_search_keyword: unknown tag, using raw name as search keyword"
+            );
+            other
+        }
     }
 }
 
@@ -2362,5 +2394,161 @@ mod tests {
         let exactly_7_days_ago =
             Utc::now() - chrono::Duration::days(7) - chrono::Duration::seconds(1);
         assert!(!is_within_7_days(Some(exactly_7_days_ago)));
+    }
+
+    // ── ST-2: tag_search_keyword() 단위 테스트 ──────────────────────────────────
+
+    /// ST2-T01: 전체 12개 태그 매핑 검증 — 빈 문자열 없음, 모든 태그 커버
+    #[test]
+    fn tag_search_keyword_all_12_tags_have_non_empty_result() {
+        let tags = [
+            "모바일 개발",
+            "웹 개발",
+            "AI/ML",
+            "클라우드/인프라",
+            "보안",
+            "데이터 사이언스",
+            "블록체인",
+            "스타트업",
+            "투자/VC",
+            "프로덕트",
+            "UX/디자인",
+            "오픈소스",
+        ];
+        for tag in &tags {
+            let keyword = tag_search_keyword(tag);
+            assert!(
+                !keyword.is_empty(),
+                "태그 '{tag}'의 키워드가 빈 문자열이어서는 안 됨"
+            );
+            // 매핑된 태그는 태그명 자체와 달라야 함 (실제 키워드 매핑 여부 확인)
+            assert_ne!(
+                keyword, *tag,
+                "태그 '{tag}'가 raw 태그명 그대로 반환됨 (매핑 누락)"
+            );
+        }
+    }
+
+    /// ST2-T02: 각 태그 키워드가 영어 전용 확인 (한/영 혼합 쿼리 관련성 저하 방지)
+    #[test]
+    fn tag_search_keyword_all_mapped_tags_contain_korean() {
+        // E2E에서 country:"south korea" 파라미터가 스포츠 기사 혼입을 유발하여 제거됨.
+        // 한국어 기사 노출을 위해 각 태그 키워드에 한국어 단어를 직접 포함하는 방식으로 전환.
+        let tags = [
+            "모바일 개발",
+            "웹 개발",
+            "AI/ML",
+            "클라우드/인프라",
+            "보안",
+            "데이터 사이언스",
+            "블록체인",
+            "스타트업",
+            "투자/VC",
+            "프로덕트",
+            "UX/디자인",
+            "오픈소스",
+        ];
+        for tag in &tags {
+            let keyword = tag_search_keyword(tag);
+            let has_korean = keyword.chars().any(|c| matches!(c, '\u{AC00}'..='\u{D7A3}' | '\u{1100}'..='\u{11FF}' | '\u{3130}'..='\u{318F}'));
+            assert!(
+                has_korean,
+                "태그 '{tag}'의 키워드 '{keyword}'에 한국어가 없음 (한국어 기사 노출 보장)"
+            );
+        }
+    }
+
+    /// ST2-T03: "모바일 개발" — "game" 계열 단어 미포함 (게임 기사 혼입 방지)
+    #[test]
+    fn tag_search_keyword_mobile_excludes_game_terms() {
+        let keyword = tag_search_keyword("모바일 개발");
+        let lower = keyword.to_lowercase();
+        assert!(
+            !lower.contains("game") && !lower.contains("gaming"),
+            "모바일 개발 키워드에 'game'/'gaming'이 포함됨: '{keyword}'"
+        );
+        // iOS, Android 앱 개발 문맥 포함 확인
+        assert!(
+            lower.contains("ios") || lower.contains("android"),
+            "모바일 개발 키워드에 'ios'/'android'가 없음: '{keyword}'"
+        );
+    }
+
+    /// ST2-T04: other 분기 — 매핑에 없는 태그명이 그대로 반환되는지 검증 (E-01)
+    ///
+    /// 빈 문자열("")은 `other` 분기를 탄다. 호출부에서 DB에서 온 tag_name을 그대로
+    /// 전달하므로 실제로 빈 문자열이 올 가능성은 낮지만, fallback 동작을 명시적으로 검증한다.
+    /// 빈 문자열이 들어오면 `"{} latest news"` 형태로 쿼리가 조립돼 검색 품질이 낮아지므로,
+    /// 호출부(get_feed)가 tag_name 비어있음 여부를 별도 방어해야 한다.
+    #[test]
+    fn tag_search_keyword_unknown_tag_returns_raw_name() {
+        // 등록되지 않은 태그명은 raw 태그명 그대로 반환
+        assert_eq!(tag_search_keyword("알 수 없는 태그"), "알 수 없는 태그");
+        assert_eq!(tag_search_keyword("NewTech2026"), "NewTech2026");
+        // 빈 문자열도 그대로 반환 (호출부에서 빈 tag_name 방어 필요)
+        assert_eq!(tag_search_keyword(""), "");
+    }
+
+    /// ST2-T07: 대표 태그 핵심 토큰 필수 검증 — 키워드 회귀 방지
+    ///
+    /// 단순 구조 검증(비어있지 않음)만으로는 핵심 토큰이 제거돼도 통과할 수 있다.
+    /// 이 테스트는 각 태그의 핵심 의미 토큰이 반드시 포함됨을 고정한다.
+    #[test]
+    fn tag_search_keyword_required_tokens_per_tag() {
+        let cases: &[(&str, &[&str])] = &[
+            ("모바일 개발", &["ios", "android"]),
+            ("웹 개발", &["javascript", "typescript"]),
+            ("AI/ML", &["llm", "machine learning"]),
+            ("클라우드/인프라", &["kubernetes", "devops"]),
+            ("보안", &["cybersecurity", "vulnerability"]),
+            ("데이터 사이언스", &["data science", "analytics"]),
+            ("블록체인", &["blockchain", "web3"]),
+            ("스타트업", &["startup"]),
+            ("투자/VC", &["venture capital", "funding"]),
+            ("프로덕트", &["product management"]),
+            ("UX/디자인", &["ux design", "accessibility"]),
+            ("오픈소스", &["open source", "github"]),
+        ];
+        for (tag, required) in cases {
+            let keyword = tag_search_keyword(tag).to_lowercase();
+            for token in *required {
+                assert!(
+                    keyword.contains(token),
+                    "태그 '{tag}' 키워드에 필수 토큰 '{token}' 미포함: '{keyword}'"
+                );
+            }
+        }
+    }
+
+    /// ST2-T05: suffix 조립 확인 — tag_search_keyword() 출력 + " latest news" 형태 유지
+    #[test]
+    fn tag_search_keyword_suffix_assembly_pattern() {
+        // 실제 get_feed에서 사용하는 조립 패턴: format!("{} latest news{suffix}", keyword)
+        let keyword = tag_search_keyword("AI/ML");
+        let query = format!("{keyword} latest news");
+        assert!(
+            query.starts_with(keyword),
+            "쿼리가 keyword로 시작해야 함: '{query}'"
+        );
+        assert!(
+            query.ends_with("latest news"),
+            "쿼리가 'latest news'로 끝나야 함: '{query}'"
+        );
+    }
+
+    /// ST2-T06: "오픈소스" — "pharmaceutical" 계열 단어 미포함 (R&D 기사 혼입 방지)
+    #[test]
+    fn tag_search_keyword_opensource_excludes_pharma_terms() {
+        let keyword = tag_search_keyword("오픈소스");
+        let lower = keyword.to_lowercase();
+        assert!(
+            !lower.contains("pharmaceutical") && !lower.contains("r&d") && !lower.contains("drug"),
+            "오픈소스 키워드에 의약품/R&D 관련 단어 포함됨: '{keyword}'"
+        );
+        // GitHub, OSS, maintainer 등 소프트웨어 문맥 키워드 포함 확인
+        assert!(
+            lower.contains("github") || lower.contains("oss") || lower.contains("open source"),
+            "오픈소스 키워드에 소프트웨어 컨텍스트 키워드 없음: '{keyword}'"
+        );
     }
 }

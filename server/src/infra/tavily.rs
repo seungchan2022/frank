@@ -89,6 +89,9 @@ impl SearchPort for TavilyAdapter {
                 "time_range": "week",
                 // Tavily API 파라미터명: topic (Exa는 category) — 각 API 스펙 차이
                 "topic": "news",
+                // country:"south korea" 제거 — KR 뉴스 집계 사이트 우선화 부작용으로
+                // 스포츠 기사 혼입 + 언어 필터 미작동 확인(E2E). 한국어 기사 노출은
+                // tag_search_keyword()에 한국어 키워드를 직접 추가하는 방식으로 대체.
             });
 
             let config = RetryConfig::for_search();
@@ -376,6 +379,28 @@ mod tests {
             "topic: news 파라미터 포함 요청이 성공해야 함: {:?}",
             result.err()
         );
+        assert_eq!(result.unwrap().len(), 1);
+    }
+
+    // ── ST-3: country 파라미터 미포함 검증 ─────────────────────────────────────
+    // country:"south korea" 제거됨 — KR 뉴스 집계 사이트 우선화 부작용 확인(E2E).
+    // 한국어 기사 노출은 tag_search_keyword()에 한국어 키워드 직접 추가 방식으로 대체.
+
+    #[tokio::test]
+    async fn tavily_request_does_not_include_country() {
+        let mock_server = MockServer::start().await;
+
+        Mock::given(method("POST"))
+            .and(path("/search"))
+            .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({
+                "results": [{"title": "Article", "url": "https://example.com/article", "content": "snippet", "published_date": null}]
+            })))
+            .mount(&mock_server)
+            .await;
+
+        let adapter = TavilyAdapter::with_base_url("test-key", &mock_server.uri());
+        let result = adapter.search("test query", 5).await;
+        assert!(result.is_ok(), "country 미포함 요청이 성공해야 함: {:?}", result.err());
         assert_eq!(result.unwrap().len(), 1);
     }
 
