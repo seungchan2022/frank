@@ -2,7 +2,7 @@
 
 의도적으로 보류한 설계·구현 결정. 다음 MVP 기획 시 흡수 여부 판단.
 
-> 최종 갱신: 2026-05-06 (DEBT-MVP16-04, DEBT-MVP16-05 추가)
+> 최종 갱신: 2026-05-06 (DEBT-MVP16-02, 03 RESOLVED — MVP16 M3 완료)
 
 ---
 
@@ -254,7 +254,7 @@
 ## [DEBT-MVP16-02] occupation 삭제 불가 버그
 
 **발생**: 2026-05-05 내부 동작 분석 중 발견
-**상태**: 🔴 **OPEN**
+**상태**: ✅ **RESOLVED** (2026-05-06, MVP16 M3)
 
 **현상**: 직업(occupation)을 한번 설정하면 다른 값으로 변경은 가능하나, 아예 삭제(공백으로 비우기)가 불가능하다. 저장 버튼을 눌러도 기존 직업이 그대로 유지된다.
 
@@ -285,7 +285,7 @@
 ## [DEBT-MVP16-03] occupation 없을 때 insight 미노출 버그
 
 **발생**: 2026-05-05 내부 동작 분석 중 발견
-**상태**: 🔴 **OPEN**
+**상태**: ✅ **RESOLVED** (2026-05-06, MVP16 M2 C3 — 범용 insight 생성으로 처리)
 
 **현상**: 직업(occupation)을 설정하지 않은 사용자는 요약하기 기능에서 인사이트(insight)가 전혀 표시되지 않는다.
 
@@ -401,3 +401,29 @@ echo "step-N" > progress/active_step.txt
 **개선 방향**: snippet 품질 점수 기반 필터링 (예: 특정 boilerplate 키워드 감지 시 snippet=None 처리) 또는 Tavily `include_domains` 화이트리스트 적용(DEBT-MVP16-04와 연계).
 
 **흡수 조건**: MVP17 피드 품질 개선 작업 시
+
+---
+
+## [DEBT-MVP16-08] FakeDbAdapter cascade no-op — favorites 연동 미검증
+
+**발생**: 2026-05-06 MVP16 M3 step-7 코드리뷰 중 발견
+**상태**: 🟡 **OPEN** (하)
+
+**현상**: `FakeDbAdapter.clear_occupation`은 profiles만 변경하고 favorites를 건드리지 않음. 단위 테스트에서 occupation 삭제 시 favorites.rewrite NULL 초기화 여부가 검증되지 않는다. Postgres 통합 테스트에서만 실제 cascade 동작 확인 가능.
+
+**개선 방향**: `FakeFavoritesAdapter`에 `reset_user_rewrites()` 유틸 추가 후 `profile.rs` 통합 테스트에서 두 어댑터 연동 시나리오 커버.
+
+**흡수 조건**: 테스트 커버리지 강화 마일스톤 또는 MVP16 M4 진입 전
+
+---
+
+## [DEBT-MVP16-09] ProfileService 미분리 — 핸들러 오케스트레이션 비대
+
+**발생**: 2026-05-06 MVP16 M3 step-7 코드리뷰 중 발견
+**상태**: 🟡 **OPEN** (하)
+
+**현상**: `api/profile.rs` 핸들러가 occupation 3-상태 판단 + `DbPort` + `FavoritesPort` 순서 호출을 직접 오케스트레이션함. 현재 볼륨은 허용 가능하나 로직 추가 시 핸들러 비대화 위험.
+
+**개선 방향**: `services/profile_service.rs` 신설 후 오케스트레이션 위임. 핸들러는 파싱 + 서비스 호출 + 응답 변환만 담당.
+
+**흡수 조건**: 서비스 레이어 정비 마일스톤 또는 핸들러 로직 증가 시
