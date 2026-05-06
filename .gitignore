@@ -75,3 +75,4 @@ progress/*_dag.svg
 # === KPI runtime logs ===
 progress/kpi/bypass.log
 progress/kpi/*_manual.md
+supabase/.temp/
