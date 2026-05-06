@@ -11,7 +11,8 @@ use crate::domain::ports::{CrawlPort, FavoritesPort, LlmPort};
 /// MVP7 M1: 60초로 증가 (OpenRouter HTTP timeout 60초와 일치)
 const SUMMARIZE_TIMEOUT_SECS: u64 = 60;
 
-/// URL 크롤링 + LLM 요약 오케스트레이션.
+/// 레거시: API 핸들러에서는 미사용 — 활성 엔드포인트는 `summarize_with_occupation` 사용.
+/// insight 필드를 파싱하지 않음 (항상 None). 테스트 및 하위 호환성 목적으로 유지.
 ///
 /// - SSRF 방어: url_jail::validate로 private IP / loopback / cloud metadata 차단
 /// - 타임아웃: crawl + LLM 전체를 60초로 제한 → AppError::Timeout
@@ -71,11 +72,11 @@ where
     Ok(result)
 }
 
-/// MVP15 M3: occupation 있으면 직업 시각 인사이트 포함 요약, 없으면 insight=None.
+/// C3: occupation 무관 항상 insight non-null 반환.
 ///
-/// - occupation=None: 기존 `summarize`와 동일 동작 (insight null)
-/// - occupation=Some: summarize_with_occupation 호출 → insight 포함
-/// - M3 설계: DB 장애 시 occupation=None으로 degrade (핸들러 책임)
+/// - occupation 인자는 시그니처 호환 유지 목적으로 수신하나 LLM 호출에 전달하지 않음.
+///   (향후 `rewrite_with_occupation` 경로와의 인터페이스 일관성 보존)
+/// - DB 장애 시 occupation=None으로 degrade 가능 — insight 반환에 영향 없음.
 #[allow(clippy::too_many_arguments)]
 pub async fn summarize_with_occupation<'a, C, L, F>(
     url: &'a str,

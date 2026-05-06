@@ -56,18 +56,30 @@ const ENGINE_IDS: &[&str] = &["tavily", "exa", "firecrawl"];
 /// | 오픈소스 | `open source software developer tools` | `open source GitHub repository OSS maintainer developer library` |
 pub(super) fn tag_search_keyword(tag_name: &str) -> &str {
     match tag_name {
-        "모바일 개발" => "iOS app development Android app development Swift Kotlin 모바일 앱 개발",
-        "웹 개발" => "frontend development JavaScript TypeScript React Next.js 웹 개발 프론트엔드",
-        "AI/ML" => "LLM artificial intelligence machine learning deep learning transformer 인공지능 머신러닝",
+        "모바일 개발" => {
+            "iOS app development Android app development Swift Kotlin 모바일 앱 개발"
+        }
+        "웹 개발" => {
+            "frontend development JavaScript TypeScript React Next.js 웹 개발 프론트엔드"
+        }
+        "AI/ML" => {
+            "LLM artificial intelligence machine learning deep learning transformer 인공지능 머신러닝"
+        }
         "클라우드/인프라" => {
             "cloud infrastructure Kubernetes DevOps containerization platform engineering 클라우드 인프라"
         }
-        "보안" => "cybersecurity vulnerability exploit security patch threat intelligence 보안 취약점",
-        "데이터 사이언스" => "data science data engineering analytics pipeline SQL Python 데이터 사이언스",
+        "보안" => {
+            "cybersecurity vulnerability exploit security patch threat intelligence 보안 취약점"
+        }
+        "데이터 사이언스" => {
+            "data science data engineering analytics pipeline SQL Python 데이터 사이언스"
+        }
         "블록체인" => "blockchain Web3 DeFi smart contract Ethereum Solana 블록체인 암호화폐",
         "스타트업" => "tech startup YC product hunt funding entrepreneur 스타트업 창업",
         "투자/VC" => "venture capital VC funding seed round Series A startup 벤처 투자",
-        "프로덕트" => "product management PRD feature roadmap product strategy 프로덕트 매니지먼트",
+        "프로덕트" => {
+            "product management PRD feature roadmap product strategy 프로덕트 매니지먼트"
+        }
         "UX/디자인" => "UX design user interface accessibility design system Figma UX 디자인",
         "오픈소스" => "open source GitHub repository OSS maintainer developer library 오픈소스",
         other => {

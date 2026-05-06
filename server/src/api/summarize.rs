@@ -19,15 +19,14 @@ pub struct SummarizeRequest {
 #[derive(Debug, Serialize)]
 pub struct SummarizeResponse {
     pub summary: String,
-    /// MVP15 M3: occupation 있으면 직업 시각 인사이트, 없으면 null.
+    /// C3: occupation 무관 항상 non-null. 요약/인사이트는 직업과 무관한 독립 기능.
     /// 클라이언트 타입: `string | null` (웹), `String?` (iOS)
     pub insight: Option<String>,
 }
 
 /// POST /me/summarize
 /// URL 크롤링 + LLM 요약/인사이트 생성 → 반환.
-/// MVP15 M3: JWT → occupation 조회 → summarize_with_occupation 호출.
-/// occupation 조회 실패 시 occupation=None으로 degrade (요약 전체 outage 방지 — M3).
+/// C3: 요약/인사이트는 occupation 무관. occupation 조회는 rewrite 경로에서만 사용.
 pub async fn post_summarize<D: DbPort>(
     Extension(state): Extension<AppState<D>>,
     Extension(user): Extension<AuthUser>,
@@ -40,14 +39,14 @@ pub async fn post_summarize<D: DbPort>(
         return Err(AppError::BadRequest("title is required".to_string()));
     }
 
-    // MVP15 M3: occupation 조회 (실패 시 None으로 degrade — M3 설계 결정)
+    // C3: occupation은 rewrite 경로 전용. 여기서는 조회 실패 시 None으로 degrade (요약 전체 outage 방지).
     let occupation = match state.db.get_profile(user.id).await {
         Ok(profile) => profile.occupation,
         Err(e) => {
             tracing::warn!(
                 user_id = %user.id,
                 error = %e,
-                "occupation 조회 실패 — insight 없이 요약 진행"
+                "occupation 조회 실패 — None으로 degrade 후 요약 진행"
             );
             None
         }

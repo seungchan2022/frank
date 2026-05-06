@@ -104,20 +104,19 @@ impl LlmPort for FakeLlmAdapter {
         &'a self,
         title: &'a str,
         content: &'a str,
-        occupation: Option<&'a str>,
+        _occupation: Option<&'a str>, // C3: 요약/인사이트는 occupation 무관
     ) -> Pin<Box<dyn Future<Output = Result<LlmResponse, AppError>> + Send + 'a>> {
+        let title = title.to_string();
+        let content = content.to_string();
         Box::pin(async move {
             if self.should_fail {
                 return Err(AppError::Internal("Fake LLM failure".to_string()));
             }
-            let insight = occupation.map(|occ| {
-                format!("[{occ} 시각] *중요*: {title}에 대한 **직업 맞춤 인사이트**입니다.")
-            });
             Ok(LlmResponse {
                 summary: LlmSummary {
                     title_ko: format!("[한국어] {title}"),
                     summary: content.to_string(),
-                    insight,
+                    insight: Some(format!("*중요*: {title}에 대한 **범용 인사이트**입니다.")),
                 },
                 model: "fake-model".to_string(),
                 prompt_tokens: 100,
@@ -247,20 +246,24 @@ mod tests {
             .summarize_with_occupation("AI 기사", "내용입니다", Some("iOS 개발자"))
             .await
             .unwrap();
+        // C3: occupation 무관 항상 insight 반환
         assert!(result.summary.insight.is_some());
-        let insight = result.summary.insight.unwrap();
-        assert!(insight.contains("iOS 개발자"));
-        assert!(insight.contains("AI 기사"));
+        assert!(result.summary.insight.unwrap().contains("AI 기사"));
     }
 
     #[tokio::test]
-    async fn summarize_with_occupation_none_returns_no_insight() {
+    async fn summarize_with_occupation_none_also_returns_insight() {
+        // C3: occupation 없어도 범용 insight 반환
         let llm = FakeLlmAdapter::new();
         let result = llm
             .summarize_with_occupation("AI 기사", "내용입니다", None)
             .await
             .unwrap();
-        assert!(result.summary.insight.is_none());
+        assert!(
+            result.summary.insight.is_some(),
+            "occupation 없어도 insight non-null이어야 함"
+        );
+        assert!(result.summary.insight.unwrap().contains("AI 기사"));
     }
 
     #[tokio::test]

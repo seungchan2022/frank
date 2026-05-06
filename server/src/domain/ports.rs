@@ -138,7 +138,7 @@ pub trait LlmPort: Send + Sync {
         content: &'a str,
     ) -> Pin<Box<dyn Future<Output = Result<QuizResult, AppError>> + Send + 'a>>;
 
-    /// MVP15 M3: occupation이 있으면 직업 시각 인사이트 포함 요약, 없으면 insight=None.
+    /// C3: occupation 무관 항상 insight non-null 반환. occupation 인자는 시그니처 호환용.
     fn summarize_with_occupation<'a>(
         &'a self,
         title: &'a str,

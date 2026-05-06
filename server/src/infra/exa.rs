@@ -80,8 +80,11 @@ pub fn clean_snippet(s: &str) -> String {
     // 3. [...] 플레이스홀더 제거
     let no_placeholders = filtered.replace("[...]", "");
 
+    // 3.5 인라인 마크다운 제거 (B1): **bold**, *italic*, [text](url), _text_
+    let no_inline_md = strip_inline_markdown(&no_placeholders);
+
     // 4. 줄바꿈 → 공백, 연속 공백 정리
-    let normalized: String = no_placeholders
+    let normalized: String = no_inline_md
         .split_whitespace()
         .collect::<Vec<_>>()
         .join(" ");
@@ -100,6 +103,112 @@ pub fn clean_snippet(s: &str) -> String {
     } else {
         cutoff
     }
+}
+
+/// B1: 인라인 마크다운을 plain text로 변환.
+/// 미닫힘 쌍은 그대로 유지 (E-02).
+fn strip_inline_markdown(s: &str) -> String {
+    let no_links = strip_md_links(s);
+    let no_asterisk = strip_md_asterisk(&no_links); // **bold** 와 *italic* 을 단일 패스로 처리
+    strip_md_underline(&no_asterisk)
+}
+
+fn strip_md_links(s: &str) -> String {
+    let mut result = String::with_capacity(s.len());
+    let mut rest = s;
+    while let Some(open) = rest.find('[') {
+        result.push_str(&rest[..open]);
+        rest = &rest[open + 1..];
+        if let Some(close_bracket) = rest.find(']') {
+            let text = &rest[..close_bracket];
+            let after = &rest[close_bracket + 1..];
+            if let Some(url_rest) = after.strip_prefix('(') {
+                if let Some(close_paren) = url_rest.find(')') {
+                    result.push_str(text);
+                    rest = &url_rest[close_paren + 1..];
+                    continue;
+                } else if text.is_empty() {
+                    // []( 닫는 ) 없음 — garbage artifact, []( 통째로 제거
+                    rest = url_rest;
+                    continue;
+                }
+            }
+            result.push('[');
+            result.push_str(text);
+            rest = &rest[close_bracket..];
+        } else {
+            result.push('[');
+        }
+    }
+    result.push_str(rest);
+    result
+}
+
+/// `**bold**` 와 `*italic*` 을 단일 패스로 처리.
+/// `**` 를 먼저 확인해 `*italic*` 파서가 미닫힘 `**` 를 잘못 소비하는 것을 방지.
+fn strip_md_asterisk(s: &str) -> String {
+    let mut result = String::with_capacity(s.len());
+    let mut rest = s;
+    while let Some(pos) = rest.find('*') {
+        result.push_str(&rest[..pos]);
+        rest = &rest[pos..];
+        if rest.starts_with("**") {
+            rest = &rest[2..];
+            if let Some(close) = rest.find("**") {
+                result.push_str(&rest[..close]);
+                rest = &rest[close + 2..];
+            } else {
+                // 미닫힘 ** → 그대로 보존
+                result.push_str("**");
+                result.push_str(rest);
+                return result;
+            }
+        } else {
+            rest = &rest[1..];
+            // 닫는 단일 * 탐색 (** 는 건너뜀)
+            let mut offset = 0;
+            let mut found = false;
+            while offset < rest.len() {
+                if rest[offset..].starts_with("**") {
+                    offset += 2;
+                } else if rest[offset..].starts_with('*') {
+                    result.push_str(&rest[..offset]);
+                    rest = &rest[offset + 1..];
+                    found = true;
+                    break;
+                } else {
+                    offset += rest[offset..].chars().next().map_or(1, |c| c.len_utf8());
+                }
+            }
+            if !found {
+                // 미닫힘 * → 그대로 보존
+                result.push('*');
+                result.push_str(rest);
+                return result;
+            }
+        }
+    }
+    result.push_str(rest);
+    result
+}
+
+fn strip_md_underline(s: &str) -> String {
+    let mut result = String::with_capacity(s.len());
+    let mut rest = s;
+    while let Some(open) = rest.find('_') {
+        result.push_str(&rest[..open]);
+        rest = &rest[open + 1..];
+        if let Some(close) = rest.find('_') {
+            result.push_str(&rest[..close]);
+            rest = &rest[close + 1..];
+        } else {
+            result.push('_');
+            result.push_str(rest);
+            return result;
+        }
+    }
+    result.push_str(rest);
+    result
 }
 
 /// 스니펫 한 줄을 처리한다.
@@ -478,6 +587,17 @@ mod tests {
     }
 
     #[test]
+    fn clean_snippet_removes_empty_bracket_link_no_close_paren() {
+        // Forbes 패턴: []( Image 18... ) 닫는 ) 없음 → [](  artifact 제거
+        let input = "[]( Image 18Image 19Image 20 # Title Is Out This Month Forbes is protected by reCAPTCHA.";
+        let result = clean_snippet(input);
+        assert!(
+            !result.contains("[]("),
+            "닫는 ) 없는 []( artifact 제거: {result}"
+        );
+    }
+
+    #[test]
     fn clean_snippet_preserves_by_in_sentence() {
         // "by"가 문장 중간에 있으면 제거하면 안 됨
         let input = "The result was driven by the new policy.\nAnother sentence.";
@@ -841,5 +961,47 @@ mod tests {
             "startPublishedDate가 7일 전 범위 내여야 함: {}",
             date_str
         );
+    }
+
+    // --- B1: 인라인 마크다운 제거 단위 테스트 (T-01, T-02, T-03) ---
+
+    #[test]
+    fn clean_snippet_strips_bold_markdown() {
+        let input = "**AI**가 발전하면서 **딥러닝** 기술이 주목받고 있다.";
+        let result = clean_snippet(input);
+        assert!(!result.contains("**"), "** 기호가 제거돼야 함");
+        assert!(result.contains("AI가 발전하면서"), "텍스트는 유지돼야 함");
+        assert!(result.contains("딥러닝 기술이"), "텍스트는 유지돼야 함");
+    }
+
+    #[test]
+    fn clean_snippet_strips_link_syntax() {
+        let input = "자세한 내용은 [공식 문서](https://example.com/docs)를 참고하세요.";
+        let result = clean_snippet(input);
+        assert!(!result.contains("https://example.com"), "URL이 제거돼야 함");
+        assert!(!result.contains("]("), "]( 패턴이 제거돼야 함");
+        assert!(result.contains("공식 문서"), "링크 텍스트는 유지돼야 함");
+        assert!(result.contains("참고하세요."), "본문은 유지돼야 함");
+    }
+
+    #[test]
+    fn clean_snippet_strips_combined_markdown_patterns() {
+        let input =
+            "**Apple**이 *새로운* AI를 발표했다. [더 보기](https://apple.com)와 _업데이트_ 참고.";
+        let result = clean_snippet(input);
+        assert!(!result.contains("**"), "** 제거");
+        assert!(!result.contains("https://"), "URL 제거");
+        assert!(!result.contains("]("), "]( 제거");
+        assert!(result.contains("Apple이"), "볼드 텍스트 유지");
+        assert!(result.contains("새로운"), "이탤릭 텍스트 유지");
+        assert!(result.contains("더 보기"), "링크 텍스트 유지");
+        assert!(result.contains("업데이트"), "언더스코어 텍스트 유지");
+    }
+
+    #[test]
+    fn clean_snippet_unclosed_bold_preserved() {
+        let input = "이것은 **미닫힘 볼드 텍스트입니다.";
+        let result = clean_snippet(input);
+        assert!(result.contains("**"), "미닫힘 ** 쌍은 그대로 유지돼야 함");
     }
 }

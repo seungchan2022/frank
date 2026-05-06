@@ -400,7 +400,11 @@ mod tests {
 
         let adapter = TavilyAdapter::with_base_url("test-key", &mock_server.uri());
         let result = adapter.search("test query", 5).await;
-        assert!(result.is_ok(), "country 미포함 요청이 성공해야 함: {:?}", result.err());
+        assert!(
+            result.is_ok(),
+            "country 미포함 요청이 성공해야 함: {:?}",
+            result.err()
+        );
         assert_eq!(result.unwrap().len(), 1);
     }
 
