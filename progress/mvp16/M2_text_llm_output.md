@@ -1,7 +1,7 @@
 # M2: 텍스트·LLM 출력 정제
 
 > 프로젝트: Frank MVP16
-> 상태: 대기
+> 상태: 완료
 > 예상 기간: 2~3일
 > 의존성: M1 (서버 우선 원칙. 검색 정합 회복 후 출력 정제)
 
@@ -107,6 +107,37 @@ C3가 `profiles.occupation`을 인사이트 분기 입력으로 사용하는 한
 | 한자 후처리 재요청이 LLM 호출 빈도 2~3배 증가 | M | 변환(번역 또는 제거) 우선 검토. 재요청은 fallback. 비용 정책 메모리 정합 |
 | C3 범용 insight 복원이 occupation insight 회귀 유발 | H | 기존 occupation prompt 보존 + 범용 prompt 분기로 통합. M3 C2-bug와 occupation 의미 변경 충돌 주의 (cross-milestone) |
 | 다른 기사 raw가 snippet에 섞이는 원인이 검색 엔진 응답 자체 → M1과 의존 | M | M1 변경(검색 호출 파라미터)이 snippet 형태에 영향 가능. M1 완료 후 진입하여 응답 스키마 박제 |
+
+## Feature List
+<!-- size: 중형 | count: 20 | skip: false -->
+
+### 기능
+- [x] F-01 `clean_snippet`에 `**text**` → `text` 변환 추가
+- [x] F-02 `clean_snippet`에 `*text*` → `text` 변환 추가
+- [x] F-03 `clean_snippet`에 `[text](url)` → `text` 변환 추가 + `[](` unclosed 패턴 제거
+- [x] F-04 `clean_snippet`에 `_text_` → `text` 변환 추가
+- [x] F-05 `SYSTEM_PROMPT_SUMMARY`에 insight 필드 추가 (범용 2-3문장 분석)
+- [x] F-06 `SYSTEM_PROMPT_SUMMARY`에 한국어 전용 제약 문구 추가
+- [-] N/A (C3 occupation 분기 제거로 `SYSTEM_PROMPT_WITH_OCCUPATION` 상수 삭제됨) F-07 `SYSTEM_PROMPT_WITH_OCCUPATION`에 한국어 전용 제약 문구 추가
+- [x] F-08 `summarize_with_occupation`에서 occupation 분기 제거 → 항상 범용 프롬프트 사용 + insight 파싱 분기 제거 → occupation 무관 항상 insight 파싱
+
+### 엣지
+- [-] E-01 N/A (이미 처리됨) — `exa.rs` `Option::map` 내부에서 `clean_snippet` 호출하므로 None 케이스 자동 안전
+- [x] E-02 `**` 미닫힘 쌍(`**text` 끝 없음) — 텍스트 그대로 유지
+- [x] E-03 occupation이 Some이어도 요약/인사이트 응답이 기존과 동일
+
+### 에러
+- [x] R-01 LLM 응답에 insight 필드 누락 시 AppError::Internal 반환
+- [x] R-02 인라인 마크다운 제거 후 snippet이 빈 문자열 → None 처리
+
+### 테스트
+- [x] T-01 `clean_snippet` — `**bold**` 제거 단위 테스트 (fixture)
+- [x] T-02 `clean_snippet` — `[text](url)` → `text` 단위 테스트
+- [x] T-03 `clean_snippet` — 복합 패턴 (기존 HTML 제거 + 신규 마크다운 제거 혼합)
+- [x] T-04 `fake_llm` — occupation Some/None 모두 insight non-null 반환 확인
+- [x] T-05 occupation 없는 summarize 요청 → `SummarizeResponse.insight` non-null 통합 테스트
+- [x] T-06 occupation 있는 summarize 요청 → insight 여전히 non-null (회귀)
+- [x] T-07 `cargo test` 전체 통과 (438개)
 
 ## 참고
 

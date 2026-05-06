@@ -368,3 +368,36 @@ echo "step-N" > progress/active_step.txt
 **비용 영향**: Naver News API 무료 쿼터 25,000건/일 — 현재 사용 패턴 대비 충분.
 
 **흡수 조건**: MVP17 또는 다국어 피드 기능 작업 시
+
+---
+
+## [DEBT-MVP16-06] C1 한자 혼입 — LLM 모델 교체 평가
+
+**발생**: 2026-05-06 MVP16 M2 E2E 검증 중 확인
+**상태**: 🟡 **OPEN** (중)
+
+**현상**: `SYSTEM_PROMPT_SUMMARY`에 "Output in Korean only. Do not use Chinese characters (漢字)" 제약을 추가했으나, llama-3.3-70b-versatile이 한국어 요약 중 `不断`, `变化`, `框架` 등 한자를 혼입함. 프롬프트 제약만으로는 모델 행동 통제 불충분.
+
+**근본 원인**: llama-3.3-70b-versatile의 한국어-중국어 혼합 출력 경향. retry 방식은 비용·응답시간 2배, strip 방식은 문맥 파괴.
+
+**개선 방향**: Groq에서 한국어 instruction following이 더 강한 모델로 교체 평가.
+- 후보: `gemma2-9b-it` (Google, 경량·한국어 강함), `llama-3.1-70b-versatile`
+- **주의**: `GROQ_MODEL` 상수를 `summarize_with_occupation`과 `rewrite_with_occupation`이 공유함 → 모델 교체 시 두 기능 모두 E2E 검증 필요
+- 평가 항목: 한자 혼입 빈도, 요약 품질, 재작성 품질, 비용, 응답속도
+
+**흡수 조건**: MVP17 또는 LLM 품질 개선 마일스톤에서 전용으로 다룰 것
+
+---
+
+## [DEBT-MVP16-07] B1 보일러플레이트 snippet — 검색 소스 품질
+
+**발생**: 2026-05-06 MVP16 M2 E2E 검증 중 확인
+**상태**: 🟡 **OPEN** (하)
+
+**현상**: Forbes 등 일부 사이트에서 Tavily가 기사 본문 대신 footer/navigation 텍스트(Privacy Statement, reCAPTCHA, Subscribe 안내 등)를 snippet으로 반환. 마크다운 제거 후에도 의미 없는 텍스트가 그대로 노출됨.
+
+**근본 원인**: Tavily가 JavaScript 중심 사이트에서 실제 기사 본문 추출 실패. snippet 내용 자체가 garbage.
+
+**개선 방향**: snippet 품질 점수 기반 필터링 (예: 특정 boilerplate 키워드 감지 시 snippet=None 처리) 또는 Tavily `include_domains` 화이트리스트 적용(DEBT-MVP16-04와 연계).
+
+**흡수 조건**: MVP17 피드 품질 개선 작업 시
