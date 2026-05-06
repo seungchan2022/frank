@@ -2,7 +2,7 @@
 
 의도적으로 보류한 설계·구현 결정. 다음 MVP 기획 시 흡수 여부 판단.
 
-> 최종 갱신: 2026-05-05 (DEBT-MVP16-02, DEBT-MVP16-03, DEBT-HOOK-01 추가)
+> 최종 갱신: 2026-05-06 (DEBT-MVP16-04, DEBT-MVP16-05 추가)
 
 ---
 
@@ -330,3 +330,41 @@ echo "step-N" > progress/active_step.txt
 대상: step-2, step-3, step-5, step-6, step-7, step-8
 
 **흡수 조건**: 훅 시스템 보완 작업 시 또는 다음 워크플로우 킥오프 전
+
+---
+
+## [DEBT-MVP16-04] Tavily `include_domains` IT 전문 도메인 화이트리스트
+
+**발생**: 2026-05-06 MVP16 M1 E2E 검증 중 발견
+**상태**: 🟡 **OPEN** (중)
+
+**현상**: E2E에서 "오픈소스" 탭에 광업 기사, "웹 개발" 탭에 NFL 기사 혼입 확인. `country` 파라미터 제거 및 `tag_search_keyword()` 정밀화만으로는 Tavily 인덱스 전체 범위에서 검색하므로 무관 도메인 기사를 근본 차단하지 못함.
+
+**개선 방향**: Tavily `include_domains` 파라미터로 IT 전문 뉴스 도메인 30개 화이트리스트 적용.
+- 후보 도메인: techcrunch.com, theverge.com, wired.com, arstechnica.com, zdnet.com, venturebeat.com, github.blog, devto.medium.com 등
+- 도메인 리스트는 태그별로 다를 수 있음 (예: "투자/VC" 탭 → techcrunch.com + bloomberg.com)
+- 구현 위치: `infra/tavily.rs::search()` body JSON에 `"include_domains": [...]` 추가
+
+**리스크**: 도메인 수 제한이 너무 좁으면 특정 태그 결과 0건 발생 가능. 초기 적용 후 E2E로 부작용 확인 필요.
+
+**흡수 조건**: MVP17 피드 품질 개선 작업 시 또는 무관 기사 혼입 재발 시
+
+---
+
+## [DEBT-MVP16-05] 한국어 기사 노출 — Naver News API 어댑터
+
+**발생**: 2026-05-06 MVP16 M1 E2E 검증 중 확인
+**상태**: 🟡 **OPEN** (중)
+
+**현상**: `tag_search_keyword()`에 한국어 키워드를 추가했으나 E2E에서 한국어 기사 0건. Tavily API 인덱스가 영어 뉴스 중심이며 `language` 파라미터를 제공하지 않음. `country:"south korea"` 파라미터는 한국 뉴스 집계 사이트 우선화 부작용(스포츠/광업 혼입)만 발생시키고 언어 필터로는 동작하지 않음.
+
+**근본 원인**: Tavily가 구조적으로 한국어 기사 검색에 적합하지 않음. 한국어 기사는 별도 소스 어댑터가 필요.
+
+**개선 방향**:
+- Naver News Search API 어댑터 추가 (`infra/naver_news.rs`)
+- `SearchPort` trait 구현, `SearchFallbackChain`에 한국어 소스로 병렬 합산 또는 별도 레인으로 추가
+- 또는 한국 주요 IT 언론사(ZDNet Korea, IT조선, 디지털데일리 등) RSS 피드 어댑터
+
+**비용 영향**: Naver News API 무료 쿼터 25,000건/일 — 현재 사용 패턴 대비 충분.
+
+**흡수 조건**: MVP17 또는 다국어 피드 기능 작업 시
