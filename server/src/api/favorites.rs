@@ -65,6 +65,7 @@ pub async fn add_favorite<D: DbPort>(
         concepts: None,
         quiz_completed: false,
         rewrite: body.rewrite,
+        rewrite_occupation: None, // MVP16 M3: 신규 추가 시 미추적
     };
 
     let favorite = state.favorites.add_favorite(user.id, &item).await?;

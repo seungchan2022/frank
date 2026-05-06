@@ -97,10 +97,21 @@
 	});
 
 	// 재작성 캐시 히트 시 자동 복원 (뒤로 가기 후 재진입 시)
+	// MVP16 M3 (C2-bug): occupation 일치 시에만 복원.
+	// - occupation=null인 캐시도 정상 복원 대상 (userProfile?.occupation이 null인 경우 포함)
+	// - mismatch 시 done 상태라면 idle로 명시 전환 → 버튼 재활성화
 	$effect(() => {
 		const cached = rewriteCache.get(feedItem.url);
-		if (cached) {
-			rewritePhase = { tag: 'done', result: cached };
+		if (!cached || !userProfile) return;
+
+		const cachedOccupation = cached.occupation;
+		const currentOccupation = userProfile.occupation ?? null;
+
+		if (cachedOccupation === currentOccupation) {
+			rewritePhase = { tag: 'done', result: cached.text };
+		} else if (rewritePhase.tag === 'done') {
+			// occupation 불일치 — 기존 결과 숨기고 버튼 재활성화
+			rewritePhase = { tag: 'idle' };
 		}
 	});
 
@@ -169,13 +180,30 @@
 		}
 	}
 
+	// MVP16 M3 (C2-bug): 재작성 버튼 활성화 여부 계산.
+	// done 상태이지만 occupation이 변경된 경우 → 재활성화 (새 occupation으로 재작성 가능)
+	const canRewrite = $derived.by(() => {
+		if (rewritePhase.tag === 'loading') return false;
+		if (rewritePhase.tag === 'idle' || rewritePhase.tag === 'failed') return true;
+		if (rewritePhase.tag === 'done') {
+			// done이어도 현재 occupation과 캐시된 occupation이 다르면 재활성화
+			const cached = rewriteCache.get(feedItem.url);
+			if (!cached) return true;
+			return cached.occupation !== userProfile?.occupation;
+		}
+		return false;
+	});
+
 	async function handleRewrite() {
-		if (rewritePhase.tag === 'loading' || rewritePhase.tag === 'done') return;
+		// MVP16 M3: done 상태여도 occupation 변경 시 재실행 허용
+		if (rewritePhase.tag === 'loading') return;
+		if (rewritePhase.tag === 'done' && !canRewrite) return;
 
 		rewritePhase = { tag: 'loading' };
 		try {
 			const result = await apiClient.rewrite(feedItem.url, feedItem.title, feedItem.snippet ?? undefined);
-			rewriteCache.set(feedItem.url, result.rewrite);
+			// MVP16 M3: occupation과 함께 캐시 저장
+			rewriteCache.set(feedItem.url, result.rewrite, userProfile?.occupation ?? null);
 			rewritePhase = { tag: 'done', result: result.rewrite };
 		} catch (e) {
 			const message =
@@ -376,7 +404,7 @@
 					onclick={handleRewrite}
 					class="w-full rounded-lg bg-teal-600 px-4 py-2 text-sm font-medium text-white hover:bg-teal-700 active:bg-teal-800"
 				>
-					✍️ 재작성하기
+					✍️ {userProfile?.occupation} 기준으로 재작성하기
 				</button>
 			{:else if rewritePhase.tag === 'loading'}
 				<div class="flex items-center gap-3 py-4">
@@ -392,8 +420,17 @@
 					].join(' ')}>{rewriteLoadingText}</span>
 				</div>
 			{:else if rewritePhase.tag === 'done'}
-				<div>
+				<div class="space-y-4">
 					<div class="prose prose-base max-w-none leading-relaxed text-gray-700 [&_p]:mb-4 [&_p:last-child]:mb-0">{@html renderMarkdown(rewritePhase.result)}</div>
+					<!-- MVP16 M3 (C2-bug): occupation 변경 시 재작성 버튼 재활성화 -->
+					{#if canRewrite}
+						<button
+							onclick={handleRewrite}
+							class="w-full rounded-lg border border-teal-300 bg-teal-50 px-4 py-2 text-sm font-medium text-teal-700 hover:bg-teal-100"
+						>
+							✍️ {userProfile?.occupation} 기준으로 다시 재작성하기
+						</button>
+					{/if}
 				</div>
 			{:else if rewritePhase.tag === 'failed'}
 				<div class="space-y-3">

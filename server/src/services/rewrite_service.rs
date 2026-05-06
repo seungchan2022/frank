@@ -66,8 +66,9 @@ where
     .map_err(|_| AppError::Timeout("재작성 요청이 시간을 초과했습니다 (60초)".to_string()))??;
 
     // favorites DB 업데이트 (실패해도 사용자 응답에 영향 없음 — best-effort)
+    // MVP16 M3: occupation도 함께 저장 (C2-bug 수정 — 재작성 당시 직업 추적)
     if let Err(e) = favorites
-        .update_favorite_rewrite(user_id, url, &result)
+        .update_favorite_rewrite(user_id, url, &result, Some(occupation))
         .await
     {
         tracing::warn!(

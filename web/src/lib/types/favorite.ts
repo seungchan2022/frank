@@ -19,6 +19,8 @@ export interface Favorite {
 	quizCompleted?: boolean;
 	/// MVP15 M3: LLM 재작성 결과. null = 미생성.
 	rewrite?: string | null;
+	/// MVP16 M3: 재작성 당시의 occupation. null = 미추적 또는 재작성 없음.
+	rewriteOccupation?: string | null;
 }
 
 /// POST /me/favorites 요청 바디.

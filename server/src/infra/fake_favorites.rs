@@ -56,6 +56,23 @@ impl Default for FakeFavoritesAdapter {
 }
 
 impl FavoritesPort for FakeFavoritesAdapter {
+    fn clear_rewrites_for_user(
+        &self,
+        user_id: Uuid,
+    ) -> Pin<Box<dyn Future<Output = Result<(), AppError>> + Send + '_>> {
+        Box::pin(async move {
+            let mut store = self.store.lock().unwrap();
+            for ((uid, _), fav) in store.0.iter_mut() {
+                if *uid == user_id {
+                    fav.rewrite = None;
+                    fav.rewrite_occupation = None;
+                    fav.insight = None;
+                }
+            }
+            Ok(())
+        })
+    }
+
     fn update_favorite_summary<'a>(
         &'a self,
         user_id: Uuid,
@@ -93,9 +110,11 @@ impl FavoritesPort for FakeFavoritesAdapter {
         user_id: Uuid,
         url: &'a str,
         rewrite: &'a str,
+        occupation: Option<&'a str>,
     ) -> Pin<Box<dyn Future<Output = Result<(), AppError>> + Send + 'a>> {
         let url = url.to_string();
         let rewrite = rewrite.to_string();
+        let occupation = occupation.map(|s| s.to_string());
 
         Box::pin(async move {
             if self.should_fail {
@@ -107,6 +126,7 @@ impl FavoritesPort for FakeFavoritesAdapter {
             // UPDATE-only: 이미 스크랩된 기사만 업데이트. 없으면 no-op.
             if let Some(fav) = guard.0.get_mut(&key) {
                 fav.rewrite = Some(rewrite);
+                fav.rewrite_occupation = occupation;
             }
 
             Ok(())
@@ -151,6 +171,7 @@ impl FavoritesPort for FakeFavoritesAdapter {
                 concepts: None,
                 quiz_completed: item.quiz_completed,
                 rewrite: None,
+                rewrite_occupation: None,
             };
 
             guard.1.push(key.clone());
@@ -284,6 +305,7 @@ mod tests {
             concepts: None,
             quiz_completed: false,
             rewrite: None,
+            rewrite_occupation: None,
         }
     }
 
@@ -491,5 +513,63 @@ mod tests {
             .update_favorite_concepts(user_id, "https://not-exist.com", vec![])
             .await;
         assert!(result.is_ok());
+    }
+
+    // MVP16 M3 T-04: update_favorite_rewrite — rewrite_occupation 함께 저장
+
+    #[tokio::test]
+    async fn update_rewrite_stores_occupation() {
+        let adapter = FakeFavoritesAdapter::new();
+        let user_id = Uuid::new_v4();
+        let url = "https://example.com/article";
+        let mut item = make_favorite(url);
+        item.user_id = user_id;
+        adapter.add_favorite(user_id, &item).await.unwrap();
+
+        adapter
+            .update_favorite_rewrite(user_id, url, "재작성 본문", Some("iOS 개발자"))
+            .await
+            .unwrap();
+
+        let fav = adapter
+            .get_favorite_by_url(user_id, url)
+            .await
+            .unwrap()
+            .unwrap();
+        assert_eq!(fav.rewrite.as_deref(), Some("재작성 본문"));
+        assert_eq!(fav.rewrite_occupation.as_deref(), Some("iOS 개발자"));
+    }
+
+    #[tokio::test]
+    async fn update_rewrite_with_none_occupation_clears() {
+        let adapter = FakeFavoritesAdapter::new();
+        let user_id = Uuid::new_v4();
+        let url = "https://example.com/article";
+        let mut item = make_favorite(url);
+        item.user_id = user_id;
+        adapter.add_favorite(user_id, &item).await.unwrap();
+
+        // occupation 있음으로 먼저 저장
+        adapter
+            .update_favorite_rewrite(user_id, url, "iOS 시각 본문", Some("iOS 개발자"))
+            .await
+            .unwrap();
+
+        // occupation 없음으로 덮어씀
+        adapter
+            .update_favorite_rewrite(user_id, url, "범용 본문", None)
+            .await
+            .unwrap();
+
+        let fav = adapter
+            .get_favorite_by_url(user_id, url)
+            .await
+            .unwrap()
+            .unwrap();
+        assert_eq!(fav.rewrite.as_deref(), Some("범용 본문"));
+        assert!(
+            fav.rewrite_occupation.is_none(),
+            "occupation 없이 저장 시 None"
+        );
     }
 }

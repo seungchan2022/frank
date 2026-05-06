@@ -205,6 +205,15 @@ impl DbPort for FakeDbAdapter {
         let counts = self.like_counts.lock().unwrap();
         Ok(*counts.get(&user_id).unwrap_or(&0))
     }
+
+    /// MVP16 M3 (D1): profiles.occupation = NULL (인메모리 구현).
+    async fn clear_occupation(&self, user_id: Uuid) -> Result<(), AppError> {
+        let mut profiles = self.profiles.lock().unwrap();
+        if let Some(profile) = profiles.get_mut(&user_id) {
+            profile.occupation = None;
+        }
+        Ok(())
+    }
 }
 
 #[cfg(test)]

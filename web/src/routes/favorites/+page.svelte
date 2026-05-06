@@ -89,8 +89,9 @@
 			summaryCache.set(fav.url, { summary: fav.summary, insight: fav.insight });
 		}
 		// 재작성이 있으면 rewriteCache에 미리 주입 → 디테일 페이지에서 즉시 복원
+		// MVP16 M3 (C2-bug): occupation도 함께 캐싱. occupation 불일치 시 복원 안 함.
 		if (fav.rewrite) {
-			rewriteCache.set(fav.url, fav.rewrite);
+			rewriteCache.set(fav.url, fav.rewrite, fav.rewriteOccupation ?? null);
 		}
 		const params = new URLSearchParams({
 			url: fav.url,

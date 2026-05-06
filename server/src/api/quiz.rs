@@ -141,6 +141,7 @@ mod tests {
             concepts: None,
             quiz_completed: false,
             rewrite: None,
+            rewrite_occupation: None,
         }
     }
 

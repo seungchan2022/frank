@@ -82,6 +82,8 @@ final class ArticleDetailFeature {
             self.phase = .done(cached)
         }
         // MVP15 M3: 재작성 캐시 히트 시 즉시 done 상태로 시작
+        // MVP16 M3 (C2-bug): occupation 불일치 시 idle 유지 → 버튼 재활성화
+        // userProfile은 init 시점에 아직 로드 전이므로 occupation 검증은 loadUserProfile() 후 수행
         if let cachedRewrite = resolvedRewriteCache.get(feedItem.url.absoluteString) {
             self.rewritePhase = .done(cachedRewrite)
         }
@@ -110,12 +112,26 @@ final class ArticleDetailFeature {
     }
 
     /// MVP15 M3: 사용자 프로필 로드 (occupation 여부 확인용).
+    /// MVP16 M3 (C2-bug): 로드 후 캐시된 rewrite의 occupation과 현재 occupation 비교.
+    /// 불일치 시 rewritePhase를 idle로 되돌려 버튼 재활성화.
     func loadUserProfile() async {
         userProfile = try? await auth.currentProfile()
+
+        // occupation 변경 감지: 캐시된 rewrite가 있고 occupation이 다르면 idle로 리셋
+        let url = feedItem.url.absoluteString
+        if case .done = rewritePhase,
+           let cached = rewriteCache.getWithOccupation(url) {
+            let cachedOcc = cached.occupation
+            let currentOcc = userProfile?.occupation
+            if cachedOcc != currentOcc {
+                rewritePhase = .idle
+            }
+        }
     }
 
     /// MVP15 M3: 직업 시각으로 재작성 요청.
     /// loading 중이면 중복 호출 무시.
+    /// MVP16 M3 (C2-bug): occupation과 함께 캐시 저장.
     func loadRewrite() async {
         if case .loading = rewritePhase { return }
 
@@ -123,7 +139,8 @@ final class ArticleDetailFeature {
 
         do {
             let result = try await rewrite.rewrite(url: feedItem.url.absoluteString, title: feedItem.title)
-            rewriteCache.set(feedItem.url.absoluteString, result)
+            // MVP16 M3: occupation과 함께 캐시 저장
+            rewriteCache.set(feedItem.url.absoluteString, result, occupation: userProfile?.occupation)
             rewritePhase = .done(result)
         } catch {
             rewritePhase = .failed(rewriteErrorMessage(from: error))

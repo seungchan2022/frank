@@ -34,6 +34,13 @@ pub trait DbPort: Send + Sync {
         occupation: Option<String>,
     ) -> impl std::future::Future<Output = Result<Profile, AppError>> + Send;
 
+    /// MVP16 M3 (D1): profiles.occupation = NULL 처리.
+    /// favorites cascade는 FavoritesPort::clear_rewrites_for_user 와 함께 best-effort 호출.
+    fn clear_occupation(
+        &self,
+        user_id: Uuid,
+    ) -> impl std::future::Future<Output = Result<(), AppError>> + Send;
+
     fn list_tags(&self) -> impl std::future::Future<Output = Result<Vec<Tag>, AppError>> + Send;
 
     fn get_user_tags(
@@ -247,14 +254,23 @@ pub trait FavoritesPort: Send + Sync {
         insight: Option<&'a str>,
     ) -> Pin<Box<dyn Future<Output = Result<(), AppError>> + Send + 'a>>;
 
+    /// MVP16 M3 (D1): 해당 user_id의 favorites 전체 rewrite/rewrite_occupation/insight = NULL.
+    /// occupation 삭제 시 best-effort로 호출 (핸들러에서 순서 조합).
+    fn clear_rewrites_for_user(
+        &self,
+        user_id: Uuid,
+    ) -> Pin<Box<dyn Future<Output = Result<(), AppError>> + Send + '_>>;
+
     /// MVP15 M3: favorites 테이블에서 해당 (user_id, url) 행의 rewrite를 저장.
     /// url이 favorites에 없으면 upsert로 row 자동 생성 (비즐겨찾기 기사도 저장).
     /// best-effort: 저장 실패해도 호출자가 200 반환 (E-04).
+    /// MVP16 M3: occupation도 함께 저장 (재작성 당시 직업 추적 — C2-bug 수정).
     fn update_favorite_rewrite<'a>(
         &'a self,
         user_id: Uuid,
         url: &'a str,
         rewrite: &'a str,
+        occupation: Option<&'a str>,
     ) -> Pin<Box<dyn Future<Output = Result<(), AppError>> + Send + 'a>>;
 
     /// MVP5 M3: 즐겨찾기 추가.

@@ -164,7 +164,8 @@ final class FavoritesFeature {
                     createdAt: item.createdAt,
                     imageUrl: item.imageUrl,
                     quizCompleted: true,
-                    rewrite: item.rewrite
+                    rewrite: item.rewrite,
+                    rewriteOccupation: item.rewriteOccupation
                 )
             }
         } catch {

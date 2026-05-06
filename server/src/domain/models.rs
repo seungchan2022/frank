@@ -64,6 +64,9 @@ pub struct Favorite {
     pub quiz_completed: bool,
     /// MVP15 M3: LLM 재작성 결과. None = 미생성.
     pub rewrite: Option<String>,
+    /// MVP16 M3: 재작성 당시의 occupation. None = 미추적 또는 재작성 없음.
+    /// occupation 변경 후 버튼 재활성화 여부를 판단하는데 사용.
+    pub rewrite_occupation: Option<String>,
 }
 
 /// MVP8 M1: quiz_wrong_answers 테이블 모델.

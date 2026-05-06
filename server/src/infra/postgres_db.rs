@@ -278,4 +278,14 @@ impl DbPort for PostgresDbAdapter {
 
         Ok(row.map(|(c,)| c).unwrap_or(0))
     }
+
+    /// MVP16 M3 (D1): profiles.occupation = NULL.
+    async fn clear_occupation(&self, user_id: Uuid) -> Result<(), AppError> {
+        sqlx::query("UPDATE profiles SET occupation = NULL WHERE id = $1")
+            .bind(user_id)
+            .execute(&self.pool)
+            .await
+            .map_err(|e| AppError::Internal(format!("profiles occupation clear failed: {e}")))?;
+        Ok(())
+    }
 }

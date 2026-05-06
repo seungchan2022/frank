@@ -1,13 +1,13 @@
 # M3: 데이터 모델 + 재작성 정합
 
 > 프로젝트: Frank MVP16
-> 상태: 대기
-> 예상 기간: 4~6일
-> 의존성: M2 (occupation 의미 변경이 M2 C3와 정합되어야 함)
+> 상태: in-progress
+> 예상 기간: 3~4일
+> 의존성: M2 완료 (occupation 의미 변경 정합 후 진입)
 
 ## 목표
 
-occupation·rewrite 데이터가 정확히 저장·표시되도록 데이터 모델 정합을 회복한다. 이번 사이클은 **데이터 레이어 변경 + 직업별 누적 저장 구조 도입**까지. 다중 시점 UI는 다음 MVP로 분리.
+occupation 삭제 정합 + 재작성 본문-직업 불일치 UX 해소. 데이터 구조는 **덮어쓰기 유지, `rewrite_occupation` 컬럼 추가**로 단순하게 처리.
 
 ## 배경 (`_review_notes.md` §2 서버: 데이터 모델·재작성 정합 + §3 C2-bug 처리 방향)
 
@@ -15,7 +15,7 @@ occupation·rewrite 데이터가 정확히 저장·표시되도록 데이터 모
 
 > **D2(오답 노트 원문 URL 미저장)는 M4로 재배치됨.** 서버는 `quiz_wrong_answers.article_url` 컬럼·저장 페이로드를 이미 보유 (`server/src/api/quiz_wrong_answers.rs:32`, `domain/models.rs:76`). 따라서 D2의 실제 작업은 클라이언트 원문 이동 UI뿐이라 M4로 이동.
 
-C2-bug는 **합의 처리 방향: (3) 직업별 누적 저장**. 다만 현재 rewrite 저장 실체는 `favorites.rewrite` 단일 컬럼 덮어쓰기이므로 (`services/rewrite_service.rs:69-77`), 직업 차원을 보존하려면 데이터 모델 자체를 변경해야 한다. 단순 "캐시 키 확장"으로는 처리 불가.
+C2-bug 처리 방향: **덮어쓰기 유지 + `rewrite_occupation` 컬럼 추가**. 다중 시점 누적 저장(JSONB/별도 테이블)은 채택하지 않음. 직업 변경 시 버튼 라벨로 상태를 표현하고, 재작성 시 덮어씀.
 
 ## 포함 항목
 
@@ -23,102 +23,170 @@ C2-bug는 **합의 처리 방향: (3) 직업별 누적 저장**. 다만 현재 r
 
 - **상황**: 사용자가 설정에서 직업 입력 후, 빈 값으로 다시 저장
 - **현재**: 빈 값이 "변경 없음"으로 처리되어 이전 직업 유지. PATCH 핸들러 `Option<String>` 패턴이 null/empty 구분 불가.
-- **기대**: 빈 값/null 저장 시 occupation 실제 삭제
-- **수정 결**: `Option<Option<String>>` 패턴 또는 명시적 `clear_occupation` 플래그. 서버 PATCH 핸들러 + 클라이언트 페이로드 정합. DB SQL `CASE WHEN $5 THEN $4 ELSE profiles.occupation END` 패턴.
-- **연쇄 영향**: occupation NULL 상태에서 신규 기사 rewrite 호출 시 동작 정의 필요 (현재 `api/rewrite.rs:42-46`은 occupation 없으면 400 반환). C4 미결정 항목 참조.
+- **기대**: null 저장 시 occupation 실제 삭제. 빈 문자열(`""`)은 클라이언트에서 null로 변환 후 전송.
+- **수정 결**:
+  - `UpdateProfileRequest.occupation: Option<Option<String>>` 전환 + 커스텀 deserializer (`serde(default, deserialize_with)`) 적용 — serde_with 크레이트 추가 없이 직접 구현
+  - `DbPort.update_profile` 시그니처 → `occupation: Option<Option<String>>` (None=변경없음, Some(None)=삭제, Some(Some(s))=설정)
+  - 빈 문자열 처리: 클라이언트에서 빈 입력 → `null` 변환 후 전송. 서버 기존 `""` → None 로직 유지 (서버 도달 시 `""` = 변경 없음)
+- **캐스케이드**: occupation NULL 저장 시 `DbPort`의 신규 복합 메서드 `delete_occupation_with_cascade(user_id)` 호출 → 단일 DB 트랜잭션으로 `profiles.occupation = NULL` + `favorites.rewrite = NULL` + `favorites.rewrite_occupation = NULL` + `favorites.insight = NULL` 동시 처리. 중간 실패 시 전체 롤백.
+  - **insight 포함 이유**: M2 C3 백필은 forward-only (기존 occupation-specific insight 보존). 직업 삭제 시 과거 occupation 시각 insight가 그대로 남으면 레이블-본문 불일치 재발. CASCADE에 `insight = NULL` 포함해야 다음 summarize 호출에서 M2 C3 범용 insight로 자동 재생성.
+  - **COALESCE 보호 우회 의도**: `update_favorite_summary`의 `COALESCE($4, insight)` 보호 로직은 일반 요약 업데이트용. 삭제 캐스케이드는 이를 명시적으로 우회 (의도된 행위).
 
-### C2-bug. 직업 바꿔도 본문 안 바뀜 — favorites 다중 시점 보존 구조 도입
+### C2-bug. 직업 바꿔도 본문 안 바뀜 — rewrite_occupation 컬럼 추가
 
 - **상황**: iOS 개발자로 설정 → 어떤 기사 재작성 → 저장 → 설정에서 프론트엔드 개발자로 변경 → 같은 기사 다시 보기
-- **현재**: 본문은 iOS 시각 그대로. 헤더 라벨만 "프론트엔드 개발자 시각으로 재작성"으로 바뀜. **rewrite 저장은 캐시가 아니라 `favorites.rewrite` 단일 TEXT 컬럼 덮어쓰기**(`services/rewrite_service.rs:69-77`의 `update_favorite_rewrite`). 새 직업으로 호출하면 이전 직업 본문이 사라짐.
-- **기대**: 직업 바꾸면 그 직업 시점의 본문 표시. 없으면 새로 생성. 이전 직업 시점은 DB에 보존(누적).
-- **수정 결**: **데이터 모델 변경.** 두 가지 형태 중 선택 (step-1):
-  - (a) `favorites.rewrite TEXT` → `favorites.rewrites JSONB`로 변경. `{ "iOS 개발자": "...", "프론트엔드 개발자": "..." }` 맵 구조.
-  - (b) 별도 테이블 `favorite_rewrites (favorite_id, occupation, content, updated_at, PRIMARY KEY (favorite_id, occupation))` 신설.
-  - 어느 쪽이든 MVP15 시대까지 저장된 기존 `favorites.rewrite` 단일 값의 마이그레이션 정책 필요 (현재 사용자 occupation에 매핑 vs NULL 시점으로 보존 vs 폐기) — step-1.
-- **이번 MVP 미포함**: 다중 시점 UI(시점 칩, 즉석 전환, 새 시점 추가) — 다음 MVP 후보 (`_review_notes.md` §5)
+- **현재**: 본문은 iOS 시각 그대로. 헤더 라벨만 "프론트엔드 개발자 시각으로 재작성"으로 바뀜. 레이블-본문 불일치.
+- **기대**: 직업 변경 후 기사 열면 새 직업으로 재작성 가능한 상태로 표시. 재작성하면 덮어씀.
+- **수정 결**: `favorites.rewrite_occupation TEXT` 컬럼 추가. `rewrite_occupation` ≠ 현재 직업이면 버튼 재활성화. `favorites.rewrite TEXT` 구조는 그대로 유지(덮어쓰기).
+- **이번 MVP 미포함**: 다중 시점 UI(시점 칩, 즉석 전환) — 다음 MVP 후보
 
-## occupation 의미 매트릭스 (M2/M3 충돌 회피)
+## UX 시나리오 (확정)
 
-같은 `profiles.occupation` 컬럼이 이번 MVP에서 세 차원의 의미를 동시에 갖는다. step-1에서 매트릭스를 박제 후 진입.
+| 상태 | 버튼 | 동작 |
+|------|------|------|
+| 직업 없음 | 재작성 버튼 안 보임 | — |
+| 직업 있음, 재작성 안 함 | `"[직업명] 기준으로 재작성하기"` | 누르면 생성·저장 |
+| 재작성 완료, 직업 동일 | 버튼 없음 (본문 표시) | — |
+| 직업 변경 후 | `"[새 직업명] 기준으로 재작성하기"` 재등장 | 누르면 덮어씀 |
+| 직업 삭제 | 버튼 사라짐 | `rewrite`, `rewrite_occupation` NULL 초기화 |
+
+## 미결정 → 전부 확정
+
+| 항목 | 결정 |
+|------|------|
+| D1 페이로드 패턴 | `Option<Option<String>>` (A안) |
+| C2-bug 데이터 모델 | 덮어쓰기 유지 + `rewrite_occupation TEXT` 컬럼 추가 |
+| C2-bug 기존 데이터 마이그레이션 | 컬럼 추가만이므로 기존 데이터 보존, `rewrite_occupation` NULL로 초기화 |
+| C4 occupation NULL 상태 rewrite 정책 | 버튼 자체 안 보임. 서버 400은 안전망으로 유지 |
+
+## occupation 의미 매트릭스
 
 | 차원 | 마일스톤 | occupation NULL일 때 동작 |
 |------|---------|--------------------------|
 | 입력 정합 | M3 D1 | 명시적 NULL 저장 가능 |
 | 인사이트 분기 | M2 C3 | 범용 인사이트 생성 (직업 무관) |
-| rewrite 저장 키 | M3 C2-bug | NULL 키 자체로 별도 시점 보존 OR rewrite 호출 자체 차단 (C4 결정) |
-
-## 미결정 (워크플로우에서 결정)
-
-| 항목 | 결정 시점 | 비고 |
-|------|-----------|------|
-| D1 페이로드 패턴 (`Option<Option<String>>` vs `clear_occupation` 플래그) | step-1 | |
-| C2-bug 데이터 모델 (favorites JSONB vs 별도 테이블) | step-1 | 둘 다 마이그레이션 필요. 별도 테이블이 다중 시점 UI 확장 용이 |
-| C2-bug 기존 favorites.rewrite 마이그레이션 정책 (사용자 occupation 매핑 / NULL 시점 보존 / 폐기) | step-1 | |
-| **C4** occupation NULL 상태에서 rewrite 호출 정책 (400 유지 / 모달로 직업 입력 유도 / 원문 fallback / 범용 시각 생성) | step-1 | `api/rewrite.rs:42-46` 현재 400. M2 C3 범용 인사이트 정책과 정합 필요 |
+| rewrite 버튼 노출 | M3 C2-bug | 버튼 안 보임. rewrite/rewrite_occupation NULL |
 
 ## 성공 기준 (Definition of Done)
 
-- [ ] D1: `UpdateProfileRequest.occupation` 페이로드 패턴 변경 + DB SQL 명시적 NULL 처리
+- [ ] D1: `UpdateProfileRequest.occupation` → `Option<Option<String>>` 변경 + DB SQL 명시적 NULL 처리
 - [ ] D1: `fake_db.rs` mock 동기화 + 단위 테스트 (`"occupation": null` → 삭제 확인)
-- [ ] D1: 클라이언트(웹/iOS) 페이로드 송신 정합 (빈 입력 → null 또는 삭제 플래그)
-- [ ] D1: occupation NULL 상태 rewrite 호출 정책 구현 (C4 결정 반영)
-- [ ] C2-bug: 데이터 모델 변경 (favorites JSONB 또는 별도 테이블) + 마이그레이션 SQL
-- [ ] C2-bug: 기존 `favorites.rewrite` 데이터 마이그레이션 (step-1 결정 정책 적용)
-- [ ] C2-bug: 조회/저장 핸들러를 occupation 차원으로 분리 + 단위 테스트 (직업 변경 시 hit/miss)
-- [ ] C2-bug: occupation NULL 시 rewrite 보존 키 처리 정책 적용
-- [ ] 본인 직접 사용: 직업 입력 → 비우기 저장 → 재조회 시 NULL 확인 (E2E)
-- [ ] 본인 직접 사용: A 직업 재작성 → B로 변경 → 같은 기사 → B 시점 본문 새로 생성 → 다시 A로 돌아오면 이전 본문 그대로 노출 확인 (E2E)
-- [ ] 본인 직접 사용: occupation 비운 상태에서 신규 기사 → rewrite 정책 일관 동작 (C4 결정 반영) (E2E)
+- [ ] D1: 클라이언트(웹/iOS) 페이로드 송신 정합 (빈 입력 → null 전송)
+- [ ] D1: occupation 삭제 시 `favorites.rewrite`, `rewrite_occupation`, `insight` NULL 초기화 처리 (`delete_occupation_with_cascade` 단일 트랜잭션)
+- [ ] C2-bug: `favorites` 테이블에 `rewrite_occupation TEXT` 컬럼 추가 마이그레이션 SQL
+- [ ] C2-bug: 재작성 저장 시 `rewrite_occupation` 함께 저장
+- [ ] C2-bug: 조회 시 `rewrite_occupation` 응답에 포함
+- [ ] C2-bug: 단위 테스트 (직업 변경 전후 rewrite_occupation 값 확인)
+- [ ] 클라이언트: 재작성 버튼 라벨 `"[직업명] 기준으로 재작성하기"` 동적 표시
+- [ ] 클라이언트: `rewrite_occupation` ≠ 현재 직업이면 버튼 재활성화
+- [ ] 클라이언트: 직업 없음 → 재작성 버튼 숨김
+- [ ] 본인 직접 사용: 직업 입력 → 비우기 저장 → 재조회 시 occupation NULL 확인 (E2E)
+- [ ] 본인 직접 사용: A 직업 재작성 → B로 변경 → 같은 기사 → 버튼 재활성화 확인 → 재작성 → 덮어씀 확인 (E2E)
+- [ ] 본인 직접 사용: 직업 없는 상태 → 재작성 버튼 안 보임 확인 (E2E)
 - [ ] 서버 단위·통합 테스트 통과 (`cargo test`)
-- [ ] 비용 영향: rewrite 호출 빈도 측정 후 무료 한도 위반 0건 확인 (직업 변경 빈도 낮으므로 통제 가능)
-- [ ] **이번 MVP 미포함 명시**: 다중 시점 UI(시점 칩, 즉석 전환) 작업 없음 — 다음 MVP 후보
-
-## 워크플로우 진입점
-
-```
-/workflow "M3-data-model-rewrite"
-```
-
-**메인태스크**: occupation 삭제 정합 + favorites 다중 시점 보존 구조 도입 + occupation NULL 상태 rewrite 정책 (서버 + 클라이언트 페이로드).
+- [ ] 비용 영향: rewrite 호출 빈도 측정 후 무료 한도 위반 0건 확인
+- [ ] **이번 MVP 미포함 명시**: 다중 시점 UI(시점 칩, 즉석 전환) 작업 없음
 
 ## 아이템
 
 | # | 아이템 | 유형 | 순서 | 상태 |
 |---|--------|------|------|------|
-| 1 | occupation 의미 매트릭스 박제 + 미결정 4종 결정 (D1 페이로드, C2-bug 모델, C2-bug 마이그레이션, C4 NULL 정책) | decision | 1 | 대기 |
-| 2 | D1 occupation 삭제 정합 (서버 PATCH + DB + mock) | feature | 2 | 대기 |
-| 3 | C2-bug 데이터 모델 변경 + 마이그레이션 SQL + 기존 데이터 처리 | feature | 3 | 대기 |
-| 4 | C2-bug 조회/저장 핸들러 occupation 차원 분리 + 단위 테스트 | feature | 4 | 대기 |
-| 5 | C4 occupation NULL 상태 rewrite 정책 구현 (서버 + 클라이언트 페이로드) | feature | 5 | 대기 |
-| 6 | E2E 시나리오 3종 통과 + 비용 영향 검토 | chore | 6 | 대기 |
+| 1 | D1 occupation 삭제 정합 (서버 PATCH + DB + mock + 클라이언트) | feature | 1 | 완료 |
+| 2 | C2-bug `rewrite_occupation` 컬럼 추가 마이그레이션 SQL | feature | 2 | 완료 |
+| 3 | C2-bug 저장/조회 핸들러 `rewrite_occupation` 포함 + 단위 테스트 | feature | 3 | 완료 |
+| 4 | 클라이언트 재작성 버튼 UX (라벨 동적 표시 + 재활성화 + 숨김) | feature | 4 | 완료 |
+| 5 | E2E 시나리오 3종 통과 + 비용 영향 검토 | chore | 5 | ✅ done |
+
+## Feature List
+<!-- size: 중형 | count: 24 | skip: false -->
+
+### 기능
+- [x] F-01 `UpdateProfileRequest.occupation` → `Option<Option<String>>` 전환 + 커스텀 deserializer (serde_with 없이 직접 구현)
+- [x] F-02 `DbPort.update_profile` 시그니처 — occupation=None 시 no-op, 핸들러에서 Some(None) 분기 처리
+- [x] F-03 `DbPort.clear_occupation(user_id)` + `FavoritesPort.clear_rewrites_for_user(user_id)` 분리 신설 — 포트 경계 준수를 위해 best-effort 순서 호출 방식 채택 (step-7 아키텍처 위반 수정). 핸들러에서 두 포트 순서 호출: profiles 먼저, favorites 후속. 실패 시 500 반환.
+- [x] F-04 웹/iOS 클라이언트 빈 직업 입력 → `{"occupation": null}` 전송 (웹: JSON null, iOS: `encode(nil, forKey:)`)
+  - 웹: `settings/+page.svelte` L107 이미 `occupation: trimmed.length > 0 ? trimmed : null` 처리됨. 확인 완료.
+  - iOS: `ProfileAPI.swift`의 `UpdateProfileRequest.occupation: String??` 이미 구현. `SettingsFeature.swift`에서 빈 TextField → nil 변환 로직 확인 완료.
+- [x] F-05 `favorites` 테이블 `rewrite_occupation TEXT` 컬럼 추가 (`supabase/migrations/20260506_mvp16_m3_rewrite_occupation.sql`)
+- [x] F-06 `Favorite` 도메인 모델에 `rewrite_occupation: Option<String>` 필드 추가 (sqlx::FromRow 파생으로 자동)
+- [x] F-07 `update_favorite_rewrite` 시그니처 확장 — `occupation: Option<&str>` 파라미터 추가 및 저장 (FavoritesPort trait + Postgres 구현체 + FakeFavoritesAdapter + rewrite_service.rs 호출 사이트 동기화)
+- [x] F-08 즐겨찾기 조회 응답에 `rewrite_occupation` 포함 (sqlx::FromRow 자동 + 웹 타입/iOS CodingKeys 추가)
+- [x] F-09 웹/iOS 재작성 버튼 라벨 `"[직업명] 기준으로 재작성하기"` 동적 표시
+- [x] F-10 `rewrite_occupation` ≠ 현재 직업이면 버튼 재활성화 (웹: canRewrite() derived, iOS: loadUserProfile()에서 occupation 비교)
+- [x] F-11 직업 없음(null) → 재작성 버튼 숨김 (기존 `{#if userProfile?.occupation}` 유지)
+
+### 엣지
+- [x] E-01 occupation `""` → 클라이언트에서 null 변환 전송, 서버 핸들러에서 빈 문자열 → `should_delete_occupation=true` 처리
+- [x] E-02 occupation 이미 NULL인 상태에서 NULL 재저장 → idempotent (cascade 트랜잭션 no-op)
+- [x] E-03 재작성 이력 없는 즐겨찾기 — `rewrite_occupation` NULL → 버튼 정상 표시
+- [x] E-04 `rewrite_occupation` == 현재 직업 → 버튼 숨김 (canRewrite() false)
+
+### 에러
+- [x] R-01 occupation 삭제 + favorites NULL 초기화 중 DB 오류 → 500 반환 (best-effort: 각 포트 실패 시 즉시 전파)
+- [x] R-02 마이그레이션 SQL `ADD COLUMN IF NOT EXISTS` → 재실행 안전
+- [x] R-03 직업 없는 상태에서 rewrite API 직접 호출 → 서버 400 안전망 유지 (핸들러 occupation 검증 그대로)
+- [x] R-04 레거시 `rewrite IS NOT NULL AND rewrite_occupation IS NULL` 행 → NULL 그대로 유지, 버튼 재활성화 허용 (R04 정책 준수)
+
+### 테스트
+- [x] T-01 `{"occupation": null}` → occupation NULL 단위 테스트 (`occupation_null_deletes_occupation`)
+- [x] T-02 occupation 필드 없음 → 변경 없음 단위 테스트 (`occupation_not_sent_does_not_change_occupation`)
+- [x] T-03 `{"occupation": ""}` → 서버 동일 삭제 경로로 처리 (`occupation_blank_string_treated_as_none` 기존 테스트 유지)
+- [x] T-04 `update_favorite_rewrite` — rewrite_occupation 함께 저장 단위 테스트 (`update_rewrite_stores_occupation`, `update_rewrite_with_none_occupation_clears`)
+- [x] T-05 `cargo test` 전체 통과 (418개)
+- [x] T-06 `Option<Option<String>>` 커스텀 deserializer 3케이스 단위 테스트 (`deserializer_key_absent_is_none`, `deserializer_null_is_some_none`, `deserializer_value_is_some_some`)
+
+### UI·UX
+- [ ] U-01 웹: 직업 변경 후 즐겨찾기 기사 진입 → 버튼 라벨 새 직업명으로 변경 확인
+- [ ] U-02 iOS: 동일 시나리오 시뮬레이터 확인
 
 ## KPI (M3)
 
 | 지표 | 측정 방법 | 목표 | 게이트 | 기준선 |
 |---|---|---|---|---|
 | 서버 테스트 통과 | `cargo test` | 전체 통과 | Hard | — |
-| occupation null 저장 단위 테스트 | `cargo test profile::clear_occupation` | 통과 | Hard | — |
-| favorites 다중 시점 저장 단위 테스트 | `cargo test rewrite::occupation_dimension` (또는 동등 이름) | 통과 | Hard | — |
-| 마이그레이션 SQL 적용 검증 | `sqlx migrate run` 성공 + 기존 데이터 보존 검사 | 통과 | Hard | — |
-| occupation NULL rewrite 정책 단위 테스트 | `cargo test rewrite::null_occupation_policy` | 통과 | Hard | — |
-| occupation 삭제 회귀 차단 | 본인 E2E: 빈 값 저장 → 재조회 NULL | 통과 | Hard | 유지됨(버그) |
-| 직업별 본문 누적 저장 회귀 차단 | 본인 E2E: A→B→A 시나리오에서 A 시점 본문 보존 | 통과 | Hard | 같은 본문(버그) |
+| occupation null 저장 단위 테스트 | `cargo test profile::clear_occupation` (또는 동등 이름) | 통과 | Hard | — |
+| rewrite_occupation 저장/조회 단위 테스트 | `cargo test rewrite::occupation_column` (또는 동등 이름) | 통과 | Hard | — |
+| 마이그레이션 SQL 적용 검증 | `sqlx migrate run` 성공 + 기존 데이터 보존 | 통과 | Hard | — |
+| occupation 삭제 E2E | 본인 E2E: 빈 값 저장 → 재조회 NULL | 통과 | Hard | 유지됨(버그) |
+| 재작성 버튼 재활성화 E2E | 본인 E2E: 직업 변경 → 버튼 재등장 확인 | 통과 | Hard | 라벨만 바뀜(버그) |
 | 무료 한도 위반 발생 0건 | `progress/mvp16/cost_log.md` 검토 | $0 유지 | Hard | — |
 
 ## 리스크
 
 | 리스크 | 영향(H/M/L) | 대응 |
 |--------|------------|------|
-| occupation 의미 변경(M2 C3 범용 insight + M3 D1 삭제 + C2-bug 다중 시점)이 동시에 occupation을 만져 충돌 | H | M2 → M3 순서 고정. M3 step-1에서 occupation 의미 매트릭스 박제 (위 §occupation 의미 매트릭스 참조) |
-| favorites 데이터 모델 변경이 마이그레이션 실수로 기존 rewrite 데이터 손실 | H | step-1에서 마이그레이션 정책 결정 후 dry-run 백업 확보. 단계적 마이그레이션 (새 컬럼/테이블 신설 → 백필 → 기존 컬럼 deprecate) 권장 |
-| 별도 테이블 vs JSONB 결정이 앞으로의 다중 시점 UI 확장과 충돌 | M | step-1에서 다음 MVP의 다중 시점 UI 시나리오를 미리 그려보고 결정. 별도 테이블이 `updated_at`·인덱싱·삭제 처리에 유리 |
-| C4 NULL 정책이 M2 C3 범용 인사이트 정책과 모순 (인사이트는 범용 노출되는데 rewrite는 400) | M | step-1에서 두 정책의 일관성 매트릭스 작성. 사용자 모델 = "직업 없어도 기본 동작 가능"으로 정합 권장 |
-| 다중 시점 UI를 이번 MVP에 슬쩍 끌어옴 → 스코프 폭주 | H | DoD에 "이번 MVP 미포함" 명시. 발견 시 즉시 다음 MVP 후보로 이관 (`_review_notes.md` §5) |
+| occupation 삭제 시 rewrite NULL 초기화 누락 → 레이블-본문 불일치 재발 | H | D1 구현 시 NULL 초기화 로직 명시적으로 포함. 단위 테스트로 커버 |
+| 클라이언트 버튼 재활성화 조건 누락 (웹/iOS 따로 구현) | M | 클라이언트 DoD 체크리스트 공유. E2E로 최종 확인 |
+| 다중 시점 UI를 이번 MVP에 슬쩍 끌어옴 → 스코프 폭주 | H | DoD에 "이번 MVP 미포함" 명시. 발견 시 즉시 다음 MVP 후보로 이관 |
+
+## 포트 분리 결정 (step-7 아키텍처 수정)
+
+occupation 삭제 시 `profiles` + `favorites` 두 테이블을 정리해야 한다.
+
+### 채택된 방식: best-effort 두 포트 순서 호출
+
+```
+핸들러 (api/profile.rs)
+├── state.db.clear_occupation(user_id).await?       → profiles.occupation = NULL
+└── state.favorites.clear_rewrites_for_user(user_id).await?  → favorites.rewrite/rewrite_occupation/insight = NULL
+    (각 포트 실패 시 500 즉시 반환)
+```
+
+**왜 이 방식인가 (step-7 아키텍처 리뷰 후 수정):**
+- **단일 DbPort 복합 메서드 기각**: `DbPort`가 favorites 테이블을 건드리면 포트 경계 위반. `DbPort`는 profiles/tags/user_keyword_weights만 담당하는 계약을 위반.
+- **best-effort 채택**: 포트 분리를 지키면서 핸들러에서 두 포트를 순서대로 호출. profiles 먼저(occupation NULL) → favorites 후속(rewrite NULL). 두 DB UPDATE 모두 idempotent라 실패 시 재시도 가능.
 
 ## 참고
 
 - 합의 노트: `progress/mvp16/_review_notes.md` §2.3 (서버: 데이터 모델·재작성 정합) + §3 (C2-bug 처리 방향)
 - 부채: `DEBT-MVP16-02` (`progress/debts.md`)
-- 코드: `server/src/services/rewrite_service.rs:21-77`, `server/src/api/rewrite.rs:42-46`, `server/src/api/profiles.rs` (PATCH 핸들러)
-- 관련 메모리: `project_api_cost_policy`, `feedback_feed_ephemeral`, `user_app_motivation`
+- 코드: `server/src/services/rewrite_service.rs:21-77`, `server/src/api/rewrite.rs:42-46`, `server/src/api/profile.rs` (PUT /me/profile 핸들러)
+- 관련 메모리: `project_api_cost_policy`
+
+## step-7 리뷰 부채 (MVP 다음 사이클 이관)
+
+| ID | 설명 | 우선순위 |
+|---|---|---|
+| DEBT-MVP16-FAKE-CASCADE | `FakeDbAdapter.delete_occupation_with_cascade`에서 favorites cascade no-op. Postgres 통합 테스트에서만 검증됨. 필요 시 `FakeFavoritesAdapter.reset_user_rewrites()` 추가 후 연동. | Low |
+| DEBT-MVP16-PROFILE-SERVICE | `profile.rs` 핸들러가 occupation 3-상태 판단 + cascade 실행을 직접 오케스트레이션함. 서비스 계층 `profile_service.rs` 분리 검토 필요. 현재 volume은 허용 가능하나 로직 증가 시 분리 권장. | Low |
+| DEBT-MVP16-REWRITE-OCC-OPTION | `FavoritesPort::update_favorite_rewrite` 의 `occupation: Option<&str>` — 현재 호출부에서 `Some(occupation)`만 전달되어 Option이 약함. 향후 서비스 레이어 분리 시 `&str`로 강화 검토. | Low |

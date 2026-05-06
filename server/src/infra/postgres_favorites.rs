@@ -22,6 +22,22 @@ impl PostgresFavoritesAdapter {
 }
 
 impl FavoritesPort for PostgresFavoritesAdapter {
+    fn clear_rewrites_for_user(
+        &self,
+        user_id: Uuid,
+    ) -> Pin<Box<dyn Future<Output = Result<(), AppError>> + Send + '_>> {
+        Box::pin(async move {
+            sqlx::query(
+                "UPDATE favorites SET rewrite = NULL, rewrite_occupation = NULL, insight = NULL WHERE user_id = $1",
+            )
+            .bind(user_id)
+            .execute(&self.pool)
+            .await
+            .map_err(|e| AppError::Internal(format!("favorites rewrite clear failed: {e}")))?;
+            Ok(())
+        })
+    }
+
     fn update_favorite_summary<'a>(
         &'a self,
         user_id: Uuid,
@@ -55,16 +71,21 @@ impl FavoritesPort for PostgresFavoritesAdapter {
         user_id: Uuid,
         url: &'a str,
         rewrite: &'a str,
+        occupation: Option<&'a str>,
     ) -> Pin<Box<dyn Future<Output = Result<(), AppError>> + Send + 'a>> {
         Box::pin(async move {
             // 이미 스크랩된 기사만 업데이트. 미스크랩 기사는 빈 row 생성 안 함.
-            sqlx::query("UPDATE favorites SET rewrite = $3 WHERE user_id = $1 AND url = $2")
-                .bind(user_id)
-                .bind(url)
-                .bind(rewrite)
-                .execute(&self.pool)
-                .await
-                .map_err(|e| AppError::Internal(format!("favorites rewrite update failed: {e}")))?;
+            // MVP16 M3: rewrite_occupation도 함께 저장 (C2-bug 수정).
+            sqlx::query(
+                "UPDATE favorites SET rewrite = $3, rewrite_occupation = $4 WHERE user_id = $1 AND url = $2",
+            )
+            .bind(user_id)
+            .bind(url)
+            .bind(rewrite)
+            .bind(occupation)
+            .execute(&self.pool)
+            .await
+            .map_err(|e| AppError::Internal(format!("favorites rewrite update failed: {e}")))?;
 
             Ok(())
         })
@@ -78,8 +99,8 @@ impl FavoritesPort for PostgresFavoritesAdapter {
         Box::pin(async move {
             match sqlx::query_as::<_, Favorite>(
                 r#"INSERT INTO favorites
-                   (user_id, title, url, snippet, source, published_at, tag_id, summary, insight, image_url, rewrite)
-                   VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
+                   (user_id, title, url, snippet, source, published_at, tag_id, summary, insight, image_url, rewrite, rewrite_occupation)
+                   VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
                    RETURNING *"#,
             )
             .bind(user_id)
@@ -93,6 +114,7 @@ impl FavoritesPort for PostgresFavoritesAdapter {
             .bind(&item.insight)
             .bind(&item.image_url)
             .bind(&item.rewrite)
+            .bind(&item.rewrite_occupation)
             .fetch_one(&self.pool)
             .await
             {

@@ -385,8 +385,9 @@ struct FavoritesView: View {
             SummarySessionCache.shared.set(url, SummaryResult(summary: summary, insight: item.insight))
         }
         // MVP15 M3: 재작성 결과도 캐시에 주입 — 즐겨찾기에서 진입 시 재작성 버튼 없이 바로 표시
+        // MVP16 M3 (C2-bug): occupation도 함께 캐싱. occupation 불일치 시 복원 안 함.
         if let rewrite = item.rewrite {
-            RewriteSessionCache.shared.set(url, RewriteResult(rewrite: rewrite))
+            RewriteSessionCache.shared.set(url, RewriteResult(rewrite: rewrite), occupation: item.rewriteOccupation)
         }
         return item.summary != nil
     }

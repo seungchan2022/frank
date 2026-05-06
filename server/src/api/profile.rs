@@ -1,6 +1,6 @@
 use axum::Json;
 use axum::extract::Extension;
-use serde::Deserialize;
+use serde::{Deserialize, Deserializer};
 
 use crate::domain::error::AppError;
 use crate::domain::models::Profile;
@@ -12,12 +12,29 @@ use super::AppState;
 const MAX_DISPLAY_NAME_LEN: usize = 50;
 const MAX_OCCUPATION_LEN: usize = 50;
 
+/// MVP16 M3 (D1): "키 없음" / null / 값 3-상태를 구분하는 커스텀 deserializer.
+///
+/// - 키 없음 (`#[serde(default)]`): `None`  → update_profile에 occupation=None (no-op)
+/// - null: `Some(None)`                      → delete_occupation_with_cascade 호출
+/// - 값: `Some(Some("iOS 개발자"))`           → update_profile에 occupation=Some("iOS 개발자")
+fn deserialize_some<'de, T, D>(deserializer: D) -> Result<Option<T>, D::Error>
+where
+    T: Deserialize<'de>,
+    D: Deserializer<'de>,
+{
+    T::deserialize(deserializer).map(Some)
+}
+
 #[derive(Debug, Deserialize)]
 pub struct UpdateProfileRequest {
     pub onboarding_completed: Option<bool>,
     pub display_name: Option<String>,
-    /// MVP15 M3: 직업 한 줄 (최대 50자). 빈 문자열 → None으로 처리.
-    pub occupation: Option<String>,
+    /// MVP16 M3 (D1): double optional로 3-상태 구분.
+    /// - 미전달: None (no-op)
+    /// - null: Some(None) → occupation 삭제
+    /// - 값: Some(Some(s)) → occupation 업데이트
+    #[serde(default, deserialize_with = "deserialize_some")]
+    pub occupation: Option<Option<String>>,
 }
 
 pub async fn update_profile<D: DbPort>(
@@ -43,27 +60,56 @@ pub async fn update_profile<D: DbPort>(
         None => None,
     };
 
-    // MVP15 M3: occupation 검증 + trim. 빈 문자열은 None으로 처리 (E-02).
-    let occupation = match body.occupation {
-        Some(occ) => {
+    // MVP16 M3 (D1): occupation 3-상태 분기 처리.
+    // Some(None) = null 전송 = 삭제 의도 → cascade 트랜잭션 실행
+    // Some(Some(s)) = 값 전송 → update_profile에 전달 (빈 문자열은 400)
+    // None = 미전달 → no-op (occupation 변경 없음)
+    let (occupation_for_update, should_delete_occupation) = match body.occupation {
+        None => (None, false),
+        Some(None) => {
+            // null 전송 = 삭제 의도
+            (None, true)
+        }
+        Some(Some(occ)) => {
             let trimmed = occ.trim().to_string();
             if trimmed.is_empty() {
-                // 빈 값 입력 = 직업 삭제 의도 → None
-                None
+                // 빈 문자열도 삭제로 처리 (E-02)
+                (None, true)
             } else if trimmed.chars().count() > MAX_OCCUPATION_LEN {
                 return Err(AppError::BadRequest(format!(
                     "occupation exceeds {MAX_OCCUPATION_LEN} characters"
                 )));
             } else {
-                Some(trimmed)
+                (Some(trimmed), false)
             }
         }
-        None => None,
     };
+
+    // D1 수정: occupation 삭제 시 DbPort(profiles) → FavoritesPort(favorites) 순서로 best-effort 호출.
+    // 두 포트가 분리되어 단일 트랜잭션은 아님. favorites 초기화 실패 시 500 반환.
+    if should_delete_occupation {
+        state.db.clear_occupation(user.id).await?;
+        state.favorites.clear_rewrites_for_user(user.id).await?;
+        // 나머지 필드 업데이트 (occupation은 이미 NULL)
+        if body.onboarding_completed.is_some() || display_name.is_some() {
+            let profile = state
+                .db
+                .update_profile(user.id, body.onboarding_completed, display_name, None)
+                .await?;
+            return Ok(Json(profile));
+        }
+        let profile = state.db.get_profile(user.id).await?;
+        return Ok(Json(profile));
+    }
 
     let profile = state
         .db
-        .update_profile(user.id, body.onboarding_completed, display_name, occupation)
+        .update_profile(
+            user.id,
+            body.onboarding_completed,
+            display_name,
+            occupation_for_update,
+        )
         .await?;
     Ok(Json(profile))
 }
@@ -269,5 +315,94 @@ mod tests {
             .json(&serde_json::json!({ "occupation": long }))
             .await;
         resp.assert_status_bad_request();
+    }
+
+    // MVP16 M3 (D1): occupation null 전송 시 삭제 테스트
+
+    #[tokio::test]
+    async fn occupation_null_deletes_occupation() {
+        // D1: null 전송 → occupation 삭제
+        let db = FakeDbAdapter::new();
+        let user_id = Uuid::new_v4();
+        // 먼저 occupation을 설정한 프로필 시드
+        db.seed_profile(Profile {
+            id: user_id,
+            display_name: Some("테스터".to_string()),
+            onboarding_completed: false,
+            occupation: Some("iOS 개발자".to_string()),
+        });
+        let state = make_test_state(db);
+        let app = make_app(state, user_id);
+        let server = TestServer::new(app);
+
+        let resp = server
+            .put("/me/profile")
+            .json(&serde_json::json!({ "occupation": null }))
+            .await;
+        resp.assert_status_ok();
+        let profile: Profile = resp.json();
+        // null 전송 → occupation 삭제
+        assert!(profile.occupation.is_none(), "occupation이 null이어야 함");
+        // 기존 display_name 유지
+        assert_eq!(profile.display_name.as_deref(), Some("테스터"));
+    }
+
+    #[tokio::test]
+    async fn occupation_not_sent_does_not_change_occupation() {
+        // D1: occupation 키 미전달 → no-op (기존 occupation 유지)
+        let db = FakeDbAdapter::new();
+        let user_id = Uuid::new_v4();
+        db.seed_profile(Profile {
+            id: user_id,
+            display_name: Some("테스터".to_string()),
+            onboarding_completed: false,
+            occupation: Some("iOS 개발자".to_string()),
+        });
+        let state = make_test_state(db);
+        let app = make_app(state, user_id);
+        let server = TestServer::new(app);
+
+        // occupation 키 없이 다른 필드만 전송
+        let resp = server
+            .put("/me/profile")
+            .json(&serde_json::json!({ "onboarding_completed": true }))
+            .await;
+        resp.assert_status_ok();
+        let profile: Profile = resp.json();
+        // occupation 변경 없음
+        assert_eq!(
+            profile.occupation.as_deref(),
+            Some("iOS 개발자"),
+            "occupation 키 미전달 시 기존 값 유지"
+        );
+    }
+
+    // MVP16 M3 T-06: 커스텀 deserializer 3케이스 단위 테스트
+
+    #[test]
+    fn deserializer_key_absent_is_none() {
+        // (a) key 자체 없음 → None
+        let json = r#"{}"#;
+        let req: UpdateProfileRequest = serde_json::from_str(json).unwrap();
+        assert!(req.occupation.is_none(), "키 없음 → None");
+    }
+
+    #[test]
+    fn deserializer_null_is_some_none() {
+        // (b) {"occupation": null} → Some(None)
+        let json = r#"{"occupation": null}"#;
+        let req: UpdateProfileRequest = serde_json::from_str(json).unwrap();
+        assert!(matches!(req.occupation, Some(None)), "null → Some(None)");
+    }
+
+    #[test]
+    fn deserializer_value_is_some_some() {
+        // (c) {"occupation": "iOS 개발자"} → Some(Some("iOS 개발자"))
+        let json = r#"{"occupation": "iOS 개발자"}"#;
+        let req: UpdateProfileRequest = serde_json::from_str(json).unwrap();
+        assert!(
+            matches!(req.occupation, Some(Some(ref s)) if s == "iOS 개발자"),
+            "값 → Some(Some(s))"
+        );
     }
 }
