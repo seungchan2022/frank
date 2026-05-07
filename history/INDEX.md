@@ -326,6 +326,25 @@
 
 ---
 
+## MVP16 — 피드 품질 고도화: 실사용 피드백 기반 오류·회귀 수정 (260505~260507)
+
+> M1(검색·태그 정합) ✅ M2(텍스트·LLM 출력 정제) ✅ M3(데이터 모델·재작성 정합) ✅ M4(클라이언트 표시·회귀) ✅ 전체 완료.
+> **한계**: M1 검색 품질(한국어 기사, 무관 기사 차단)은 방향 수정 수준 — E2E 정량 검증 미완. 검색 엔진 구조적 한계 잔존.
+
+| 유형 | 파일 | 핵심 내용 |
+|------|------|----------|
+| 로드맵 | [MVP16 로드맵](mvp16/_roadmap.md) | M1~M4 마일스톤, 12개 항목(A1~F2), KPI |
+| 시드 | [MVP16 시드](mvp16/_seed.md) | 실사용 피드백 원본, 문제 발굴 배경 |
+| 리뷰 노트 | [마일스톤 리뷰](mvp16/_review_notes.md) | 항목별 상황·현재·기대·수정 결 |
+| 마일스톤 | [M1 검색·태그 정합](mvp16/M1_search_tag_alignment.md) | tag_search_keyword 정밀화, Tavily country 파라미터 제거 |
+| 마일스톤 | [M2 텍스트·LLM 출력](mvp16/M2_text_llm_output.md) | snippet sanitize, 한자 혼입 제거, favorites.insight |
+| 마일스톤 | [M3 데이터 모델·재작성](mvp16/M3_data_model_rewrite.md) | occupation 컬럼 삭제, rewrite_occupation, favorites JSONB |
+| 마일스톤 | [M4 클라이언트 표시·회귀](mvp16/M4_client_display_regression.md) | E1(태그 칩), F2(오답 필터 버그), D2(원문 이동), F1 |
+| 진단 | [F1 진단](mvp16/F1_diagnosis.md) | iOS 피드 회귀 원인 분석 |
+| 비용 | [비용 로그](mvp16/cost_log.md) | API 비용 추적 |
+
+---
+
 ## MVP13 — 실사용 전환: 오답 태그 + 피드 품질 + 클라우드 배포 (260428~260429)
 
 > M1(서버+DB) ✅ + M2(웹+iOS) ✅ 완료. M3(클라우드 배포) ⏸ deferred — Oracle PAYG 업그레이드 오류, 지원팀 문의 중. 재개 조건: Oracle 답변 후 도쿄(ap-tokyo-1) 리전으로 재시도.
