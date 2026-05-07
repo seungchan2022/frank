@@ -2,8 +2,19 @@ import SwiftUI
 
 /// MVP8 M3: WrongAnswerRow — 오답 노트 목록 행 뷰.
 /// 기사 제목 / 문제 / 내 답 (빨간) / 정답 (초록) / 해설 표시.
+/// MVP16 M4 D2: 원문 보기 버튼 추가 — SFSafariViewController(인앱 웹뷰).
 struct WrongAnswerRow: View {
     let item: WrongAnswer
+
+    @State private var showSafari = false
+
+    /// http/https scheme만 허용 — SFSafariViewController는 http/https 외 scheme 지원 안 함
+    private var articleURL: URL? {
+        guard let url = URL(string: item.articleUrl),
+              let scheme = url.scheme?.lowercased(),
+              scheme == "http" || scheme == "https" else { return nil }
+        return url
+    }
 
     private var myAnswer: String {
         guard item.userIndex < item.options.count else { return "-" }
@@ -42,8 +53,32 @@ struct WrongAnswerRow: View {
                     .foregroundStyle(.secondary)
                     .fixedSize(horizontal: false, vertical: true)
             }
+
+            // 원문 보기 버튼 (MVP16 M4 D2)
+            // articleURL은 http/https scheme 검증을 거침 — nil이면 버튼 미표시
+            if articleURL != nil {
+                Button {
+                    showSafari = true
+                } label: {
+                    HStack(spacing: 4) {
+                        Image(systemName: "safari")
+                        Text("원문 보기")
+                    }
+                    .font(.caption)
+                    .foregroundStyle(Color.accentColor)
+                }
+                .buttonStyle(.plain)
+                .accessibilityLabel("원문 기사 열기")
+            }
         }
         .padding(.vertical, 8)
+        // sheet는 뷰 계층 상위에 위치해야 레이어 충돌 방지
+        .sheet(isPresented: $showSafari) {
+            if let url = articleURL {
+                SafariView(url: url)
+                    .ignoresSafeArea()
+            }
+        }
     }
 
     @ViewBuilder
