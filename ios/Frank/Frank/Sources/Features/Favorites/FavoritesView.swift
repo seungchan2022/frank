@@ -68,7 +68,7 @@ struct FavoritesView: View {
 
     var wrongAnswerTags: [Tag] {
         let usedTagIds = Set(wrongAnswersFeature.items.compactMap { $0.tagId })
-        return feature.tags.filter { usedTagIds.contains($0.id) }
+        return feature.allTags.filter { usedTagIds.contains($0.id) }
     }
 
     var body: some View {
@@ -249,6 +249,7 @@ struct FavoritesView: View {
                             onSelect: { newTagId in
                                 let idx = wrongAnswerTagIds.firstIndex(where: { $0 == newTagId }) ?? 0
                                 wrongAnswersPageIndex = idx
+                                wrongAnswersScrollID = idx
                             }
                         )
                         .padding(.vertical, 8)

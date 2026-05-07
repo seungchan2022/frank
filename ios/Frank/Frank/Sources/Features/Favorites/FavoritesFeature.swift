@@ -55,6 +55,9 @@ final class FavoritesFeature {
     /// addFavorite/removeFavorite 후 recomputeTags()에서 재사용.
     private var allTagsCache: [Tag] = []
 
+    /// MVP16 M4 F2: 전체 태그 목록 (즐겨찾기 필터 없음) — 오답 노트 태그 필터에 사용.
+    private(set) var allTags: [Tag] = []
+
     /// items에서 url 추출한 Set. isLiked 조회에 O(1).
     var likedUrls: Set<String> {
         Set(items.map(\.url))
@@ -99,6 +102,7 @@ final class FavoritesFeature {
             // items에 실제 존재하는 tagId 교집합만 칩으로 표시.
             // fetchAllTags 실패 시 tags = [] 로 degrade — items 로드 결과에 영향 없음.
             allTagsCache = (try? await tagPort.fetchAllTags()) ?? []
+            allTags = allTagsCache
             recomputeTags()
         } catch {
             phase = .failed(FavoritesErrorMessage.loadFailed)
