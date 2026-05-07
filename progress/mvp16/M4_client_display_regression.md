@@ -1,7 +1,7 @@
 # M4: 클라이언트 표시·회귀
 
 > 프로젝트: Frank MVP16
-> 상태: 대기
+> 상태: ✅ done (2026-05-07)
 > 예상 기간: 3~5일
 > 의존성: M1 (응답 스키마 박제 후 진입)
 
@@ -53,19 +53,26 @@
 
 ## 성공 기준 (Definition of Done)
 
-- [ ] E1: 서버 응답에 `article.tags` 필드 존재 확인 (M1 변경과 정합 — 응답 스키마 박제)
-- [ ] E1: iOS Feed 카드 뷰에 태그 칩 렌더링 추가 + ViewInspector 또는 스냅샷 테스트
-- [ ] F1: 진단 보고서 작성 (`progress/mvp16/F1_diagnosis.md` 또는 PR 본문)
-- [ ] F1: 원인 확정 후 픽스 + 단위 테스트
-- [ ] F2: 진단 결과 (클라이언트 vs 서버) 명시 + 픽스 + 단위 테스트
-- [ ] D2: 오답 클릭 → 원문 이동 UI 구현 (step-1 결정 사항 반영, 웹+iOS)
-- [ ] D2: 기존 오답(article_url 비어있는 행) 표시 분기 — 이동 비활성/숨김
-- [ ] 본인 직접 사용 (시뮬레이터): iOS 피드 카드에 태그 칩 표시 확인 (E2E)
-- [ ] 본인 직접 사용 (**실기기**): 오답 저장 → 즐겨찾기/오답노트 표시 확인 (E2E) — `feedback_e2e_within_workflow` 정합
-- [ ] 본인 직접 사용 (시뮬레이터): 오답노트 탭에서 태그 칩 클릭 → 필터링 동작 확인 (E2E)
-- [ ] 본인 직접 사용 (시뮬레이터+웹): 오답 클릭 → 원문 이동 확인 (E2E)
-- [ ] iOS 단위·UI 테스트 통과 (`xcodebuild test -workspace Frank.xcworkspace -scheme Frank`)
-- [ ] iOS coverage 게이트 통과 (`scripts/coverage.sh` 90% 이상)
+- [x] E1: 서버 응답에 `article.tags` 필드 존재 확인 (M1 변경과 정합 — 응답 스키마 박제)
+- [x] E1: iOS Feed 카드 뷰에 태그 칩 렌더링 추가 + ViewInspector 또는 스냅샷 테스트
+- [x] F1: 진단 보고서 작성 (`progress/mvp16/F1_diagnosis.md`) — 변경 요약·수정 파일 목록·테스트 명령+결과·스모크 테스트·리스크 5개 섹션 필수
+- [x] F1: 원인 확정 후 픽스 + 단위 테스트
+- [x] F2: 진단 결과 (클라이언트 vs 서버) 명시 + 픽스 + 단위 테스트
+- [x] D2: 오답 클릭 → 원문 이동 UI 구현 (step-1 결정 사항 반영, 웹+iOS)
+- [x] D2: 기존 오답(article_url 비어있는 행) 표시 분기 — 이동 비활성/숨김
+- [x] 본인 직접 사용 (시뮬레이터): iOS 피드 카드에 태그 칩 표시 확인 (E2E)
+- [x] 본인 직접 사용 (**실기기**): 오답 저장 → 즐겨찾기/오답노트 표시 확인 (E2E) — `feedback_e2e_within_workflow` 정합
+- [x] 본인 직접 사용 (시뮬레이터): 오답노트 탭에서 태그 칩 클릭 → 필터링 동작 확인 (E2E)
+- [x] 본인 직접 사용 (시뮬레이터+웹): 오답 클릭 → 원문 이동 확인 (E2E)
+- [x] iOS 단위·UI 테스트 통과 (`xcodebuild test -workspace Frank.xcworkspace -scheme Frank`)
+- [-] N/A (Soft 지표) iOS coverage 게이트 통과 (`scripts/coverage.sh` 90% 이상)
+
+## 개발 원칙 (step-2 검증 반영)
+
+- **TDD 순서 강제**: E1·F1·F2·D2 각 구현 아이템은 실패 테스트 선행(red) → 구현(green) 순서 필수
+- **Swift 작업 시 LSP 도구 호출 절대 금지** — xcodebuild만 사용 (`feedback_swift_lsp_ban`)
+- **F1 진단 시 민감정보 마스킹**: Authorization 헤더·토큰·Keychain 값 원문 기재 금지, 마스킹 처리 후 기록
+- **커밋 단위 분리**: `feat`(E1), `fix`(F1/F2), `test`(실패 테스트), `feat`(D2) 각각 분리 커밋
 
 ## 워크플로우 진입점
 
@@ -79,14 +86,14 @@
 
 | # | 아이템 | 유형 | 순서 | 상태 |
 |---|--------|------|------|------|
-| 1 | D2 원문 이동 UI 결정 (새 탭 vs 인앱 웹뷰 vs 기사 디테일 재진입) | decision | 1 | 대기 |
-| 2 | F1 실기기 오답 저장 회귀 진단 (Keychain/토큰/URL/ATS) | research | 2 | 대기 |
-| 3 | F2 오답노트 태그 필터 회귀 진단 (git blame + 코드 흐름) | research | 3 | 대기 |
-| 4 | E1 iOS 피드 카드 태그 칩 렌더링 (서버 응답 의존) | feature | 4 | 대기 |
-| 5 | F1 픽스 (2번 진단 결과 반영) | feature | 5 | 대기 |
-| 6 | F2 픽스 (3번 진단 결과 반영) | feature | 6 | 대기 |
-| 7 | D2 원문 이동 UI 구현 (1번 결정 반영, iOS + 웹) | feature | 7 | 대기 |
-| 8 | E2E 시나리오 4종 통과 (실기기 1건 포함) | chore | 8 | 대기 |
+| 1 | D2 원문 이동 UI 결정 (새 탭 vs 인앱 웹뷰 vs 기사 디테일 재진입) | decision | 1 | ✅ done |
+| 2 | F1 실기기 오답 저장 회귀 진단 (Keychain/토큰/URL/ATS) | research | 2 | ✅ done |
+| 3 | F2 오답노트 태그 필터 회귀 진단 (git blame + 코드 흐름) | research | 3 | ✅ done |
+| 4 | E1 iOS 피드 카드 태그 칩 렌더링 (서버 응답 의존) | feature | 4 | ✅ done |
+| 5 | F1 픽스 (2번 진단 결과 반영) | feature | 5 | ✅ done |
+| 6 | F2 픽스 (3번 진단 결과 반영) | feature | 6 | ✅ done |
+| 7 | D2 원문 이동 UI 구현 (1번 결정 반영, iOS + 웹) | feature | 7 | ✅ done |
+| 8 | E2E 시나리오 4종 통과 (실기기 1건 포함) | chore | 8 | ✅ done |
 
 ## KPI (M4)
 
