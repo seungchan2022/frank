@@ -10,6 +10,12 @@ allowed-tools:
 
 # Step 2: 룰즈 검증
 
+## 사전 작업 (자동, 묻지 않음)
+
+```bash
+echo "step-2" > progress/active_step.txt
+```
+
 ## 수행 작업
 
 1. **rules/ 로드**: 관련 규칙 파일 읽기

@@ -21,6 +21,12 @@ allowed-tools:
 
 # Step 7: 리팩토링 + 코드 리뷰
 
+## 사전 작업 (자동, 묻지 않음)
+
+```bash
+echo "step-7" > progress/active_step.txt
+```
+
 > 조건: 코드 수정/추가가 있는 경우에만 실행
 
 ## 전체 흐름

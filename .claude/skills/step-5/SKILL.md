@@ -21,6 +21,12 @@ allowed-tools:
 
 # Step 5: 서브태스크 리뷰
 
+## 사전 작업 (자동, 묻지 않음)
+
+```bash
+echo "step-5" > progress/active_step.txt
+```
+
 ## 수행 작업
 
 ```

@@ -42,6 +42,15 @@
             "command": "ROOT=\"${CLAUDE_PROJECT_DIR:-$(pwd)}\"; MVP=$(tr -d '[:space:]' < \"$ROOT/progress/active_mvp.txt\" 2>/dev/null); [ -n \"$MVP\" ] || exit 0; PLAN=$(ls \"$ROOT/progress\"/*MVP${MVP}*.md 2>/dev/null | head -1); [ -n \"$PLAN\" ] || exit 0; grep -q '^##[[:space:]]*KPI' \"$PLAN\" || exit 0; grep -qi 'Hard' \"$PLAN\" && echo '📊 reminder: active MVP'$MVP' has Hard KPI — run /kpi or scripts/kpi-check.sh before commit' || true"
           }
         ]
+      },
+      {
+        "matcher": "Skill",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash \"${CLAUDE_PROJECT_DIR:-$(pwd)}/.claude/hooks/update-active-step.sh\""
+          }
+        ]
       }
     ],
     "UserPromptSubmit": [

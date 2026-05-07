@@ -21,6 +21,9 @@ allowed-tools:
 ## 사전 작업 (자동, 묻지 않음)
 
 ```bash
+# 0. active_step 갱신
+echo "step-3" > progress/active_step.txt
+
 # 1. main 최신 형상으로 갱신
 git checkout main
 git pull origin main

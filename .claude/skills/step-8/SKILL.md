@@ -10,6 +10,12 @@ allowed-tools:
 
 # Step 8: 테스트
 
+## 사전 작업 (자동, 묻지 않음)
+
+```bash
+echo "step-8" > progress/active_step.txt
+```
+
 ## 프로젝트 타입 자동 감지
 
 ```bash
@@ -19,6 +25,8 @@ git diff --cached --name-only 2>/dev/null || git diff --name-only HEAD
 변경된 파일 경로를 기반으로 어떤 테스트를 실행할지 자동 결정한다.
 
 ## 테스트 명령어
+
+> **자동 실행 원칙 (필수, DEBT-HOOK-04)**: 아래 명령어는 Claude가 Bash 도구로 **직접 실행**한다. "실행해 주세요"라고 사용자에게 위임하지 않는다. 실패 시 에러를 요약해 보고하고 step-6/7 복귀를 안내한다. 시각 확인(레이아웃·애니메이션) 항목만 사용자에게 요청한다.
 
 프로젝트에 맞는 테스트 명령어를 실행한다:
 

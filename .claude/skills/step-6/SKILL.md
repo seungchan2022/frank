@@ -21,6 +21,12 @@ allowed-tools:
 
 # Step 6: 구현
 
+## 사전 작업 (자동, 묻지 않음)
+
+```bash
+echo "step-6" > progress/active_step.txt
+```
+
 ## 수행 작업
 
 1. **구현 계획 확인**: 서브태스크 문서의 구현 방법 확인
