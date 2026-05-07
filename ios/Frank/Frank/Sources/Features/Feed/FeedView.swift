@@ -140,11 +140,18 @@ struct FeedView: View {
     // MARK: - Article List
 
     private func articleList(items: [FeedItem], isCurrent: Bool) -> some View {
-        List {
+        // MVP16 M4 E1: tagId → tagName 룩업 맵 (feature.tags 기반)
+        let tagMap: [UUID: String] = Dictionary(
+            feature.tags.map { ($0.id, $0.name) },
+            uniquingKeysWith: { first, _ in first }
+        )
+
+        return List {
             ForEach(items) { item in
                 let isLiked = likesFeature.isLiked(item.url.absoluteString)
+                let tagName: String? = item.tagId.flatMap { tagMap[$0] }
                 ZStack(alignment: .bottomTrailing) {
-                    ArticleCardView(article: item)
+                    ArticleCardView(article: item, tagName: tagName)
 
                     Button {
                         Task { await likesFeature.like(feedItem: item) }

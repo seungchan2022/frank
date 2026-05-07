@@ -2,8 +2,12 @@ import SwiftUI
 
 /// MVP6 M1: ArticleCardView — 썸네일 + 텍스트 HStack 레이아웃.
 /// 왼쪽 72×72 썸네일(AsyncImage 또는 플레이스홀더) + 오른쪽 제목·source·발행일.
+/// MVP16 M4 E1: tagName 파라미터 추가 — source 뱃지 옆 태그 칩 표시.
 struct ArticleCardView: View {
     let article: Article
+    /// MVP16 M4 E1: 태그 이름. FeedView에서 tagId → tag.name 룩업 후 전달.
+    /// nil이면 칩 미표시 (태그 없는 기사 또는 매핑 실패).
+    var tagName: String? = nil
 
     var body: some View {
         HStack(alignment: .top, spacing: 12) {
@@ -23,6 +27,9 @@ struct ArticleCardView: View {
                     Text(article.source)
                     Text("\u{00B7}")
                     Text(Self.relativeTimeText(article.publishedAt))
+                    if let tagName {
+                        tagChip(tagName)
+                    }
                 }
                 .font(.caption)
                 .foregroundStyle(.secondary)
@@ -32,6 +39,21 @@ struct ArticleCardView: View {
         .padding(.vertical, 8)
         .accessibilityElement(children: .combine)
         .accessibilityLabel(article.title)
+    }
+
+    // MARK: - Tag Chip
+
+    private func tagChip(_ name: String) -> some View {
+        Text(name)
+            .font(.caption2)
+            .fontWeight(.medium)
+            .foregroundStyle(Color.accentColor)
+            .lineLimit(1)
+            .truncationMode(.tail)
+            .padding(.horizontal, 6)
+            .padding(.vertical, 2)
+            .background(Color.accentColor.opacity(0.12))
+            .clipShape(RoundedRectangle(cornerRadius: 6))
     }
 
     // MARK: - Thumbnail
