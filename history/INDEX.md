@@ -342,6 +342,7 @@
 | 마일스톤 | [M4 클라이언트 표시·회귀](mvp16/M4_client_display_regression.md) | E1(태그 칩), F2(오답 필터 버그), D2(원문 이동), F1 |
 | 진단 | [F1 진단](mvp16/F1_diagnosis.md) | iOS 피드 회귀 원인 분석 |
 | 비용 | [비용 로그](mvp16/cost_log.md) | API 비용 추적 |
+| 회고 | [260507 일일 회고](../260507_daily_retro.html) | MVP16 M1~M4 + 훅 시스템 Phase 1 (B안 채택, DEBT-HOOK-03 Phase 2 분리) |
 
 ---
 

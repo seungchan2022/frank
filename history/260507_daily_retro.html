@@ -1,0 +1,504 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>2026-05-07 개발 회고</title>
+  <style>
+    :root {
+      --bg: #FDF6F0;
+      --text: #2D2926;
+      --accent: #D97706;
+      --accent-light: #FEF3C7;
+      --heading: #92400E;
+      --border: #E5D5C5;
+      --code-bg: #FFF7ED;
+      --card-bg: #FFFFFF;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      font-size: 15px;
+      line-height: 1.75;
+      padding: 24px 16px 60px;
+      max-width: 480px;
+      margin: 0 auto;
+    }
+    h1 {
+      font-size: 20px;
+      color: var(--heading);
+      margin-bottom: 4px;
+      line-height: 1.3;
+    }
+    .subtitle {
+      font-size: 13px;
+      color: #9A7B5B;
+      margin-bottom: 24px;
+      font-style: italic;
+    }
+    h2 {
+      font-size: 16px;
+      color: var(--heading);
+      margin: 28px 0 10px;
+      padding-bottom: 6px;
+      border-bottom: 1px solid var(--border);
+    }
+    h3 {
+      font-size: 14px;
+      color: var(--accent);
+      margin: 18px 0 8px;
+      font-weight: 700;
+    }
+    p { margin-bottom: 12px; }
+    strong { color: var(--heading); }
+    .card {
+      background: var(--card-bg);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 16px;
+      margin-bottom: 16px;
+    }
+    .decision-card {
+      background: var(--card-bg);
+      border-left: 3px solid var(--accent);
+      border-radius: 0 12px 12px 0;
+      padding: 14px 16px;
+      margin-bottom: 16px;
+      box-shadow: 0 1px 4px rgba(0,0,0,0.04);
+    }
+    .decision-card h3 {
+      margin-top: 0;
+    }
+    .decision-row {
+      display: flex;
+      gap: 8px;
+      margin: 6px 0;
+      font-size: 13px;
+    }
+    .decision-label {
+      background: var(--accent-light);
+      color: var(--heading);
+      font-weight: 600;
+      padding: 1px 8px;
+      border-radius: 20px;
+      white-space: nowrap;
+      flex-shrink: 0;
+      align-self: flex-start;
+      margin-top: 2px;
+    }
+    .insight-box {
+      background: var(--accent-light);
+      border: 1px solid #F59E0B;
+      border-radius: 8px;
+      padding: 10px 14px;
+      margin: 10px 0;
+      font-size: 13px;
+    }
+    .insight-box::before {
+      content: "💡 인사이트 — ";
+      font-weight: 700;
+      color: var(--heading);
+    }
+    .mermaid-wrap {
+      background: var(--code-bg);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 12px;
+      margin: 12px 0;
+      overflow-x: auto;
+    }
+    .badge {
+      display: inline-block;
+      font-size: 11px;
+      font-weight: 600;
+      padding: 2px 8px;
+      border-radius: 20px;
+      margin: 2px 2px;
+    }
+    .badge-resolved { background: #D1FAE5; color: #065F46; }
+    .badge-open { background: #FEE2E2; color: #991B1B; }
+    .badge-phase { background: var(--accent-light); color: var(--heading); }
+    .milestone-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px;
+      margin: 10px 0;
+    }
+    .milestone-cell {
+      background: var(--code-bg);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 10px;
+      font-size: 12px;
+    }
+    .milestone-cell .title {
+      font-weight: 700;
+      color: var(--heading);
+      margin-bottom: 4px;
+    }
+    .milestone-cell .items {
+      color: #7C5C3B;
+      line-height: 1.5;
+    }
+    .timeline-item {
+      position: relative;
+      padding-left: 18px;
+      margin-bottom: 10px;
+    }
+    .timeline-item::before {
+      content: "";
+      position: absolute;
+      left: 4px;
+      top: 6px;
+      width: 8px;
+      height: 8px;
+      background: var(--accent);
+      border-radius: 50%;
+    }
+    .timeline-item::after {
+      content: "";
+      position: absolute;
+      left: 7px;
+      top: 14px;
+      width: 1px;
+      height: calc(100% + 2px);
+      background: var(--border);
+    }
+    .timeline-item:last-child::after { display: none; }
+    .compare-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 12px;
+      margin: 8px 0;
+    }
+    .compare-table th {
+      background: var(--accent-light);
+      color: var(--heading);
+      padding: 6px 8px;
+      text-align: left;
+      font-size: 11px;
+    }
+    .compare-table td {
+      padding: 6px 8px;
+      border-bottom: 1px solid var(--border);
+      vertical-align: top;
+    }
+    .compare-table tr:nth-child(even) td {
+      background: #FFF7F0;
+    }
+    .section-divider {
+      border: none;
+      border-top: 1px dashed var(--border);
+      margin: 20px 0;
+    }
+    .tomorrow-list {
+      list-style: none;
+      padding: 0;
+    }
+    .tomorrow-list li {
+      padding: 6px 0 6px 24px;
+      position: relative;
+      border-bottom: 1px solid var(--border);
+      font-size: 13px;
+    }
+    .tomorrow-list li::before {
+      content: "→";
+      position: absolute;
+      left: 4px;
+      color: var(--accent);
+      font-weight: 700;
+    }
+    .summary-bar {
+      background: linear-gradient(135deg, #FEF3C7 0%, #FDF6F0 100%);
+      border: 1px solid #F59E0B;
+      border-radius: 10px;
+      padding: 12px 16px;
+      margin-bottom: 20px;
+      font-size: 13px;
+    }
+    .summary-bar .label {
+      font-weight: 700;
+      color: var(--heading);
+      display: block;
+      margin-bottom: 4px;
+    }
+    .feeling {
+      background: #F0F4FF;
+      border: 1px solid #C7D2FE;
+      border-radius: 8px;
+      padding: 12px 14px;
+      font-size: 13px;
+      font-style: italic;
+      color: #3730A3;
+    }
+    pre.mermaid {
+      background: none;
+      border: none;
+      padding: 0;
+    }
+  </style>
+  <script type="module">
+    import mermaid from 'https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.esm.min.mjs';
+    mermaid.initialize({
+      startOnLoad: true,
+      theme: 'base',
+      themeVariables: {
+        primaryColor: '#FEF3C7',
+        primaryTextColor: '#92400E',
+        primaryBorderColor: '#D97706',
+        lineColor: '#D97706',
+        secondaryColor: '#FFF7ED',
+        tertiaryColor: '#FDF6F0'
+      }
+    });
+  </script>
+</head>
+<body>
+
+<h1>🗓️ 2026-05-07 개발 회고</h1>
+<p class="subtitle">MVP16 완전 종료 + 훅 시스템 Phase 1 구현의 날</p>
+
+<div class="summary-bar">
+  <span class="label">오늘 한 줄 요약</span>
+  "지시가 있어도 Claude가 빠뜨린다"는 사실을 인정하고, 기계로 막은 날.
+  12개 버그 수정 사이클을 아카이빙하고, 워크플로우 자동화 인프라를 한 단계 올렸다.
+</div>
+
+<!-- ===== 오늘 뭘 했나 ===== -->
+<h2>📋 오늘 뭘 했나</h2>
+
+<div class="card">
+  <div class="timeline-item">
+    <strong>오전 — MVP16 아카이빙</strong><br/>
+    어제(05-06) M4 완전 완료 후 <code>progress/mvp16/</code> → <code>history/mvp16/</code> 이동. 로드맵·시드·마일스톤 14개 파일 + 서브태스크 5개 + 분석 2건. <code>history/INDEX.md</code> MVP16 섹션 추가.
+  </div>
+  <div class="timeline-item">
+    <strong>오후~저녁 — 훅 시스템 Phase 1</strong><br/>
+    DEBT-HOOK-01~04 부채 4건 분석 → <code>plan_hook_phase1.md</code> 작성 → ST-1(검증) → ST-2(훅 구현) → ST-3(SKILL.md 갱신) → ST-4(step-8 원칙 강조) → E2E 통과 → RESOLVED 처리.
+  </div>
+</div>
+
+<!-- ===== MVP16 M1~M4 요약 ===== -->
+<h2>🏁 MVP16 M1~M4 전체 회고</h2>
+
+<div class="milestone-grid">
+  <div class="milestone-cell">
+    <div class="title">M1 — 검색·태그 정합</div>
+    <div class="items">A1: 무관 토픽 차단<br/>A2: 한국어 키워드 병행<br/>A3: tags: Vec&lt;Uuid&gt; 스키마</div>
+  </div>
+  <div class="milestone-cell">
+    <div class="title">M2 — 텍스트·LLM 출력</div>
+    <div class="items">B1: clean_snippet 마크다운 제거<br/>C1: 한국어 출력 제약 프롬프트<br/>C3: 범용 insight 항상 생성</div>
+  </div>
+  <div class="milestone-cell">
+    <div class="title">M3 — 데이터 모델</div>
+    <div class="items">D1: Option&lt;Option&lt;String&gt;&gt;<br/>C2-bug: rewrite_occupation 컬럼<br/>레이어 위반 즉시 수정</div>
+  </div>
+  <div class="milestone-cell">
+    <div class="title">M4 — 클라이언트 회귀</div>
+    <div class="items">E1: iOS 태그 칩<br/>F1: 실기기 URL 분기 픽스<br/>F2: 오답 태그 필터 복원<br/>D2: 원문 이동 UI</div>
+  </div>
+</div>
+
+<div class="mermaid-wrap">
+<pre class="mermaid">
+graph TD
+    S["실사용 피드백\n13건 발견"] --> M1 & M2 & M3 & M4
+
+    M1["M1: 검색·태그 정합\n✅ DONE"] --> DONE
+    M2["M2: 텍스트·LLM\n✅ DONE"] --> DONE
+    M3["M3: 데이터 모델\n✅ DONE"] --> DONE
+    M4["M4: 클라이언트 회귀\n✅ DONE"] --> DONE
+
+    DONE["🎉 MVP16 완료\n12건 RESOLVED"]
+</pre>
+</div>
+
+<div class="insight-box">직접 써보니 "닫힌 줄 알았던 게 열려있었다". 기획·구현·테스트를 모두 통과해도 직접 사용 없이는 사용자 경험을 알 수 없다.</div>
+
+<!-- ===== 핵심 의사결정 ===== -->
+<h2>⚖️ 핵심 의사결정</h2>
+
+<div class="decision-card">
+  <h3>결정 1 — B안(PostToolUse 훅) 선택, A안과 병행</h3>
+  <div class="decision-row">
+    <span class="decision-label">상황</span>
+    <span>step-2~8 SKILL들이 <code>active_step.txt</code>를 갱신하지 않음. "SKILL.md에 지시 추가"(A안) vs "훅 자동화"(B안) 중 결정.</span>
+  </div>
+  <div class="decision-row">
+    <span class="decision-label">선택지</span>
+    <span>A안: 지시 추가 (단순, 즉시) / B안: PostToolUse 훅 (Claude 의존 제거) / C안: A안만</span>
+  </div>
+  <div class="decision-row">
+    <span class="decision-label">결정</span>
+    <span><strong>B안 근본 + A안 백업 병행</strong></span>
+  </div>
+  <div class="decision-row">
+    <span class="decision-label">왜</span>
+    <span>step-9에 이미 갱신 지시가 있었는데 실행이 안 됐다. 같은 방식의 반복은 같은 실패다. 훅은 Claude 의존 없이 PostToolUse 이벤트에서 <code>tool_input.skill</code>을 파싱해 강제 갱신한다.</span>
+  </div>
+  <div class="insight-box">규칙을 문서에 추가하는 것과 기계가 강제하는 것은 신뢰성이 완전히 다르다.</div>
+</div>
+
+<div class="decision-card">
+  <h3>결정 2 — DEBT-HOOK-03을 Phase 2로 분리</h3>
+  <div class="decision-row">
+    <span class="decision-label">상황</span>
+    <span>Phase 1 구현 중 "/next 자동 흐름"도 같이 처리하고 싶었다.</span>
+  </div>
+  <div class="decision-row">
+    <span class="decision-label">선택지</span>
+    <span>(a) Phase 1에 포함 / (b) Phase 2로 분리, 선행 조건 명시</span>
+  </div>
+  <div class="decision-row">
+    <span class="decision-label">결정</span>
+    <span><strong>(b) Phase 2 분리</strong></span>
+  </div>
+  <div class="decision-row">
+    <span class="decision-label">왜</span>
+    <span>"step 완료 시그널 정의 모호" 리스크가 해소되지 않았다. Phase 1 실전 검증 후 착수 조건 명시. Phase 1이 틀어지면 Phase 2 전체가 흔들린다.</span>
+  </div>
+  <div class="insight-box">"할 수 있다"와 "지금 해야 한다"는 다르다.</div>
+</div>
+
+<div class="decision-card">
+  <h3>결정 3 — M3 레이어 위반 그 자리에서 수정</h3>
+  <div class="decision-row">
+    <span class="decision-label">상황</span>
+    <span>M3 step-7 리뷰에서 <code>infra → services</code> 의존 위반 발견.</span>
+  </div>
+  <div class="decision-row">
+    <span class="decision-label">선택지</span>
+    <span>(a) 부채 등록 후 다음 MVP에서 처리 / (b) 그 마일스톤 안에서 즉시 수정</span>
+  </div>
+  <div class="decision-row">
+    <span class="decision-label">결정</span>
+    <span><strong>(b) 즉시 수정</strong> — 포트 분리로 레이어 의존 제거</span>
+  </div>
+  <div class="decision-row">
+    <span class="decision-label">왜</span>
+    <span><code>feedback_architecture_violation_fix</code> 원칙. 지금 작은 불편 vs 나중에 큰 리팩토링. 지금 고치는 게 훨씬 저렴하다.</span>
+  </div>
+</div>
+
+<div class="decision-card">
+  <h3>결정 4 — Phase 2 착수 조건을 구체적으로 명시</h3>
+  <div class="decision-row">
+    <span class="decision-label">상황</span>
+    <span>"Phase 2 가능"이라는 문구만 있으면 기준이 모호해서 일찍 착수할 유혹이 생긴다.</span>
+  </div>
+  <div class="decision-row">
+    <span class="decision-label">결정</span>
+    <span><strong>"Phase 1 완료 후 실제 워크플로우 실행으로 step 추적 정확성 검증 후 착수"</strong>를 <code>debts.md</code>에 명문화</span>
+  </div>
+  <div class="insight-box">검증 없는 Phase 2는 "훅이 잘 작동하고 있다는 가정" 위에 복잡한 로직을 얹는 것이다.</div>
+</div>
+
+<!-- ===== 훅 시스템 설계 흐름 ===== -->
+<h2>🔧 훅 시스템 Phase 1 설계 흐름</h2>
+
+<div class="mermaid-wrap">
+<pre class="mermaid">
+graph TD
+    PROBLEM["❌ step-2~8\nactive_step.txt 미갱신\n(step-9에도 지시 있었으나 실행 안 됨)"]
+    PROBLEM --> ROOT["근본 원인:\nClaude 의존 방식은\n이미 실패 데이터 있음"]
+
+    ROOT --> OPT_A["A안\nSKILL.md 지시 추가\n(백업)"]
+    ROOT --> OPT_B["B안\nPostToolUse 훅\n(근본)"]
+
+    OPT_B --> VERIFY["ST-1: stdin에서\ntool_input.skill\n읽기 검증"]
+    VERIFY --> IMPL["ST-2: update-active-step.sh\n+ settings.json 등록"]
+    OPT_A --> SKILL_MD["ST-3: step-2~8\nSKILL.md 갱신 지시"]
+    IMPL --> E2E_TEST["/step-2 호출\n→ active_step.txt=step-2\n확인"]
+    SKILL_MD --> E2E_TEST
+
+    E2E_TEST --> PASS["✅ E2E 통과\nDEBT-HOOK-01/02/04\nRESOLVED"]
+    PASS --> PHASE2["DEBT-HOOK-03\nPhase 2 대기\n선행: 실전 검증"]
+</pre>
+</div>
+
+<!-- ===== 선택지 비교표 ===== -->
+<h2>📊 A안 vs B안 비교</h2>
+
+<table class="compare-table">
+  <thead>
+    <tr>
+      <th>항목</th>
+      <th>A안 (SKILL.md 지시)</th>
+      <th>B안 (PostToolUse 훅)</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>신뢰성</td>
+      <td>낮음 (step-9에서 이미 실패)</td>
+      <td>높음 (Claude 의존 없음)</td>
+    </tr>
+    <tr>
+      <td>구현 복잡도</td>
+      <td>낮음 (텍스트 추가)</td>
+      <td>중간 (스크립트 + JSON 파싱)</td>
+    </tr>
+    <tr>
+      <td>필터 필요</td>
+      <td>없음</td>
+      <td>필요 (step-N 패턴만)</td>
+    </tr>
+    <tr>
+      <td>채택</td>
+      <td>✅ 백업 역할</td>
+      <td>✅ 근본 해결책</td>
+    </tr>
+  </tbody>
+</table>
+
+<!-- ===== 인사이트 ===== -->
+<h2>✨ 인사이트 & 피드백</h2>
+
+<div class="card">
+  <p><strong>같은 문제가 두 번이면 기계로 막는다.</strong><br/>
+  문서·SKILL.md·CLAUDE.md에 규칙을 추가하는 것과 hook·deny·pre-commit으로 강제하는 것은 신뢰성이 완전히 다르다. "지시를 더 명확하게 쓰면 되지 않나?"가 첫 반응이었는데, step-9 케이스가 그 전략의 실패를 이미 증명했다.</p>
+
+  <p><strong>진단 → 문서화 → 픽스 순서는 실제로 효과가 있다.</strong><br/>
+  F1에서 "아마 ATS 문제겠지"로 추측했다면 전혀 다른 곳을 건드렸을 것이다. 진단 보고서를 써가면서 원인 후보를 좁혔기 때문에 실제 원인(API base URL 분기)까지 도달할 수 있었다.</p>
+
+  <p><strong>레이어 위반은 그 자리에서 고친다.</strong><br/>
+  "다음 MVP에서"라는 유혹이 항상 있다. 하지만 지금 작은 불편이 나중의 큰 리팩토링보다 훨씬 싸다.</p>
+</div>
+
+<!-- ===== 배운 것 ===== -->
+<h2>📚 배운 것</h2>
+
+<div class="card">
+  <p><strong>PostToolUse 훅 stdin JSON 구조.</strong> <code>tool_name</code>, <code>tool_input.skill</code> 필드가 직접 넘어온다. <code>jq -r '.tool_name'</code>으로 파싱 가능하고 <code>grep -qE '^step-[1-9]$'</code> 필터로 특정 Skill만 골라낼 수 있다. <code>CLAUDE_PROJECT_DIR</code>로 레포 루트를 안전하게 참조한다.</p>
+
+  <p><strong>Rust Option&lt;Option&lt;String&gt;&gt; serde 처리.</strong> JSON "키 없음(변경 안 함)"과 "키=null(삭제)"을 구분하려면 <code>#[serde(default)]</code> + 커스텀 deserializer 조합이 필요하다. <code>serde_with</code> 크레이트 없이 직접 구현 가능하다.</p>
+
+  <p><strong>포트 경계를 지키면서 cascade 처리하는 방법.</strong> 단일 DB 메서드로 두 테이블을 건드리면 포트 경계 위반. 대신 핸들러에서 두 포트를 순서대로 호출(best-effort)하는 방식이 포트 분리를 지키면서 idempotent 연산을 처리하는 실용적 타협이다.</p>
+</div>
+
+<!-- ===== 느낀 점 ===== -->
+<h2>💬 느낀 점</h2>
+
+<div class="feeling">
+  MVP16이 끝났다. "오류·회귀 수정 사이클"이라는 정체성으로 시작했는데, 막상 끝내고 나니 단순히 버그 고치는 것 이상이었다. 내가 만든 걸 내가 쓰면서 "이게 내 생각과 맞는가?"를 확인하는 시간이 이 프로젝트에서 처음 있었다.
+  <br/><br/>
+  훅 시스템 Phase 1은 하루 만에 설계·구현·검증까지 마쳤다. 뿌듯했다. 더 중요한 건, Phase 2 설계 리스크를 명확히 인식하고 "지금은 아니다"를 결정한 것이다. 할 수 있다고 해서 지금 해야 하는 건 아니라는 걸, 이번에 조금 더 실감했다.
+</div>
+
+<!-- ===== 내일 할 일 ===== -->
+<h2>📅 내일 할 일</h2>
+
+<ul class="tomorrow-list">
+  <li>DEBT-HOOK-03 Phase 2 착수 조건 확인 — Phase 1이 실전 워크플로우에서 제대로 작동하는지 먼저 검증</li>
+  <li>MVP17 기획 사이클 시작 — <code>_seed.md</code> 작성 (피드 품질 고도화 2라운드 또는 새 기능 방향?)</li>
+  <li>MVP1 스터디 stage 2 마무리 — <code>flow_onboarding.svg</code> 기반 개념 정리</li>
+</ul>
+
+<hr class="section-divider"/>
+<p style="text-align:center;color:#C4A882;font-size:12px;">🌅 Claude Sunset Theme · 2026-05-07</p>
+
+</body>
+</html>
