@@ -2,8 +2,13 @@ import Foundation
 
 /// In-memory WrongAnswerPort 구현 — FRANK_USE_MOCK=1 모드 전용.
 final class MockWrongAnswerAdapter: WrongAnswerPort, @unchecked Sendable {
-    private var store: [UUID: WrongAnswer] = [:]
-    private var insertOrder: [UUID] = []
+    private var store: [UUID: WrongAnswer]
+    private var insertOrder: [UUID]
+
+    init(seed: [WrongAnswer] = []) {
+        store = Dictionary(uniqueKeysWithValues: seed.map { ($0.id, $0) })
+        insertOrder = seed.map { $0.id }
+    }
 
     func save(params: SaveWrongAnswerParams) async throws -> WrongAnswer {
         let wa = WrongAnswer(

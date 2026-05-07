@@ -159,6 +159,50 @@ enum MockFixtures {
         )
     ]
 
+    // MARK: - WrongAnswer fixtures (MVP16 M4: F2/D2 UITest용)
+
+    static let wrongAnswers: [WrongAnswer] = [
+        WrongAnswer(
+            id: UUID(uuidString: "aaaaaaaa-0000-0000-0000-000000000001")!,
+            userId: mockUserId,
+            articleUrl: "https://example.com/news/claude-4-6-release",
+            articleTitle: "Anthropic Releases Claude 4.6 with 1M Context Window",
+            question: "Claude 4.6의 컨텍스트 윈도우 크기는?",
+            options: ["100K", "500K", "1M", "10M"],
+            correctIndex: 2,
+            userIndex: 0,
+            explanation: "Claude 4.6은 1M 토큰 컨텍스트 윈도우를 지원합니다.",
+            createdAt: parseDate("2026-05-01T10:00:00Z"),
+            tagId: tagAIML
+        ),
+        WrongAnswer(
+            id: UUID(uuidString: "aaaaaaaa-0000-0000-0000-000000000002")!,
+            userId: mockUserId,
+            articleUrl: "https://example.com/news/swift-6-1",
+            articleTitle: "Swift 6.1 Concurrency Improvements",
+            question: "Swift 6.1에서 강화된 기능은?",
+            options: ["메모리 관리", "동시성 검사", "UI 렌더링", "네트워킹"],
+            correctIndex: 1,
+            userIndex: 3,
+            explanation: "Swift 6.1은 strict concurrency checking을 강화했습니다.",
+            createdAt: parseDate("2026-05-02T10:00:00Z"),
+            tagId: tagIOS
+        ),
+        WrongAnswer(
+            id: UUID(uuidString: "aaaaaaaa-0000-0000-0000-000000000003")!,
+            userId: mockUserId,
+            articleUrl: "",
+            articleTitle: "RAG vs Fine-tuning: When to Use Which",
+            question: "RAG가 적합한 상황은?",
+            options: ["정적 지식", "실시간 데이터", "소규모 모델", "이미지 처리"],
+            correctIndex: 1,
+            userIndex: 0,
+            explanation: "RAG는 실시간 또는 자주 변하는 데이터에 적합합니다.",
+            createdAt: parseDate("2026-05-03T10:00:00Z"),
+            tagId: tagAIML
+        )
+    ]
+
     // MARK: - Helpers
 
     private static func parseDate(_ iso: String) -> Date {

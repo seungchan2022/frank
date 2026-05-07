@@ -151,7 +151,9 @@ final class AppDependencies {
             likes: MockLikesAdapter(),
             related: MockRelatedAdapter(),
             quiz: MockQuizAdapter(),
-            wrongAnswer: MockWrongAnswerAdapter(),
+            wrongAnswer: scenario == "with_wrong_answers"
+                ? MockWrongAnswerAdapter(seed: MockFixtures.wrongAnswers)
+                : MockWrongAnswerAdapter(),
             rewrite: MockRewriteAdapter(auth: mockAuth)
         )
     }
