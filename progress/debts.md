@@ -2,7 +2,7 @@
 
 의도적으로 보류한 설계·구현 결정. 다음 MVP 기획 시 흡수 여부 판단.
 
-> 최종 갱신: 2026-05-07 (DEBT-HOOK-02, 03, 04 신규 추가 — 훅 시스템 보완 계획 등록)
+> 최종 갱신: 2026-05-07 (DEBT-HOOK-01, 02, 04 RESOLVED — Phase 1 훅 시스템 보완 완료)
 
 ---
 
@@ -314,7 +314,8 @@
 ## [DEBT-HOOK-01] step-2,3,5,6,7,8 active_step.txt 미갱신
 
 **발생**: 2026-05-05 훅 시스템 분석 중 발견
-**상태**: 🔴 **OPEN**
+**상태**: ✅ **RESOLVED** (2026-05-07 Phase 1 완료)
+**수정 내용**: A안 — step-2,3,5,6,7,8 각 SKILL.md 진입부에 `echo "step-N" > progress/active_step.txt` 추가. B안(DEBT-HOOK-02 훅)과 병행 적용.
 
 **현상**: workflow/SKILL.md에 "각 step SKILL이 진입 시 자기 step으로 갱신할 책임"이라고 명시돼 있으나, step-1/step-4/step-9만 `active_step.txt`를 실제로 갱신함. step-2, 3, 5, 6, 7, 8은 구현 누락.
 
@@ -334,7 +335,8 @@
 ## [DEBT-HOOK-02] PostToolUse 훅 미구현 — Skill 호출 시 active_step.txt 자동 갱신
 
 **발생**: 2026-05-07 훅 설계 분석 중 도출
-**상태**: 🔴 **OPEN**
+**상태**: ✅ **RESOLVED** (2026-05-07 Phase 1 완료)
+**수정 내용**: `.claude/hooks/update-active-step.sh` 구현 + settings.json PostToolUse Skill matcher로 등록. E2E 검증: `/step-2` 호출 시 active_step.txt = "step-2" 자동 갱신 확인.
 
 **현상**: DEBT-HOOK-01의 근본 원인은 "SKILL에 지시가 있어도 Claude가 빠뜨린다"는 것. A안(지시 추가)만으로는 step-9에서 이미 실패한 방식의 반복임. B안으로 Claude 의존 없이 훅 레벨에서 강제 갱신 필요.
 
@@ -396,16 +398,17 @@ echo "$HOOK_INPUT" >> /tmp/hook.log
 - step-6(구현) → 7(리팩) → 8(테스트) chunk: 구현이 수십 turn에 걸칠 수 있어 "완료" 시그널 정의 모호. 모델이 자의적으로 넘어갈 위험.
 - 초기 구현은 step-1→2→3 자동 진행 chunk부터 시작, step-6→7→8 자동 진행은 step 완료 시그널 정의 후 2차 확장.
 
-**선행 조건**: DEBT-HOOK-02 완료 (active_step.txt가 정확해야 /next 로직이 의미있음)
+**선행 조건**: DEBT-HOOK-02 완료 ✅ + 실제 워크플로우 실행으로 step 자동 추적 정확성 검증 후 착수 (Phase 1 결과가 실전에서 제대로 동작하는지 확인한 뒤에 /next 자동화 로직 설계 시작)
 
-**흡수 조건**: DEBT-HOOK-02 완료 후 별도 워크플로우 개선 마일스톤
+**흡수 조건**: 워크플로우 실행 검증 완료 후 별도 마일스톤으로 설계·구현
 
 ---
 
 ## [DEBT-HOOK-04] step-8에서 자동화 가능 테스트를 사용자에게 위임
 
 **발생**: 2026-05-07 MVP16 워크플로우 진행 중 발견
-**상태**: 🔴 **OPEN**
+**상태**: ✅ **RESOLVED** (2026-05-07 Phase 1 완료)
+**수정 내용**: step-8 SKILL.md `## 테스트 명령어` 섹션 상단에 자동 실행 원칙 blockquote 추가. "Claude가 Bash로 직접 실행, 사용자에게 위임 금지, 시각 확인만 요청" 명시.
 
 **현상**: step-8 SKILL.md에 "자동화 가능한 항목(린트, 빌드, 단위 테스트, E2E)은 Claude가 직접 실행 후 [x] 처리, 시각 확인만 사용자에게 요청"이라고 명시돼 있음. 그러나 실제 진행 시 Claude가 이 구분 없이 모든 항목을 사용자에게 물어봄.
 

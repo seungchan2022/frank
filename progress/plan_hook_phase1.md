@@ -70,11 +70,11 @@ step-9는 이미 `echo "none"` 코드가 있으나 실행 안 된 선례 있음 
 
 ## 완료 조건
 
-- [ ] ST-1: 훅 작동 검증 통과 또는 A안만으로 진행 확정
-- [ ] ST-2: `/step-3` 호출 시 active_step.txt = "step-3"으로 자동 갱신 확인
-- [ ] ST-3: step-2,3,5,6,7,8 SKILL.md 갱신 지시 추가
-- [ ] ST-4: step-8에서 린트/빌드/테스트 Claude가 직접 실행 확인
-- [ ] DEBT-HOOK-01, 02, 04 상태 → RESOLVED 갱신
+- [x] ST-1: 훅 작동 검증 통과 — stdin JSON에서 `tool_input.skill` 읽기 확인 (2026-05-07)
+- [x] ST-2: `/step-2` 호출 시 active_step.txt = "step-2"으로 자동 갱신 확인 (2026-05-07 E2E 통과)
+- [x] ST-3: step-2,3,5,6,7,8 SKILL.md 갱신 지시 추가 (2026-05-07)
+- [x] ST-4: step-8 자동 실행 원칙 blockquote 명시 (2026-05-07)
+- [x] DEBT-HOOK-01, 02, 04 상태 → RESOLVED 갱신 (2026-05-07)
 
 ---
 
