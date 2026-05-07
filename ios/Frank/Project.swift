@@ -24,6 +24,9 @@ let project = Project(
                         "NSAllowsLocalNetworking": true,
                         "NSAllowsArbitraryLoads": true,
                     ],
+                    // iOS 14+ 로컬 네트워크 접근 권한 (MacBook-Pro.local mDNS 해석)
+                    "NSLocalNetworkUsageDescription": "로컬 서버와 통신하기 위해 네트워크 접근이 필요합니다.",
+                    "NSBonjourServices": ["_http._tcp"],
                 ]
             ),
             sources: ["Frank/Sources/**"],
