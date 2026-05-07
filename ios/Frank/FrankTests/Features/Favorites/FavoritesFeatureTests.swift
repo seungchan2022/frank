@@ -300,7 +300,8 @@ struct FavoritesFeatureTests {
                 url: feedItem.url.absoluteString, snippet: nil, source: feedItem.source,
                 publishedAt: nil, tagId: tagId, summary: nil, insight: nil,
                 likedAt: nil, createdAt: nil, imageUrl: nil, quizCompleted: false,
-                rewrite: nil
+                rewrite: nil,
+                rewriteOccupation: nil
             )
         }
         #expect(FavoritesFeature.shouldResetTagId(remaining: fakeItems, current: tagId) == false)
@@ -316,7 +317,8 @@ struct FavoritesFeatureTests {
                 url: "https://b.com", snippet: nil, source: "Test",
                 publishedAt: nil, tagId: otherTagId, summary: nil, insight: nil,
                 likedAt: nil, createdAt: nil, imageUrl: nil, quizCompleted: false,
-                rewrite: nil
+                rewrite: nil,
+                rewriteOccupation: nil
             )
         ]
         #expect(FavoritesFeature.shouldResetTagId(remaining: fakeItems, current: tagId) == true)
@@ -342,7 +344,8 @@ struct FavoritesFeatureTests {
                 url: "https://c.com", snippet: nil, source: "Test",
                 publishedAt: nil, tagId: nil, summary: nil, insight: nil,
                 likedAt: nil, createdAt: nil, imageUrl: nil, quizCompleted: false,
-                rewrite: nil
+                rewrite: nil,
+                rewriteOccupation: nil
             )
         ]
         #expect(FavoritesFeature.shouldResetTagId(remaining: fakeItems, current: tagId) == true)

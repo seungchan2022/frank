@@ -95,4 +95,30 @@ struct ArticleCardViewTests {
 
         #expect(article.snippet == nil)
     }
+
+    // MARK: - E1: 태그 칩 파라미터 (MVP16 M4)
+
+    @Test("E1: tagName 파라미터 있으면 ArticleCardView 생성 가능")
+    func tagNamePresent_viewCreatable() {
+        let article = makeArticle()
+        let view = ArticleCardView(article: article, tagName: "AI/ML")
+
+        #expect(view.tagName == "AI/ML")
+    }
+
+    @Test("E1: tagName nil이면 ArticleCardView 생성 가능 (태그 없는 기사)")
+    func tagNameNil_viewCreatable() {
+        let article = makeArticle()
+        let view = ArticleCardView(article: article, tagName: nil)
+
+        #expect(view.tagName == nil)
+    }
+
+    @Test("E1: tagName 파라미터 기본값 nil — 기존 호출부 하위 호환")
+    func tagNameDefaultNil_backwardCompat() {
+        let article = makeArticle()
+        let view = ArticleCardView(article: article)
+
+        #expect(view.tagName == nil)
+    }
 }

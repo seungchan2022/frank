@@ -126,4 +126,47 @@ struct WrongAnswerTagFilterTests {
         #expect(result.count == 1)
         #expect(result[0].tagId == tagId)
     }
+
+    // MARK: - 회귀: F2 오답노트 태그 필터 (MVP16 M4)
+
+    @Test("F2 회귀: 전체(nil) → 특정 태그 → 전체(nil) 전환 시 일관성")
+    func filter_regression_F2_tagSwitchConsistency() {
+        let tagA = UUID()
+        let tagB = UUID()
+        let items = [
+            makeWrongAnswer(articleUrl: "https://a.com", tagId: tagA),
+            makeWrongAnswer(articleUrl: "https://b.com", tagId: tagB),
+            makeWrongAnswer(articleUrl: "https://c.com", tagId: tagA)
+        ]
+
+        // 전체 → 2개
+        let all = WrongAnswerTagFilter.filter(items: items, selectedTagId: nil)
+        #expect(all.count == 3)
+
+        // tagA 선택 → tagA 항목만
+        let filteredA = WrongAnswerTagFilter.filter(items: items, selectedTagId: tagA)
+        #expect(filteredA.count == 2)
+        #expect(filteredA.allSatisfy { $0.tagId == tagA })
+
+        // 전체 복귀 → 다시 3개
+        let backToAll = WrongAnswerTagFilter.filter(items: items, selectedTagId: nil)
+        #expect(backToAll.count == 3)
+    }
+
+    @Test("F2 회귀: 특정 태그 선택 후 다른 태그로 전환")
+    func filter_regression_F2_switchBetweenTags() {
+        let tagA = UUID()
+        let tagB = UUID()
+        let items = [
+            makeWrongAnswer(articleUrl: "https://a.com", tagId: tagA),
+            makeWrongAnswer(articleUrl: "https://b.com", tagId: tagB),
+            makeWrongAnswer(articleUrl: "https://c.com", tagId: tagA)
+        ]
+
+        // tagA → tagB 전환 시 tagA 항목 없어야 함
+        let filteredB = WrongAnswerTagFilter.filter(items: items, selectedTagId: tagB)
+        #expect(filteredB.count == 1)
+        #expect(filteredB[0].tagId == tagB)
+        #expect(filteredB.allSatisfy { $0.articleUrl == "https://b.com" })
+    }
 }
