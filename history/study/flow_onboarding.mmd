@@ -1,0 +1,42 @@
+sequenceDiagram
+    participant U as 사용자 (브라우저)
+    participant Layout as +layout.server.ts
+    participant Page as onboarding/+page.svelte
+    participant Store as auth.svelte.ts
+    participant API as Rust API (8080)
+    participant DB as PostgreSQL
+
+    note over U,DB: [A] 인증 가드 + 페이지 진입
+    U->>Layout: ① GET /onboarding
+    Layout->>Layout: ② safeGetSession() → session 확인
+    Layout-->>U: ③ page.data.session 전달
+
+    note over U,DB: [B] 태그 목록 + 내 태그 병렬 로드
+    Page->>Store: ④ auth.isAuthenticated 확인 ($effect)
+    note over Page,API: ⑤⑥ Promise.all — 두 요청 동시 발송 (순차 아님)
+    Page->>API: ⑤ GET /api/tags (Bearer 토큰)
+    Page->>API: ⑥ GET /api/me/tags (Bearer 토큰)
+    API->>DB: ⑦ SELECT id,name,category FROM tags
+    API->>DB: ⑧ SELECT tag_id FROM user_tags WHERE user_id=$1
+    DB-->>API: ⑨ tags 목록 / 기존 tag_ids
+    API-->>Page: ⑩ Tag[] / Uuid[]
+
+    note over U,DB: [C] 태그 선택 UI
+    Page->>Page: ⑪ $derived: tags를 category로 그룹핑
+    U->>Page: ⑫ 태그 버튼 클릭 → toggleTag()
+    Page->>Page: ⑬ selectedIds = new Set([...prev]) 재할당
+
+    note over U,DB: [D] 태그 저장 + 온보딩 완료
+    U->>Page: ⑭ "Continue" 버튼 클릭
+    Page->>API: ⑮ POST /api/me/tags { tag_ids: [...] } (Bearer 토큰)
+    API->>DB: ⑯ BEGIN 트랜잭션
+    API->>DB: ⑰ DELETE FROM user_tags WHERE user_id=$1
+    DB-->>API: ⑰-OK (삭제 완료)
+    API->>DB: ⑱ INSERT INTO user_tags × N  →  COMMIT
+    DB-->>API: ⑱-OK (삽입+커밋 완료)
+    API->>DB: ⑲ UPSERT profiles SET onboarding_completed=true  (트랜잭션 외부, 별도 쿼리)
+    DB-->>API: ⑲-OK (onboarding_completed 갱신 완료)
+    API->>API: ⑳ feed_cache.invalidate_user(user_id)
+    API-->>Page: ㉑ { ok: true }  (API가 직접 생성)
+    API-->>Page: ㉒ 200 OK
+    Page->>U: ㉓ goto('/feed')
