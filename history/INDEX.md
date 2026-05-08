@@ -250,6 +250,10 @@
 
 | 찾고 싶은 것 | 참조 파일 |
 |-------------|----------|
+| **[학습]** MVP1 흐름·개념 학습 로드맵 (1단계~6단계 진행 현황) | `study/mvp1_study_roadmap.md` |
+| **[학습]** MVP1 개념 요약 + 퀴즈 기록 (단계별 누적) | `study/mvp1_concepts.md` |
+| **[학습]** 로그인 흐름도 + 해설 (웹/iOS 4가지 방식) | `study/login_flow/index.html` |
+| **[학습]** 온보딩 흐름도 + 해설 (①~㉓ 전체) | `study/flow_onboarding.html` |
 | 프로젝트 초기 기획/요구사항 | `mvp1/260404_MVP1_기획.md` |
 | 아키텍처 결정 (포트/어댑터, sqlx 전환) | `mvp1/260404_perf_db_access.md` |
 | 코드리뷰 이슈 전체 목록 | `mvp1/260404_step7_refactoring_review.md` |
