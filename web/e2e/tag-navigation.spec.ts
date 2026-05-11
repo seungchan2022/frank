@@ -8,7 +8,7 @@ import { login } from './helpers/login';
  * - BUG-008: 태그 탭 전환 시 기사 목록 깜빡임 없음 (DOM 삭제 후 재삽입 없음)
  *
  * 전제: BASE_URL=http://localhost:5173, 서버 기동 완료 (deploy.sh 선행)
- * 계정: test@test.com / Test1234!
+
  */
 
 /** MutationObserver 추적용 전역 확장 타입 */

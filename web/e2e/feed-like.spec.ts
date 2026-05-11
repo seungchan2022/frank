@@ -8,7 +8,7 @@ import { login } from './helpers/login';
  * - DEBT-04: 좋아요 버튼 클릭 시 기사 상세(URL 변경) 없이 좋아요만 처리
  *
  * 전제: BASE_URL=http://localhost:5173, 서버 기동 완료 (deploy.sh 선행)
- * 계정: test@test.com / Test1234!
+
  */
 
 test.describe('W-03: 피드 좋아요 단독 탭 시나리오', () => {

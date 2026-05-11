@@ -10,7 +10,7 @@ import { login } from './helpers/login';
  * - DEBT-07: 기사 소개 카드 vs AI 요약 카드 시각 구분
  *
  * 전제: BASE_URL=http://localhost:5173, 서버 기동 완료 (deploy.sh 선행)
- * 계정: test@test.com / Test1234!
+
  */
 
 test.describe('W-01: 피드 요약 시나리오', () => {

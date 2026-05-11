@@ -13,7 +13,7 @@ import { login } from './helpers/login';
  * - ST-8 U-02: 스크랩 완료 후 버튼 상태 변경
  *
  * 전제: BASE_URL=http://localhost:5173, 서버 기동 완료 (deploy.sh 선행)
- * 계정: test@test.com / Test1234!
+
  */
 
 // F-02용 occupation (프로필 저장 테스트)
