@@ -13,6 +13,8 @@ use super::models::{
 /// DB 접근 포트 (Supabase REST API 또는 sqlx)
 /// MVP5 M1: articles 관련 메서드 제거 — 피드는 검색 API 직접 호출, DB 저장 없음
 pub trait DbPort: Send + Sync {
+    fn ping(&self) -> impl std::future::Future<Output = Result<(), AppError>> + Send;
+
     fn get_profile(
         &self,
         user_id: Uuid,

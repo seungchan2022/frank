@@ -123,7 +123,7 @@ pub fn create_router<D: DbPort + Clone + 'static>(
         .layer(Extension(supabase_config));
 
     Router::new()
-        .route("/health", get(api::health::health_check))
+        .route("/health", get(api::health::health_check::<D>))
         .nest("/api", auth_routes)
         .layer(Extension(state))
         .layer(build_cors_layer())

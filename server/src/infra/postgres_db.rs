@@ -75,6 +75,14 @@ impl PostgresDbAdapter {
 }
 
 impl DbPort for PostgresDbAdapter {
+    async fn ping(&self) -> Result<(), AppError> {
+        sqlx::query("SELECT 1")
+            .execute(&self.pool)
+            .await
+            .map(|_| ())
+            .map_err(|e| AppError::Internal(format!("DB ping failed: {e}")))
+    }
+
     async fn get_profile(&self, user_id: Uuid) -> Result<Profile, AppError> {
         sqlx::query_as::<_, ProfileRow>(
             "SELECT id, display_name, onboarding_completed, occupation FROM profiles WHERE id = $1",

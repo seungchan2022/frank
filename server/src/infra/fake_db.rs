@@ -77,6 +77,10 @@ impl FakeDbAdapter {
 }
 
 impl DbPort for FakeDbAdapter {
+    async fn ping(&self) -> Result<(), AppError> {
+        Ok(())
+    }
+
     async fn get_profile(&self, user_id: Uuid) -> Result<Profile, AppError> {
         self.profiles
             .lock()
