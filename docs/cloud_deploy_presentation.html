@@ -1,0 +1,879 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Frank — 클라우드 배포</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg: #0f1117;
+    --surface: #1a1d27;
+    --card: #22263a;
+    --accent: #6c63ff;
+    --accent2: #00d4aa;
+    --accent3: #ff6b6b;
+    --text: #e8eaf0;
+    --muted: #8890aa;
+    --border: #2e3248;
+    --green: #4ade80;
+    --red: #f87171;
+    --yellow: #fbbf24;
+  }
+
+  body {
+    font-family: 'Pretendard', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    overflow: hidden;
+    height: 100vh;
+    width: 100vw;
+  }
+
+  .deck {
+    width: 100%;
+    height: 100%;
+    position: relative;
+  }
+
+  .slide {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    padding: 60px 80px;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.4s ease;
+  }
+
+  .slide.active {
+    opacity: 1;
+    pointer-events: all;
+  }
+
+  /* ── 타이포 ── */
+  h1 { font-size: 3rem; font-weight: 800; line-height: 1.15; }
+  h2 { font-size: 2rem; font-weight: 700; line-height: 1.2; }
+  h3 { font-size: 1.35rem; font-weight: 600; }
+  p, li { font-size: 1.05rem; line-height: 1.7; color: var(--muted); }
+  strong { color: var(--text); }
+  .accent { color: var(--accent); }
+  .accent2 { color: var(--accent2); }
+  .accent3 { color: var(--accent3); }
+  .green { color: var(--green); }
+  .red { color: var(--red); }
+  .yellow { color: var(--yellow); }
+
+  /* ── 레이아웃 ── */
+  .content { width: 100%; max-width: 1100px; }
+  .row { display: flex; gap: 32px; width: 100%; }
+  .col { flex: 1; }
+
+  /* ── 카드 ── */
+  .card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    padding: 28px 32px;
+  }
+  .card-sm {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 20px 24px;
+  }
+
+  /* ── 배지 ── */
+  .badge {
+    display: inline-block;
+    padding: 4px 12px;
+    border-radius: 999px;
+    font-size: 0.78rem;
+    font-weight: 600;
+    letter-spacing: 0.03em;
+  }
+  .badge-purple { background: rgba(108,99,255,0.18); color: var(--accent); border: 1px solid rgba(108,99,255,0.3); }
+  .badge-green { background: rgba(74,222,128,0.12); color: var(--green); border: 1px solid rgba(74,222,128,0.25); }
+  .badge-red { background: rgba(248,113,113,0.12); color: var(--red); border: 1px solid rgba(248,113,113,0.25); }
+  .badge-yellow { background: rgba(251,191,36,0.12); color: var(--yellow); border: 1px solid rgba(251,191,36,0.25); }
+
+  /* ── 테이블 ── */
+  table { width: 100%; border-collapse: collapse; }
+  th { font-size: 0.82rem; text-transform: uppercase; letter-spacing: 0.06em; color: var(--muted); padding: 10px 16px; text-align: left; border-bottom: 1px solid var(--border); }
+  td { padding: 12px 16px; font-size: 0.98rem; border-bottom: 1px solid rgba(46,50,72,0.5); color: var(--text); }
+  tr:last-child td { border-bottom: none; }
+
+  /* ── 코드 ── */
+  code {
+    font-family: 'JetBrains Mono', 'Fira Code', monospace;
+    background: rgba(108,99,255,0.1);
+    color: #a8b4ff;
+    padding: 2px 8px;
+    border-radius: 6px;
+    font-size: 0.9em;
+  }
+  .code-block {
+    background: #12141e;
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 20px 24px;
+    font-family: 'JetBrains Mono', 'Fira Code', monospace;
+    font-size: 0.9rem;
+    line-height: 1.7;
+    color: #c8d0f0;
+    white-space: pre;
+  }
+  .code-block .dim { color: var(--muted); }
+  .code-block .hi { color: var(--accent2); }
+  .code-block .str { color: #ffd580; }
+  .code-block .kw { color: var(--accent); }
+
+  /* ── 리스트 ── */
+  ul.clean { list-style: none; display: flex; flex-direction: column; gap: 12px; }
+  ul.clean li { display: flex; align-items: flex-start; gap: 12px; font-size: 1.05rem; color: var(--text); }
+  ul.clean li::before { content: ""; width: 8px; height: 8px; border-radius: 50%; background: var(--accent); margin-top: 8px; flex-shrink: 0; }
+
+  /* ── 아키텍처 다이어그램 ── */
+  .arch-box {
+    border: 1.5px solid var(--border);
+    border-radius: 12px;
+    padding: 14px 22px;
+    text-align: center;
+    font-size: 0.95rem;
+    font-weight: 600;
+    background: var(--surface);
+  }
+  .arch-arrow {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.3rem;
+    color: var(--muted);
+    padding: 0 8px;
+  }
+  .arch-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+    justify-content: center;
+  }
+
+  /* ── 슬라이드 번호 + 네비 ── */
+  .nav {
+    position: fixed;
+    bottom: 28px;
+    left: 50%;
+    transform: translateX(-50%);
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    background: rgba(26,29,39,0.9);
+    border: 1px solid var(--border);
+    border-radius: 999px;
+    padding: 10px 24px;
+    backdrop-filter: blur(12px);
+    z-index: 100;
+  }
+  .nav button {
+    background: none;
+    border: none;
+    color: var(--muted);
+    cursor: pointer;
+    font-size: 1.1rem;
+    padding: 4px 8px;
+    border-radius: 8px;
+    transition: color 0.2s, background 0.2s;
+  }
+  .nav button:hover { color: var(--text); background: var(--border); }
+  .nav .counter { color: var(--muted); font-size: 0.9rem; min-width: 60px; text-align: center; }
+
+  .dots {
+    position: fixed;
+    right: 28px;
+    top: 50%;
+    transform: translateY(-50%);
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    z-index: 100;
+  }
+  .dot {
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+    background: var(--border);
+    cursor: pointer;
+    transition: background 0.2s, transform 0.2s;
+  }
+  .dot.active { background: var(--accent); transform: scale(1.4); }
+
+  /* ── 타이틀 슬라이드 ── */
+  .title-slide {
+    background: radial-gradient(ellipse at 30% 50%, rgba(108,99,255,0.12) 0%, transparent 60%),
+                radial-gradient(ellipse at 70% 30%, rgba(0,212,170,0.08) 0%, transparent 50%);
+    text-align: center;
+  }
+  .title-badge {
+    display: inline-block;
+    border: 1px solid rgba(108,99,255,0.4);
+    background: rgba(108,99,255,0.1);
+    color: var(--accent);
+    padding: 6px 18px;
+    border-radius: 999px;
+    font-size: 0.85rem;
+    font-weight: 600;
+    margin-bottom: 24px;
+    letter-spacing: 0.05em;
+  }
+
+  /* ── 섹션 헤더 ── */
+  .section-label {
+    font-size: 0.78rem;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    color: var(--accent);
+    font-weight: 700;
+    margin-bottom: 10px;
+  }
+
+  /* ── 구분선 ── */
+  .divider { width: 48px; height: 3px; background: var(--accent); border-radius: 3px; margin: 16px 0; }
+
+  /* ── 타임라인 ── */
+  .timeline { display: flex; flex-direction: column; gap: 0; }
+  .timeline-item { display: flex; gap: 20px; position: relative; }
+  .timeline-left { display: flex; flex-direction: column; align-items: center; width: 36px; flex-shrink: 0; }
+  .timeline-dot { width: 14px; height: 14px; border-radius: 50%; background: var(--accent); border: 2px solid var(--bg); flex-shrink: 0; z-index: 1; }
+  .timeline-line { flex: 1; width: 2px; background: var(--border); margin: 2px 0; }
+  .timeline-item:last-child .timeline-line { display: none; }
+  .timeline-content { flex: 1; padding-bottom: 20px; }
+
+  /* ── 체크리스트 ── */
+  .checklist { display: flex; flex-direction: column; gap: 10px; }
+  .check-item { display: flex; align-items: center; gap: 12px; font-size: 1rem; }
+  .check-item .icon { font-size: 1.1rem; }
+
+  /* ── 비교표 ── */
+  .compare { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; }
+  .compare-box { padding: 24px; border-radius: 14px; }
+  .before-box { background: rgba(248,113,113,0.06); border: 1px solid rgba(248,113,113,0.2); }
+  .after-box { background: rgba(74,222,128,0.06); border: 1px solid rgba(74,222,128,0.2); }
+  .compare-box h3 { margin-bottom: 16px; }
+</style>
+</head>
+<body>
+
+<div class="deck" id="deck">
+
+  <!-- 슬라이드 1: 타이틀 -->
+  <div class="slide title-slide active">
+    <div class="content" style="text-align:center;">
+      <div class="title-badge">2026.05.11</div>
+      <h1 style="font-size:3.6rem; margin-bottom:20px;">
+        Frank, 클라우드에<br><span class="accent">올라가다</span>
+      </h1>
+      <p style="font-size:1.2rem; max-width:520px; margin:0 auto 40px;">
+        Mac 없이도 언제 어디서나 — 클라우드 배포 전 과정
+      </p>
+      <div style="display:flex; gap:12px; justify-content:center; flex-wrap:wrap;">
+        <span class="badge badge-purple">Render</span>
+        <span class="badge badge-green">Vercel</span>
+        <span class="badge badge-yellow">UptimeRobot</span>
+        <span class="badge badge-purple">Rust · SvelteKit · iOS</span>
+        <span class="badge badge-green">$0 / 월</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- 슬라이드 2: 문제 -->
+  <div class="slide">
+    <div class="content">
+      <div class="section-label">배경</div>
+      <h2 style="margin-bottom:12px;">개발은 됐는데, <span class="accent3">쓸 수가 없었다</span></h2>
+      <div class="divider"></div>
+      <div class="row" style="margin-top:32px; align-items:center;">
+        <div class="col">
+          <ul class="clean">
+            <li><strong>서버가 Mac 위에서만 실행됨</strong><br><span style="color:var(--muted); font-size:0.95rem;">집 MacBook이 서버 역할</span></li>
+            <li><strong>Mac이 꺼지면 앱도 먹통</strong><br><span style="color:var(--muted); font-size:0.95rem;">외출 중, 취침 중, Mac 절전 시 → 연결 끊김</span></li>
+            <li><strong>개발자가 본인 앱을 못 씀</strong><br><span style="color:var(--muted); font-size:0.95rem;">만든 의미가 없는 상태</span></li>
+            <li><strong>MVP13에서 Oracle Cloud 시도 → 실패</strong><br><span style="color:var(--muted); font-size:0.95rem;">ARM 리전 용량 부족으로 19회 연속 실패</span></li>
+          </ul>
+        </div>
+        <div class="col">
+          <div class="card" style="background: rgba(248,113,113,0.06); border-color: rgba(248,113,113,0.25);">
+            <div class="code-block" style="font-size:0.88rem; white-space:pre-wrap;"><span class="dim"># 기존 구조</span>
+
+iPhone    → <span class="red">Mac:8080</span>   ← 켜져 있어야 함
+브라우저  → <span class="red">Mac:5173</span>   ← 켜져 있어야 함
+
+<span class="dim"># 콘솔 에러 (오늘 실제 발생)</span>
+<span class="red">NSURLErrorDomain Code=-1001
+"The request timed out."
+NSErrorFailingURLStringKey=
+http://macbook-pro.local:8080/api/tags</span></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 슬라이드 3: 플랫폼 리서치 -->
+  <div class="slide">
+    <div class="content">
+      <div class="section-label">리서치</div>
+      <h2 style="margin-bottom:12px;">무료 클라우드 플랫폼 <span class="accent">전수 조사</span></h2>
+      <div class="divider" style="margin-bottom:28px;"></div>
+      <table>
+        <thead>
+          <tr>
+            <th>플랫폼</th>
+            <th>결과</th>
+            <th>탈락 이유</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><strong>Oracle Cloud</strong></td>
+            <td><span class="badge badge-red">❌ 탈락</span></td>
+            <td style="color:var(--muted);">ARM 리전(춘천) 용량 부족 — <strong>19회 연속 실패</strong></td>
+          </tr>
+          <tr>
+            <td><strong>Koyeb</strong></td>
+            <td><span class="badge badge-red">❌ 탈락</span></td>
+            <td style="color:var(--muted);">2026년 2월 Mistral 인수 → 신규 무료 가입 불가</td>
+          </tr>
+          <tr>
+            <td><strong>Google Cloud Run</strong></td>
+            <td><span class="badge badge-red">❌ 탈락</span></td>
+            <td style="color:var(--muted);">카드 필수 + 하드 과금 캡 없음 + 리전 함정</td>
+          </tr>
+          <tr>
+            <td><strong>Fly.io</strong></td>
+            <td><span class="badge badge-red">❌ 탈락</span></td>
+            <td style="color:var(--muted);">2024년 신규 가입자 무료 티어 종료 (기존 사용자 레거시 유지)</td>
+          </tr>
+          <tr>
+            <td><strong>Render</strong></td>
+            <td><span class="badge badge-green">✅ 채택</span></td>
+            <td style="color:var(--green);">무료, 카드 불필요, Docker 지원, 코드 변경 없음</td>
+          </tr>
+          <tr>
+            <td><strong>Vercel</strong></td>
+            <td><span class="badge badge-green">✅ 채택</span></td>
+            <td style="color:var(--green);">무료, 카드 불필요, SvelteKit SSR 완벽 지원</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- 슬라이드 4: 최종 아키텍처 -->
+  <div class="slide">
+    <div class="content">
+      <div class="section-label">아키텍처</div>
+      <h2 style="margin-bottom:28px;">Before <span class="accent3">→</span> After</h2>
+      <div class="compare">
+        <div class="compare-box before-box">
+          <h3 class="red" style="margin-bottom:16px;">⚠ Before</h3>
+          <div class="code-block" style="font-size:0.85rem; white-space:pre-wrap;">iPhone
+  └→ MacBook:8080 (꺼지면 끊김)
+
+브라우저
+  └→ MacBook:5173 (꺼지면 끊김)
+
+Mac = 서버 = 단일 장애점</div>
+        </div>
+        <div class="compare-box after-box">
+          <h3 class="green" style="margin-bottom:16px;">✅ After</h3>
+          <div class="code-block" style="font-size:0.85rem; white-space:pre-wrap;">iPhone ──┐
+         ├→ Render API  (24시간)
+브라우저 ─┘     └→ Supabase DB
+
+Vercel Web       (24시간)
+  └→ Render API
+
+UptimeRobot
+  └→ 5분마다 /health 핑</div>
+        </div>
+      </div>
+      <div style="margin-top:20px; text-align:center; color:var(--muted); font-size:0.95rem;">
+        Mac은 <strong style="color:var(--text);">코드 업데이트할 때만</strong> 필요 — 평소엔 꺼도 됨
+      </div>
+    </div>
+  </div>
+
+  <!-- 슬라이드 5: 코드 작업 - health endpoint -->
+  <div class="slide">
+    <div class="content">
+      <div class="section-label">코드 작업 1 / 3</div>
+      <h2 style="margin-bottom:12px;">헬스체크 엔드포인트 <span class="accent">DB ping 추가</span></h2>
+      <div class="divider" style="margin-bottom:24px;"></div>
+      <div class="row" style="gap:28px;">
+        <div class="col">
+          <div class="card-sm" style="margin-bottom:16px;">
+            <p style="margin-bottom:8px; color:var(--text); font-weight:600;">왜 필요했나?</p>
+            <p>UptimeRobot이 <code>/health</code>를 5분마다 호출 → Render 슬립 방지</p>
+            <p style="margin-top:8px;">But 기존 <code>/health</code>는 DB 조회 없음 → Supabase 7일 미사용 정지 위험</p>
+          </div>
+          <div class="card-sm">
+            <p style="color:var(--text); font-weight:600; margin-bottom:8px;">해결</p>
+            <p><code>DbPort</code>에 <code>ping()</code> 추가 → <code>SELECT 1</code> 실행</p>
+            <p style="margin-top:8px;">UptimeRobot 핑 1번 = Render 슬립방지 + Supabase 유지 <span class="green">동시</span></p>
+          </div>
+        </div>
+        <div class="col">
+          <div class="code-block" style="font-size:0.82rem; white-space:pre-wrap;"><span class="dim">// server/src/api/health.rs</span>
+
+<span class="kw">pub async fn</span> <span class="hi">health_check</span>&lt;D: DbPort&gt;(
+    Extension(state): Extension&lt;AppState&lt;D&gt;&gt;,
+) -&gt; Result&lt;Json&lt;HealthStatus&gt;, StatusCode&gt; {
+    <span class="dim">// DB ping → 실패 시 503 반환</span>
+    state.db.<span class="hi">ping</span>()
+        .await
+        .map_err(|_| StatusCode::<span class="red">SERVICE_UNAVAILABLE</span>)?;
+
+    Ok(Json(HealthStatus::<span class="green">ok</span>()))
+}</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 슬라이드 6: Render 배포 -->
+  <div class="slide">
+    <div class="content">
+      <div class="section-label">Step 1</div>
+      <h2 style="margin-bottom:12px;">Render — <span class="accent">Rust API 서버 배포</span></h2>
+      <div class="divider" style="margin-bottom:24px;"></div>
+      <div class="row">
+        <div class="col">
+          <div class="timeline">
+            <div class="timeline-item">
+              <div class="timeline-left"><div class="timeline-dot"></div><div class="timeline-line"></div></div>
+              <div class="timeline-content">
+                <strong>GitHub 연동 & Web Service 생성</strong>
+                <p>Runtime: Docker — 기존 Dockerfile 그대로 사용. 코드 변경 0.</p>
+              </div>
+            </div>
+            <div class="timeline-item">
+              <div class="timeline-left"><div class="timeline-dot"></div><div class="timeline-line"></div></div>
+              <div class="timeline-content">
+                <strong>환경변수 입력</strong>
+                <p>DB URL, Supabase 키, API 키, PORT=8080 설정</p>
+              </div>
+            </div>
+            <div class="timeline-item">
+              <div class="timeline-left"><div class="timeline-dot"></div><div class="timeline-line"></div></div>
+              <div class="timeline-content">
+                <strong>배포 완료 → URL 발급</strong>
+                <p><code>https://frank-onvv.onrender.com</code></p>
+              </div>
+            </div>
+            <div class="timeline-item">
+              <div class="timeline-left"><div class="timeline-dot"></div></div>
+              <div class="timeline-content">
+                <strong>동작 확인</strong>
+                <p><code>curl /health</code> → <code style="color:var(--green);">200 OK (0.87s)</code></p>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="col">
+          <div class="card">
+            <p style="font-weight:600; color:var(--text); margin-bottom:16px;">Render 무료 티어 스펙</p>
+            <table>
+              <tr><td style="color:var(--muted); font-size:0.9rem;">시간</td><td>750시간/월 (한 달 744시간)</td></tr>
+              <tr><td style="color:var(--muted); font-size:0.9rem;">슬립</td><td>15분 미사용 시 자동 슬립</td></tr>
+              <tr><td style="color:var(--muted); font-size:0.9rem;">리전</td><td>Singapore (한국 최근접)</td></tr>
+              <tr><td style="color:var(--muted); font-size:0.9rem;">카드</td><td><span class="green">불필요</span></td></tr>
+              <tr><td style="color:var(--muted); font-size:0.9rem;">과금</td><td><span class="green">한도 초과 = 중단 (과금 없음)</span></td></tr>
+              <tr><td style="color:var(--muted); font-size:0.9rem;">재배포</td><td>GitHub push → 자동</td></tr>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 슬라이드 7: Vercel + CORS -->
+  <div class="slide">
+    <div class="content">
+      <div class="section-label">Step 2</div>
+      <h2 style="margin-bottom:12px;">Vercel — <span class="accent">SvelteKit 웹 배포</span></h2>
+      <div class="divider" style="margin-bottom:24px;"></div>
+      <div class="row">
+        <div class="col">
+          <div class="card-sm" style="margin-bottom:16px;">
+            <p style="font-weight:600; color:var(--text); margin-bottom:12px;">코드 변경: 딱 1줄</p>
+            <div class="code-block" style="font-size:0.83rem; white-space:pre-wrap;"><span class="dim">// web/svelte.config.js</span>
+
+<span class="dim">// Before</span>
+import adapter from <span class="red">'@sveltejs/adapter-node'</span>;
+
+<span class="dim">// After</span>
+import adapter from <span class="hi">'@sveltejs/adapter-vercel'</span>;</div>
+          </div>
+          <div class="card-sm" style="background: rgba(248,113,113,0.06); border-color: rgba(248,113,113,0.25);">
+            <p style="font-weight:600; color:var(--red); margin-bottom:8px;">🔥 트러블슈팅: CORS 에러</p>
+            <p style="font-size:0.93rem;">웹→API 요청 브라우저가 차단<br>
+            → 서버 Render 환경변수에 추가:</p>
+            <code style="font-size:0.85rem; display:block; margin-top:8px;">ALLOWED_ORIGINS=https://frank-green.vercel.app</code>
+            <p style="font-size:0.88rem; margin-top:8px; color:var(--muted);">→ Render 재배포 후 해결 ✅</p>
+          </div>
+        </div>
+        <div class="col">
+          <div class="card">
+            <p style="font-weight:600; color:var(--text); margin-bottom:16px;">Vercel Hobby 스펙</p>
+            <table>
+              <tr><td style="color:var(--muted); font-size:0.9rem;">대역폭</td><td>100GB/월</td></tr>
+              <tr><td style="color:var(--muted); font-size:0.9rem;">서버리스 함수</td><td>100만 회/월 <span style="color:var(--muted); font-size:0.8rem;">(실제 집행은 ~10만 회 수준)</span></td></tr>
+              <tr><td style="color:var(--muted); font-size:0.9rem;">카드</td><td><span class="green">불필요</span></td></tr>
+              <tr><td style="color:var(--muted); font-size:0.9rem;">배포 URL</td><td>frank-green.vercel.app</td></tr>
+              <tr><td style="color:var(--muted); font-size:0.9rem;">재배포</td><td>GitHub push → 자동</td></tr>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 슬라이드 8: UptimeRobot -->
+  <div class="slide">
+    <div class="content">
+      <div class="section-label">Step 3</div>
+      <h2 style="margin-bottom:12px;">UptimeRobot — <span class="accent">슬립 방지 자동화</span></h2>
+      <div class="divider" style="margin-bottom:32px;"></div>
+      <div class="row" style="align-items:center;">
+        <div class="col">
+          <div class="card">
+            <p style="font-weight:700; color:var(--text); font-size:1.1rem; margin-bottom:20px;">원리</p>
+            <div class="arch-row" style="flex-direction:column; align-items:flex-start; gap:16px;">
+              <div style="display:flex; align-items:center; gap:12px;">
+                <div class="arch-box" style="background:rgba(251,191,36,0.1); border-color:rgba(251,191,36,0.3); color:var(--yellow); min-width:140px;">UptimeRobot</div>
+                <span style="color:var(--muted);">5분마다 →</span>
+                <div class="arch-box" style="min-width:160px;"><code>GET /health</code></div>
+              </div>
+              <div style="display:flex; align-items:center; gap:12px; margin-left:24px;">
+                <span style="color:var(--muted);">↓</span>
+              </div>
+              <div style="display:flex; gap:16px;">
+                <div class="arch-box" style="background:rgba(108,99,255,0.1); color:var(--accent); flex:1;">Render 슬립 방지</div>
+                <div class="arch-box" style="background:rgba(0,212,170,0.1); color:var(--accent2); flex:1;">Supabase DB 유지</div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="col">
+          <ul class="clean">
+            <li>
+              <div>
+                <strong>무료 계정으로 설정</strong>
+                <p>Monitor Type: HTTPS</p>
+              </div>
+            </li>
+            <li>
+              <div>
+                <strong>5분 간격 설정</strong>
+                <p>Render 슬립 기준(15분)보다 짧아야 효과 있음</p>
+              </div>
+            </li>
+            <li>
+              <div>
+                <strong>DB ping 포함</strong>
+                <p><code>/health</code>가 <code>SELECT 1</code>을 호출 → Supabase 7일 정지 방지</p>
+              </div>
+            </li>
+            <li>
+              <div>
+                <strong>다운 시 이메일 알림</strong>
+                <p>서버 장애 자동 감지</p>
+              </div>
+            </li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 슬라이드 9: iOS 연동 + 트러블슈팅 -->
+  <div class="slide">
+    <div class="content">
+      <div class="section-label">Step 4 — 트러블슈팅 포함</div>
+      <h2 style="margin-bottom:12px;">iOS — <span class="accent">실기기 서버 URL 전환</span></h2>
+      <div class="divider" style="margin-bottom:24px;"></div>
+      <div class="row">
+        <div class="col">
+          <div class="timeline">
+            <div class="timeline-item">
+              <div class="timeline-left"><div class="timeline-dot" style="background:var(--green)"></div><div class="timeline-line"></div></div>
+              <div class="timeline-content">
+                <strong>Secrets.plist 수정</strong>
+                <p>SERVER_URL → Render URL로 변경<br>
+                <span style="color:var(--red); font-size:0.88rem;">→ 하지만 앱에서 여전히 macbook-pro.local로 요청</span></p>
+              </div>
+            </div>
+            <div class="timeline-item">
+              <div class="timeline-left"><div class="timeline-dot" style="background:var(--accent2)"></div><div class="timeline-line"></div></div>
+              <div class="timeline-content">
+                <strong>콘솔 로그로 원인 파악</strong>
+                <div class="code-block" style="font-size:0.77rem; margin-top:8px; white-space:pre-wrap;"><span class="red">NSErrorFailingURLStringKey=
+http://macbook-pro.local:8080/api/tags
+"The request timed out."</span></div>
+              </div>
+            </div>
+            <div class="timeline-item">
+              <div class="timeline-left"><div class="timeline-dot" style="background:var(--yellow)"></div><div class="timeline-line"></div></div>
+              <div class="timeline-content">
+                <strong>원인 발견: Config.xcconfig 우선순위</strong>
+                <p><code>Info.plist → Secrets.plist</code> 순서인데<br>
+                <code>Config.xcconfig</code>가 Info.plist에 주입됨 → 우선 적용</p>
+              </div>
+            </div>
+            <div class="timeline-item">
+              <div class="timeline-left"><div class="timeline-dot" style="background:var(--green)"></div></div>
+              <div class="timeline-content">
+                <strong>Config.xcconfig 수정 → 해결 ✅</strong>
+                <div class="code-block" style="font-size:0.8rem; margin-top:8px; white-space:pre-wrap;"><span class="dim"># Before</span>
+SERVER_URL = <span class="red">http:$(SLASH)$(SLASH)MacBook-Pro.local:8080</span>
+
+<span class="dim"># After</span>
+SERVER_URL = <span class="hi">https:$(SLASH)$(SLASH)frank-onvv.onrender.com</span></div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="col">
+          <div class="card" style="background: rgba(108,99,255,0.06); border-color: rgba(108,99,255,0.2);">
+            <p style="font-weight:600; color:var(--text); margin-bottom:12px;">iOS 설정 파일 우선순위</p>
+            <div style="display:flex; flex-direction:column; gap:8px; font-size:0.93rem;">
+              <div style="display:flex; align-items:center; gap:10px;">
+                <span class="badge badge-yellow">1순위</span>
+                <span><code>Config.xcconfig</code></span>
+                <span style="color:var(--muted);">→ Info.plist에 주입</span>
+              </div>
+              <div style="display:flex; align-items:center; gap:10px; margin-left:24px; color:var(--muted); font-size:0.8rem;">↓ 없으면</div>
+              <div style="display:flex; align-items:center; gap:10px;">
+                <span class="badge badge-purple">2순위</span>
+                <span><code>Secrets.plist</code></span>
+              </div>
+            </div>
+            <div style="margin-top:20px; padding-top:16px; border-top:1px solid var(--border);">
+              <p style="font-size:0.88rem; color:var(--muted);">
+                <strong style="color:var(--yellow);">교훈:</strong> Secrets.plist만 바꿔서는 안 됨.<br>
+                xcconfig가 있다면 그걸 먼저 확인해야 함.
+              </p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 슬라이드 10: 자동 재배포 파이프라인 -->
+  <div class="slide">
+    <div class="content">
+      <div class="section-label">운영</div>
+      <h2 style="margin-bottom:12px;">앞으로 업데이트는 <span class="accent">Push 한 번</span></h2>
+      <div class="divider" style="margin-bottom:32px;"></div>
+      <div style="display:flex; flex-direction:column; gap:16px; max-width:700px; margin:0 auto;">
+        <div class="arch-row">
+          <div class="arch-box" style="background:rgba(0,212,170,0.1); border-color:rgba(0,212,170,0.3); color:var(--accent2); min-width:180px;">코드 수정</div>
+          <div class="arch-arrow">→</div>
+          <div class="arch-box" style="min-width:180px;">git push (main)</div>
+        </div>
+        <div style="text-align:center; color:var(--muted);">↓ GitHub Webhook 자동 트리거</div>
+        <div class="arch-row">
+          <div class="arch-box" style="background:rgba(108,99,255,0.1); border-color:rgba(108,99,255,0.3); color:var(--accent); flex:1;">
+            Render<br><span style="font-size:0.8rem; font-weight:400; color:var(--muted);">API 서버 자동 재배포</span>
+          </div>
+          <div class="arch-arrow">+</div>
+          <div class="arch-box" style="background:rgba(74,222,128,0.08); border-color:rgba(74,222,128,0.25); color:var(--green); flex:1;">
+            Vercel<br><span style="font-size:0.8rem; font-weight:400; color:var(--muted);">웹 자동 재배포</span>
+          </div>
+        </div>
+        <div style="text-align:center; color:var(--muted);">↓</div>
+        <div class="arch-box" style="background:rgba(0,212,170,0.06); border-color:rgba(0,212,170,0.2); color:var(--accent2);">
+          사용자에게 새 버전 자동 반영
+        </div>
+      </div>
+      <div style="margin-top:32px; text-align:center;">
+        <p style="color:var(--muted); font-size:0.95rem;">
+          iOS 앱만 <strong style="color:var(--text);">Mac에서 Xcode 빌드 → 실기기 설치</strong> 별도 필요<br>
+          (1년에 한 번 또는 기능 업데이트 시)
+        </p>
+      </div>
+    </div>
+  </div>
+
+  <!-- 슬라이드 11: 검증 결과 -->
+  <div class="slide">
+    <div class="content">
+      <div class="section-label">검증</div>
+      <h2 style="margin-bottom:12px;">E2E <span class="accent">실기기 검증 완료</span></h2>
+      <div class="divider" style="margin-bottom:28px;"></div>
+      <div class="row">
+        <div class="col">
+          <div class="card">
+            <p style="font-weight:600; color:var(--text); margin-bottom:16px;">체크리스트</p>
+            <div class="checklist">
+              <div class="check-item"><span class="icon green">✅</span> <span>iOS 실기기 피드 로드</span></div>
+              <div class="check-item"><span class="icon green">✅</span> <span>웹 브라우저 로그인 + 피드</span></div>
+              <div class="check-item"><span class="icon green">✅</span> <span>Mac 덮은(Sleep) 상태에서 앱 동작</span></div>
+              <div class="check-item"><span class="icon green">✅</span> <span>Playwright 웹 E2E 통과</span></div>
+              <div class="check-item"><span class="icon green">✅</span> <span>UptimeRobot 모니터 활성</span></div>
+              <div class="check-item"><span class="icon green">✅</span> <span>자동 재배포 파이프라인 확인</span></div>
+            </div>
+          </div>
+        </div>
+        <div class="col">
+          <div class="card">
+            <p style="font-weight:600; color:var(--text); margin-bottom:16px;">성능 · 비용</p>
+            <table>
+              <tr>
+                <td style="color:var(--muted); font-size:0.9rem;">서버 응답</td>
+                <td><span class="green">~0.9초</span> (싱가포르 리전)</td>
+              </tr>
+              <tr>
+                <td style="color:var(--muted); font-size:0.9rem;">웹 배포</td>
+                <td>frank-green.vercel.app</td>
+              </tr>
+              <tr>
+                <td style="color:var(--muted); font-size:0.9rem;">API 서버</td>
+                <td>frank-onvv.onrender.com</td>
+              </tr>
+              <tr>
+                <td style="color:var(--muted); font-size:0.9rem;">월 비용</td>
+                <td><span class="green" style="font-size:1.3rem; font-weight:700;">$0</span></td>
+              </tr>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 슬라이드 12: 실사용 시나리오 -->
+  <div class="slide">
+    <div class="content">
+      <div class="section-label">실사용</div>
+      <h2 style="margin-bottom:12px;">이제 <span class="accent2">이런 게 된다</span></h2>
+      <div class="divider" style="margin-bottom:28px;"></div>
+      <div class="row" style="gap:20px;">
+        <div class="card-sm" style="flex:1;">
+          <p style="font-size:1.5rem; margin-bottom:10px;">🚇</p>
+          <p style="font-weight:600; color:var(--text); margin-bottom:8px;">출근길 지하철</p>
+          <p style="font-size:0.9rem;">Mac은 집에서 꺼진 채.<br>iPhone으로 피드 읽고 퀴즈 풀기.</p>
+        </div>
+        <div class="card-sm" style="flex:1;">
+          <p style="font-size:1.5rem; margin-bottom:10px;">☕</p>
+          <p style="font-weight:600; color:var(--text); margin-bottom:8px;">주말 카페</p>
+          <p style="font-size:0.9rem;">MacBook 없이 iPhone만.<br>어제 즐겨찾기 기사 복습.</p>
+        </div>
+        <div class="card-sm" style="flex:1;">
+          <p style="font-size:1.5rem; margin-bottom:10px;">🔄</p>
+          <p style="font-weight:600; color:var(--text); margin-bottom:8px;">일주일 만에 열어도</p>
+          <p style="font-size:0.9rem;">UptimeRobot이 계속 깨워뒀음.<br>바로 피드가 뜸.</p>
+        </div>
+      </div>
+      <div style="margin-top:28px; text-align:center;">
+        <div class="card" style="display:inline-block; padding:20px 48px; background:rgba(108,99,255,0.08); border-color:rgba(108,99,255,0.3);">
+          <p style="font-size:1.2rem; color:var(--text); font-weight:600;">
+            "만든 앱을 드디어 <span class="accent">일상에서 쓸 수 있게</span> 됐다"
+          </p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 슬라이드 13: 마무리 -->
+  <div class="slide title-slide">
+    <div class="content" style="text-align:center;">
+      <h2 style="margin-bottom:24px; font-size:2.6rem;">오늘 한 것</h2>
+      <div style="display:grid; grid-template-columns:1fr 1fr 1fr; gap:16px; max-width:800px; margin:0 auto 40px;">
+        <div class="card-sm" style="text-align:left;">
+          <p style="color:var(--accent); font-weight:700; margin-bottom:8px; font-size:0.8rem; text-transform:uppercase; letter-spacing:0.06em;">리서치</p>
+          <p style="font-size:0.93rem;">무료 클라우드 5개 플랫폼 분석<br>→ Render + Vercel 확정</p>
+        </div>
+        <div class="card-sm" style="text-align:left;">
+          <p style="color:var(--accent2); font-weight:700; margin-bottom:8px; font-size:0.8rem; text-transform:uppercase; letter-spacing:0.06em;">코드 작업</p>
+          <p style="font-size:0.93rem;">health DB ping · Vercel adapter · CORS · Config.xcconfig</p>
+        </div>
+        <div class="card-sm" style="text-align:left;">
+          <p style="color:var(--yellow); font-weight:700; margin-bottom:8px; font-size:0.8rem; text-transform:uppercase; letter-spacing:0.06em;">배포 & 검증</p>
+          <p style="font-size:0.93rem;">Render · Vercel · UptimeRobot<br>iOS 실기기 E2E 통과</p>
+        </div>
+      </div>
+      <div style="display:flex; gap:16px; justify-content:center; flex-wrap:wrap; margin-bottom:32px;">
+        <div style="text-align:center;">
+          <div style="font-size:2.2rem; font-weight:800; color:var(--accent);">$0</div>
+          <div style="font-size:0.85rem; color:var(--muted);">월 운영비</div>
+        </div>
+        <div style="width:1px; background:var(--border); margin:0 8px;"></div>
+        <div style="text-align:center;">
+          <div style="font-size:2.2rem; font-weight:800; color:var(--accent2);">24/7</div>
+          <div style="font-size:0.85rem; color:var(--muted);">앱 가용성</div>
+        </div>
+        <div style="width:1px; background:var(--border); margin:0 8px;"></div>
+        <div style="text-align:center;">
+          <div style="font-size:2.2rem; font-weight:800; color:var(--green);">1줄</div>
+          <div style="font-size:0.85rem; color:var(--muted);">Vercel 코드 변경</div>
+        </div>
+        <div style="width:1px; background:var(--border); margin:0 8px;"></div>
+        <div style="text-align:center;">
+          <div style="font-size:2.2rem; font-weight:800; color:var(--yellow);">0개</div>
+          <div style="font-size:0.85rem; color:var(--muted);">서버 코드 재작성</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<!-- 네비게이션 -->
+<div class="nav">
+  <button onclick="prev()">←</button>
+  <span class="counter" id="counter">1 / 13</span>
+  <button onclick="next()">→</button>
+</div>
+
+<div class="dots" id="dots"></div>
+
+<script>
+  const slides = document.querySelectorAll('.slide');
+  const total = slides.length;
+  let cur = 0;
+
+  // 닷 생성
+  const dotsEl = document.getElementById('dots');
+  slides.forEach((_, i) => {
+    const d = document.createElement('div');
+    d.className = 'dot' + (i === 0 ? ' active' : '');
+    d.onclick = () => go(i);
+    dotsEl.appendChild(d);
+  });
+
+  function go(n) {
+    slides[cur].classList.remove('active');
+    dotsEl.children[cur].classList.remove('active');
+    cur = (n + total) % total;
+    slides[cur].classList.add('active');
+    dotsEl.children[cur].classList.add('active');
+    document.getElementById('counter').textContent = (cur + 1) + ' / ' + total;
+  }
+
+  function next() { go(cur + 1); }
+  function prev() { go(cur - 1); }
+
+  document.addEventListener('keydown', e => {
+    if (e.key === 'ArrowRight' || e.key === 'ArrowDown' || e.key === ' ') { e.preventDefault(); next(); }
+    if (e.key === 'ArrowLeft' || e.key === 'ArrowUp') { e.preventDefault(); prev(); }
+  });
+</script>
+</body>
+</html>
