@@ -1,0 +1,385 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>MVP1 — 3단계: 뉴스 수집 (검색 파이프라인) 흐름도</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: 'Apple SD Gothic Neo', sans-serif; background: #FDF6F0; padding: 32px 24px; color: #2D2926; }
+
+    h1 { color: #92400E; font-size: 22px; margin-bottom: 6px; }
+    .subtitle { color: #888; font-size: 14px; margin-bottom: 32px; }
+
+    /* 범례 */
+    .legend { display: flex; gap: 20px; flex-wrap: wrap; margin-bottom: 36px; }
+    .legend-item { display: flex; align-items: center; gap: 8px; font-size: 0.78rem; color: #555; }
+    .legend-dot { width: 14px; height: 14px; border-radius: 3px; flex-shrink: 0; }
+
+    /* 전체 다이어그램 래퍼 */
+    .diagram-wrap {
+      background: white;
+      border: 1px solid #E5D5C5;
+      border-radius: 12px;
+      padding: 32px 28px;
+      max-width: 960px;
+      margin: 0 auto 40px;
+    }
+    .diagram { display: flex; flex-direction: column; align-items: center; gap: 0; }
+
+    /* 노드 */
+    .node {
+      border-radius: 8px;
+      padding: 10px 18px;
+      text-align: center;
+      line-height: 1.4;
+      font-size: 0.85rem;
+      min-width: 150px;
+      white-space: nowrap;
+    }
+    .node-user    { background: #D1FAE5; border: 1.5px solid #059669; color: #065F46; }
+    .node-handler { background: #DBEAFE; border: 1.5px solid #2563EB; color: #1E40AF; }
+    .node-cache   { background: #FEF3C7; border: 1.5px solid #D97706; color: #92400E; }
+    .node-db      { background: #EDE9FE; border: 1.5px solid #7C3AED; color: #4C1D95; }
+    .node-adapter { background: #DBEAFE; border: 1.5px solid #2563EB; color: #1E40AF; }
+    .node-ext     { background: #F3F4F6; border: 1.5px solid #9CA3AF; color: #374151; }
+    .node-alert   { background: #FEE2E2; border: 1.5px solid #DC2626; color: #991B1B; }
+    .node-sub     { font-size: 0.72rem; color: #6B7280; margin-top: 3px; }
+
+    /* 화살표 */
+    .arrow-col { display: flex; flex-direction: column; align-items: center; }
+    .arrow-v {
+      width: 2px;
+      background: #D1C4B0;
+      position: relative;
+    }
+    .arrow-v::after {
+      content: '';
+      position: absolute;
+      bottom: -5px;
+      left: 50%;
+      transform: translateX(-50%);
+      border-left: 5px solid transparent;
+      border-right: 5px solid transparent;
+      border-top: 7px solid #D1C4B0;
+    }
+    .arrow-label {
+      font-size: 0.72rem;
+      color: #6B7280;
+      background: #FDF6F0;
+      padding: 2px 8px;
+      border-radius: 4px;
+      white-space: nowrap;
+      margin: 4px 0;
+      border: 1px solid #E5D5C5;
+    }
+    .arrow-label.hit  { color: #065F46; border-color: #A7F3D0; background: #F0FDF4; }
+    .arrow-label.miss { color: #92400E; border-color: #FDE68A; background: #FFFBEB; }
+
+    /* 노드 행 */
+    .node-row {
+      display: flex;
+      align-items: stretch;
+      justify-content: center;
+      gap: 16px;
+      width: 100%;
+    }
+
+    /* 분기 컨테이너 */
+    .branch-box {
+      border: 1px solid #E5D5C5;
+      border-radius: 10px;
+      padding: 16px 20px;
+      background: #FAFAF8;
+      width: 100%;
+    }
+    .branch-title {
+      font-size: 0.72rem;
+      color: #9CA3AF;
+      text-align: center;
+      margin-bottom: 12px;
+      letter-spacing: 0.05em;
+      text-transform: uppercase;
+    }
+    .branch-col {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      flex: 1;
+    }
+
+    /* 섹션 라벨 */
+    .section-label {
+      font-size: 0.7rem;
+      color: #9CA3AF;
+      background: #FDF6F0;
+      border: 1px solid #E5D5C5;
+      border-radius: 4px;
+      padding: 2px 10px;
+      margin-bottom: 12px;
+    }
+
+    /* 어댑터 상세 */
+    .adapter-detail {
+      background: white;
+      border: 1px dashed #E5D5C5;
+      border-radius: 8px;
+      padding: 10px 14px;
+      margin-top: 8px;
+      font-size: 0.74rem;
+      color: #6B7280;
+      line-height: 1.8;
+      text-align: left;
+      min-width: 200px;
+    }
+    .adapter-detail .step { color: #9CA3AF; }
+    .adapter-detail .step span { color: #2D2926; }
+    .adapter-detail .inner { padding-left: 14px; font-size: 0.7rem; color: #C4B5A0; }
+    .adapter-detail .inner span { color: #6B7280; }
+
+    /* 필터 박스 */
+    .filter-box {
+      background: white;
+      border: 1px solid #E5D5C5;
+      border-radius: 8px;
+      padding: 10px 16px;
+      font-size: 0.78rem;
+      color: #6B7280;
+      line-height: 1.7;
+      text-align: center;
+    }
+    .filter-box .label { color: #D97706; font-weight: 600; margin-bottom: 4px; display: block; }
+
+    /* 구분선 */
+    .h-rule { border: none; border-top: 1px dashed #E5D5C5; margin: 28px 0; width: 100%; }
+
+    /* 등장인물 카드 */
+    .section-card { background: white; border: 1px solid #E5D5C5; border-radius: 12px; padding: 24px; margin-bottom: 20px; max-width: 960px; margin-left: auto; margin-right: auto; }
+    .section-header { font-size: 17px; font-weight: bold; color: #92400E; margin: 0 0 4px; }
+    .section-range { font-size: 13px; color: #888; margin: 0 0 18px; }
+    p { font-size: 14px; line-height: 1.9; margin: 0 0 12px; color: #2D2926; }
+    code { background: #FFF7ED; padding: 1px 6px; border-radius: 4px; font-size: 12px; font-family: monospace; color: #92400E; }
+    .note { margin: 12px 0; padding: 14px 16px; border-radius: 8px; font-size: 13px; line-height: 1.85; }
+    .note-yellow { background: #FEF3C7; border-left: 4px solid #D97706; }
+    table { width: 100%; border-collapse: collapse; margin: 12px 0; font-size: 13px; }
+    th { background: #FEF3C7; color: #92400E; padding: 10px 14px; text-align: left; border: 1px solid #E5D5C5; }
+    td { padding: 10px 14px; border: 1px solid #E5D5C5; vertical-align: top; line-height: 1.7; }
+    tr:nth-child(even) td { background: #FAFAFA; }
+  </style>
+</head>
+<body>
+
+<h1>MVP1 — 3단계: 뉴스 수집 (검색 파이프라인)</h1>
+<p class="subtitle">GET /me/feed 요청이 들어왔을 때 캐시 확인 → 검색 폴백 체인 → 필터링 → 응답까지의 전체 흐름</p>
+
+<div class="legend">
+  <div class="legend-item"><div class="legend-dot" style="background:#059669"></div>사용자/응답</div>
+  <div class="legend-item"><div class="legend-dot" style="background:#2563EB"></div>Axum 핸들러 / 어댑터</div>
+  <div class="legend-item"><div class="legend-dot" style="background:#D97706"></div>캐시 (InMemory TTL)</div>
+  <div class="legend-item"><div class="legend-dot" style="background:#7C3AED"></div>DB / SearchFallbackChain</div>
+  <div class="legend-item"><div class="legend-dot" style="background:#9CA3AF"></div>외부 API / 원문</div>
+  <div class="legend-item"><div class="legend-dot" style="background:#DC2626"></div>알림</div>
+</div>
+
+<div class="diagram-wrap">
+<div class="diagram">
+
+  <!-- 사용자 -->
+  <div class="node node-user">사용자 (브라우저)</div>
+
+  <div class="arrow-col">
+    <div class="arrow-label">① GET /me/feed</div>
+    <div class="arrow-v" style="height:18px"></div>
+  </div>
+
+  <!-- Axum 핸들러 -->
+  <div class="node node-handler">
+    Axum 핸들러
+    <div class="node-sub">api/feed.rs</div>
+  </div>
+
+  <!-- 두 갈래 화살표 — ②③ 순차 (태그 먼저, 키는 그 결과로) -->
+  <div style="display:flex; gap:80px; margin-top:8px;">
+    <div class="arrow-col" style="align-items:flex-end;">
+      <div class="arrow-label">② get_user_tags()</div>
+      <div class="arrow-v" style="height:14px"></div>
+    </div>
+    <div class="arrow-col" style="align-items:flex-start;">
+      <div class="arrow-label">③ 캐시 키 생성 (user_id:tag_ids)</div>
+      <div class="arrow-v" style="height:14px"></div>
+    </div>
+  </div>
+
+  <!-- DB + Cache -->
+  <div class="node-row">
+    <div class="node node-db">
+      DB
+      <div class="node-sub">(Postgres)</div>
+    </div>
+    <div class="node node-cache">
+      FeedCache
+      <div class="node-sub">기본 5분 · 부분실패 1분 · 80% 도달 30분</div>
+    </div>
+  </div>
+
+  <!-- DB 응답 + Cache HIT/MISS — ④ 분기 -->
+  <div style="display:flex; gap:80px; margin-top:0;">
+    <div class="arrow-col" style="align-items:flex-end;">
+      <div class="arrow-v" style="height:14px"></div>
+      <div class="arrow-label">구독 태그 목록 반환</div>
+    </div>
+    <div style="display:flex; gap:32px; margin-top:8px;">
+      <div class="arrow-col">
+        <div class="arrow-v" style="height:14px; background:#A7F3D0;"></div>
+        <div class="arrow-label hit">④-HIT → ⑤ 즉시 반환 ↑</div>
+      </div>
+      <div class="arrow-col">
+        <div class="arrow-v" style="height:14px; background:#FDE68A;"></div>
+        <div class="arrow-label miss">④-MISS → ⑤ 검색 시작 ↓</div>
+      </div>
+    </div>
+  </div>
+
+  <hr class="h-rule">
+
+  <!-- join_all — 핸들러 레이어 -->
+  <div class="section-label">④-MISS 경로</div>
+  <div class="node node-handler">
+    ⑤ join_all(태그별 future)
+    <div class="node-sub">핸들러 (feed.rs) — 태그 N개 동시 발송</div>
+  </div>
+
+  <div class="arrow-col" style="margin-top:4px;">
+    <div class="arrow-label">태그마다 SearchFallbackChain 호출 (병렬)</div>
+    <div class="arrow-v" style="height:14px"></div>
+  </div>
+
+  <!-- SearchFallbackChain -->
+  <div class="node node-db">
+    ⑥ SearchFallbackChain
+    <div class="node-sub">태그당 1회 실행 — 엔진 순차 폴백</div>
+  </div>
+
+  <div class="arrow-col" style="margin-top:4px;">
+    <div class="arrow-label">⑦ 첫 성공 엔진 결과 채택</div>
+    <div class="arrow-v" style="height:14px"></div>
+  </div>
+
+  <!-- 3 어댑터 -->
+  <div class="branch-box">
+    <div class="branch-title">⑦ CountedSearchAdapter — 각 태그 쿼리에 대해 엔진 순차 시도</div>
+    <div class="node-row" style="align-items:flex-start;">
+
+      <!-- Tavily -->
+      <div class="branch-col">
+        <div style="font-size:0.7rem; color:#059669; margin-bottom:6px;">⑦-A &nbsp;1순위</div>
+        <div class="node node-adapter">
+          CountedSearchAdapter
+          <div class="node-sub">(Tavily)</div>
+        </div>
+        <div class="adapter-detail">
+          <div class="step">ⓐ <span>snapshot()</span> — 월 한도 확인 → CounterPort</div>
+          <div class="step">ⓑ <span>inner.search()</span> → TavilyAdapter</div>
+          <div class="inner">├ <span>POST /search</span> → Tavily API</div>
+          <div class="inner">└ <span>join_all(fetch_og_image)</span> — og:image 병렬 크롤링</div>
+          <div class="step">ⓒ <span>record_call() INC</span> → CounterPort [성공 시]</div>
+          <div class="step">ⓓ 임계 교차 시 <span>dispatch()</span> → iMessage</div>
+        </div>
+        <div class="arrow-v" style="height:14px; margin-top:8px;"></div>
+        <div style="display:flex; gap:8px; flex-wrap:wrap; justify-content:center;">
+          <div class="node node-db" style="min-width:unset; padding:6px 12px; font-size:0.75rem;">
+            CounterPort<div class="node-sub">(Postgres)</div>
+          </div>
+          <div class="node node-ext" style="min-width:unset; padding:6px 12px; font-size:0.75rem;">
+            Tavily API
+          </div>
+          <div class="node node-ext" style="min-width:unset; padding:6px 12px; font-size:0.75rem;">
+            기사 원문<div class="node-sub">(각 URL HTML)</div>
+          </div>
+          <div class="node node-alert" style="min-width:unset; padding:6px 12px; font-size:0.75rem;">
+            AlertDispatcherPort<div class="node-sub">(iMessage)</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Exa -->
+      <div class="branch-col">
+        <div style="font-size:0.7rem; color:#D97706; margin-bottom:6px;">⑦-B &nbsp;1순위 실패 시</div>
+        <div class="node node-adapter">
+          CountedSearchAdapter
+          <div class="node-sub">(Exa)</div>
+        </div>
+        <div class="adapter-detail" style="color:#C4B5A0; font-size:0.72rem; text-align:center; padding:10px;">
+          ⓐ~ⓓ Tavily와 동일한 구조<br>(CounterPort · 외부 API · og:image 크롤링)
+        </div>
+      </div>
+
+      <!-- Firecrawl -->
+      <div class="branch-col">
+        <div style="font-size:0.7rem; color:#DC2626; margin-bottom:6px;">⑦-C &nbsp;2순위 실패 시</div>
+        <div class="node node-adapter">
+          CountedSearchAdapter
+          <div class="node-sub">(Firecrawl)</div>
+        </div>
+        <div class="adapter-detail" style="color:#C4B5A0; font-size:0.72rem; text-align:center; padding:10px;">
+          ⓐ~ⓓ Tavily와 동일한 구조<br>(CounterPort · 외부 API · og:image 크롤링)
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <div class="arrow-col" style="margin-top:8px;">
+    <div class="arrow-v" style="height:14px"></div>
+    <div class="arrow-label">⑧ SearchResult[] 집계 반환</div>
+    <div class="arrow-v" style="height:14px"></div>
+  </div>
+
+  <hr class="h-rule">
+
+  <!-- 후처리 -->
+  <div class="section-label">검색 결과 후처리 (Axum 핸들러)</div>
+  <div class="filter-box">
+    <span class="label">⑨ 필터링 단계 (순차)</span>
+    Listing URL 제거 → 홈페이지 URL 제거 → snippet &lt;30자 제거 → URL 정규화·중복 제거 → 7일 초과 기사 제거
+    <br><br>
+    <span style="color:#D97706; font-size:0.75rem;">⑩ set(key, items, TTL) → FeedCache 갱신 (items 존재 시)</span>
+  </div>
+
+  <div class="arrow-col" style="margin-top:8px;">
+    <div class="arrow-v" style="height:14px"></div>
+    <div class="arrow-label">⑪ FeedResponse &#123;items, notice&#125;</div>
+    <div class="arrow-v" style="height:14px"></div>
+  </div>
+
+  <!-- 응답 -->
+  <div class="node node-user">사용자 (브라우저)</div>
+
+</div>
+</div>
+
+<!-- 등장인물 -->
+<div class="section-card">
+  <p class="section-header">등장인물</p>
+  <p class="section-range">흐름도에 나오는 박스들</p>
+  <table>
+    <thead><tr><th>이름</th><th>역할</th></tr></thead>
+    <tbody>
+      <tr><td><strong>사용자 (브라우저)</strong></td><td>피드 화면을 요청하는 클라이언트</td></tr>
+      <tr><td><strong>Axum 핸들러</strong></td><td><code>api/feed.rs</code> — 요청 수신, 태그 조회, <code>join_all(태그별 future)</code>로 병렬 검색 실행, 필터링, 응답 조립</td></tr>
+      <tr><td><strong>FeedCache</strong></td><td>인메모리 TTL 캐시. 캐시 키는 <code>user_id:tag_ids</code>. TTL은 기본 5분 / 부분실패 1분 / 80% 도달 시 30분</td></tr>
+      <tr><td><strong>SearchFallbackChain</strong></td><td>태그당 1회 실행. 엔진을 순차적으로 시도해 첫 성공 결과를 반환 (Tavily → Exa → Firecrawl)</td></tr>
+      <tr><td><strong>CountedSearchAdapter</strong></td><td>각 검색 엔진을 감싸는 래퍼. 월별 한도 추적(<code>CounterPort</code>), 임계 시 알림(<code>AlertDispatcherPort</code>)</td></tr>
+      <tr><td><strong>TavilyAdapter (inner)</strong></td><td><code>CountedSearchAdapter.inner</code>. POST /search → 기사 목록 수신 → <code>join_all(fetch_og_image)</code>로 og:image 병렬 크롤링</td></tr>
+    </tbody>
+  </table>
+  <div class="note note-yellow">
+    💡 <strong>join_all이 두 번 나오는 이유</strong><br>
+    ① 핸들러 레이어 (<code>⑤ join_all(태그별 future)</code>): 태그 N개에 대한 검색을 동시에 실행한다.<br>
+    ② 어댑터 내부 (<code>ⓑ join_all(fetch_og_image)</code>): 검색으로 받은 기사 N개의 og:image를 동시에 크롤링한다.<br>
+    두 병렬화는 레이어가 다르고 목적도 다르다.
+  </div>
+</div>
+
+</body>
+</html>

@@ -1,0 +1,28 @@
+sequenceDiagram
+    participant U as 사용자 (브라우저)
+    participant H as Axum 핸들러
+    participant C as FeedCache
+    participant S as SearchChain
+    participant E as 외부 검색 API
+
+    note over U,E: [A] 요청 진입 + 캐시 확인
+    U->>H: ① GET /me/feed
+    H->>H: ② get_user_tags() + 캐시 키 생성 (user_id:tag_ids)
+    H->>C: ③ get(캐시 키)
+
+    note over U,E: [A-HIT] 캐시 적중 → 즉시 반환
+    C-->>H: ④-HIT 저장된 아이템 목록
+    H-->>U: ⑤-HIT FeedResponse { items, notice }
+
+    note over U,E: [B] 캐시 MISS → 검색 폴백 체인 실행
+    C-->>H: ④-MISS (캐시 없음)
+    H->>S: ⑤ search(tag_list)
+    note over S,E: ⑥ join_all(태그별) — Tavily ① → Exa ② → Firecrawl ③ 폴백
+    S->>E: ⑥ 검색 요청 (CountedSearchAdapter: 한도 확인 → API 호출 → og:image 크롤링)
+    E-->>S: ⑦ 기사 목록 (title · url · snippet · image)
+    S-->>H: ⑧ SearchResult[]
+
+    note over U,E: [C] 후처리 + 캐시 갱신 + 응답
+    H->>H: ⑨ URL 정규화 · 중복 제거 · 7일 필터 · Listing URL 제거
+    H->>C: ⑩ set(캐시 키, items, TTL)
+    H-->>U: ⑪ FeedResponse { items, notice }
