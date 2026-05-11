@@ -1,0 +1,346 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>일일 회고 — 2026-05-11</title>
+  <style>
+    :root {
+      --bg: #F0F4FF;
+      --text: #1E2235;
+      --accent: #3B5BDB;
+      --accent-light: #E8EDFF;
+      --heading: #1C3478;
+      --border: #C5D0EE;
+      --code-bg: #EEF2FF;
+      --card-bg: #FFFFFF;
+      --muted: #6272A0;
+      --success: #2F9E44;
+      --warn: #E67700;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    html { -webkit-text-size-adjust: 100%; }
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Pretendard', system-ui, sans-serif;
+      font-size: 15px;
+      line-height: 1.75;
+      padding: 32px 20px 64px;
+      word-break: keep-all;
+    }
+    .container { max-width: 480px; margin: 0 auto; }
+
+    .header {
+      margin-bottom: 32px;
+      padding-bottom: 20px;
+      border-bottom: 2px solid var(--border);
+    }
+    .header-meta {
+      font-size: 11px;
+      color: var(--muted);
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      margin-bottom: 8px;
+    }
+    .header h1 {
+      font-size: 22px;
+      font-weight: 700;
+      color: var(--heading);
+      margin-bottom: 8px;
+      letter-spacing: -0.01em;
+    }
+    .header-sub {
+      font-size: 13px;
+      color: var(--muted);
+      line-height: 1.6;
+    }
+
+    h2 {
+      font-size: 17px;
+      font-weight: 700;
+      color: var(--heading);
+      margin: 36px 0 14px;
+      padding-bottom: 6px;
+      border-bottom: 1px solid var(--border);
+      letter-spacing: -0.01em;
+    }
+    h3 {
+      font-size: 15px;
+      font-weight: 700;
+      color: var(--heading);
+      margin: 24px 0 10px;
+    }
+    p {
+      margin: 10px 0;
+      color: var(--text);
+    }
+    p + p { margin-top: 14px; }
+    strong { color: var(--heading); font-weight: 700; }
+    em { color: var(--accent); font-style: normal; font-weight: 600; }
+
+    ul, ol {
+      padding-left: 20px;
+      margin: 10px 0;
+    }
+    li { margin: 6px 0; }
+
+    .card {
+      background: var(--card-bg);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 18px 20px;
+      margin: 16px 0;
+    }
+    .card-label {
+      font-size: 10px;
+      font-weight: 700;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      color: var(--muted);
+      margin-bottom: 10px;
+    }
+
+    .decision {
+      background: var(--card-bg);
+      border-left: 3px solid var(--accent);
+      border-radius: 0 10px 10px 0;
+      padding: 16px 18px;
+      margin: 16px 0;
+    }
+    .decision-title {
+      font-size: 14px;
+      font-weight: 700;
+      color: var(--heading);
+      margin-bottom: 8px;
+    }
+    .decision p { font-size: 14px; margin: 6px 0; }
+
+    .badge {
+      display: inline-block;
+      font-size: 10px;
+      font-weight: 700;
+      letter-spacing: 0.06em;
+      padding: 2px 8px;
+      border-radius: 20px;
+      margin-right: 4px;
+      vertical-align: middle;
+    }
+    .badge-why { background: #DBEAFE; color: #1D4ED8; }
+    .badge-how { background: #D1FAE5; color: #065F46; }
+    .badge-insight { background: #FEF3C7; color: #92400E; }
+
+    .flow {
+      background: var(--code-bg);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 16px 18px;
+      margin: 14px 0;
+      font-size: 13px;
+      font-family: 'SF Mono', 'Menlo', monospace;
+      line-height: 1.9;
+      color: var(--heading);
+    }
+    .flow .arrow { color: var(--accent); }
+    .flow .label { color: var(--muted); font-size: 11px; }
+    .flow .success { color: var(--success); font-weight: 700; }
+    .flow .fail { color: #C92A2A; }
+
+    .insight-block {
+      background: var(--accent-light);
+      border-left: 3px solid var(--accent);
+      border-radius: 0 10px 10px 0;
+      padding: 14px 16px;
+      margin: 14px 0;
+      font-size: 14px;
+    }
+    .insight-block strong { color: var(--accent); }
+
+    .stat-row {
+      display: flex;
+      gap: 10px;
+      margin: 14px 0;
+    }
+    .stat {
+      flex: 1;
+      background: var(--card-bg);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 14px 12px;
+      text-align: center;
+    }
+    .stat-num {
+      font-size: 24px;
+      font-weight: 700;
+      color: var(--heading);
+      line-height: 1.2;
+    }
+    .stat-label {
+      font-size: 11px;
+      color: var(--muted);
+      margin-top: 4px;
+    }
+    .stat-sub {
+      font-size: 10px;
+      color: var(--accent);
+      margin-top: 2px;
+      font-weight: 600;
+    }
+
+    .tomorrow {
+      background: var(--card-bg);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 18px 20px;
+      margin-top: 24px;
+    }
+    .tomorrow li {
+      font-size: 14px;
+      padding: 4px 0;
+      border-bottom: 1px solid var(--border);
+    }
+    .tomorrow li:last-child { border-bottom: none; }
+    .checkbox { color: var(--muted); margin-right: 6px; }
+
+    .quote {
+      font-style: italic;
+      color: var(--muted);
+      font-size: 14px;
+      border-left: 3px solid var(--border);
+      padding: 10px 14px;
+      margin: 16px 0;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+
+    <div class="header">
+      <div class="header-meta">Daily Retro · 2026-05-11 · MVP16 M3</div>
+      <h1>🚀 처음으로 앱이 혼자 돌아갔다</h1>
+      <div class="header-sub">
+        Oracle 19회 실패 끝에 Render + Vercel로 전환.<br>
+        맥을 끄고도 앱이 살아있는 첫 날.
+      </div>
+    </div>
+
+    <div class="stat-row">
+      <div class="stat">
+        <div class="stat-num">19</div>
+        <div class="stat-label">Oracle 실패 횟수</div>
+        <div class="stat-sub">ARM 재고 부족</div>
+      </div>
+      <div class="stat">
+        <div class="stat-num">1줄</div>
+        <div class="stat-label">Vercel 전환 코드</div>
+        <div class="stat-sub">adapter-vercel</div>
+      </div>
+      <div class="stat">
+        <div class="stat-num">5분</div>
+        <div class="stat-label">UptimeRobot 핑 주기</div>
+        <div class="stat-sub">슬립 방지</div>
+      </div>
+    </div>
+
+    <h2>오늘 뭘 했나</h2>
+
+    <p>클라우드 배포 하나에 온종일 집중했다. 방향이 여러 번 바뀌었지만 결국 다 됐다.</p>
+
+    <p><strong>오전: 배포 플랫폼 재탐색.</strong> Oracle Free Tier 시도가 19번 실패한 상태였다. 춘천 리전 ARM 재고 부족이 근본 원인이었고, 재시도로 해결될 문제가 아니었다. Koyeb를 알게 됐는데 신규 가입이 막혀 역시 불가. 직접 탐색해서 찾은 게 Render(API) + Vercel(웹) 조합이었다.</p>
+
+    <p><strong>오후: 실제 배포.</strong> SvelteKit adapter 1줄 교체, Rust 바이너리 Render 배포, UptimeRobot 5분 핑 + health DB ping 설정까지 마쳤다.</p>
+
+    <p><strong>저녁: 보안 검토 + 발표 자료.</strong> 배포 전 보안 검토를 요청해서 E2E 테스트 평문 크리덴셜을 발견하고 즉시 환경변수로 교체했다. 학교 발표용 슬라이드 13장도 완성했다.</p>
+
+    <div class="flow">
+      Oracle (19회 실패) <span class="fail">✗</span><br>
+      <span class="arrow">↓</span> ARM 재고 부족, 내가 통제 불가<br>
+      Koyeb (신규 불가) <span class="fail">✗</span><br>
+      <span class="arrow">↓</span><br>
+      Render(API) + Vercel(웹) <span class="success">✓</span><br>
+      <span class="label">  └ UptimeRobot 5분 핑 + health DB ping</span><br>
+      <span class="arrow">↓</span><br>
+      맥 끄고 앱 실행 확인 <span class="success">✓ 배포 완료</span>
+    </div>
+
+    <h2>핵심 의사결정</h2>
+
+    <div class="decision">
+      <div class="decision-title">결정 1 — Render + Vercel 조합 확정</div>
+      <p><span class="badge badge-why">WHY</span> Oracle은 외부 재고 문제, Koyeb는 신규 불가. 무료 + 즉시 사용 가능한 조합이 필요했다.</p>
+      <p><span class="badge badge-how">HOW</span> Render: Rust 바이너리 직접 배포, 무료 750시간/월. Vercel: SvelteKit official adapter 지원, 1줄 교체.</p>
+      <p><span class="badge badge-insight">인사이트</span> Oracle 19번 시도는 당시 최선의 방법이었다. 틀린 판단이 아니었다. "내가 통제할 수 없는 장벽"이라는 판단이 섰을 때 전환한 것도 맞는 결정이었다.</p>
+    </div>
+
+    <div class="decision">
+      <div class="decision-title">결정 2 — UptimeRobot + health DB ping으로 슬립 방지</div>
+      <p><span class="badge badge-why">WHY</span> Render free tier는 15분 비활성 시 슬립. 콜드 스타트 30~60초 발생.</p>
+      <p><span class="badge badge-how">HOW</span> UptimeRobot 무료 플랜 5분 간격 핑. <code>/health</code> 엔드포인트에 DB ping 추가 → API 슬립 방지 + Supabase keep-alive 동시 해결.</p>
+      <p><span class="badge badge-insight">인사이트</span> 심층 리서치로 Render의 약점을 미리 파악하고 보완책을 함께 붙였다. Oracle 성공 시나리오보다 더 견고한 구성이 됐을 수 있다.</p>
+    </div>
+
+    <div class="decision">
+      <div class="decision-title">결정 3 — E2E 크리덴셜 즉시 환경변수 교체</div>
+      <p><span class="badge badge-why">WHY</span> 배포 전 보안 검토 타이밍에 E2E 테스트 파일에서 test@test.com 평문 발견.</p>
+      <p><span class="badge badge-how">HOW</span> <code>E2E_TEST_EMAIL</code>, <code>E2E_TEST_PASSWORD</code> 환경변수로 즉시 교체. 커밋 98f2eec.</p>
+      <p><span class="badge badge-insight">인사이트</span> "배포 전에 한번 훑자"는 작은 습관이 실제 문제를 잡았다. 규칙으로 강제하기보다 이 습관 자체를 유지하는 것이 맞다.</p>
+    </div>
+
+    <div class="decision">
+      <div class="decision-title">결정 4 — Oracle을 포기한 시점</div>
+      <p><span class="badge badge-why">WHY</span> 실패 패턴이 "내 설정 오류"가 아니라 "리전 재고 부족"이라는 외부 요인이었다.</p>
+      <p><span class="badge badge-insight">인사이트</span> 내가 통제할 수 없는 요인이 문제라면, 재시도 횟수를 늘리는 것은 해결책이 아니다. "포기"가 아니라 "전환"이라는 구분.</p>
+    </div>
+
+    <h2>인사이트</h2>
+
+    <div class="insight-block">
+      <strong>"혼자 돌아간다"는 것의 체감.</strong> 맥을 끄고 앱이 실행되는 걸 확인한 순간이 오늘의 핵심이었다. 빌드 성공, 테스트 통과, 커밋 올라가는 것과는 완전히 다른 종류의 완성감이다.
+    </div>
+
+    <div class="insight-block">
+      <strong>보완책을 함께 붙이면 단순 교체보다 더 나은 결과가 나온다.</strong> Render의 약점(슬립)을 조사하고 대응책(UptimeRobot)을 같이 설계했다. 플랫폼을 바꾼 게 아니라 더 견고한 시스템을 만든 것에 가깝다.
+    </div>
+
+    <div class="insight-block">
+      <strong>배포 중 보안 검토 타이밍은 습관으로 남겨야 한다.</strong> "올리기 전에 한번 훑자"는 사소한 결정이었는데, 그 타이밍에 실제 문제가 잡혔다.
+    </div>
+
+    <h2>배운 것</h2>
+
+    <div class="card">
+      <div class="card-label">Render + Vercel 배포 패턴</div>
+      <p>Render: <code>render.yaml</code> 또는 대시보드에서 빌드 커맨드 설정. Vercel: <code>adapter-vercel</code> 설치 후 <code>svelte.config.js</code> 1줄 교체. 두 플랫폼 모두 GitHub push 시 자동 재배포.</p>
+    </div>
+
+    <div class="card">
+      <div class="card-label">UptimeRobot 슬립 방지</div>
+      <p>무료 플랜 5분 간격 HTTP 모니터링. Render free tier 슬립 기준(15분)보다 짧게 핑하면 슬립 방지. <code>/health</code> 에 DB ping 추가 시 Supabase idle connection 해제도 방지.</p>
+    </div>
+
+    <div class="card">
+      <div class="card-label">SvelteKit adapter 구조</div>
+      <p>배포 환경에 따라 adapter를 교체하는 것이 SvelteKit 설계 의도. <code>adapter-node</code> → <code>adapter-vercel</code>은 <code>npm install</code> 1번 + config 1줄. 서버 로직 변경 없음.</p>
+    </div>
+
+    <h2>느낀 점</h2>
+
+    <p>클라우드 배포를 오래 끌어왔다. Oracle이 안 됐을 때 "이게 정말 안 되는 건지, 내가 놓치는 게 있는 건지"를 구분하기가 어려웠다. 오늘 Render + Vercel로 배포가 됐을 때, Oracle이 재고 문제였다는 판단이 맞았다는 걸 확인했다.</p>
+
+    <div class="quote">
+      서비스가 "살아있다"는 건 맥이 꺼져 있어도 앱이 돌아간다는 것이다.
+    </div>
+
+    <h2>내일 할 일</h2>
+
+    <div class="tomorrow">
+      <ul style="list-style: none; padding: 0;">
+        <li><span class="checkbox">☐</span> MVP17 기획 사이클 시작 (<code>/milestone-review</code> → <code>/milestone</code>)</li>
+        <li><span class="checkbox">☐</span> DEBT-HOOK-03 Phase 2 착수 조건 확인 (Phase 1 실전 검증됐는가?)</li>
+        <li><span class="checkbox">☐</span> 배포 후 실사용 모니터링 — Render 로그, UptimeRobot 알림 동작 확인</li>
+      </ul>
+    </div>
+
+  </div>
+</body>
+</html>
