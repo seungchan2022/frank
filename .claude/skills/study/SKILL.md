@@ -183,14 +183,27 @@ C) 둘 다 설명 (변경 이력으로 다루기)
 
 단계의 모든 플랫폼(웹/iOS 등) 흐름도를 생성한다. **해설은 이 단계에서 출력하지 않는다.**
 
-**렌더링 규칙:**
+**렌더링 규칙 — 흐름 구조에 따라 선택:**
+
+| 흐름 구조 | 방식 | 이유 |
+|---|---|---|
+| 선형 요청-응답 (순서가 핵심) | Mermaid `sequenceDiagram` → SVG → `<img>` | 시간 축이 명확하게 표현됨 |
+| 분기·병렬·폴백 (구조가 핵심) | HTML/CSS 레이아웃 기반 다이어그램 | sequenceDiagram은 모든 것을 순차로 보여서 구조 왜곡 |
+
+**Mermaid SVG 방식 (선형 흐름):**
 - inline SVG 임베드 절대 금지 (marker ID 충돌로 화살표 깨짐)
-- 각 다이어그램을 `.mmd` 파일로 저장 후 `mmdc` CLI로 SVG 변환
+- `.mmd` 파일로 저장 후 `mmdc` CLI로 SVG 변환
 - HTML에서 `<img src="flow_xxx.svg">` 방식으로 참조
 
 ```bash
 npx @mermaid-js/mermaid-cli -i /tmp/flow_xxx.mmd -o /tmp/flow_xxx.svg
 ```
+
+**HTML/CSS 레이아웃 방식 (분기·병렬 구조):**
+- Claude Sunset 테마 적용 (`background: #FDF6F0`, `accent: #D97706`, `heading: #92400E`)
+- 분기(HIT/MISS)는 화살표 방향으로, 병렬(join_all)은 박스를 나란히 배치
+- 폴백 체인은 `branch-box` 안에 열(column)로 배치
+- 레퍼런스: `history/study/flow_feed.html` (MVP1 3단계)
 
 흐름도 생성 후:
 ```
@@ -200,9 +213,9 @@ npx @mermaid-js/mermaid-cli -i /tmp/flow_xxx.mmd -o /tmp/flow_xxx.svg
 ```
 
 **참여자(박스) 추상화 수준:**
-- 박스 수: 플랫폼당 4~6개 이내
+- 박스 수: 플랫폼당 4~6개 이내 (세부 내부 구조는 branch-box 안에서 추가 가능)
 - 파일/클래스 단위로 쪼개지 않음
-- 내부 구현 상세(+page.server.ts 등)는 개념 설명(3-1)에서 다룸
+- 내부 구현 상세는 개념 설명(3-1)에서 다룸
 
 ---
 
